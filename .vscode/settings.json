@@ -1,0 +1,8 @@
+{
+  // Disable Prisma extension validation (shows v7 warnings but runtime is v6.19.0)
+  "prisma.fileWatcher": false,
+  "prisma.showPrismaDataPlatformNotification": false,
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  }
+}

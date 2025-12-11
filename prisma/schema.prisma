@@ -1,0 +1,748 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+// IMPORTANT: Using Prisma 6.19.0 (MongoDB not yet supported in Prisma 7)
+// The IDE warning below is from VS Code extension detecting v7 syntax
+// This 'url' property is REQUIRED and CORRECT for Prisma 6
+// Ignore the red squiggle - your runtime Prisma version is 6.19.0
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum InteractionAction {
+  LIKE
+  PASS
+}
+
+model user {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  number       String    @unique
+  firstName    String
+  lastName     String?
+  gender       String
+  tel          Int       @unique
+  email        String    @unique
+  username     String
+  password     String
+  address      String?
+  profile      String?
+  status       String    @default("active")
+  is2FAEnabled Boolean   @default(false)
+  otpCode      String?
+  otpExpiresAt DateTime?
+
+  roleId String @db.ObjectId
+  role   role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Other relations can stay
+  createdCustomers   customer[]            @relation("CreatedBy")
+  deletedCustomers   customer[]            @relation("DeletedBy")
+  createModel        model[]               @relation("CreatedBy")
+  approveModel       model[]               @relation("ApprovedBy")
+  rejectModel        model[]               @relation("RejectedBy")
+  deleteModel        model[]               @relation("DeletedBy")
+  createService      service[]             @relation("CreatedBy")
+  updateService      service[]             @relation("UpdatedBy")
+  deleteService      service[]             @relation("DeletedBy")
+  AuditLogs          audit_logs[]
+  TransactionHistory transaction_history[]
+
+  approvedTransaction transaction_history[] @relation("ApprovedBy")
+  rejectedTransaction transaction_history[] @relation("RejectedBy")
+
+  createPermission permission[] @relation("CreatedBy")
+  deletePermission permission[] @relation("DeletedBy")
+
+  createPermissionRole permission_role[] @relation("CreatedBy")
+  deletePermissionRole permission_role[] @relation("DeletedBy")
+
+  Permission     permission[]
+  PermissionRole permission_role[]
+
+  updateWallet wallet[] @relation("UpdatedBy")
+  bannWallet   wallet[] @relation("BannedBy")
+  deleteWallet wallet[] @relation("DeletedBy")
+}
+
+model role {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           user[]
+  permissionRoles permission_role[]
+}
+
+model permission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  groupName String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String? @db.ObjectId
+
+  deletedBy   user?   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String? @db.ObjectId
+
+  User   user?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+
+  permissionRoles permission_role[]
+}
+
+model permission_role {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  roleId       String   @db.ObjectId
+  permissionId String   @db.ObjectId
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String? @db.ObjectId
+
+  deletedBy   user?   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String? @db.ObjectId
+
+  User   user?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+
+  role       role       @relation(fields: [roleId], references: [id])
+  permission permission @relation(fields: [permissionId], references: [id])
+}
+
+model customer {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  number             String    @unique
+  firstName          String
+  lastName           String?
+  dob                DateTime // 1
+  gender             String
+  username           String
+  password           String
+  latitude           Float
+  longitude          Float
+  country            String
+  ip                 String?
+  whatsapp           Int?
+  tier               String?   @default("basic")
+  resetToken         String? //@unique
+  resetTokenExpiry   DateTime? @default(now())
+  resetTokenVerified Boolean?  @default(false)
+  twofactorOTP       String? //@unique
+  twofactorExpiry    DateTime? @default(now())
+  twofactorEnabled   Boolean?  @default(false)
+  location           Json?
+  profile            String?
+  interests          Json? // 2
+  relationshipStatus String? // 3
+  bio                String? // 4
+  career             String? // 5
+  education          String? // 6
+  sendMailNoti       Boolean   @default(true) // 7
+  sendSMSNoti        Boolean   @default(false) // 8
+  sendPushNoti       Boolean   @default(false) // 9
+  defaultLanguage    String    @default("en") // 10
+  defaultTheme       String    @default("light") // 11
+
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy             user?                   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById           String?                 @db.ObjectId
+  deletedBy             user?                   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById           String?                 @db.ObjectId
+  customerCallEndedBy   session[]               @relation("CustomerCallEndedBy")
+  Images                images[]
+  Review                review[]
+  AuditLogs             audit_logs[]
+  Wallet                wallet[]
+  TransactionHistory    transaction_history[]
+  Session               session[]
+  conversation          conversation[]
+  chat_session          chat_session[]
+  customer_interactions customer_interactions[]
+  model_interactions    model_interactions[]
+  walletId              String?                 @db.ObjectId
+  reports               reports[]
+  friend_contacts       friend_contacts[]
+  service_booking       service_booking[]
+  subscription          subscription[]
+  subscription_history  subscription_history[]
+  notifications         customer_notification[]
+}
+
+model model {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  firstName           String
+  lastName            String?
+  username            String
+  password            String
+  dob                 DateTime
+  gender              String
+  bio                 String
+  whatsapp            Int       @unique
+  address             String?
+  available_status    String
+  profile             String?
+  latitude            Float?
+  longitude           Float?
+  location            Json?
+  hourly_rate_talking Float?
+  hourly_rate_video   Float?
+  rating              Float     @default(0)
+  total_review        Int       @default(0)
+  resetToken          String? //@unique
+  resetTokenExpiry    DateTime? @default(now())
+  resetTokenVerified  Boolean?  @default(false)
+  twofactorOTP        String? //@unique
+  twofactorExpiry     DateTime? @default(now())
+  twofactorEnabled    Boolean?  @default(false)
+  interests           Json? // 2
+  relationshipStatus  String? // 3
+  career              String? // 5
+  education           String? // 6
+  sendMailNoti        Boolean   @default(true) // 7
+  sendSMSNoti         Boolean   @default(false) // 8
+  sendPushNoti        Boolean   @default(false) // 9
+  defaultLanguage     String    @default("en") // 10
+  defaultTheme        String    @default("light") // 11
+
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String? @db.ObjectId
+
+  approveBy   user?   @relation("ApprovedBy", fields: [approveById], references: [id])
+  approveById String? @db.ObjectId
+
+  rejectedBy   user?   @relation("RejectedBy", fields: [approveById], references: [id])
+  rejectedById String? @db.ObjectId
+
+  deletedBy   user?   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String? @db.ObjectId
+
+  modelCallEndedBy session[] @relation("ModelCallEndedBy")
+
+  Images             images[]
+  ModelService       model_service[]
+  Review             review[]
+  AuditLogs          audit_logs[]
+  Wallet             wallet[]
+  TransactionHistory transaction_history[]
+
+  Session               session[]
+  conversation          conversation[]
+  chat_session          chat_session[]
+  customer_interactions customer_interactions[]
+  model_interactions    model_interactions[]
+  reports               reports[]
+  friend_contacts       friend_contacts[]
+  service_booking       service_booking[]
+  banks                 banks[]
+  notifications         model_notification[]
+}
+
+// subscription
+model subscription_plan {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String   @unique
+  description  String?
+  price        Float
+  durationDays Int
+  features     Json?
+  status       String   @default("pending")
+  isPopular    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions subscription[]
+}
+
+// This table is real-time check for each users that expire or not
+model subscription {
+  id         String            @id @default(auto()) @map("_id") @db.ObjectId
+  customer   customer          @relation(fields: [customerId], references: [id])
+  customerId String            @db.ObjectId
+  plan       subscription_plan @relation(fields: [planId], references: [id])
+  planId     String            @db.ObjectId
+
+  startDate     DateTime @default(now())
+  endDate       DateTime
+  status        String   @default("active") // active, expired, canceled
+  autoRenew     Boolean  @default(true)
+  paymentMethod String? // e.g. wallet, credit_card, paypal
+  transactionId String   @db.ObjectId // optional link to transaction_history
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  history subscription_history[]
+}
+
+// This is for the history or log check:
+model subscription_history {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  subscription   subscription? @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String?       @db.ObjectId
+  customer       customer      @relation(fields: [customerId], references: [id])
+  customerId     String        @db.ObjectId
+
+  planName      String
+  planPrice     Float
+  durationDays  Int
+  startDate     DateTime
+  endDate       DateTime
+  paymentMethod String?
+  transactionId String?  @db.ObjectId
+  status        String   @default("completed") // completed, canceled, refunded
+
+  createdAt DateTime @default(now())
+}
+
+model reports {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  type        String
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+}
+
+model images {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+}
+
+model banks {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  bank_name           String
+  bank_account_name   String   @unique
+  bank_account_number Float    @unique
+  qr_code             String?
+  status              String   @default("active")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+}
+
+// customer like model
+model customer_interactions {
+  id     String            @id @default(auto()) @map("_id") @db.ObjectId
+  action InteractionAction
+
+  model      model?    @relation(fields: [modelId], references: [id])
+  modelId    String?   @db.ObjectId
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customerId, modelId, action])
+}
+
+// model like customer
+model model_interactions {
+  id     String             @id @default(auto()) @map("_id") @db.ObjectId
+  action InteractionAction?
+
+  model      model?    @relation(fields: [modelId], references: [id])
+  modelId    String?   @db.ObjectId
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customerId, modelId])
+}
+
+model friend_contacts {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  adderType   String
+  contactType String
+
+  model      model?    @relation(fields: [modelId], references: [id])
+  modelId    String?   @db.ObjectId
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([modelId, customerId])
+}
+
+model wallet {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  totalBalance  Float    @default(0)
+  totalRecharge Float    @default(0)
+  totalDeposit  Float    @default(0)
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  updatedBy   user?   @relation("UpdatedBy", fields: [updatedById], references: [id])
+  updatedById String? @db.ObjectId
+
+  bannedBy   user?   @relation("BannedBy", fields: [bannedById], references: [id])
+  bannedById String? @db.ObjectId
+
+  deletedBy   user?   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String? @db.ObjectId
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+}
+
+model transaction_history {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  identifier   String
+  amount       Float
+  paymentSlip  String?
+  status       String  @default("pending")
+  comission    Float
+  fee          Float
+  rejectReason String?
+  reason       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ApprovedBy   user?   @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedById String? @db.ObjectId
+
+  RejectedBy   user?   @relation("RejectedBy", fields: [rejectedById], references: [id])
+  rejectedById String? @db.ObjectId
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  User   user?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+}
+
+model service {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  description String?
+  baseRate    Float
+  commission  Float
+  order       Int      @default(0)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String? @db.ObjectId
+
+  deletedBy   user?   @relation("DeletedBy", fields: [deletedById], references: [id])
+  deletedById String? @db.ObjectId
+
+  updatedBy   user?   @relation("UpdatedBy", fields: [updatedById], references: [id])
+  updatedById String? @db.ObjectId
+
+  ModelService model_service[]
+}
+
+model model_service {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  customRate         Float?
+  isAvailable        Boolean  @default(false)
+  minSessionDuration Int      @default(0)
+  maxSessionDuration Int      @default(0)
+  notes              String?
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  service   service? @relation(fields: [serviceId], references: [id])
+  serviceId String?  @db.ObjectId
+
+  Session         session[]
+  service_booking service_booking[]
+}
+
+model service_booking {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  price           Float
+  dayAmount       Int
+  location        String
+  locationLat     Float?    // Booking location latitude for GPS verification
+  locationLng     Float?    // Booking location longitude for GPS verification
+  preferredAttire String
+  startDate       DateTime
+  endDate         DateTime?
+  status          String    // pending, confirmed, in_progress, awaiting_confirmation, completed, cancelled, rejected, disputed
+  paymentStatus   String    @default("pending") // pending, held, pending_release, released, refunded
+  rejectReason    String?
+  completedAt     DateTime?
+  holdTransactionId    String? @db.ObjectId // Customer's hold transaction
+  releaseTransactionId String? @db.ObjectId // Model's earning transaction
+
+  // GPS Check-in fields
+  modelCheckedInAt    DateTime? // When model checked in
+  modelCheckInLat     Float?    // Model's check-in latitude
+  modelCheckInLng     Float?    // Model's check-in longitude
+  customerCheckedInAt DateTime? // When customer checked in
+  customerCheckInLat  Float?    // Customer's check-in latitude
+  customerCheckInLng  Float?    // Customer's check-in longitude
+
+  // Completion & Dispute fields
+  modelCompletedAt    DateTime? // When model marked as complete
+  autoReleaseAt       DateTime? // When payment will auto-release (24h after model completes)
+  completionToken     String? // Unique token for QR-based completion confirmation
+  completionTokenExpiresAt DateTime? // When the completion token expires (24h)
+  disputeReason       String?   // Customer's dispute reason
+  disputedAt          DateTime? // When customer disputed
+  disputeResolvedAt   DateTime? // When admin resolved dispute
+  disputeResolution   String?   // Admin's resolution: "released" or "refunded"
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  modelService   model_service? @relation(fields: [modelServiceId], references: [id])
+  modelServiceId String?        @db.ObjectId
+}
+
+model session {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  sessionStart  DateTime
+  sessionEnd    DateTime
+  duration      Float
+  ratePerMinute Float
+  totalCost     Float
+  sessionStatus String
+  paymentStatus String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  modelService   model_service? @relation(fields: [modelServiceId], references: [id])
+  modelServiceId String?        @db.ObjectId
+
+  modelCallEndedBy   model?  @relation("ModelCallEndedBy", fields: [modelCallEndedById], references: [id])
+  modelCallEndedById String? @db.ObjectId
+
+  customerCallEndedBy   customer? @relation("CustomerCallEndedBy", fields: [customerCallEndedById], references: [id])
+  customerCallEndedById String?   @db.ObjectId
+
+  review review[]
+}
+
+model conversation {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  status String @default("active")
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  lastMessage  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime?      @updatedAt
+  chat_session chat_session[]
+  messages     messages[]
+
+  @@unique([customerId, modelId])
+}
+
+model chat_session {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionStart  DateTime
+  sessionEnd    DateTime
+  duration      Float
+  ratePerMinute Float
+  totalCost     Float
+  sessionStatus String   @default("active")
+  paymentStatus String   @default("pending")
+
+  conversation   conversation? @relation(fields: [conversationId], references: [id])
+  conversationId String?       @db.ObjectId
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @updatedAt
+  messages  messages[]
+}
+
+model messages {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  conversation   conversation? @relation(fields: [conversationId], references: [id])
+  conversationId String?       @db.ObjectId
+
+  chatSession   chat_session? @relation(fields: [chatSessionId], references: [id])
+  chatSessionId String?       @db.ObjectId
+
+  sender           String? @db.ObjectId
+  senderType       String
+  messageText      String?
+  messageType      String
+  fileUrl          String?
+  fileName         String?
+  fileSize         String?
+  isRead           Boolean @default(false)
+  isDeleted        Boolean @default(false)
+  replyToMessageId String? @db.ObjectId
+
+  sendAt    DateTime
+  readAt    DateTime?
+  editedAt  DateTime?
+  createdAt DateTime?
+}
+
+model review {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating      Float
+  title       String?
+  reviewText  String?
+  isAnonymous Boolean? @default(false)
+  createdAt   DateTime @default(now())
+
+  session   session? @relation(fields: [sessionId], references: [id])
+  sessionId String   @db.ObjectId
+
+  model   model? @relation(fields: [modelId], references: [id])
+  modelId String @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String    @db.ObjectId
+}
+
+model audit_logs {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  action      String
+  description String?
+  status      String
+  onSuccess   Json?
+  onError     Json?
+  createdAt   DateTime @default(now())
+
+  model   model?  @relation(fields: [modelId], references: [id])
+  modelId String? @db.ObjectId
+
+  customer   customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  user   user?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+}
+
+model setting {
+  id                         String   @id @default(auto()) @map("_id") @db.ObjectId
+  platform_fee_percent       Float
+  min_payout                 Float
+  max_withdrawal_day         Float
+  max_withdrawal_week        Float
+  max_withdrawal_month       Float
+  exchange_rate              Float
+  bank_account_name          String
+  bank_account_number        String
+  qr_code                    String
+  require_2fa_admin          Boolean
+  auto_approve_models        Boolean
+  require_email_verification Boolean
+  require_phone_verification Boolean
+  min_age                    Int
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+
+// Notification types:
+// - booking_created: New booking request (to model)
+// - booking_confirmed: Booking confirmed (to customer)
+// - booking_rejected: Booking rejected (to customer)
+// - booking_cancelled: Booking cancelled (to model)
+// - booking_checkin: Other party checked in (to both)
+// - booking_completed: Model marked as complete (to customer)
+// - booking_confirmed_completion: Customer confirmed completion (to model)
+// - booking_disputed: Customer disputed booking (to model)
+// - payment_released: Payment released to wallet (to model)
+// - payment_refunded: Payment refunded to wallet (to customer)
+// - match_new: New match found (to both)
+
+model customer_notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // notification type
+  title     String   // notification title
+  message   String   // notification message
+  isRead    Boolean  @default(false)
+  data      Json?    // additional data (e.g., bookingId, modelId, etc.)
+  createdAt DateTime @default(now())
+
+  customer   customer @relation(fields: [customerId], references: [id])
+  customerId String   @db.ObjectId
+}
+
+model model_notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // notification type
+  title     String   // notification title
+  message   String   // notification message
+  isRead    Boolean  @default(false)
+  data      Json?    // additional data (e.g., bookingId, customerId, etc.)
+  createdAt DateTime @default(now())
+
+  model   model  @relation(fields: [modelId], references: [id])
+  modelId String @db.ObjectId
+}

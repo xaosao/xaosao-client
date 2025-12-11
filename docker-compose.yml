@@ -1,0 +1,21 @@
+version: "3.8"
+services:
+  xaosao-client:
+    container_name: xaosao-client
+    build:
+      context: .
+    restart: always
+    networks:
+      - xaosao-share-network
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    ports:
+      - "5176:3000"
+    volumes:
+      # Only mount for dev — in prod you don’t want to overwrite built files
+      - ./public:/app/public
+networks:
+  xaosao-share-network:
+    external: true
