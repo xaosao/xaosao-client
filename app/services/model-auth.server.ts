@@ -196,7 +196,7 @@ export async function createModelSession(
   ];
 
   if (isProduction) {
-    cookieParts.push(`Domain=.okardcare.com`);
+    cookieParts.push(`Domain=.xaosao.com`);
     cookieParts.push(`Secure`);
   }
 

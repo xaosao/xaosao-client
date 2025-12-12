@@ -177,7 +177,7 @@ export async function createUserSession(
   ];
 
   if (isProduction) {
-    cookieParts.push(`Domain=.okardcare.com`);
+    cookieParts.push(`Domain=.xaosao.com`);
     cookieParts.push(`Secure`);
   }
 
