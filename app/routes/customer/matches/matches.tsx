@@ -51,6 +51,7 @@ interface LoaderReturn {
     passPagination: PaginationProps;
     customerLatitude: number;
     customerLongitude: number;
+    hasActiveSubscription: boolean;
 }
 
 interface ForyouModelsProps {
@@ -84,10 +85,14 @@ const DEFAULT_PAGINATION: PaginationProps = {
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { getCustomerProfile } = await import("~/services/profile.server");
+    const { hasActiveSubscription } = await import("~/services/package.server");
     const url = new URL(request.url);
 
-    // Get customer's current GPS location from database
-    const customer = await getCustomerProfile(customerId);
+    // Get customer's current GPS location from database and subscription status
+    const [customer, hasSubscription] = await Promise.all([
+        getCustomerProfile(customerId),
+        hasActiveSubscription(customerId),
+    ]);
     const customerLatitude = customer?.latitude || 0;
     const customerLongitude = customer?.longitude || 0;
 
@@ -165,6 +170,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             passPagination: DEFAULT_PAGINATION,
             customerLatitude,
             customerLongitude,
+            hasActiveSubscription: hasSubscription,
         } as LoaderReturn;
     }
 
@@ -183,6 +189,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             passPagination: DEFAULT_PAGINATION,
             customerLatitude,
             customerLongitude,
+            hasActiveSubscription: hasSubscription,
         } as LoaderReturn;
     }
 
@@ -203,6 +210,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             passPagination: DEFAULT_PAGINATION,
             customerLatitude,
             customerLongitude,
+            hasActiveSubscription: hasSubscription,
         } as LoaderReturn;
     }
 
@@ -221,6 +229,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             passPagination,
             customerLatitude,
             customerLongitude,
+            hasActiveSubscription: hasSubscription,
         } as LoaderReturn;
     }
 
@@ -235,6 +244,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         passPagination: DEFAULT_PAGINATION,
         customerLatitude,
         customerLongitude,
+        hasActiveSubscription: hasSubscription,
     } as LoaderReturn;
 };
 
@@ -332,6 +342,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         passPagination,
         customerLatitude,
         customerLongitude,
+        hasActiveSubscription,
     } = loaderData;
     const actionData = useActionData<typeof action>();
 
@@ -705,6 +716,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             model={model}
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
+                                            hasActiveSubscription={hasActiveSubscription}
                                         />
                                     ))}
                                 </div>
@@ -744,6 +756,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             model={model}
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
+                                            hasActiveSubscription={hasActiveSubscription}
                                         />
                                     ))}
                                 </div>
@@ -784,6 +797,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             model={model}
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
+                                            hasActiveSubscription={hasActiveSubscription}
                                         />
                                     ))}
                                 </div>
@@ -824,6 +838,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             model={model}
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
+                                            hasActiveSubscription={hasActiveSubscription}
                                         />
                                     ))}
                                 </div>

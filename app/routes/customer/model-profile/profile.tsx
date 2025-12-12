@@ -34,6 +34,7 @@ import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, cre
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
+    hasActiveSubscription: boolean
 }
 
 interface ProfilePageProps {
@@ -43,13 +44,15 @@ interface ProfilePageProps {
 export const loader: LoaderFunction = async ({ params, request }) => {
     const customerId = await requireUserSession(request)
     const modelId = params.userId as string
+    const { hasActiveSubscription } = await import("~/services/package.server");
     const model = await getModelProfile(modelId, customerId)
 
     // Fetch review data
-    const [reviewsResult, canReviewResult, customerReview] = await Promise.all([
+    const [reviewsResult, canReviewResult, customerReview, hasSubscription] = await Promise.all([
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
-        getCustomerReviewForModel(customerId, modelId)
+        getCustomerReviewForModel(customerId, modelId),
+        hasActiveSubscription(customerId),
     ]);
 
     const reviewData: IReviewData = {
@@ -62,7 +65,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         customerReview: customerReview as any
     };
 
-    return { model: { ...model, reviewData } }
+    return { model: { ...model, reviewData }, hasActiveSubscription: hasSubscription }
 }
 
 export async function action({
@@ -143,10 +146,28 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model } = loaderData
+    const { model, hasActiveSubscription } = loaderData
     const images = model.Images
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST"
+
+    // Handler for chat button click with subscription check
+    const handleChatClick = (modelFirstName: string) => {
+        if (!hasActiveSubscription) {
+            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+        } else {
+            navigate(`/customer/chat?id=${modelFirstName}`);
+        }
+    };
+
+    // Handler for book service button click with subscription check
+    const handleBookClick = (modelId: string, serviceId: string) => {
+        if (!hasActiveSubscription) {
+            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+book+services&toastType=warning");
+        } else {
+            navigate(`/customer/book-service/${modelId}/${serviceId}`);
+        }
+    };
 
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null)
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
@@ -242,7 +263,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         size="sm"
                                         type="button"
                                         className="cursor-pointer block sm:hidden border border-rose-500 sm:block text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                        onClick={() => navigate(`/customer/chat?id=${model.firstName}`)}
+                                        onClick={() => handleChatClick(model.firstName)}
                                     >
                                         <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
                                     </Button>
@@ -306,7 +327,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                             size="sm"
                                             type="button"
                                             className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                            onClick={() => navigate(`/customer/chat?id=${model.firstName}`)}
+                                            onClick={() => handleChatClick(model.firstName)}
                                         >
                                             {t('profile.message')}
                                         </Button>
@@ -444,7 +465,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                             type="button"
                                                             variant="outline"
                                                             className="w-full hover:border hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500"
-                                                            onClick={() => navigate(`/customer/book-service/${model.id}/${service.id}`)}
+                                                            onClick={() => handleBookClick(model.id, service.id)}
                                                         >
                                                             {t('profile.bookNow')}
                                                         </Button>

@@ -550,9 +550,19 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 className="w-full h-full object-cover transition-transform duration-300"
                                                 onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                             />
+                                        ) : model.profile ? (
+                                            <img
+                                                src={model.profile}
+                                                alt={model.firstName + model.lastName}
+                                                className="w-full h-full object-cover transition-transform duration-300 cursor-pointer"
+                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            />
                                         ) : (
-                                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                                <User className="w-16 h-16 text-gray-400" />
+                                            <div
+                                                className="w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
+                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            >
+                                                <User className="w-16 h-16 text-white" />
                                             </div>
                                         )}
                                         {model?.isContact ?
@@ -654,7 +664,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         <button
                                             type="button"
                                             className="absolute top-4 right-4 rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                            onClick={() => navigate(`/customer/chat?id=${model.firstName}`)}
+                                            onClick={() => handleChatClick(model.firstName)}
                                         >
                                             <MessageSquareText className="w-4 h-4" />
                                         </button>
@@ -683,9 +693,15 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 alt={model.firstName}
                                                 className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                             />
+                                        ) : model.profile ? (
+                                            <img
+                                                src={model.profile}
+                                                alt={model.firstName}
+                                                className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                            />
                                         ) : (
-                                            <div className="cursor-pointer w-full h-full bg-gray-200 flex items-center justify-center">
-                                                <User className="w-16 h-16 text-gray-400" />
+                                            <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                                                <User className="w-16 h-16 text-white" />
                                             </div>
                                         )}
                                     </div>
@@ -749,23 +765,54 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </p>
                                         <div className="flex items-center text-sm opacity-90">
                                             <MapPin className="h-3 w-3 mr-1 text-rose-500" />
-                                            {/* {model.distance} Km */}
                                             {calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} Km
 
                                         </div>
                                     </div>
                                     <div className="flex items-start justify-start gap-2 mt-4">
-                                        {model.Images && model.Images.map((image, index) => (
-                                            image.name ? (
-                                                <img
-                                                    key={image.name + index}
-                                                    src={image.name}
-                                                    alt="Profile"
-                                                    className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
-                                                    onClick={() => { setImages(model.Images), setSelectedIndex(index) }}
-                                                />
-                                            ) : null
-                                        ))}
+                                        {model.Images && model.Images.length > 0 ? (
+                                            model.Images.map((image, index) => (
+                                                image.name ? (
+                                                    <img
+                                                        key={image.name + index}
+                                                        src={image.name}
+                                                        alt="Profile"
+                                                        className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                        onClick={() => { setImages(model.Images), setSelectedIndex(index) }}
+                                                    />
+                                                ) : model.profile ? (
+                                                    <img
+                                                        key={`profile-${index}`}
+                                                        src={model.profile}
+                                                        alt="Profile"
+                                                        className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                    />
+                                                ) : (
+                                                    <div
+                                                        key={`placeholder-${index}`}
+                                                        className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                    >
+                                                        <User className="w-8 h-8 text-white" />
+                                                    </div>
+                                                )
+                                            ))
+                                        ) : model.profile ? (
+                                            <img
+                                                src={model.profile}
+                                                alt="Profile"
+                                                className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            />
+                                        ) : (
+                                            <div
+                                                className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
+                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            >
+                                                <User className="w-8 h-8 text-white" />
+                                            </div>
+                                        )}
 
                                         {selectedIndex !== null && (
                                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
@@ -811,7 +858,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                     <button
                                         type="button"
                                         className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                        onClick={() => navigate(`/customer/chat?id=${model.firstName}`)}
+                                        onClick={() => handleChatClick(model.firstName)}
                                     >
                                         <MessageSquareText className="w-4 h-4" />
                                     </button>

@@ -17,11 +17,21 @@ interface ModelCardProps {
     fetcher?: FetcherWithComponents<any>;
     customerLatitude?: number;
     customerLongitude?: number;
+    hasActiveSubscription?: boolean;
 }
 
-export default function ModelCard({ model, customerLatitude, customerLongitude }: ModelCardProps) {
+export default function ModelCard({ model, customerLatitude, customerLongitude, hasActiveSubscription }: ModelCardProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
+
+    // Handler for chat button click with subscription check
+    const handleChatClick = (modelFirstName: string) => {
+        if (!hasActiveSubscription) {
+            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+        } else {
+            navigate(`/customer/chat?id=${modelFirstName}`);
+        }
+    };
 
     return (
         <div
@@ -71,7 +81,7 @@ export default function ModelCard({ model, customerLatitude, customerLongitude }
                             <button
                                 type="button"
                                 className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                onClick={() => navigate(`/customer/chat?id=${model.firstName}`)}
+                                onClick={() => handleChatClick(model.firstName)}
                             >
                                 <MessageSquareText className="w-4 h-4" />
                             </button>

@@ -23,6 +23,7 @@ interface LoaderReturn {
     customerData: ICustomerResponse;
     unreadNotifications: number;
     initialNotifications: Notification[];
+    hasActiveSubscription: boolean;
 }
 
 interface TransactionProps {
@@ -31,10 +32,13 @@ interface TransactionProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
-    const [customerData, unreadNotifications, notifications] = await Promise.all([
+    const { hasActiveSubscription } = await import("~/services/package.server");
+
+    const [customerData, unreadNotifications, notifications, hasSubscription] = await Promise.all([
         getCustomerProfile(customerId),
         getCustomerUnreadCount(customerId),
         getCustomerNotifications(customerId, { limit: 10 }),
+        hasActiveSubscription(customerId),
     ]);
 
     const initialNotifications: Notification[] = notifications.map((n) => ({
@@ -47,14 +51,24 @@ export const loader: LoaderFunction = async ({ request }) => {
         createdAt: n.createdAt.toISOString(),
     }));
 
-    return { customerData, unreadNotifications, initialNotifications };
+    return { customerData, unreadNotifications, initialNotifications, hasActiveSubscription: hasSubscription };
 }
 
 export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { customerData, unreadNotifications, initialNotifications } = loaderData;
+    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Handler for chat navigation with subscription check
+    const handleChatNavigation = (e: React.MouseEvent, url: string) => {
+        if (url.includes("realtime-chat") || url.includes("chat")) {
+            if (!hasActiveSubscription) {
+                e.preventDefault();
+                navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+            }
+        }
+    };
 
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
@@ -128,6 +142,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    onClick={(e) => handleChatNavigation(e, item.url)}
                                     className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
                                         : "hover:bg-rose-50 hover:text-rose-500"
@@ -182,6 +197,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    onClick={(e) => handleChatNavigation(e, item.url)}
                                     className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
                                 >
                                     <item.icon

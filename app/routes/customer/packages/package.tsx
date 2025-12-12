@@ -198,25 +198,33 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                         <Card
                            onClick={() => setSelectedPlan(plan)}
                            className={`py-2 cursor-pointer relative backdrop-blur-xl transition-all duration-300 border-2
-                              ${selectedPlan.id === plan.id
+                              ${plan.current
                                  ? "bg-rose-500 text-white border-rose-600 ring-2 ring-rose-300"
-                                 : "bg-white/80 border-gray-200 hover:border-rose-300"
+                                 : selectedPlan.id === plan.id
+                                    ? "bg-rose-100 border-rose-400 ring-1 ring-rose-200"
+                                    : "bg-white/80 border-gray-200 hover:border-rose-300"
                               }`}
                         >
-                           {selectedPlan.id === plan.id && (
-                              <div className="absolute -top-2 -right-2 bg-white rounded-full p-1">
-                                 <Check className="h-4 w-4 text-rose-500" />
+                           {plan.current ? (
+                              <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                                 <span className="bg-white text-rose-500 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                                    {t('packages.list.currentPlan')}
+                                 </span>
                               </div>
-                           )}
+                           ) : selectedPlan.id === plan.id ? (
+                              <div className="absolute -top-2 -right-2 bg-rose-500 rounded-full p-1">
+                                 <Check className="h-4 w-4 text-white" />
+                              </div>
+                           ) : null}
                            <CardContent className="p-1">
                               <div className="text-center mb-4 space-y-2">
-                                 <h3 className={`text-lg font-bold ${selectedPlan.id === plan.id ? "text-white" : "text-gray-800"}`}>
+                                 <h3 className={`text-lg font-bold ${plan.current ? "text-white" : "text-gray-800"}`}>
                                     {t(`packages.items.${getPackageKey(plan.name)}.name`, { defaultValue: plan.name })}
                                  </h3>
-                                 <p className={`text-md font-light ${selectedPlan.id === plan.id ? "text-white" : "text-gray-900"}`}>
+                                 <p className={`text-md font-light ${plan.current ? "text-white" : "text-gray-900"}`}>
                                     {formatCurrency(plan.price)}
                                  </p>
-                                 <span className={`text-sm ${selectedPlan.id === plan.id ? "text-white" : "text-rose-500"}`}>
+                                 <span className={`text-sm ${plan.current ? "text-white" : "text-rose-500"}`}>
                                     ({t('packages.list.save')} {calculateDiscountPercent(30000, 7, plan.price, plan.durationDays)}%)
                                  </span>
                               </div>
@@ -228,10 +236,17 @@ export default function PricingPage({ loaderData }: TransactionProps) {
             </div>
 
             {/* Display selected plan details */}
-            <div className="mt-4 p-3 bg-rose-50 rounded-lg border border-rose-200">
-               <h4 className="text-md font-bold text-gray-800 mb-2">
-                  {t(`packages.items.${getPackageKey(selectedPlan.name)}.name`, { defaultValue: selectedPlan.name })} - {t('packages.list.features')}
-               </h4>
+            <div className={`mt-4 p-3 rounded-lg border ${selectedPlan.current ? "bg-rose-100 border-rose-300" : "bg-rose-50 border-rose-200"}`}>
+               <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-md font-bold text-gray-800">
+                     {t(`packages.items.${getPackageKey(selectedPlan.name)}.name`, { defaultValue: selectedPlan.name })} - {t('packages.list.features')}
+                  </h4>
+                  {selectedPlan.current && (
+                     <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                        {t('packages.list.currentPlan')}
+                     </span>
+                  )}
+               </div>
                <p className="text-sm text-gray-600 mb-3">
                   {t(`packages.items.${getPackageKey(selectedPlan.name)}.description`, { defaultValue: selectedPlan.description })}
                </p>

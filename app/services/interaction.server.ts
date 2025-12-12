@@ -13,6 +13,7 @@ interface ChatInputCredentials {
   full_name: string;
   user_id: string;
   added_by_me: string;
+  contact_user_type: 'customer' | 'model';
 }
 
 interface SuccessResponse {
@@ -187,6 +188,7 @@ export async function customerAddFriend(
         full_name: model?.firstName + " " + model?.lastName,
         user_id: contactId,
         added_by_me: adderId,
+        contact_user_type: 'model',
       };
 
       try {
@@ -288,6 +290,7 @@ export async function modelAddFriend(
         full_name: customer?.firstName + " " + customer?.lastName,
         user_id: contactId,
         added_by_me: adderId,
+        contact_user_type: 'customer',
       };
 
       try {

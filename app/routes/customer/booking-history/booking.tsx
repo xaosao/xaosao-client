@@ -52,6 +52,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 interface LoaderReturn {
    bookInfos: IServiceBooking[];
+   hasActiveSubscription: boolean;
 }
 
 interface DiscoverPageProps {
@@ -60,18 +61,32 @@ interface DiscoverPageProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
    const customerId = await requireUserSession(request)
-   const bookInfos = await getAllMyServiceBookings(customerId)
+   const { hasActiveSubscription } = await import("~/services/package.server");
 
-   return { bookInfos };
+   const [bookInfos, hasSubscription] = await Promise.all([
+      getAllMyServiceBookings(customerId),
+      hasActiveSubscription(customerId),
+   ]);
+
+   return { bookInfos, hasActiveSubscription: hasSubscription };
 }
 
 export default function BookingsList({ loaderData }: DiscoverPageProps) {
    const { t } = useTranslation()
    const navigate = useNavigate()
    const navigation = useNavigation()
-   const { bookInfos } = loaderData
+   const { bookInfos, hasActiveSubscription } = loaderData
    const isLoading = navigation.state === "loading";
    const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+
+   // Handler for chat button click with subscription check
+   const handleChatClick = (modelFirstName: string) => {
+      if (!hasActiveSubscription) {
+         navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+      } else {
+         navigate(`/customer/chat?id=${modelFirstName}`);
+      }
+   };
 
    const getServiceName = (booking: IServiceBooking): string => {
       const serviceName = booking.modelService?.service?.name;
@@ -186,9 +201,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
 
                                  {booking.isContact && (
                                     <DropdownMenuItem
-                                       onClick={() =>
-                                          navigate(`/customer/chat?id=${booking.model.firstName}`)
-                                       }
+                                       onClick={() => handleChatClick(booking.model.firstName)}
                                        className="cursor-pointer"
                                     >
                                        {t('booking.startChatting')}
