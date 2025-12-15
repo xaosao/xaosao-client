@@ -817,7 +817,8 @@
     "addInterestPlaceholder": "ເພີ່ມຄວາມສົນໃຈໃໝ່...",
     "add": "ເພີ່ມ",
     "saving": "ກຳລັງບັນທຶກ....",
-    "saveChange": "ບັນທຶກການປ່ຽນແປງ"
+    "saveChange": "ບັນທຶກການປ່ຽນແປງ",
+    "compressing": "ກຳລັງບີບອັດ..."
   },
   "profileShare": {
     "loading": "ກຳລັງໂຫຼດ...",

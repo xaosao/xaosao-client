@@ -17,6 +17,7 @@ import { validateCustomerSignupInputs } from "~/services/validation.server"
 import type { ICustomerSignupCredentials } from "~/interfaces"
 import { FieldValidationError, getCurrentIP } from "~/services/base.server"
 import { uploadFileToBunnyServer } from "~/services/upload.server"
+import { compressImage } from "~/utils/imageCompression"
 
 const backgroundImages = [
     "https://images.pexels.com/photos/12810667/pexels-photo-12810667.jpeg",
@@ -146,6 +147,7 @@ export default function SignUpPage() {
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [profileImage, setProfileImage] = useState<string>("")
     const [profileError, setProfileError] = useState<string>("")
+    const [isCompressing, setIsCompressing] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const actionData = useActionData<typeof action>()
@@ -158,7 +160,7 @@ export default function SignUpPage() {
         return () => clearInterval(interval)
     }, []);
 
-    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setProfileError("");
 
         if (!e.target.files || !e.target.files[0]) {
@@ -187,25 +189,53 @@ export default function SignUpPage() {
             return;
         }
 
-        // Use URL.createObjectURL for preview (more reliable on iOS)
+        setIsCompressing(true);
+
         try {
+            // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
+            const compressed = await compressImage(file, {
+                maxWidth: 1200,
+                maxHeight: 1200,
+                quality: 0.8,
+                maxSizeMB: 2,
+            });
+
+            // Create preview from compressed file
             // Revoke previous object URL to prevent memory leaks
             if (profileImage && profileImage.startsWith('blob:')) {
                 URL.revokeObjectURL(profileImage);
             }
-            const objectUrl = URL.createObjectURL(file);
+            const objectUrl = URL.createObjectURL(compressed);
             setProfileImage(objectUrl);
-        } catch {
-            // Fallback to FileReader if URL.createObjectURL fails
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = reader.result as string;
-                setProfileImage(result);
-            };
-            reader.onerror = () => {
-                setProfileError("Failed to load image preview");
-            };
-            reader.readAsDataURL(file);
+
+            // Update the file input with compressed file
+            if (fileInputRef.current) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(compressed);
+                fileInputRef.current.files = dataTransfer.files;
+            }
+        } catch (error) {
+            console.error('Error compressing image:', error);
+            // Fallback to original file if compression fails
+            try {
+                if (profileImage && profileImage.startsWith('blob:')) {
+                    URL.revokeObjectURL(profileImage);
+                }
+                const objectUrl = URL.createObjectURL(file);
+                setProfileImage(objectUrl);
+            } catch {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    setProfileImage(result);
+                };
+                reader.onerror = () => {
+                    setProfileError("Failed to load image preview");
+                };
+                reader.readAsDataURL(file);
+            }
+        } finally {
+            setIsCompressing(false);
         }
     };
 
@@ -248,12 +278,18 @@ export default function SignUpPage() {
                             <img
                                 src={profileImage || "https://xaosao.b-cdn.net/default-image.png"}
                                 alt="Profile Preview"
-                                className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError || (!profileImage && actionData?.error) ? "border-red-500" : "border-rose-200"}`}
+                                className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError || (!profileImage && actionData?.error) ? "border-red-500" : "border-rose-200"} ${isCompressing ? "opacity-50" : ""}`}
                             />
+                            {isCompressing && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-0 right-0 bg-rose-500 p-1.5 rounded-full cursor-pointer shadow-md hover:bg-rose-600"
+                                disabled={isCompressing}
+                                className="absolute bottom-0 right-0 bg-rose-500 p-1.5 rounded-full cursor-pointer shadow-md hover:bg-rose-600 disabled:opacity-50"
                             >
                                 <Camera className="w-4 h-4 text-white" />
                             </button>
@@ -264,6 +300,7 @@ export default function SignUpPage() {
                                 ref={fileInputRef}
                                 style={{ display: 'none' }}
                                 onChange={onFileChange}
+                                disabled={isCompressing}
                             />
                         </div>
                         {profileError && (
@@ -468,11 +505,11 @@ export default function SignUpPage() {
 
                     <Button
                         type="submit"
-                        disabled={isAcceptTerms === false || isSubmitting}
-                        className={`w-full border border-rose-500 bg-rose-500 hover:bg-rose-600 text-white py-3 font-medium my-4 uppercase ${isAcceptTerms === false ? "cursor-not-allowed" : "cursor-pointer"}`}
+                        disabled={isAcceptTerms === false || isSubmitting || isCompressing}
+                        className={`w-full border border-rose-500 bg-rose-500 hover:bg-rose-600 text-white py-3 font-medium my-4 uppercase ${isAcceptTerms === false || isCompressing ? "cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                        {isSubmitting ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : ""}
-                        {isSubmitting ? t('register.registering') : t('register.registerButton')}
+                        {(isSubmitting || isCompressing) ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : ""}
+                        {isCompressing ? t('profileEdit.compressing') : isSubmitting ? t('register.registering') : t('register.registerButton')}
                     </Button>
 
                     <div className="text-center space-x-2">

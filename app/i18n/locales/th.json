@@ -817,7 +817,8 @@
     "addInterestPlaceholder": "เพิ่มความสนใจใหม่...",
     "add": "เพิ่ม",
     "saving": "กำลังบันทึก....",
-    "saveChange": "บันทึกการเปลี่ยนแปลง"
+    "saveChange": "บันทึกการเปลี่ยนแปลง",
+    "compressing": "กำลังบีบอัด..."
   },
   "profileShare": {
     "loading": "กำลังโหลด...",

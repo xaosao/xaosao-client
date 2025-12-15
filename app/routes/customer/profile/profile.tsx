@@ -525,7 +525,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                                 <div className="w-full mb-8">
                                     <h3 className="text-sm font-semibold text-gray-800 mb-3">{t('profile.interests')}</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {Object.values(customerData?.interests ?? {}).map((interest, index) => (
+                                        {getInterests().map((interest, index) => (
                                             <Badge
                                                 key={index}
                                                 variant="outline"

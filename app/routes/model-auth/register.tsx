@@ -9,6 +9,7 @@ import { modelRegister } from "~/services/model-auth.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { IModelSignupCredentials } from "~/services/model-auth.server";
 import { validateModelSignUpInputs } from "~/services/model-validation.server";
+import { compressImage } from "~/utils/imageCompression";
 
 export const meta: MetaFunction = () => {
   return [
@@ -161,6 +162,7 @@ export default function ModelRegister() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [profileError, setProfileError] = useState<string>("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (actionData?.success) {
@@ -173,7 +175,7 @@ export default function ModelRegister() {
     }
   }, [actionData, navigate]);
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Clear previous errors
     setProfileError("");
 
@@ -202,24 +204,54 @@ export default function ModelRegister() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
+    setIsCompressing(true);
+
     try {
+      // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
+      const compressed = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.8,
+        maxSizeMB: 2,
+      });
+
+      // Create preview from compressed file
       // Revoke previous object URL to prevent memory leaks
       if (image && image.startsWith('blob:')) {
         URL.revokeObjectURL(image);
       }
-      const objectUrl = URL.createObjectURL(file);
+      const objectUrl = URL.createObjectURL(compressed);
       setImage(objectUrl);
-    } catch {
-      // Fallback to FileReader if URL.createObjectURL fails
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setImage(result);
-      };
-      reader.onerror = () => {
-        setProfileError(t("modelAuth.errors.imagePreviewFailed"));
-      };
-      reader.readAsDataURL(file);
+
+      // Update the file input with compressed file
+      if (fileInputRef.current) {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(compressed);
+        fileInputRef.current.files = dataTransfer.files;
+      }
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      // Fallback to original file if compression fails
+      try {
+        if (image && image.startsWith('blob:')) {
+          URL.revokeObjectURL(image);
+        }
+        const objectUrl = URL.createObjectURL(file);
+        setImage(objectUrl);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          setImage(result);
+        };
+        reader.onerror = () => {
+          setProfileError(t("modelAuth.errors.imagePreviewFailed"));
+        };
+        reader.readAsDataURL(file);
+      }
+    } finally {
+      setIsCompressing(false);
     }
   };
 
@@ -255,13 +287,18 @@ export default function ModelRegister() {
               <img
                 src={image || "https://xaosao.b-cdn.net/default-image.png"}
                 alt="Profile Preview"
-                className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError ? "border-red-500" : "border-rose-200"
-                  }`}
+                className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError ? "border-red-500" : "border-rose-200"} ${isCompressing ? "opacity-50" : ""}`}
               />
+              {isCompressing && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-1 right-1 bg-rose-500 p-2 rounded-full cursor-pointer shadow-md hover:bg-rose-600"
+                disabled={isCompressing}
+                className="absolute bottom-1 right-1 bg-rose-500 p-2 rounded-full cursor-pointer shadow-md hover:bg-rose-600 disabled:opacity-50"
               >
                 <Camera className="w-5 h-5 text-white" />
               </button>
@@ -272,6 +309,7 @@ export default function ModelRegister() {
                 ref={fileInputRef}
                 style={{ display: 'none' }}
                 onChange={onFileChange}
+                disabled={isCompressing}
               />
             </div>
             {profileError && (
@@ -518,11 +556,11 @@ export default function ModelRegister() {
             <div className="mt-4 sm:mt-8">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isCompressing}
                 className="cursor-pointer w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
-                {isSubmitting ? t("modelAuth.register.registering") : t("modelAuth.register.register")}
+                {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}
+                {isCompressing ? t("profileEdit.compressing") : isSubmitting ? t("modelAuth.register.registering") : t("modelAuth.register.register")}
               </button>
             </div>
           </div>

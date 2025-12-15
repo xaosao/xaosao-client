@@ -827,7 +827,8 @@
     "addInterestPlaceholder": "Add a new interest...",
     "add": "Add",
     "saving": "Saving....",
-    "saveChange": "Save change"
+    "saveChange": "Save change",
+    "compressing": "Compressing..."
   },
   "profileShare": {
     "loading": "Loading...",

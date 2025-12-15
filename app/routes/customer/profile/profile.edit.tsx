@@ -17,6 +17,7 @@ import { getCustomerProfile, updateProfile, updateChatProfile } from "~/services
 import type { ICustomerCredentials, ICustomerResponse } from "~/interfaces/customer";
 import { deleteFileFromBunny, uploadFileToBunnyServer } from "~/services/upload.server";
 import { capitalize, extractFilenameFromCDNSafe } from "~/utils/functions/textFormat";
+import { compressImage } from "~/utils/imageCompression";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -57,7 +58,21 @@ export async function action({ request }: Route.ActionArgs) {
             }
 
             customerData.whatsapp = Number(customerData.whatsapp);
+
+            // Keep interests as JSON string for validation
+            const interestsJson = formData.get("interests") as string;
+
+            // Validate without interests
             await validateUpdateProfileInputs(customerData as ICustomerCredentials)
+
+            // Convert interests to object format after validation for database storage
+            if (interestsJson) {
+                const interestsArray = JSON.parse(interestsJson) as string[];
+                customerData.interests = interestsArray.reduce((acc, interest, index) => {
+                    acc[`interest_${index}`] = interest;
+                    return acc;
+                }, {} as Record<string, string>) as any;
+            }
             const res = await updateProfile(customerId, customerData as ICustomerCredentials);
             if (res.id) {
                 // Sync profile update to chat backend (non-blocking)
@@ -116,25 +131,68 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
     const actionData = useActionData<typeof action>()
     const { customerData, customerId } = loaderData
     const [image, setImage] = useState<string>("")
+    const [isCompressing, setIsCompressing] = useState(false)
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "PATCH"
     const isLoading = navigation.state === "loading"
 
-    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = reader.result as string;
-                setImage(result);
-            };
-            reader.readAsDataURL(file);
+            setIsCompressing(true);
+
+            try {
+                // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
+                const compressed = await compressImage(file, {
+                    maxWidth: 1200,
+                    maxHeight: 1200,
+                    quality: 0.8,
+                    maxSizeMB: 2,
+                });
+
+                // Create preview from compressed file
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    setImage(result);
+                };
+                reader.readAsDataURL(compressed);
+
+                // Update the file input with compressed file
+                if (fileInputRef.current) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(compressed);
+                    fileInputRef.current.files = dataTransfer.files;
+                }
+            } catch (error) {
+                console.error('Error compressing image:', error);
+                // Fallback to original file if compression fails
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    setImage(result);
+                };
+                reader.readAsDataURL(file);
+            } finally {
+                setIsCompressing(false);
+            }
         }
     };
 
-    const [interests, setInterests] = useState<string[]>(
-        Object.values(customerData?.interests ?? {})
-    );
+    const getInterests = (): string[] => {
+        if (!customerData?.interests) return [];
+        if (Array.isArray(customerData.interests)) return customerData.interests;
+        if (typeof customerData.interests === 'string') {
+            try {
+                return JSON.parse(customerData.interests);
+            } catch {
+                return [];
+            }
+        }
+        return Object.values(customerData.interests);
+    };
+
+    const [interests, setInterests] = useState<string[]>(getInterests());
     const [newInterest, setNewInterest] = useState("");
 
     // Trigger hidden file input
@@ -182,11 +240,16 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                             <img
                                 src={image ? image : customerData.profile ? customerData.profile : "/images/default.webp"}
                                 alt="Profile"
-                                className="w-full h-full rounded-full object-cover shadow-md"
+                                className={`w-full h-full rounded-full object-cover shadow-md ${isCompressing ? 'opacity-50' : ''}`}
                             />
+                            {isCompressing && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                                </div>
+                            )}
                             <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
                                 <Camera className="w-4 h-4 text-gray-700" />
-                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} />
+                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing} />
                             </label>
                             <input className="hidden" name="profile" defaultValue={customerData.profile} />
                         </div>
@@ -376,10 +439,11 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                         <div className="flex items-center justify-end">
                             <Button
                                 type="submit"
-                                className="flex cursor-pointer text-sm bg-rose-500 text-rose-500 hover:bg-rose-600 text-white font-medium"
+                                disabled={isSubmitting || isCompressing}
+                                className="flex cursor-pointer text-sm bg-rose-500 text-rose-500 hover:bg-rose-600 text-white font-medium disabled:opacity-50"
                             >
-                                {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
-                                {isSubmitting ? t('profileEdit.saving') : t('profileEdit.saveChange')}
+                                {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}
+                                {isCompressing ? t('profileEdit.compressing') : isSubmitting ? t('profileEdit.saving') : t('profileEdit.saveChange')}
                             </Button>
                         </div>
                     </div>

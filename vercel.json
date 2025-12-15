@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/**/*": {
+      "maxDuration": 60
+    }
+  },
+  "serverless": {
+    "maxBodySize": "15mb"
+  }
+}
