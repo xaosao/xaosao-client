@@ -296,11 +296,12 @@ export default function ModelProfilePage() {
 
             try {
                 // Compress the image (also handles HEIC conversion)
+                // Use lower threshold to ensure file stays under Vercel's 4.5MB body limit
                 const compressedFile = await compressImage(file, {
-                    maxWidth: 1920,
-                    maxHeight: 1920,
-                    quality: 0.8,
-                    maxSizeMB: 2,
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                    quality: 0.7,
+                    maxSizeMB: 1,
                 });
 
                 const formData = new FormData();
