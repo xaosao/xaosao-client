@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
-import { useTranslation } from "react-i18next";
 import { LogIn, User } from "lucide-react";
 import type { Route } from "./+types/home";
+import { useTranslation } from "react-i18next";
 
 // components
 import { Header } from "~/components/header";

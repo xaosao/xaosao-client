@@ -1,5 +1,5 @@
+import { useNavigate } from "react-router"
 import { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router"
 import { useTranslation } from "react-i18next"
 
 // components
@@ -35,13 +35,6 @@ export function Header() {
                     </div>
                     <div className="flex items-center space-x-3">
                         <LanguageSwitcher />
-                        {/* <Button
-                            size="sm"
-                            onClick={() => navigate("/login")}
-                            className="cursor-pointer hidden sm:block bg-rose-500 hover:bg-rose-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                        >
-                            {t('header.login')}
-                        </Button> */}
                         <Button
                             size="sm"
                             onClick={() => navigate("/model-auth/login")}
