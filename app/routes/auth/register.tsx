@@ -50,9 +50,9 @@ export async function action({ request }: Route.ActionArgs) {
 
     let profileUrl = "";
     if (newProfile && newProfile instanceof File && newProfile.size > 0) {
-        // File size validation (max 5MB)
-        if (newProfile.size > 5 * 1024 * 1024) {
-            return { success: false, error: true, message: "Profile image must be less than 5MB" };
+        // File size validation (max 10MB)
+        if (newProfile.size > 10 * 1024 * 1024) {
+            return { success: false, error: true, message: "Profile image must be less than 10MB" };
         }
 
         // File type validation (relaxed for iOS compatibility - iOS may report heic/heif or empty type)
@@ -167,9 +167,9 @@ export default function SignUpPage() {
 
         const file = e.target.files[0];
 
-        // File size validation (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            setProfileError("Profile image must be less than 5MB");
+        // File size validation (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            setProfileError("Profile image must be less than 10MB");
             setProfileImage("");
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;

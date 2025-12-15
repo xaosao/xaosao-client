@@ -56,8 +56,8 @@ export async function action({ request }: ActionFunctionArgs) {
     };
   }
 
-  // File size validation (max 5MB)
-  if (newProfile.size > 5 * 1024 * 1024) {
+  // File size validation (max 10MB)
+  if (newProfile.size > 10 * 1024 * 1024) {
     return {
       error: "modelAuth.errors.profileImageTooLarge",
     };
@@ -183,8 +183,8 @@ export default function ModelRegister() {
 
     const file = e.target.files[0];
 
-    // File size validation (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // File size validation (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
       setProfileError(t("modelAuth.errors.profileImageTooLarge"));
       setImage("");
       if (fileInputRef.current) fileInputRef.current.value = "";
