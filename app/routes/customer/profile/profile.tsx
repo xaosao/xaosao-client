@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // insterface and services
 import { calculateAgeFromDOB } from '~/utils';
+import { compressImage } from '~/utils/imageCompression';
 import { requireUserSession } from '~/services/auths.server';
 import type { ICustomerResponse } from '~/interfaces/customer';
 import { capitalize, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
@@ -141,6 +142,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [selectedImageId, setSelectedImageId] = React.useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = React.useState<string | null>(null);
     const [uploadingImageId, setUploadingImageId] = React.useState<string | null>(null);
+    const [isCompressing, setIsCompressing] = React.useState(false);
 
     // Image preview states
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
@@ -202,26 +204,42 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && selectedImageId && selectedImageName) {
             const file = e.target.files[0];
 
-            const formData = new FormData();
-            formData.append("imageId", selectedImageId);
-            formData.append("imageName", selectedImageName);
-            formData.append("newFile", file);
-
-            // Check if imageId starts with "placeholder"
-            const method = selectedImageId.startsWith("placeholder") ? "post" : "patch";
-
-            // Set uploading state
+            // Set compressing state
+            setIsCompressing(true);
             setUploadingImageId(selectedImageId);
 
-            fetcher.submit(formData, {
-                method,
-                encType: "multipart/form-data",
-                action: "/customer/profile",
-            });
+            try {
+                // Compress the image (also handles HEIC conversion)
+                const compressedFile = await compressImage(file, {
+                    maxWidth: 1920,
+                    maxHeight: 1920,
+                    quality: 0.8,
+                    maxSizeMB: 2,
+                });
+
+                const formData = new FormData();
+                formData.append("imageId", selectedImageId);
+                formData.append("imageName", selectedImageName);
+                formData.append("newFile", compressedFile);
+
+                // Check if imageId starts with "placeholder"
+                const method = selectedImageId.startsWith("placeholder") ? "post" : "patch";
+
+                fetcher.submit(formData, {
+                    method,
+                    encType: "multipart/form-data",
+                    action: "/customer/profile",
+                });
+            } catch (error) {
+                console.error("Error compressing image:", error);
+                setUploadingImageId(null);
+            } finally {
+                setIsCompressing(false);
+            }
         }
     };
 
@@ -282,12 +300,16 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         setTouchEndX(null);
     };
 
-    if (isSubmitting || isUpdating) {
+    const isFetcherUploading = fetcher.state !== 'idle' || isCompressing;
+
+    if (isSubmitting || isUpdating || isFetcherUploading) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
                 <div className="flex items-center justify-center bg-white p-6 rounded-xl shadow-md gap-2">
-                    {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : ""}
-                    <p className="text-gray-600">{t('profile.processing')}</p>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <p className="text-gray-600">
+                        {isCompressing ? t('profileEdit.compressing') : t('profile.processing')}
+                    </p>
                 </div>
             </div>
         );
@@ -321,7 +343,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg pointer-events-none z-10">
                         <div className="flex flex-col items-center gap-2 text-white">
                             <Loader className="w-8 h-8 animate-spin" />
-                            <p className="text-sm font-medium">{t('profile.uploading')}</p>
+                            <p className="text-sm font-medium">{isCompressing ? t('profileEdit.compressing') : t('profile.uploading')}</p>
                         </div>
                     </div>
                 )}
@@ -483,7 +505,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                             <input
                                 type="file"
                                 ref={fileInputRef}
-                                accept="image/*"
+                                accept="image/*,.heic,.heif"
                                 className="hidden"
                                 onChange={handleFileChange}
                             />
@@ -557,7 +579,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                                         <input
                                             type="file"
                                             ref={fileInputRef}
-                                            accept="image/*"
+                                            accept="image/*,.heic,.heif"
                                             className="hidden"
                                             onChange={handleFileChange}
                                         />

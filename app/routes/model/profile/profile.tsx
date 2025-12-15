@@ -37,6 +37,7 @@ import {
 
 // services and utils
 import { requireModelSession } from '~/services/model-auth.server';
+import { compressImage } from '~/utils/imageCompression';
 import { calculateAgeFromDOB, formatCurrency, formatNumber } from '~/utils';
 import type { IModelOwnProfileResponse, IModelBank } from '~/interfaces/model-profile';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
@@ -229,6 +230,7 @@ export default function ModelProfilePage() {
     const [deletingImageId, setDeletingImageId] = React.useState<string | null>(null);
     const [deletingBankId, setDeletingBankId] = React.useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = React.useState<string | null>(null);
+    const [isCompressing, setIsCompressing] = React.useState(false);
 
     // States for bank modal
     const [isBankModalOpen, setIsBankModalOpen] = React.useState(false);
@@ -258,7 +260,7 @@ export default function ModelProfilePage() {
     const canUploadMore = images.length < MAX_IMAGES;
     const remainingSlots = MAX_IMAGES - images.length;
 
-    const isSubmitting = navigation.state !== "idle" || fetcher.state !== "idle";
+    const isSubmitting = navigation.state !== "idle" || fetcher.state !== "idle" || isCompressing;
 
     // Helper function to get translated service name
     const getServiceName = (nameKey: string) => {
@@ -284,22 +286,38 @@ export default function ModelProfilePage() {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && selectedImageId) {
             const file = e.target.files[0];
 
-            const formData = new FormData();
-            formData.append("imageId", selectedImageId);
-            formData.append("imageName", selectedImageName || "");
-            formData.append("newFile", file);
-
-            // Set uploading state
+            // Set compressing state
+            setIsCompressing(true);
             setUploadingImageId(selectedImageId);
 
-            fetcher.submit(formData, {
-                method: "post",
-                encType: "multipart/form-data",
-            });
+            try {
+                // Compress the image (also handles HEIC conversion)
+                const compressedFile = await compressImage(file, {
+                    maxWidth: 1920,
+                    maxHeight: 1920,
+                    quality: 0.8,
+                    maxSizeMB: 2,
+                });
+
+                const formData = new FormData();
+                formData.append("imageId", selectedImageId);
+                formData.append("imageName", selectedImageName || "");
+                formData.append("newFile", compressedFile);
+
+                fetcher.submit(formData, {
+                    method: "post",
+                    encType: "multipart/form-data",
+                });
+            } catch (error) {
+                console.error("Error compressing image:", error);
+                setUploadingImageId(null);
+            } finally {
+                setIsCompressing(false);
+            }
 
             // Reset file input
             e.target.value = "";
@@ -484,6 +502,20 @@ export default function ModelProfilePage() {
         setTouchStartX(null);
         setTouchEndX(null);
     };
+
+    // Show full-page loading overlay when uploading images
+    if (isCompressing || (uploadingImageId && fetcher.state !== 'idle')) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                <div className="flex items-center justify-center bg-white p-6 rounded-xl shadow-md gap-2">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <p className="text-gray-600">
+                        {isCompressing ? t("profileEdit.compressing") : t("modelProfile.images.uploading")}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-auto sm:h-screen flex items-center justify-center">
@@ -839,7 +871,7 @@ export default function ModelProfilePage() {
                             <input
                                 type="file"
                                 ref={fileInputRef}
-                                accept="image/*"
+                                accept="image/*,.heic,.heif"
                                 className="hidden"
                                 onChange={handleFileChange}
                             />
@@ -865,7 +897,7 @@ export default function ModelProfilePage() {
                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-10">
                                                     <div className="flex flex-col items-center gap-2 text-white">
                                                         <Loader className="w-8 h-8 animate-spin" />
-                                                        <p className="text-sm font-medium">{t("modelProfile.images.uploading")}</p>
+                                                        <p className="text-sm font-medium">{isCompressing ? t("profileEdit.compressing") : t("modelProfile.images.uploading")}</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -930,7 +962,7 @@ export default function ModelProfilePage() {
                                             {isUploading ? (
                                                 <>
                                                     <Loader className="w-4 h-4 text-rose-500 animate-spin" />
-                                                    <span className="text-xs text-rose-500">{t("modelProfile.images.uploading")}</span>
+                                                    <span className="text-xs text-rose-500">{isCompressing ? t("profileEdit.compressing") : t("modelProfile.images.uploading")}</span>
                                                 </>
                                             ) : (
                                                 <>
