@@ -1,4 +1,26 @@
 {
+  "header": {
+    "login": "Login",
+    "companionLogin": "Companion Login"
+  },
+  "home": {
+    "slogans": {
+      "1": "Find love — not just a date.",
+      "2": "Your perfect match is waiting!",
+      "3": "Love is just a swipe away.",
+      "4": "Connecting hearts, creating magic!",
+      "5": "Where souls meet and hearts unite.",
+      "6": "Discover your happily-ever-after.",
+      "7": "Every love story starts here.",
+      "8": "Find your person, find your peace."
+    },
+    "heroSubtitle": "Join millions of people finding meaningful connections and lasting relationships.",
+    "getStarted": "Get Started",
+    "login": "Login",
+    "freeToJoin": "Free to join",
+    "verifiedProfiles": "Verified profiles",
+    "safeSecure": "Safe & secure"
+  },
   "navigation": {
     "discover": "Discover",
     "match": "Match",

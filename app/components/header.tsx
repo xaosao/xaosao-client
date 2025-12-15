@@ -1,14 +1,14 @@
-import { Heart } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router"
+import { useTranslation } from "react-i18next"
 
 // components
 import { Button } from "./ui/button"
-// import { ThemeSwitcher } from "./theme-switcher"
-// import LanguageSwitcher from "./LanguageSwitcher"
+import LanguageSwitcher from "./LanguageSwitcher"
 
 export function Header() {
     const navigate = useNavigate()
+    const { t } = useTranslation()
     const [isScrolled, setIsScrolled] = useState(false)
 
     useEffect(() => {
@@ -33,53 +33,21 @@ export function Header() {
                     <div className="flex items-center space-x-2">
                         <img src="/images/logo-pink.png" className="w-35 h-12" />
                     </div>
-
-                    {/* <div className="hidden md:flex items-center space-x-8 uppercase">
-                        <Link
-                            to="#about"
-                            className={`transition-colors font-medium text-xs ${isScrolled
-                                ? "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                                : "text-white/90 hover:text-white"
-                                }`}
-                        >
-                            About Us
-                        </Link>
-                        <Link
-                            to="#how-it-works"
-                            className={`transition-colors font-medium text-xs ${isScrolled
-                                ? "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                                : "text-white/90 hover:text-white"
-                                }`}
-                        >
-                            How It Works
-                        </Link>
-                        <Link
-                            to="#services"
-                            className={`transition-colors font-medium text-xs ${isScrolled
-                                ? "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                                : "text-white/90 hover:text-white"
-                                }`}
-                        >
-                            Services
-                        </Link>
-                    </div> */}
-
                     <div className="flex items-center space-x-3">
-                        {/* <LanguageSwitcher /> */}
-                        {/* <ThemeSwitcher /> */}
-                        <Button
+                        <LanguageSwitcher />
+                        {/* <Button
                             size="sm"
                             onClick={() => navigate("/login")}
                             className="cursor-pointer hidden sm:block bg-rose-500 hover:bg-rose-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
                         >
-                            Login
-                        </Button>
+                            {t('header.login')}
+                        </Button> */}
                         <Button
                             size="sm"
                             onClick={() => navigate("/model-auth/login")}
                             className="cursor-pointer border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
                         >
-                            Companion Login
+                            {t('header.companionLogin')}
                         </Button>
                     </div>
                 </div>

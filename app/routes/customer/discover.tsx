@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import {
     X,
     User,
@@ -13,6 +12,7 @@ import {
     Loader,
     MessageSquareText,
 } from "lucide-react";
+import React, { useState } from "react";
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
 import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";

@@ -15,8 +15,8 @@ i18n
       lo: { translation: lo },
       th: { translation: th },
     },
-    lng: 'en', // Always start with English for SSR consistency
-    fallbackLng: 'en',
+    lng: 'lo', // Always start with Lao for SSR consistency
+    fallbackLng: 'lo',
     interpolation: {
       escapeValue: false,
     },
