@@ -111,7 +111,7 @@ export default function WalletTopUpPage() {
     const downloadQR = () => {
         const link = document.createElement("a");
         link.href = "/images/qr-code.jpg";
-        link.download = "payment-qr-code.png";
+        link.download = "payment-qr-code.jpg";
         link.click();
     };
 
@@ -264,7 +264,7 @@ export default function WalletTopUpPage() {
                         {paymentMethod === "qr" && (
                             <div className="bg-white border border-dashed border-gray-200 rounded-xl p-6 text-center">
                                 <div className="w-52 h-52 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <img src="/images/qr-code.png" alt="QR-code" />
+                                    <img src="/images/qr-code.jpg" alt="QR-code" />
                                 </div>
                                 <button
                                     type="button"
