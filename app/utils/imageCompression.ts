@@ -1,6 +1,7 @@
 /**
  * Compress an image file to reduce its size before upload
  * This helps avoid Vercel's 4.5MB body size limit
+ * Supports HEIC/HEIF files (common on iOS devices)
  */
 
 export interface CompressOptions {
@@ -18,6 +19,50 @@ const defaultOptions: CompressOptions = {
 };
 
 /**
+ * Check if a file is HEIC/HEIF format
+ */
+function isHeicFile(file: File): boolean {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  return (
+    type === 'image/heic' ||
+    type === 'image/heif' ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif')
+  );
+}
+
+/**
+ * Convert HEIC/HEIF file to JPEG
+ * Uses dynamic import to avoid SSR issues (heic2any requires browser APIs)
+ */
+async function convertHeicToJpeg(file: File): Promise<File> {
+  try {
+    // Dynamic import to avoid "window is not defined" error during SSR
+    const heic2any = (await import('heic2any')).default;
+
+    const convertedBlob = await heic2any({
+      blob: file,
+      toType: 'image/jpeg',
+      quality: 0.9,
+    });
+
+    // heic2any can return a single blob or array of blobs
+    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+
+    // Create a new file with .jpg extension
+    const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+    return new File([blob], newFileName, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+  } catch (error) {
+    console.error('HEIC conversion failed:', error);
+    throw new Error('Could not convert HEIC image. Please use a different format.');
+  }
+}
+
+/**
  * Compress an image file
  * @param file - The image file to compress
  * @param options - Compression options
@@ -29,15 +74,21 @@ export async function compressImage(
 ): Promise<File> {
   const opts = { ...defaultOptions, ...options };
 
-  // If file is already small enough, return as-is
+  // Convert HEIC/HEIF files to JPEG first
+  let processedFile = file;
+  if (isHeicFile(file)) {
+    processedFile = await convertHeicToJpeg(file);
+  }
+
+  // If file is already small enough, return as-is (or converted HEIC)
   const maxSizeBytes = (opts.maxSizeMB || 2) * 1024 * 1024;
-  if (file.size <= maxSizeBytes) {
-    return file;
+  if (processedFile.size <= maxSizeBytes) {
+    return processedFile;
   }
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(processedFile);
 
     reader.onload = (event) => {
       const img = new Image();
@@ -81,14 +132,14 @@ export async function compressImage(
             }
 
             // Create a new file from the blob
-            const compressedFile = new File([blob], file.name, {
+            const compressedFile = new File([blob], processedFile.name.replace(/\.[^.]+$/, '.jpg'), {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
 
             // If still too large, try again with lower quality
             if (compressedFile.size > maxSizeBytes && (opts.quality || 0.8) > 0.3) {
-              compressImage(file, {
+              compressImage(processedFile, {
                 ...opts,
                 quality: (opts.quality || 0.8) - 0.1,
               })
