@@ -12,7 +12,6 @@ import type { CustomerCardProps } from "~/interfaces/customer";
 
 export default function CustomerCard({
   customer,
-  modelProfile,
   modelLatitude,
   modelLongitude,
   onViewProfile
@@ -162,10 +161,10 @@ export default function CustomerCard({
         <div className="flex items-center justify-start gap-2 absolute bottom-3 left-0 right-0 p-4 text-white z-10">
           <div className="relative w-10 h-10">
             <div className="w-full h-full rounded-full border-2 border-rose-500 shadow-lg overflow-hidden bg-white">
-              {modelProfile ? (
+              {customer.profile ? (
                 <img
-                  src={modelProfile}
-                  alt="Model"
+                  src={customer.profile}
+                  alt={customer.firstName}
                   className="w-full h-full object-cover"
                 />
               ) : (

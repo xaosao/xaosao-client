@@ -74,7 +74,6 @@ export interface CustomerCardProps {
     isContact?: boolean;
     modelAction?: "LIKE" | "PASS" | null;
   };
-  modelProfile?: string;
   modelLatitude?: number;
   modelLongitude?: number;
   onViewProfile?: (customerId: string) => void;

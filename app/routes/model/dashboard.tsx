@@ -41,7 +41,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     customers: result.customers,
     pagination: result.pagination,
     modelId,
-    modelProfile: modelData?.profile || "",
     modelLatitude: modelData?.latitude || 0,
     modelLongitude: modelData?.longitude || 0,
   };
@@ -161,7 +160,6 @@ export default function ModelDashboard() {
               <CustomerCard
                 key={customer.id}
                 customer={customer}
-                modelProfile={initialData.modelProfile}
                 modelLatitude={initialData.modelLatitude}
                 modelLongitude={initialData.modelLongitude}
                 onViewProfile={handleViewProfile}
