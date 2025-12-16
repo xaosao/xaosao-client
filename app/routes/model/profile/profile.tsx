@@ -528,6 +528,14 @@ export default function ModelProfilePage() {
                                 size="sm"
                                 type="button"
                                 className="cursor-pointer block sm:hidden text-gray-500 bg-white hover:bg-gray-500 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                onClick={() => navigate('/model/referral')}
+                            >
+                                <SquareArrowOutUpRight className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                type="button"
+                                className="cursor-pointer block sm:hidden text-gray-500 bg-white hover:bg-gray-500 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
                                 onClick={() => navigate('/model/settings')}
                             >
                                 <Settings className="w-4 h-4" />
