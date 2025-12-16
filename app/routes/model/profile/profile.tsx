@@ -632,7 +632,11 @@ export default function ModelProfilePage() {
                 </div>
 
                 <div className="pb-4">
-                    <Tabs defaultValue={activeTab} className="w-full">
+                    <Tabs value={activeTab} onValueChange={(value) => {
+                            const newSearchParams = new URLSearchParams(searchParams);
+                            newSearchParams.set("tab", value);
+                            navigate({ search: newSearchParams.toString() }, { replace: true });
+                        }} className="w-full">
                         <TabsList className='w-full mb-2'>
                             <TabsTrigger value="account">{t("modelProfile.tabs.accountInfo")}</TabsTrigger>
                             <TabsTrigger value="banks">{t("modelProfile.tabs.bankAccounts")}</TabsTrigger>

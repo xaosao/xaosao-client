@@ -1194,7 +1194,8 @@
       "enterAmount": "Enter amount",
       "note": "Note:",
       "withdrawNote": "Your withdrawal request will be reviewed by the admin. Funds will be transferred to your selected account once approved.",
-      "close": "Close"
+      "close": "Close",
+      "addBankAccount": "Add Bank Account"
     },
     "detail": {
       "title": "Transaction Details",

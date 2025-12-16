@@ -477,9 +477,9 @@ export default function ModelWalletPage() {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <div className="px-2 py-4 text-sm text-gray-500 text-center">
                       {t("modelWallet.modal.noBanks")}
-                    </SelectItem>
+                    </div>
                   )}
                 </SelectContent>
               </Select>
@@ -529,12 +529,26 @@ export default function ModelWalletPage() {
               >
                 {t("modelWallet.modal.close")}
               </Button>
-              <Button
-                type="submit"
-                className="bg-rose-500 text-white cursor-pointer hover:bg-rose-600"
-              >
-                {t("modelWallet.withdraw")}
-              </Button>
+              {banks.length > 0 ? (
+                <Button
+                  type="submit"
+                  disabled={!selectedBank}
+                  className="bg-rose-500 text-white cursor-pointer hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t("modelWallet.withdraw")}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="bg-rose-500 text-white cursor-pointer hover:bg-rose-600"
+                  onClick={() => {
+                    setWithdrawModal(false);
+                    navigate("/model/profile?tab=banks");
+                  }}
+                >
+                  {t("modelWallet.modal.addBankAccount")}
+                </Button>
+              )}
             </DialogFooter>
           </Form>
         </DialogContent>
