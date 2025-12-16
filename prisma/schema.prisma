@@ -219,6 +219,11 @@ model model {
   defaultLanguage     String    @default("en") // 10
   defaultTheme        String    @default("light") // 11
 
+  // Referral system fields
+  referralCode       String? // Unique referral code for this model (uniqueness enforced in code)
+  referredById       String?  @db.ObjectId // ID of the model who referred this model
+  referralRewardPaid Boolean  @default(false) // Whether referral reward has been paid to referrer
+
   status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

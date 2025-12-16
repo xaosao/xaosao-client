@@ -61,6 +61,9 @@ export default [
       route("checkin/:id", "./routes/model/dating/dating.checkin.tsx"),
     ]),
 
+    // Referral program
+    route("referral", "./routes/model/referral.tsx"),
+
     // Settings with nested routes
     route("settings", "./routes/model/settings.tsx", [
       route("services", "./routes/model/settings/services.tsx"),

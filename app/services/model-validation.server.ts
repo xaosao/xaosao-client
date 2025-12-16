@@ -261,6 +261,8 @@ const modelSignUpSchema = z
       )
       .max(10, "modelAuth.validation.maxInterests")
       .optional(),
+    // Referral system - ID of the model who referred this user
+    referrerId: z.string().optional(),
   })
   .strict(); // Reject any extra fields not defined in schema
 

@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, useNavigation, useSearchParams, redirect, useFetcher } from 'react-router';
-import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Building2, Plus, CreditCard, UserRoundPen, MoreVertical, UserPen } from 'lucide-react';
+import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Building2, Plus, CreditCard, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 // components
@@ -585,7 +585,7 @@ export default function ModelProfilePage() {
                                     onClick={() => navigate('/model/profile/edit')}
                                 >
                                     <UserPen />
-                                    {t("modelProfile.editProfile")}
+                                    {/* {t("modelProfile.editProfile")} */}
                                 </Button>
                                 <Button
                                     size="sm"
@@ -595,6 +595,14 @@ export default function ModelProfilePage() {
                                 >
                                     <Settings />
                                     {t("modelProfile.settings")}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    className="cursor-pointer hidden sm:flex bg-rose-100 hover:bg-rose-200 text-rose-600 px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                    onClick={() => navigate('/model/referral')}
+                                >
+                                    <SquareArrowOutUpRight /> {t("modelProfile.referral")}
                                 </Button>
                             </div>
                         </div>

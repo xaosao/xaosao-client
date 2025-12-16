@@ -36,6 +36,7 @@ export interface IModelSignupCredentials {
   career?: string;
   education?: string;
   interests?: string[];
+  referrerId?: string; // ID of the model who referred this model
 }
 
 type TelbizResult = {
@@ -460,6 +461,8 @@ export async function modelRegister(
         resetTokenVerified: false,
         resetTokenExpiry: null,
         twofactorOTP: randomUUID(),
+        // Referral system - store who referred this model
+        referredById: modelData.referrerId || null,
       },
     });
 

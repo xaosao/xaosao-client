@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, Camera, X, Loader } from "lucide-react";
-import type { ActionFunctionArgs, MetaFunction } from "react-router";
-import { Form, Link, useActionData, useNavigation, useNavigate } from "react-router";
+import { Eye, EyeOff, Camera, X, Loader, Gift } from "lucide-react";
+import type { ActionFunctionArgs, MetaFunction, LoaderFunctionArgs } from "react-router";
+import { Form, Link, useActionData, useNavigation, useNavigate, useLoaderData } from "react-router";
 
 // services:
 import { modelRegister } from "~/services/model-auth.server";
@@ -10,6 +10,7 @@ import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { IModelSignupCredentials } from "~/services/model-auth.server";
 import { validateModelSignUpInputs } from "~/services/model-validation.server";
 import { compressImage } from "~/utils/imageCompression";
+import { findReferrerByCode } from "~/services/referral.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,6 +18,34 @@ export const meta: MetaFunction = () => {
     { name: "description", content: "Register as a companion" },
   ];
 };
+
+interface LoaderData {
+  referralCode: string | null;
+  referrerName: string | null;
+  referrerId: string | null;
+}
+
+export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
+  const url = new URL(request.url);
+  const referralCode = url.searchParams.get("ref");
+
+  if (!referralCode) {
+    return { referralCode: null, referrerName: null, referrerId: null };
+  }
+
+  // Find referrer by code
+  const referrer = await findReferrerByCode(referralCode);
+
+  if (!referrer) {
+    return { referralCode, referrerName: null, referrerId: null };
+  }
+
+  return {
+    referralCode,
+    referrerName: referrer.firstName,
+    referrerId: referrer.id,
+  };
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   // Only allow POST requests
@@ -42,6 +71,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const education = formData.get("education");
   const interestsJson = formData.get("interests");
   const newProfile = formData.get("newProfile") as File | null;
+  const referrerId = formData.get("referrerId") as string | null;
 
   // Basic required fields validation
   if (!firstName || !username || !password || !dob || !gender || !whatsapp || !bio || !address) {
@@ -112,6 +142,7 @@ export async function action({ request }: ActionFunctionArgs) {
       career: career ? String(career).trim() : undefined,
       education: education ? String(education).trim() : undefined,
       interests,
+      referrerId: referrerId || undefined,
     };
 
     // Validate all inputs against SQL injection and business rules
@@ -153,6 +184,7 @@ export default function ModelRegister() {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
+  const loaderData = useLoaderData<LoaderData>();
   const isSubmitting = navigation.state === "submitting";
 
   const [image, setImage] = useState<string>("");
@@ -278,7 +310,25 @@ export default function ModelRegister() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-4 py-2">
       <div className="max-w-2xl w-full space-y-8 bg-white px-2 sm:px-8 py-4 rounded-lg shadow-xl">
+        {/* Referral Banner */}
+        {loaderData.referrerName && (
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Gift className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">{t("modelAuth.register.referredBy")}</p>
+              <p className="text-white/90 text-xs">{loaderData.referrerName} {t("modelAuth.register.invitedYou")}</p>
+            </div>
+          </div>
+        )}
+
         <Form method="post" encType="multipart/form-data" className="mt-4 sm:mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Hidden input for referrer ID */}
+          {loaderData.referrerId && (
+            <input type="hidden" name="referrerId" value={loaderData.referrerId} />
+          )}
+
           <div className="flex flex-col items-center justify-center space-y-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>

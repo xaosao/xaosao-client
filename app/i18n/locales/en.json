@@ -936,7 +936,9 @@
       "signIn": "Sign in",
       "requiredFieldsError": "Please fill in all required fields (First Name, Username, Password, DOB, Gender, Phone Number, Bio, and Address)",
       "passwordsMismatch": "Passwords do not match",
-      "registrationFailed": "Registration failed. Please try again."
+      "registrationFailed": "Registration failed. Please try again.",
+      "referredBy": "Referred by a friend",
+      "invitedYou": "invited you to join!"
     },
     "forgotPassword": {
       "title": "Forgot password?",
@@ -1474,6 +1476,46 @@
       "imageIdRequired": "Image ID is required!",
       "imageDeleteFailed": "Failed to delete image!",
       "imageUploadFailed": "Failed to upload image!"
+    },
+    "referral": "Referral"
+  },
+  "modelReferral": {
+    "title": "Referral Program",
+    "subtitle": "Invite Friends & Earn Rewards!",
+    "description": "Share your referral code with friends who want to become models. Earn 50,000 Kip for each successful referral!",
+    "yourCode": "Your Referral Code",
+    "yourLink": "Your Referral Link",
+    "shareLink": "Share Link",
+    "shareTitle": "Join XaoSao as a Model!",
+    "shareText": "Use my referral code to register: ",
+    "copied": "Code copied!",
+    "linkCopied": "Link copied to clipboard!",
+    "stats": {
+      "totalReferred": "Total Referred",
+      "approved": "Approved",
+      "pending": "Pending",
+      "totalEarnings": "Total Earnings"
+    },
+    "rewardInfo": {
+      "title": "Earn 50,000 Kip per Referral!",
+      "description": "When your referred friend gets approved by admin, you receive 50,000 Kip instantly to your wallet."
+    },
+    "referredModels": "Your Referred Friends",
+    "noReferrals": "No referrals yet. Share your code to start earning!",
+    "howItWorks": {
+      "title": "How It Works",
+      "step1": {
+        "title": "Share Your Code",
+        "description": "Share your unique referral code or link with friends who want to become models."
+      },
+      "step2": {
+        "title": "They Register",
+        "description": "Your friend registers using your referral code during sign-up."
+      },
+      "step3": {
+        "title": "Get Rewarded",
+        "description": "Once your friend is approved by admin, you receive 50,000 Kip in your wallet!"
+      }
     }
   },
   "modelProfileEdit": {
