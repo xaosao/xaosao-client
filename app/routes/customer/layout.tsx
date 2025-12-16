@@ -142,6 +142,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    prefetch="intent"
                                     onClick={(e) => handleChatNavigation(e, item.url)}
                                     className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
@@ -161,6 +162,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                 {showMobileHeader && (
                     <div className="sm:hidden flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-30">
                         <Link to="/customer/profile"
+                            prefetch="intent"
                             className="flex items-center gap-2"
                         >
                             <div className="relative">
@@ -197,6 +199,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    prefetch="viewport"
                                     onClick={(e) => handleChatNavigation(e, item.url)}
                                     className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
                                 >

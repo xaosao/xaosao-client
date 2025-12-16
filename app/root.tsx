@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 
 import type { Route } from "./+types/root";
@@ -12,6 +13,21 @@ import "./app.css";
 import "./i18n/config";
 import Toast from "./components/toast";
 import { useLanguageInit } from "./hooks/use-language-init";
+
+function GlobalLoadingIndicator() {
+  const navigation = useNavigation();
+  const isNavigating = navigation.state === "loading";
+
+  if (!isNavigating) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[9999]">
+      <div className="h-1 w-full bg-rose-100 overflow-hidden">
+        <div className="h-full bg-rose-500 animate-loading-bar" />
+      </div>
+    </div>
+  );
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -52,7 +68,12 @@ export default function App() {
   // Initialize language from localStorage after hydration
   useLanguageInit();
 
-  return <Outlet />;
+  return (
+    <>
+      <GlobalLoadingIndicator />
+      <Outlet />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

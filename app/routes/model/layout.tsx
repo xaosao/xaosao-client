@@ -139,6 +139,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    prefetch="intent"
                                     className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
                                         : "hover:bg-rose-50 hover:text-rose-500"
@@ -166,6 +167,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 {showMobileHeader && (
                     <div className="sm:hidden flex items-center justify-between px-4 py-2 border-b bg-white sticky top-0 z-30">
                         <Link to="/model/profile"
+                            prefetch="intent"
                             className="flex items-center gap-2"
                         >
                             <div className="relative">
@@ -202,6 +204,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                 <Link
                                     to={item.url}
                                     key={item.title}
+                                    prefetch="viewport"
                                     className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
                                 >
                                     <item.icon

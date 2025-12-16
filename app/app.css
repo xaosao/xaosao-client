@@ -244,3 +244,23 @@
 .text-shadow-lg {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
+
+/* Global loading bar animation */
+@keyframes loading-bar {
+  0% {
+    width: 0%;
+    margin-left: 0%;
+  }
+  50% {
+    width: 30%;
+    margin-left: 35%;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1s ease-in-out infinite;
+}

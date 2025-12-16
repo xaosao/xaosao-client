@@ -199,7 +199,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                     {t('booking.viewDetails')}
                                  </DropdownMenuItem>
 
-                                 {booking.isContact && (
+                                 {booking.isContact && booking.model && (
                                     <DropdownMenuItem
                                        onClick={() => handleChatClick(booking.model.firstName)}
                                        className="cursor-pointer"
@@ -332,13 +332,15 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                            </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                           <UserRoundCheck className="h-4 w-4 text-muted-foreground" />
-                           <span className="text-sm text-muted-foreground">
-                              {booking.model.firstName + " " + booking.model.lastName} (
-                              {calculateAgeFromDOB(String(booking.model.dob))} {t('booking.years')})
-                           </span>
-                        </div>
+                        {booking.model && (
+                           <div className="flex items-center gap-2">
+                              <UserRoundCheck className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                 {booking.model.firstName + " " + (booking.model.lastName || "")} (
+                                 {calculateAgeFromDOB(String(booking.model.dob))} {t('booking.years')})
+                              </span>
+                           </div>
+                        )}
                      </CardContent>
                   </Card>
                ))}
