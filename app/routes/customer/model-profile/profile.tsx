@@ -178,6 +178,21 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const [isAnonymous, setIsAnonymous] = React.useState<boolean>(false);
     const reviewData = model.reviewData;
 
+    // Helper function to get translated service name
+    const getServiceName = (nameKey: string) => {
+        const translatedName = t(`modelServices.serviceItems.${nameKey}.name`);
+        return translatedName.includes('modelServices.serviceItems') ? nameKey : translatedName;
+    };
+
+    // Helper function to get translated service description
+    const getServiceDescription = (nameKey: string, fallbackDescription: string | null) => {
+        const translatedDesc = t(`modelServices.serviceItems.${nameKey}.description`);
+        if (translatedDesc.includes('modelServices.serviceItems')) {
+            return fallbackDescription || t("modelServices.noDescription");
+        }
+        return translatedDesc;
+    };
+
     // For toast messages
     const toastMessage = searchParams.get("toastMessage");
     const toastType = searchParams.get("toastType");
@@ -452,9 +467,9 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                             return (
                                                 <Card key={service.id} className={`cursor-pointer w-full max-w-sm ${name === "sleep" ? "border-cyan-500" : name === "drinking" ? "border-green-500" : "border-rose-500"}`}>
                                                     <CardHeader>
-                                                        <CardTitle className='text-sm'>{service.service.name}</CardTitle>
+                                                        <CardTitle className='text-sm'>{getServiceName(service.service.name)}</CardTitle>
                                                         <CardDescription className='text-xs sm:text-sm'>
-                                                            {service.service.description}
+                                                            {getServiceDescription(service.service.name, service.service.description)}
                                                         </CardDescription>
                                                     </CardHeader>
                                                     <CardContent>
