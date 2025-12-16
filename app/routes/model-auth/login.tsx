@@ -17,6 +17,17 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  const { getModelFromSession } = await import("~/services/model-auth.server");
+  const { redirect } = await import("react-router");
+
+  // Check if model is already logged in
+  const modelId = await getModelFromSession(request);
+
+  if (modelId) {
+    // Model already logged in, redirect to dashboard
+    throw redirect("/model");
+  }
+
   const url = new URL(request.url);
   const reset = url.searchParams.get("reset");
 

@@ -26,6 +26,17 @@ interface LoaderData {
 }
 
 export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
+  const { getModelFromSession } = await import("~/services/model-auth.server");
+  const { redirect } = await import("react-router");
+
+  // Check if model is already logged in
+  const modelId = await getModelFromSession(request);
+
+  if (modelId) {
+    // Model already logged in, redirect to dashboard
+    throw redirect("/model");
+  }
+
   const url = new URL(request.url);
   const referralCode = url.searchParams.get("ref");
 

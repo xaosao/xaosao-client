@@ -23,6 +23,22 @@ const backgroundImages = [
     "https://images.pexels.com/photos/5910832/pexels-photo-5910832.jpeg"
 ];
 
+/**
+ * Loader to check if user is already logged in
+ */
+export async function loader({ request }: Route.LoaderArgs) {
+    const { getUserFromSession } = await import("~/services/auths.server");
+    const { redirect } = await import("react-router");
+
+    const customerId = await getUserFromSession(request);
+
+    if (customerId) {
+        throw redirect("/customer");
+    }
+
+    return null;
+}
+
 export async function action({ request }: Route.ActionArgs) {
     // const { forgotPassword, resendResetToken, verifyResetToken } = await import("~/services");
     const formData = await request.formData();

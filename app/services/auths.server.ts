@@ -161,7 +161,8 @@ export async function createUserSession(
   redirectPath: string
 ) {
   const isProduction = process.env.NODE_ENV === "production";
-  const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 1 * 24 * 60 * 60;
+  // Session expiration: 24 hours default, 14 days with "Remember Me"
+  const maxAge = rememberMe ? 14 * 24 * 60 * 60 : 1 * 24 * 60 * 60;
 
   // Create session
   const session = await sessionStorage.getSession();

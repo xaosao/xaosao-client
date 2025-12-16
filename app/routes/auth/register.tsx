@@ -27,6 +27,24 @@ const backgroundImages = [
     "https://images.pexels.com/photos/16838518/pexels-photo-16838518.jpeg",
 ]
 
+/**
+ * Loader to check if user is already logged in
+ * Redirects to customer dashboard if session exists
+ */
+export async function loader({ request }: Route.LoaderArgs) {
+    const { getUserFromSession } = await import("~/services/auths.server");
+    const { redirect } = await import("react-router");
+
+    const customerId = await getUserFromSession(request);
+
+    if (customerId) {
+        // User already logged in, redirect to dashboard
+        throw redirect("/customer");
+    }
+
+    return null;
+}
+
 export async function action({ request }: Route.ActionArgs) {
     const { customerRegister } = await import("~/services/auths.server")
     const formData = await request.formData()

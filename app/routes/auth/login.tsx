@@ -36,6 +36,24 @@ interface ActionResponse {
 }
 
 /**
+ * Loader to check if user is already logged in
+ * Redirects to customer dashboard if session exists
+ */
+export async function loader({ request }: Route.LoaderArgs) {
+    const { getUserFromSession } = await import("~/services/auths.server");
+    const { redirect } = await import("react-router");
+
+    const customerId = await getUserFromSession(request);
+
+    if (customerId) {
+        // User already logged in, redirect to dashboard
+        throw redirect("/customer");
+    }
+
+    return null;
+}
+
+/**
  * Server action handler for login form submission
  * Validates credentials and authenticates user
  */

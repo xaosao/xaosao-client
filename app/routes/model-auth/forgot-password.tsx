@@ -12,6 +12,22 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+/**
+ * Loader to check if model is already logged in
+ */
+export async function loader({ request }: { request: Request }) {
+  const { getModelFromSession } = await import("~/services/model-auth.server");
+  const { redirect } = await import("react-router");
+
+  const modelId = await getModelFromSession(request);
+
+  if (modelId) {
+    throw redirect("/model");
+  }
+
+  return null;
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== "POST") {
     return {
