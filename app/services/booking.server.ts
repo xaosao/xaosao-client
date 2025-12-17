@@ -175,7 +175,8 @@ async function releasePaymentToModel(
   modelId: string,
   amount: number,
   bookingId: string,
-  holdTransactionId: string
+  holdTransactionId: string,
+  commissionRate: number = 0 // Commission rate as percentage (e.g., 10 for 10%)
 ) {
   const modelWallet = await prisma.wallet.findFirst({
     where: { modelId, status: "active" },
@@ -189,6 +190,10 @@ async function releasePaymentToModel(
     });
   }
 
+  // Calculate commission and net amount
+  const commissionAmount = Math.floor((amount * commissionRate) / 100);
+  const netAmount = amount - commissionAmount;
+
   await prisma.transaction_history.update({
     where: { id: holdTransactionId },
     data: { status: "released" },
@@ -197,20 +202,20 @@ async function releasePaymentToModel(
   const earningTransaction = await prisma.transaction_history.create({
     data: {
       identifier: "booking_earning",
-      amount: amount,
+      amount: netAmount,
       status: "approved",
-      comission: 0,
+      comission: commissionAmount,
       fee: 0,
       modelId,
-      reason: `Earning from completed booking #${bookingId}`,
+      reason: `Earning from completed booking #${bookingId} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
     },
   });
 
   await prisma.wallet.update({
     where: { id: modelWallet.id },
     data: {
-      totalBalance: modelWallet.totalBalance + amount,
-      totalDeposit: modelWallet.totalDeposit + amount,
+      totalBalance: modelWallet.totalBalance + netAmount,
+      totalDeposit: modelWallet.totalDeposit + netAmount,
     },
   });
 
@@ -502,6 +507,7 @@ export async function getAllMyServiceBookings(customerId: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        completionToken: true,
         model: {
           select: {
             id: true,
@@ -1656,6 +1662,9 @@ export async function customerConfirmCompletion(id: string, customerId: string) 
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
+      include: {
+        modelService: { include: { service: true } },
+      },
     });
 
     if (!booking) {
@@ -1682,14 +1691,16 @@ export async function customerConfirmCompletion(id: string, customerId: string) 
       });
     }
 
-    // Release payment to model
+    // Release payment to model (with commission deduction)
     let releaseTransaction = null;
     if (booking.paymentStatus === "pending_release" && booking.holdTransactionId && booking.modelId) {
+      const commissionRate = booking.modelService?.service?.commission || 0;
       releaseTransaction = await releasePaymentToModel(
         booking.modelId,
         booking.price,
         booking.id,
-        booking.holdTransactionId
+        booking.holdTransactionId,
+        commissionRate
       );
     }
 
@@ -1824,14 +1835,16 @@ export async function confirmBookingByToken(token: string, customerId: string) {
       });
     }
 
-    // Release payment to model
+    // Release payment to model (with commission deduction)
     let releaseTransaction = null;
     if (booking.paymentStatus === "pending_release" && booking.holdTransactionId && booking.modelId) {
+      const commissionRate = booking.modelService?.service?.commission || 0;
       releaseTransaction = await releasePaymentToModel(
         booking.modelId,
         booking.price,
         booking.id,
-        booking.holdTransactionId
+        booking.holdTransactionId,
+        commissionRate
       );
     }
 
@@ -2134,20 +2147,25 @@ export async function processAutoRelease() {
           lte: now,
         },
       },
+      include: {
+        modelService: { include: { service: true } },
+      },
     });
 
     const results = [];
 
     for (const booking of bookingsToRelease) {
       try {
-        // Release payment to model
+        // Release payment to model (with commission deduction)
         let releaseTransaction = null;
         if (booking.holdTransactionId && booking.modelId) {
+          const commissionRate = booking.modelService?.service?.commission || 0;
           releaseTransaction = await releasePaymentToModel(
             booking.modelId,
             booking.price,
             booking.id,
-            booking.holdTransactionId
+            booking.holdTransactionId,
+            commissionRate
           );
         }
 

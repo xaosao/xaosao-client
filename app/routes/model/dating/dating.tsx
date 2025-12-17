@@ -278,7 +278,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        </DropdownMenuItem>
                                     )}
 
-                                    {booking.isContact && booking.customer.whatsapp && (
+                                    {booking.status === "confirmed" && booking.isContact && booking.customer.whatsapp && (
                                        <DropdownMenuItem
                                           onClick={() => {
                                              const bookingUrl = `${window.location.origin}/customer/book-service/detail/${booking.id}`;

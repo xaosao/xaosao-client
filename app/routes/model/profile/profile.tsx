@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
+import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, useNavigation, useSearchParams, redirect, useFetcher } from 'react-router';
 import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Building2, Plus, CreditCard, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 // components
 import {
@@ -224,6 +225,10 @@ export default function ModelProfilePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const qrCodeInputRef = useRef<HTMLInputElement>(null);
 
+    // Refs for immediate access to selected image (avoids closure issues)
+    const selectedImageIdRef = useRef<string | null>(null);
+    const selectedImageNameRef = useRef<string | null>(null);
+
     // States for file upload and delete
     const [selectedImageId, setSelectedImageId] = React.useState<string | null>(null);
     const [uploadingImageId, setUploadingImageId] = React.useState<string | null>(null);
@@ -281,18 +286,27 @@ export default function ModelProfilePage() {
 
     // Handle file selection and upload
     const handleFileInputClick = (imageId: string, imageName: string) => {
+        // Set refs immediately for use in handleFileChange (avoids closure issues)
+        selectedImageIdRef.current = imageId;
+        selectedImageNameRef.current = imageName;
         setSelectedImageId(imageId);
         setSelectedImageName(imageName);
         fileInputRef.current?.click();
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0] && selectedImageId) {
+        // Use refs to get the current values (avoids closure issues with state)
+        const imageId = selectedImageIdRef.current;
+        const imageName = selectedImageNameRef.current;
+
+        if (e.target.files && e.target.files[0] && imageId) {
             const file = e.target.files[0];
 
-            // Set compressing state
-            setIsCompressing(true);
-            setUploadingImageId(selectedImageId);
+            // Force synchronous state update to show loading overlay immediately
+            flushSync(() => {
+                setIsCompressing(true);
+                setUploadingImageId(imageId);
+            });
 
             try {
                 // Compress the image (also handles HEIC conversion)
@@ -304,9 +318,14 @@ export default function ModelProfilePage() {
                     maxSizeMB: 1,
                 });
 
+                // Done compressing, now uploading
+                flushSync(() => {
+                    setIsCompressing(false);
+                });
+
                 const formData = new FormData();
-                formData.append("imageId", selectedImageId);
-                formData.append("imageName", selectedImageName || "");
+                formData.append("imageId", imageId);
+                formData.append("imageName", imageName || "");
                 formData.append("newFile", compressedFile);
 
                 fetcher.submit(formData, {
@@ -315,9 +334,10 @@ export default function ModelProfilePage() {
                 });
             } catch (error) {
                 console.error("Error compressing image:", error);
-                setUploadingImageId(null);
-            } finally {
-                setIsCompressing(false);
+                flushSync(() => {
+                    setUploadingImageId(null);
+                    setIsCompressing(false);
+                });
             }
 
             // Reset file input
@@ -504,13 +524,13 @@ export default function ModelProfilePage() {
         setTouchEndX(null);
     };
 
-    // Show full-page loading overlay when uploading images
-    if (isCompressing || (uploadingImageId && fetcher.state !== 'idle')) {
+    // Show full-page loading overlay when compressing or uploading images
+    if (isCompressing || uploadingImageId) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                <div className="flex items-center justify-center bg-white p-6 rounded-xl shadow-md gap-2">
-                    <Loader className="w-4 h-4 animate-spin" />
-                    <p className="text-gray-600">
+                <div className="flex flex-col items-center justify-center bg-white p-6 rounded-xl shadow-md gap-3">
+                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                    <p className="text-gray-600 font-medium">
                         {isCompressing ? t("profileEdit.compressing") : t("modelProfile.images.uploading")}
                     </p>
                 </div>
@@ -934,7 +954,6 @@ export default function ModelProfilePage() {
 
                                             {!isBusy && (
                                                 <>
-                                                    {/* Desktop: show on hover */}
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden sm:flex items-end justify-center pb-4 gap-2">
                                                         <button
                                                             type="button"

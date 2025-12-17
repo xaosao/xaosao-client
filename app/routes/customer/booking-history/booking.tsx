@@ -252,11 +252,11 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                     </DropdownMenuItem>
                                  )}
 
-                                 {booking.status === "awaiting_confirmation" && (
+                                 {booking.status === "awaiting_confirmation" && booking.completionToken && (
                                     <>
                                        <DropdownMenuItem
                                           onClick={() =>
-                                             navigate(`/customer/confirm-booking/${booking.id}`)
+                                             navigate(`/customer/confirm-booking/${booking.completionToken}`)
                                           }
                                           className="cursor-pointer text-emerald-600"
                                        >

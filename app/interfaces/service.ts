@@ -39,6 +39,7 @@ export type IServiceBooking = {
   endDate: Date | null;
   status: BookingStatus;
   dayAmount: number;
+  completionToken: string | null;
   model: {
     id: string;
     firstName: string;
