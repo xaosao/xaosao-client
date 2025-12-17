@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -235,13 +235,26 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        </>
                                     )}
 
-                                    {booking.status === "confirmed" && !booking.modelCheckedInAt && (
-                                       <DropdownMenuItem
-                                          onClick={() => navigate(`/model/dating/checkin/${booking.id}`)}
-                                          className="cursor-pointer"
-                                       >
-                                          {t("modelDating.actions.checkIn")}
-                                       </DropdownMenuItem>
+                                    {booking.status === "confirmed" && (
+                                       <>
+                                          {!booking.modelCheckedInAt && (
+                                             <DropdownMenuItem
+                                                onClick={() => navigate(`/model/dating/checkin/${booking.id}`)}
+                                                className="cursor-pointer"
+                                             >
+                                                {t("modelDating.actions.checkIn")}
+                                             </DropdownMenuItem>
+                                          )}
+                                          {booking.customer.whatsapp && (
+                                             <DropdownMenuItem
+                                                onClick={() => window.open(`tel:${booking.customer.whatsapp}`, "_self")}
+                                                className="cursor-pointer text-blue-600"
+                                             >
+                                                <Phone className="h-4 w-4" />
+                                                {t("modelDating.actions.callCustomer")}
+                                             </DropdownMenuItem>
+                                          )}
+                                       </>
                                     )}
 
                                     {(booking.modelCheckedInAt || booking.status === "in_progress") &&

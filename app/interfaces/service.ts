@@ -45,6 +45,7 @@ export type IServiceBooking = {
     lastName: string;
     profile: string | null;
     dob: Date | null;
+    whatsapp: number | null;
   };
 
   modelService: {

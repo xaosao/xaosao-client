@@ -509,6 +509,7 @@ export async function getAllMyServiceBookings(customerId: string) {
             lastName: true,
             profile: true,
             dob: true,
+            whatsapp: true,
             friend_contacts: {
               where: {
                 adderType: "CUSTOMER",

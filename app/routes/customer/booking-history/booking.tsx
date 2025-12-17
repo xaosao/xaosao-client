@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -230,14 +230,25 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                  )}
 
                                  {booking.status === "confirmed" && (
-                                    <DropdownMenuItem
-                                       onClick={() =>
-                                          navigate(`/customer/book-service/checkin/${booking.id}`)
-                                       }
-                                       className="cursor-pointer"
-                                    >
-                                       {t('booking.checkIn')}
-                                    </DropdownMenuItem>
+                                    <>
+                                       <DropdownMenuItem
+                                          onClick={() =>
+                                             navigate(`/customer/book-service/checkin/${booking.id}`)
+                                          }
+                                          className="cursor-pointer"
+                                       >
+                                          {t('booking.checkIn')}
+                                       </DropdownMenuItem>
+                                       {booking.model?.whatsapp && (
+                                          <DropdownMenuItem
+                                             onClick={() => window.open(`tel:${booking.model.whatsapp}`, "_self")}
+                                             className="cursor-pointer text-blue-600"
+                                          >
+                                             <Phone className="h-4 w-4" />
+                                             {t('booking.callModel')}
+                                          </DropdownMenuItem>
+                                       )}
+                                    </>
                                  )}
 
                                  {booking.status === "awaiting_confirmation" && (
