@@ -124,13 +124,13 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
             <button
                type="button"
                onClick={() => setIsPolicyOpen(!isPolicyOpen)}
-               className="flex items-center justify-between w-full sm:cursor-default"
+               className="flex items-center justify-between w-full cursor-pointer"
             >
                <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-amber-600 shrink-0" />
                   <h3 className="text-sm font-semibold text-amber-900">{t('booking.policy.title')}</h3>
                </div>
-               <div className="sm:hidden">
+               <div>
                   {isPolicyOpen ? (
                      <ChevronUp className="h-4 w-4 text-amber-600" />
                   ) : (
@@ -138,7 +138,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                   )}
                </div>
             </button>
-            <div className={`mt-3 pl-8 ${isPolicyOpen ? 'block' : 'hidden'} sm:block`}>
+            <div className={`mt-3 pl-8 ${isPolicyOpen ? 'block' : 'hidden'}`}>
                <ul className="text-xs text-amber-800 space-y-2">
                   <li className="flex items-center gap-2">
                      <Wallet className="h-3 w-3" />

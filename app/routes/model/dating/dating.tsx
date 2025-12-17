@@ -142,13 +142,13 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
             <button
                type="button"
                onClick={() => setIsPolicyOpen(!isPolicyOpen)}
-               className="flex items-center justify-between w-full sm:cursor-default"
+               className="flex items-center justify-between w-full cursor-pointer"
             >
                <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-blue-600 shrink-0" />
                   <h3 className="text-sm font-semibold text-blue-900">{t("modelDating.policy.title")}</h3>
                </div>
-               <div className="sm:hidden">
+               <div>
                   {isPolicyOpen ? (
                      <ChevronUp className="h-4 w-4 text-blue-600" />
                   ) : (
@@ -156,7 +156,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                   )}
                </div>
             </button>
-            <div className={`mt-3 pl-8 ${isPolicyOpen ? 'block' : 'hidden'} sm:block`}>
+            <div className={`mt-3 pl-8 ${isPolicyOpen ? 'block' : 'hidden'}`}>
                <ul className="text-xs text-blue-800 space-y-2">
                   <li className="flex items-center gap-2">
                      <Wallet className="h-3 w-3" />
@@ -368,7 +368,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
             onClick={() => window.open("https://wa.me/8562078856194", "_blank")}
             className="flex gap-2 cursor-pointer fixed bottom-16 right-4 sm:bottom-6 sm:right-4 z-50 p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
          >
-            <Headset size={18} className="animate-bounce" />
+            <Headset size={18} className="animate-pulse" />
             <span className="hidden sm:block">{t("modelDating.support")}</span>
          </button>
 
