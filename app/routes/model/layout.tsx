@@ -20,6 +20,7 @@ import type { Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
 import { requireModelSession } from "~/services/model-auth.server";
 import { getModelUnreadCount, getModelNotifications } from "~/services/notification.server";
+import { getModelPendingBookingCount } from "~/services/booking.server";
 
 interface ModelData {
     id: string;
@@ -36,6 +37,7 @@ interface LoaderReturn {
     modelData: ModelData;
     unreadNotifications: number;
     initialNotifications: Notification[];
+    pendingBookingCount: number;
 }
 
 interface LayoutProps {
@@ -44,10 +46,11 @@ interface LayoutProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const modelId = await requireModelSession(request);
-    const [modelData, unreadNotifications, notifications] = await Promise.all([
+    const [modelData, unreadNotifications, notifications, pendingBookingCount] = await Promise.all([
         getModelDashboardData(modelId),
         getModelUnreadCount(modelId),
         getModelNotifications(modelId, { limit: 10 }),
+        getModelPendingBookingCount(modelId),
     ]);
 
     const initialNotifications: Notification[] = notifications.map((n) => ({
@@ -60,31 +63,31 @@ export const loader: LoaderFunction = async ({ request }) => {
         createdAt: n.createdAt.toISOString(),
     }));
 
-    return { modelData, unreadNotifications, initialNotifications };
+    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount };
 }
 
 export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { modelData, unreadNotifications, initialNotifications } = loaderData;
+    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount } = loaderData;
     const { t, i18n } = useTranslation();
 
     const navigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/model", icon: Search },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart },
-        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle },
-        { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart },
-        { title: t('navigation.myProfile'), url: "/model/profile", icon: User },
-        { title: t('navigation.setting'), url: "/model/settings", icon: Settings },
-    ], [t, i18n.language]);
+        { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
+        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
+        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
+        { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
+        { title: t('navigation.myProfile'), url: "/model/profile", icon: User, badge: 0 },
+        { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
+    ], [t, i18n.language, pendingBookingCount]);
 
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/model", icon: Search },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart },
-        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle },
-        { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart },
-        { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon },
-    ], [t, i18n.language]);
+        { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
+        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
+        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
+        { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
+        { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
+    ], [t, i18n.language, pendingBookingCount]);
 
     const isActiveRoute = (url: string) => {
         if (url === "/model" && location.pathname === "/model") return true;
@@ -140,13 +143,20 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                     to={item.url}
                                     key={item.title}
                                     prefetch="intent"
-                                    className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
+                                    className={`flex items-center justify-between cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
                                         : "hover:bg-rose-50 hover:text-rose-500"
                                         }`}
                                 >
-                                    <item.icon className="w-4 h-4" />
-                                    <p suppressHydrationWarning>{item.title}</p>
+                                    <div className="flex gap-2 items-center justify-center">
+                                        <item.icon className="w-4 h-4" />
+                                        <p suppressHydrationWarning>{item.title}</p>
+                                    </div>
+                                    {item.badge > 0 && (
+                                        <span className="min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-rose-500 text-white text-[10px] font-medium rounded-full mb-2 animate-bounce">
+                                            {item.badge > 99 ? "99+" : item.badge}
+                                        </span>
+                                    )}
                                 </Link>
                             );
                         })}
@@ -207,10 +217,17 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                     prefetch="viewport"
                                     className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
                                 >
-                                    <item.icon
-                                        className={`w-4 h-4 mb-1 ${isActive ? "text-rose-500" : "text-gray-600"
-                                            }`}
-                                    />
+                                    <div className="relative mb-1">
+                                        <item.icon
+                                            className={`w-4 h-4 ${isActive ? "text-rose-500" : "text-gray-600"
+                                                }`}
+                                        />
+                                        {item.badge > 0 && (
+                                            <span className="absolute -top-1.5 -right-4 min-w-[14px] h-3.5 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-medium rounded-full">
+                                                {item.badge > 99 ? "99+" : item.badge}
+                                            </span>
+                                        )}
+                                    </div>
                                     <span
                                         className={`text-xs truncate ${isActive ? "text-rose-500" : "text-gray-600"
                                             }`}

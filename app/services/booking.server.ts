@@ -2196,6 +2196,23 @@ export async function processAutoRelease() {
 }
 
 /**
+ * Get pending booking count for a model
+ */
+export async function getModelPendingBookingCount(modelId: string): Promise<number> {
+  try {
+    return await prisma.service_booking.count({
+      where: {
+        modelId,
+        status: "pending",
+      },
+    });
+  } catch (error) {
+    console.error("GET_MODEL_PENDING_BOOKING_COUNT_FAILED", error);
+    return 0;
+  }
+}
+
+/**
  * Get booking check-in status for display
  */
 export function getBookingCheckInStatus(booking: {

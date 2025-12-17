@@ -933,31 +933,60 @@ export default function ModelProfilePage() {
                                             )}
 
                                             {!isBusy && (
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-center pb-4 gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className="flex text-rose-500 bg-rose-100 border border-rose-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleFileInputClick(image.id, image.name);
-                                                        }}
-                                                    >
-                                                        <Upload size={14} />
-                                                        {t("modelProfile.images.uploadNew")}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="flex text-red-500 bg-red-100 border border-red-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
-                                                        disabled={isSubmitting}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteImage(image.id, image.name);
-                                                        }}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                        {t("modelProfile.images.delete")}
-                                                    </button>
-                                                </div>
+                                                <>
+                                                    {/* Desktop: show on hover */}
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden sm:flex items-end justify-center pb-4 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="flex text-rose-500 bg-rose-100 border border-rose-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleFileInputClick(image.id, image.name);
+                                                            }}
+                                                        >
+                                                            <Upload size={14} />
+                                                            {t("modelProfile.images.uploadNew")}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="flex text-red-500 bg-red-100 border border-red-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
+                                                            disabled={isSubmitting}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteImage(image.id, image.name);
+                                                            }}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            {t("modelProfile.images.delete")}
+                                                        </button>
+                                                    </div>
+                                                    {/* Mobile: always visible buttons at bottom */}
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 flex sm:hidden items-center justify-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="flex text-rose-500 bg-rose-100 border border-rose-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleFileInputClick(image.id, image.name);
+                                                            }}
+                                                        >
+                                                            <Upload size={14} />
+                                                            {t("modelProfile.images.uploadNew")}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="flex text-red-500 bg-red-100 border border-red-300 rounded-sm px-2 py-1 text-xs shadow-md gap-1 cursor-pointer"
+                                                            disabled={isSubmitting}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteImage(image.id, image.name);
+                                                            }}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            {t("modelProfile.images.delete")}
+                                                        </button>
+                                                    </div>
+                                                </>
                                             )}
                                             <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                                                 {index + 1}/{MAX_IMAGES}

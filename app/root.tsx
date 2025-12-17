@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -13,6 +14,32 @@ import "./app.css";
 import "./i18n/config";
 import Toast from "./components/toast";
 import { useLanguageInit } from "./hooks/use-language-init";
+import { InstallPrompt } from "./components/pwa/InstallPrompt";
+
+// Check if device is mobile
+function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
+// Register service worker for mobile devices only
+function usePWA() {
+  useEffect(() => {
+    if (!isMobileDevice()) return;
+    if (!("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("[PWA] Service Worker registered:", registration.scope);
+      })
+      .catch((error) => {
+        console.error("[PWA] Service Worker registration failed:", error);
+      });
+  }, []);
+}
 
 function GlobalLoadingIndicator() {
   const navigation = useNavigation();
@@ -40,6 +67,12 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
+  // PWA manifest
+  { rel: "manifest", href: "/manifest.json" },
+  // PWA icons
+  { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/icon-192x192.png" },
+  { rel: "icon", type: "image/png", sizes: "32x32", href: "/icons/icon-96x96.png" },
+  { rel: "icon", type: "image/png", sizes: "16x16", href: "/icons/icon-72x72.png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -47,9 +80,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+
+        {/* PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="XaoSao" />
+        <meta name="application-name" content="XaoSao" />
+        <meta name="theme-color" content="#f43f5e" />
+        <meta name="msapplication-TileColor" content="#f43f5e" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="format-detection" content="telephone=no" />
 
         <Meta />
         <Links />
@@ -68,10 +110,14 @@ export default function App() {
   // Initialize language from localStorage after hydration
   useLanguageInit();
 
+  // Register PWA service worker on mobile devices
+  usePWA();
+
   return (
     <>
       <GlobalLoadingIndicator />
       <Outlet />
+      <InstallPrompt />
     </>
   );
 }

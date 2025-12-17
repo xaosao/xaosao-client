@@ -1835,5 +1835,16 @@
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
     }
+  },
+  "pwa": {
+    "installApp": "Install our app",
+    "description": "Install XaoSao on your device for a better experience with faster access and offline support.",
+    "iosTitle": "To install on iOS:",
+    "iosStep1": "Tap the Share button in Safari",
+    "iosStep2": "Tap \"Add to Home Screen\"",
+    "quickInstall": "Quick install - no app store needed",
+    "notNow": "Not now",
+    "install": "Install",
+    "gotIt": "Got it"
   }
 }

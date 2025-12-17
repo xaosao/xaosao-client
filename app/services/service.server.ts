@@ -96,7 +96,7 @@ export async function applyForService(
         modelId,
         serviceId,
         customRate: customRate,
-        isAvailable: false,
+        isAvailable: true,
         status: "active",
       },
     });
