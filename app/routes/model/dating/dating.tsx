@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone, MessageCircleMore } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -278,11 +278,21 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        </DropdownMenuItem>
                                     )}
 
-                                    {booking.isContact && (
+                                    {booking.isContact && booking.customer.whatsapp && (
                                        <DropdownMenuItem
-                                          onClick={() => navigate(`/model/chat?id=${booking.customer.firstName}`)}
-                                          className="cursor-pointer"
+                                          onClick={() => {
+                                             const bookingUrl = `${window.location.origin}/customer/book-service/detail/${booking.id}`;
+                                             const message = t("modelDating.whatsappMessage", {
+                                                customerName: booking.customer.firstName,
+                                                serviceName: getServiceName(booking),
+                                                date: formatDate(String(booking.startDate)),
+                                                bookingUrl
+                                             });
+                                             window.open(`https://wa.me/${booking.customer.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                          }}
+                                          className="cursor-pointer text-green-600"
                                        >
+                                          <MessageCircleMore className="h-4 w-4" />
                                           {t("modelDating.actions.messageCustomer")}
                                        </DropdownMenuItem>
                                     )}

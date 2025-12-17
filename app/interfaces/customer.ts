@@ -70,6 +70,7 @@ export interface CustomerCardProps {
     gender?: string;
     relationshipStatus?: string;
     bio?: string;
+    whatsapp?: number | null;
     Images?: Array<{ id: string; name: string }>;
     isContact?: boolean;
     modelAction?: "LIKE" | "PASS" | null;

@@ -5,7 +5,6 @@ import { Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "rea
 import {
     HandHeart,
     Heart,
-    MessageCircle,
     Search,
     Settings,
     User,
@@ -73,7 +72,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
-        { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
+        // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
         { title: t('navigation.datingHistory'), url: "/customer/dates-history", icon: HandHeart },
         { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet },
         { title: t('navigation.myProfile'), url: "/customer/profile", icon: User },
@@ -83,9 +82,10 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const mobileNavigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
-        { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
+        // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
         { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart },
         { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet2 },
+        { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
     ], [t, i18n.language]);
 
     const isActiveRoute = (url: string) => {
@@ -180,7 +180,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                         </Link>
                         <div className="flex items-center justify-center gap-4">
                             <NotificationBell userType="customer" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
-                            <Settings size={18} className="text-gray-500" onClick={() => navigate("/customer/setting")} />
+                            {/* <Settings size={18} className="text-gray-500" onClick={() => navigate("/customer/setting")} /> */}
                         </div>
                     </div>
                 )}

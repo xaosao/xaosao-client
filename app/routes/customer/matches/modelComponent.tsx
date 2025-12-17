@@ -1,6 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { Form, useNavigate, type FetcherWithComponents } from "react-router";
 import { MapPin, MessageSquareText, Heart, X, UserPlus, User } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 // swiper imports
 import "swiper/css";
@@ -24,12 +24,12 @@ export default function ModelCard({ model, customerLatitude, customerLongitude, 
     const { t } = useTranslation();
     const navigate = useNavigate();
 
-    // Handler for chat button click with subscription check
-    const handleChatClick = (modelFirstName: string) => {
+    // Handler for WhatsApp button click with subscription check
+    const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
         } else {
-            navigate(`/customer/chat?id=${modelFirstName}`);
+            window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
 
@@ -78,13 +78,17 @@ export default function ModelCard({ model, customerLatitude, customerLongitude, 
                     <Form method="post">
                         <input type="hidden" name="modelId" value={model.id} />
                         {model?.isContact ?
-                            <button
-                                type="button"
-                                className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                onClick={() => handleChatClick(model.firstName)}
-                            >
-                                <MessageSquareText className="w-4 h-4" />
-                            </button>
+                            <div className="flex gap-2">
+                                {model?.whatsapp && (
+                                    <button
+                                        type="button"
+                                        className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
+                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                    >
+                                        <MessageSquareText className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                             :
                             <button
                                 type="submit"
@@ -126,21 +130,21 @@ export default function ModelCard({ model, customerLatitude, customerLongitude, 
             </div>
 
             <div className="absolute bottom-4 left-0 right-0 p-4 text-white z-10">
-                <h3 className="text-lg">
+                <h3 className="text-md text-shadow-lg">
                     {model.firstName} {model.lastName},{" "}
                     <span className="text-sm">{calculateAgeFromDOB(model.dob)} {t('matches.yearsOld')}</span>
                 </h3>
-                <p className="text-sm text-white/90 leading-tight">{model.bio}</p>
+                <p className="text-sm text-white/90 leading-tight text-shadow-lg">{model.bio}</p>
                 <div className="flex items-center gap-1 mt-1">
-                    <MapPin size={14} className="text-rose-500" />
-                    <span className="text-sm font-medium">
+                    <MapPin size={14} className="text-rose-500 text-shadow-lg" />
+                    <span className="text-sm font-medium text-shadow-lg">
                         {customerLatitude && customerLongitude && model?.latitude && model?.longitude
                             ? `${calculateDistance(
                                 Number(model.latitude),
                                 Number(model.longitude),
                                 Number(customerLatitude),
                                 Number(customerLongitude)
-                              ).toFixed(1)} ${t('matches.km')}`
+                            ).toFixed(1)} ${t('matches.km')}`
                             : `-- ${t('matches.km')}`
                         }
                     </span>

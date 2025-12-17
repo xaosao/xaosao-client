@@ -75,7 +75,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
         { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
-        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
+        // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.myProfile'), url: "/model/profile", icon: User, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
@@ -84,9 +84,10 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const mobileNavigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
         { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
-        { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
+        // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
+        { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
     ], [t, i18n.language, pendingBookingCount]);
 
     const isActiveRoute = (url: string) => {
@@ -195,7 +196,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                         </Link>
                         <div className="flex items-center justify-center gap-4">
                             <NotificationBell userType="model" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
-                            <Settings size={18} className="text-gray-500" onClick={() => navigate("/model/settings")} />
+                            {/* <Settings size={18} className="text-gray-500" onClick={() => navigate("/model/settings")} /> */}
                         </div>
                     </div>
                 )}

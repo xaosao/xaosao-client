@@ -169,6 +169,8 @@
     "deleteBooking": "Delete Booking",
     "checkIn": "Check In",
     "callModel": "Call Model",
+    "messageModel": "Message Model",
+    "whatsappMessage": "🌸 *XaoSao* 🌸\nHello {{modelName}}!\nI'm reaching out regarding my booking for *{{serviceName}}* on *{{date}}*.\nLooking forward to meeting you!\n📋 View booking: {{bookingUrl}}",
     "confirmRelease": "Confirm & Release Payment",
     "dispute": "Dispute",
     "to": "To",
@@ -1655,6 +1657,7 @@
       "messageCustomer": "Message Customer",
       "delete": "Delete"
     },
+    "whatsappMessage": "🌸 *XaoSao* 🌸\nHello {{customerName}}!\nI'm reaching out regarding your booking for *{{serviceName}}* on *{{date}}*.\nLooking forward to meeting you!\n📋 View booking: {{bookingUrl}}",
     "empty": {
       "title": "No Dating Requests Yet",
       "description": "You don't have any dating or service booking requests yet. They will appear here when customers book your services."

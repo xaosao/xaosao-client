@@ -1,8 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, Form, redirect, useNavigation } from 'react-router';
 import { User, Calendar, MarsStroke, ToggleLeft, MapPin, Book, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, MessageSquareText, Forward, UserPlus, Loader, X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 // components
 import { Badge } from '~/components/ui/badge';
@@ -209,7 +209,8 @@ export default function CustomerProfilePage() {
                               size="sm"
                               type="button"
                               className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                              onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
+                              // onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
+                              onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
                            >
                               <MessageSquareText className="w-3 h-3" />
                            </Button>
@@ -292,7 +293,8 @@ export default function CustomerProfilePage() {
                                  size="sm"
                                  type="button"
                                  className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                 onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
+                                 // onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
+                                 onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
                               >
                                  <MessageSquareText className="w-4 h-4" />
                                  {t("modelCustomerProfile.message")}

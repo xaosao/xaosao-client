@@ -34,6 +34,7 @@ export interface IHotmodelsResponse {
   latitude: number | null;
   longitude: number | null;
   profile: string | null;
+  whatsapp?: number | null;
   Images: IUserImages[];
   friends?: IFriendsRes[];
   isContact: boolean;
@@ -104,6 +105,7 @@ export interface ISinglemodelProfileResponse {
   education: string;
   relationshipStatus: string;
   bio: string;
+  whatsapp?: number | null;
   interests: Record<string, string> | null;
   Images: IUserImages[];
   ModelService: IModelService[];
@@ -131,6 +133,7 @@ export interface IForYouModelResponse {
   longitude: number | null;
   status: string;
   bio: string | null;
+  whatsapp?: number | null;
   available_status: IAvailableStatus;
   Images: IUserImages[];
   model_interactions?: ICustomerInteraction[] | null;

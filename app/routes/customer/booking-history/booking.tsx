@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -75,18 +75,9 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
    const { t } = useTranslation()
    const navigate = useNavigate()
    const navigation = useNavigation()
-   const { bookInfos, hasActiveSubscription } = loaderData
+   const { bookInfos } = loaderData
    const isLoading = navigation.state === "loading";
    const [isPolicyOpen, setIsPolicyOpen] = useState(false);
-
-   // Handler for chat button click with subscription check
-   const handleChatClick = (modelFirstName: string) => {
-      if (!hasActiveSubscription) {
-         navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
-      } else {
-         navigate(`/customer/chat?id=${modelFirstName}`);
-      }
-   };
 
    const getServiceName = (booking: IServiceBooking): string => {
       const serviceName = booking.modelService?.service?.name;
@@ -165,7 +156,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                {bookInfos.map((booking) => (
                   <Card
                      key={booking.id}
-                     className="border border-rose-100 hover:shadow-md transition-shadow rounded-sm"
+                     className="border hover:shadow-md transition-shadow rounded-sm"
                   >
                      <CardHeader>
                         <div className="flex items-start justify-between gap-4">
@@ -198,15 +189,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                  >
                                     {t('booking.viewDetails')}
                                  </DropdownMenuItem>
-
-                                 {booking.isContact && booking.model && (
-                                    <DropdownMenuItem
-                                       onClick={() => handleChatClick(booking.model.firstName)}
-                                       className="cursor-pointer"
-                                    >
-                                       {t('booking.startChatting')}
-                                    </DropdownMenuItem>
-                                 )}
 
                                  {booking.status === "pending" && (
                                     <>
@@ -249,6 +231,25 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           </DropdownMenuItem>
                                        )}
                                     </>
+                                 )}
+
+                                 {booking.model?.whatsapp && (
+                                    <DropdownMenuItem
+                                       onClick={() => {
+                                          const bookingUrl = `${window.location.origin}/model/dating/detail/${booking.id}`;
+                                          const message = t("booking.whatsappMessage", {
+                                             modelName: booking.model.firstName,
+                                             serviceName: getServiceName(booking),
+                                             date: formatDate(String(booking.startDate)),
+                                             bookingUrl
+                                          });
+                                          window.open(`https://wa.me/${booking.model.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                       }}
+                                       className="cursor-pointer text-green-600"
+                                    >
+                                       <MessageCircleMore className="h-4 w-4" />
+                                       {t('booking.messageModel')}
+                                    </DropdownMenuItem>
                                  )}
 
                                  {booking.status === "awaiting_confirmation" && (

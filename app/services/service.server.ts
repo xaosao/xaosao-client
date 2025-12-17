@@ -4,7 +4,6 @@ import { FieldValidationError } from "./base.server";
 // Get all services with model's application status
 export async function getServicesForModel(modelId: string) {
   try {
-    // Get all active services
     const services = await prisma.service.findMany({
       where: {
         status: "active",
@@ -14,7 +13,6 @@ export async function getServicesForModel(modelId: string) {
       },
     });
 
-    // Get model's applied services
     const modelServices = await prisma.model_service.findMany({
       where: {
         modelId,
@@ -25,7 +23,6 @@ export async function getServicesForModel(modelId: string) {
       },
     });
 
-    // Create a map of applied service IDs
     const appliedServiceMap = new Map(
       modelServices.map((ms) => [ms.serviceId, ms])
     );
@@ -38,7 +35,7 @@ export async function getServicesForModel(modelId: string) {
         isApplied: !!modelService,
         modelServiceId: modelService?.id || null,
         customRate: modelService?.customRate || null,
-        isAvailable: modelService?.isAvailable || false,
+        isAvailable: modelService?.isAvailable || true,
       };
     });
 

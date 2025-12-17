@@ -114,13 +114,17 @@ export default function CustomerCard({
 
           <div className="absolute top-4 right-4 z-10 flex space-x-2">
             {customer.isContact ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
-                className="bg-rose-500 hover:bg-rose-600 text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
-              >
-                <MessageSquareText className="w-3.5 h-3.5" />
-              </button>
+              <>
+                {customer.whatsapp && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                    className="bg-rose-500 hover:bg-rose-600 text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
+                  >
+                    <MessageSquareText className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
             ) : (
               <button
                 type="submit"

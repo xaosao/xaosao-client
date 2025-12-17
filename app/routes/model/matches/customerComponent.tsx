@@ -1,6 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { Form, useNavigate } from "react-router";
 import { MapPin, MessageSquareText, Heart, X, UserPlus } from "lucide-react";
-import { useTranslation } from "react-i18next";
 
 // swiper imports
 import "swiper/css";
@@ -71,13 +71,17 @@ export default function CustomerCard({ customer, modelLatitude, modelLongitude }
                     <Form method="post">
                         <input type="hidden" name="customerId" value={customer.id} />
                         {customer?.isContact ?
-                            <button
-                                type="button"
-                                className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
-                            >
-                                <MessageSquareText className="w-4 h-4" />
-                            </button>
+                            <div className="flex gap-2">
+                                {customer?.whatsapp && (
+                                    <button
+                                        type="button"
+                                        className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
+                                        onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                                    >
+                                        <MessageSquareText className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                             :
                             <button
                                 type="submit"

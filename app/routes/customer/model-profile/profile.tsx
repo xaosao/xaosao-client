@@ -1,8 +1,8 @@
 import React from 'react';
 import type { Route } from './+types/profile';
+import { useTranslation } from 'react-i18next';
 import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
 import { BadgeCheck, UserPlus, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 // components
 import {
@@ -26,10 +26,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // interface, services and utils
 import { getModelProfile } from '~/services/model.server';
-import type { ISinglemodelProfileResponse, IReviewData } from '~/interfaces';
 import { capitalize, getFirstWord } from '~/utils/functions/textFormat';
-import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative } from '~/utils';
+import type { ISinglemodelProfileResponse, IReviewData } from '~/interfaces';
 import { getUserTokenFromSession, requireUserSession } from '~/services/auths.server';
+import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative } from '~/utils';
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
 
 interface LoaderReturn {
@@ -151,12 +151,12 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST"
 
-    // Handler for chat button click with subscription check
-    const handleChatClick = (modelFirstName: string) => {
+    // Handler for WhatsApp button click with subscription check
+    const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
         } else {
-            navigate(`/customer/chat?id=${modelFirstName}`);
+            window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
 
@@ -274,14 +274,18 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             <Form method="post">
                                 <input type="hidden" name="modelId" value={model.id} />
                                 {model?.isContact ?
-                                    <Button
-                                        size="sm"
-                                        type="button"
-                                        className="cursor-pointer block sm:hidden border border-rose-500 sm:block text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                        onClick={() => handleChatClick(model.firstName)}
-                                    >
-                                        <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
-                                    </Button>
+                                    <>
+                                        {model?.whatsapp && (
+                                            <Button
+                                                size="sm"
+                                                type="button"
+                                                className="cursor-pointer block sm:hidden border border-rose-500 text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                            >
+                                                <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
+                                            </Button>
+                                        )}
+                                    </>
                                     :
                                     <Button
                                         size="sm"
@@ -338,14 +342,18 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                 <Form method="post">
                                     <input type="hidden" name="modelId" value={model.id} />
                                     {model?.isContact ?
-                                        <Button
-                                            size="sm"
-                                            type="button"
-                                            className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                            onClick={() => handleChatClick(model.firstName)}
-                                        >
-                                            {t('profile.message')}
-                                        </Button>
+                                        <>
+                                            {model?.whatsapp && (
+                                                <Button
+                                                    size="sm"
+                                                    type="button"
+                                                    className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                >
+                                                    {t('profile.message')}
+                                                </Button>
+                                            )}
+                                        </>
                                         :
                                         <Button
                                             size="sm"
