@@ -10,6 +10,7 @@ import { createWallet } from "./wallet.server";
 import type { TelbizError, TelbizResponse } from "~/interfaces";
 import { createCookieSessionStorage, redirect } from "react-router";
 import { FieldValidationError, getLocationDetails } from "./base.server";
+import { notifyAdminNewPendingModel } from "./email.server";
 
 const { compare, hash } = bcrypt;
 const MODEL_SESSION_SECRET =
@@ -492,6 +493,14 @@ export async function modelRegister(
         },
         model.id
       );
+
+      // Send email notification to admin about new pending model
+      notifyAdminNewPendingModel({
+        id: model.id,
+        firstName: model.firstName,
+        lastName: model.lastName,
+        tel: modelData.whatsapp,
+      });
 
       const modelChatData: ModelRegistrationData = {
         user_id: model.id,

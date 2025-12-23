@@ -177,10 +177,32 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return { error: result.message };
   } catch (error: any) {
+    // Handle validation errors (thrown as object with field keys)
     if (error && typeof error === "object" && !error.message) {
-      const validationError = Object.values(error)[0];
+      const fieldNames: Record<string, string> = {
+        firstName: "First Name",
+        lastName: "Last Name",
+        username: "Username",
+        password: "Password",
+        dob: "Date of Birth",
+        gender: "Gender",
+        whatsapp: "Phone Number",
+        bio: "Bio",
+        profile: "Profile Image",
+        address: "Address",
+        career: "Career",
+        education: "Education",
+        interests: "Interests",
+      };
+
+      // Get first error with field name
+      const firstErrorKey = Object.keys(error)[0];
+      const firstErrorValue = error[firstErrorKey];
+      const fieldLabel = fieldNames[firstErrorKey] || firstErrorKey;
+
       return {
-        error: String(validationError),
+        error: String(firstErrorValue),
+        errorField: fieldLabel,
       };
     }
 
@@ -628,6 +650,9 @@ export default function ModelRegister() {
 
           {actionData?.error && (
             <div className="text-sm bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {(actionData as any).errorField && (
+                <span className="font-semibold">{(actionData as any).errorField}: </span>
+              )}
               {t(actionData.error)}
             </div>
           )}

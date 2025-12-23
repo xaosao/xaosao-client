@@ -5,6 +5,7 @@ import { UserStatus } from "~/interfaces/base";
 import { FieldValidationError } from "./base.server";
 import type { IWalletCredentials } from "~/interfaces";
 import type { ITransactionCredentials } from "~/interfaces/transaction";
+import { notifyAdminNewWithdrawal, notifyAdminNewDeposit } from "./email.server";
 
 // create wallet when user register
 export async function createWallet(data: IWalletCredentials, userId: string) {
@@ -135,6 +136,18 @@ export async function topUpWallet(
         description: `Top-up wallet: ${createTopUpTransaction.id} successfully.`,
         status: "success",
         onSuccess: createTopUpTransaction,
+      });
+
+      // Get customer name for notification
+      const customerName = customerData?.firstName
+        ? `${customerData.firstName} ${customerData.lastName || ""}`
+        : "Customer";
+
+      // Send notification to admin
+      notifyAdminNewDeposit({
+        id: createTopUpTransaction.id,
+        amount,
+        customerName,
       });
     }
     return createTopUpTransaction;
@@ -697,6 +710,22 @@ export async function withdrawFunds(
         description: `Withdrawal request: ${withdrawalTransaction.id} - ${amount} to ${bankAccount}`,
         status: "success",
         onSuccess: withdrawalTransaction,
+      });
+
+      // Get model name for email notification
+      const model = await prisma.model.findUnique({
+        where: { id: modelId },
+        select: { firstName: true, lastName: true },
+      });
+
+      console.log("PK:::: prepare to send withdrawal notification email");
+
+      // Send email notification to admin about new withdrawal request
+      notifyAdminNewWithdrawal({
+        id: withdrawalTransaction.id,
+        amount,
+        bankAccount,
+        modelName: model ? `${model.firstName} ${model.lastName || ""}` : "Unknown",
       });
     }
 
