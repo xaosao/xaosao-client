@@ -94,13 +94,49 @@ export default function ServiceBooking() {
       navigate(`/customer/user-profile/${params.modelId}`);
    }
 
+   // Helper function to get translated service name
+   const getServiceName = (serviceName: string): string => {
+      if (!serviceName) return t("booking.serviceUnavailable");
+      return t(`modelServices.serviceItems.${serviceName}.name`, { defaultValue: serviceName });
+   };
+
+   // Helper function to get translated service description
+   const getServiceDescription = (nameKey: string, fallbackDescription: string | null): string => {
+      const translatedDesc = t(`modelServices.serviceItems.${nameKey}.description`);
+      if (translatedDesc.includes('modelServices.serviceItems')) {
+         return fallbackDescription || t("modelServices.noDescription");
+      }
+      return translatedDesc;
+   };
+
+   // Helper function to check if a date can be selected (allows today if 1+ hour from now)
+   const isDateDisabled = (date: Date): boolean => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dateToCheck = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      // Past dates are always disabled
+      if (dateToCheck < today) return true;
+
+      // Future dates are always allowed
+      if (dateToCheck > today) return false;
+
+      // For today: allow if there's at least 1 hour remaining in the day
+      // (time validation will be done when user selects the time)
+      const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+      // Disable today only if less than 1 hour left in the day
+      return oneHourFromNow > endOfDay;
+   };
+
    return (
       <Modal onClose={closeHandler} className="h-screen sm:h-auto w-full sm:w-3/6 py-8 sm:py-4 px-4 border rounded-xl">
          <div className="space-y-3 sm:space-y-6">
             <div className="space-y-2 mt-10 sm:mt-0">
-               <div className="text-md font-bold text-balance">{service.service.name}</div>
+               <div className="text-md font-bold text-balance">{getServiceName(service.service.name)}</div>
                <div className="text-sm leading-relaxed">
-                  {service.service.description}
+                  {getServiceDescription(service.service.name, service.service.description)}
                </div>
             </div>
 
@@ -136,7 +172,7 @@ export default function ServiceBooking() {
                                     mode="single"
                                     selected={startDate}
                                     onSelect={setStartDate}
-                                    disabled={(date) => date < new Date()}
+                                    disabled={isDateDisabled}
                                     initialFocus
                                  />
                                  <div className="p-2">
@@ -152,9 +188,37 @@ export default function ServiceBooking() {
                                           const newDate = new Date(startDate);
                                           newDate.setHours(hours);
                                           newDate.setMinutes(minutes);
-                                          setStartDate(newDate);
+
+                                          // Check if the selected datetime is at least 1 hour from now
+                                          const now = new Date();
+                                          const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+
+                                          if (newDate < oneHourFromNow) {
+                                             // Set to 1 hour from now if selected time is too soon
+                                             const minAllowedTime = new Date(oneHourFromNow);
+                                             minAllowedTime.setSeconds(0);
+                                             minAllowedTime.setMilliseconds(0);
+                                             setStartDate(minAllowedTime);
+                                          } else {
+                                             setStartDate(newDate);
+                                          }
                                        }}
                                     />
+                                    {startDate && (() => {
+                                       const now = new Date();
+                                       const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+                                       const isToday = startDate.toDateString() === now.toDateString();
+                                       if (isToday) {
+                                          const minHour = oneHourFromNow.getHours().toString().padStart(2, '0');
+                                          const minMinute = oneHourFromNow.getMinutes().toString().padStart(2, '0');
+                                          return (
+                                             <p className="text-xs text-amber-600 mt-1">
+                                                {t('profileBook.minTimeToday', { time: `${minHour}:${minMinute}`, defaultValue: `Minimum time for today: ${minHour}:${minMinute}` })}
+                                             </p>
+                                          );
+                                       }
+                                       return null;
+                                    })()}
                                  </div>
                               </PopoverContent>
                            </Popover>
@@ -193,7 +257,7 @@ export default function ServiceBooking() {
                                     selected={endDate}
                                     onSelect={setEndDate}
                                     disabled={(date) => {
-                                       if (!startDate) return date < new Date();
+                                       if (!startDate) return isDateDisabled(date);
                                        return date < startDate;
                                     }}
                                     initialFocus
