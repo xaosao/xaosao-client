@@ -14,6 +14,7 @@ import {
   notifyBookingDisputed,
   notifyPaymentRefunded,
   notifyAutoReleasePayment,
+  notifyBookingEdited,
 } from "./notification.server";
 
 import crypto from "crypto";
@@ -338,7 +339,7 @@ export async function createServiceBooking(
         onSuccess: result,
       });
 
-      // Send notification to model
+      // Send notification to model (including SMS)
       try {
         const customer = await prisma.customer.findUnique({
           where: { id: customerId },
@@ -354,7 +355,10 @@ export async function createServiceBooking(
             customerId,
             result.id,
             modelService.service.name,
-            customer.firstName
+            customer.firstName,
+            data.startDate,
+            data.location,
+            data.price
           );
         }
       } catch (notifyError) {
@@ -406,6 +410,10 @@ export async function updateServiceBooking(
         startDate: data.startDate,
         endDate: data.endDate,
       },
+      include: {
+        model: { select: { id: true } },
+        modelService: { include: { service: true } },
+      },
     });
 
     if (result.id) {
@@ -415,6 +423,28 @@ export async function updateServiceBooking(
         status: "success",
         onSuccess: result,
       });
+
+      // Send notification to model (including SMS)
+      try {
+        const customer = await prisma.customer.findUnique({
+          where: { id: customerId },
+          select: { firstName: true },
+        });
+        if (customer && result.model?.id && result.modelService?.service) {
+          await notifyBookingEdited(
+            result.model.id,
+            customerId,
+            result.id,
+            result.modelService.service.name,
+            customer.firstName,
+            data.startDate,
+            data.location,
+            data.price
+          );
+        }
+      } catch (notifyError) {
+        console.error("NOTIFY_BOOKING_EDITED_FAILED", notifyError);
+      }
     }
     return result;
   } catch (error) {
@@ -777,7 +807,7 @@ export async function cancelServiceBooking(id: string, customerId: string) {
         onSuccess: cancelledBooking,
       });
 
-      // Send notification to model
+      // Send notification to model (including SMS)
       try {
         const customer = await prisma.customer.findUnique({
           where: { id: customerId },
@@ -793,7 +823,8 @@ export async function cancelServiceBooking(id: string, customerId: string) {
             customerId,
             id,
             bookingWithService.modelService.service.name,
-            customer.firstName
+            customer.firstName,
+            booking.startDate
           );
         }
       } catch (notifyError) {
@@ -1002,7 +1033,7 @@ export async function acceptBooking(id: string, modelId: string) {
         onSuccess: updatedBooking,
       });
 
-      // Send notification to customer
+      // Send notification to customer (including SMS)
       try {
         const model = await prisma.model.findUnique({
           where: { id: modelId },
@@ -1018,7 +1049,9 @@ export async function acceptBooking(id: string, modelId: string) {
             modelId,
             id,
             bookingWithService.modelService.service.name,
-            model.firstName
+            model.firstName,
+            booking.startDate,
+            booking.location || undefined
           );
         }
       } catch (notifyError) {
@@ -1327,7 +1360,8 @@ export async function completeBooking(id: string, modelId: string) {
             modelId,
             id,
             bookingWithService.modelService.service.name,
-            model.firstName
+            model.firstName,
+            booking.price
           );
         }
       } catch (notifyError) {
@@ -1462,7 +1496,7 @@ export async function modelCheckIn(
       onSuccess: updatedBooking,
     });
 
-    // Send notification to customer
+    // Send notification to customer (including SMS)
     try {
       const model = await prisma.model.findUnique({
         where: { id: modelId },
@@ -1473,7 +1507,8 @@ export async function modelCheckIn(
           booking.customerId,
           modelId,
           id,
-          model.firstName
+          model.firstName,
+          booking.location || undefined
         );
       }
     } catch (notifyError) {
@@ -1603,7 +1638,7 @@ export async function customerCheckIn(
       onSuccess: updatedBooking,
     });
 
-    // Send notification to model
+    // Send notification to model (including SMS)
     try {
       const customer = await prisma.customer.findUnique({
         where: { id: customerId },
@@ -1614,7 +1649,8 @@ export async function customerCheckIn(
           booking.modelId,
           customerId,
           id,
-          customer.firstName
+          customer.firstName,
+          booking.location || undefined
         );
       }
     } catch (notifyError) {

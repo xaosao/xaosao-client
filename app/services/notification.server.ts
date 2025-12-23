@@ -1,5 +1,120 @@
 import { prisma } from "./database.server";
 import { EventEmitter } from "events";
+import Telbiz from "telbiz";
+
+// ========================================
+// SMS Configuration
+// ========================================
+
+// Initialize Telbiz SMS client
+const tb = new Telbiz(
+  process.env.TELBIZ_CLIENT_ID as string,
+  process.env.TELBIZ_SECRETKEY as string
+);
+
+/**
+ * Format phone number for Telbiz (expects 20xxxxxxxx or 30xxxxxxx format)
+ */
+function formatPhoneNumber(phone: string | number | null): string | null {
+  if (!phone) return null;
+
+  let formattedPhone = phone.toString();
+
+  // Remove country code 856 if present
+  if (formattedPhone.startsWith("856")) {
+    formattedPhone = formattedPhone.substring(3);
+  }
+
+  // Remove leading zeros
+  formattedPhone = formattedPhone.replace(/^0+/, "");
+
+  // Validate format: should be 10 digits starting with 20 or 30
+  if (!formattedPhone.match(/^(20|30)\d{8}$/)) {
+    console.warn(`Invalid phone number format: ${formattedPhone}`);
+    return null;
+  }
+
+  return formattedPhone;
+}
+
+/**
+ * Send SMS to a phone number
+ */
+async function sendSMS(phone: string | number | null, message: string): Promise<boolean> {
+  try {
+    if (!process.env.TELBIZ_CLIENT_ID || !process.env.TELBIZ_SECRETKEY) {
+      console.warn("Telbiz credentials not configured. SMS not sent.");
+      return false;
+    }
+
+    const formattedPhone = formatPhoneNumber(phone);
+    if (!formattedPhone) {
+      console.warn("Invalid phone number, SMS not sent.");
+      return false;
+    }
+
+    await tb.SendSMSAsync("OTP", formattedPhone, message);
+    console.log(`SMS sent to ${formattedPhone}`);
+    return true;
+  } catch (error) {
+    console.error("SEND_SMS_FAILED", error);
+    return false;
+  }
+}
+
+/**
+ * Get model's WhatsApp number
+ */
+async function getModelPhone(modelId: string): Promise<number | null> {
+  try {
+    const model = await prisma.model.findUnique({
+      where: { id: modelId },
+      select: { whatsapp: true },
+    });
+    return model?.whatsapp || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get customer's WhatsApp number
+ */
+async function getCustomerPhone(customerId: string): Promise<number | null> {
+  try {
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { whatsapp: true },
+    });
+    return customer?.whatsapp || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Send SMS to model
+ */
+async function sendSMSToModel(modelId: string, message: string): Promise<void> {
+  const phone = await getModelPhone(modelId);
+  if (phone) {
+    sendSMS(phone, message).catch((err) =>
+      console.error("Failed to send SMS to model:", err)
+    );
+  }
+}
+
+/**
+ * Send SMS to customer
+ */
+async function sendSMSToCustomer(customerId: string, message: string): Promise<void> {
+  const phone = await getCustomerPhone(customerId);
+  if (phone) {
+    sendSMS(phone, message).catch((err) =>
+      console.error("Failed to send SMS to customer:", err)
+    );
+  }
+}
 
 // ========================================
 // Notification Types
@@ -377,7 +492,10 @@ export async function notifyBookingCreated(
   customerId: string,
   bookingId: string,
   serviceName: string,
-  customerName: string
+  customerName: string,
+  startDate?: Date,
+  location?: string,
+  price?: number
 ) {
   await createModelNotification(modelId, {
     type: "booking_created",
@@ -385,6 +503,12 @@ export async function notifyBookingCreated(
     message: `${customerName} has requested to book your "${serviceName}" service.`,
     data: { bookingId, customerId },
   });
+
+  // Send SMS to model
+  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const priceStr = price ? `${price.toLocaleString()} LAK` : "";
+  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 /**
@@ -395,7 +519,9 @@ export async function notifyBookingConfirmed(
   modelId: string,
   bookingId: string,
   serviceName: string,
-  modelName: string
+  modelName: string,
+  startDate?: Date,
+  location?: string
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_confirmed",
@@ -403,6 +529,11 @@ export async function notifyBookingConfirmed(
     message: `${modelName} has accepted your booking for "${serviceName}".`,
     data: { bookingId, modelId },
   });
+
+  // Send SMS to customer
+  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາ Check-in ເມື່ອຮອດເວລານັດໝາຍ.`;
+  sendSMSToCustomer(customerId, smsMessage);
 }
 
 /**
@@ -422,6 +553,10 @@ export async function notifyBookingRejected(
     message: `${modelName} has declined your booking for "${serviceName}".${reason ? ` Reason: ${reason}` : ""}`,
     data: { bookingId, modelId, reason },
   });
+
+  // Send SMS to customer
+  const smsMessage = `XaoSao: ການຈອງຖືກປະຕິເສດ. ${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້${reason ? `. ເຫດຜົນ: ${reason}` : ""}. ເງິນໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ແລ້ວ.`;
+  sendSMSToCustomer(customerId, smsMessage);
 }
 
 /**
@@ -432,7 +567,8 @@ export async function notifyBookingCancelled(
   customerId: string,
   bookingId: string,
   serviceName: string,
-  customerName: string
+  customerName: string,
+  startDate?: Date
 ) {
   await createModelNotification(modelId, {
     type: "booking_cancelled",
@@ -440,6 +576,11 @@ export async function notifyBookingCancelled(
     message: `${customerName} has cancelled the booking for "${serviceName}".`,
     data: { bookingId, customerId },
   });
+
+  // Send SMS to model
+  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const smsMessage = `XaoSao: ການຈອງຖືກຍົກເລີກ! ${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 /**
@@ -449,7 +590,8 @@ export async function notifyModelCheckedIn(
   customerId: string,
   modelId: string,
   bookingId: string,
-  modelName: string
+  modelName: string,
+  location?: string
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_checkin_model",
@@ -457,6 +599,10 @@ export async function notifyModelCheckedIn(
     message: `${modelName} has arrived at the location and checked in.`,
     data: { bookingId, modelId },
   });
+
+  // Send SMS to customer
+  const smsMessage = `XaoSao: ${modelName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
+  sendSMSToCustomer(customerId, smsMessage);
 }
 
 /**
@@ -466,7 +612,8 @@ export async function notifyCustomerCheckedIn(
   modelId: string,
   customerId: string,
   bookingId: string,
-  customerName: string
+  customerName: string,
+  location?: string
 ) {
   await createModelNotification(modelId, {
     type: "booking_checkin_customer",
@@ -474,6 +621,10 @@ export async function notifyCustomerCheckedIn(
     message: `${customerName} has arrived at the location and checked in.`,
     data: { bookingId, customerId },
   });
+
+  // Send SMS to model
+  const smsMessage = `XaoSao: ${customerName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 /**
@@ -484,7 +635,8 @@ export async function notifyBookingCompleted(
   modelId: string,
   bookingId: string,
   serviceName: string,
-  modelName: string
+  modelName: string,
+  price?: number
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_completed",
@@ -492,6 +644,11 @@ export async function notifyBookingCompleted(
     message: `${modelName} has marked the "${serviceName}" service as complete. Please confirm within 48 hours.`,
     data: { bookingId, modelId },
   });
+
+  // Send SMS to customer
+  const priceStr = price ? `${price.toLocaleString()} LAK` : "";
+  const smsMessage = `XaoSao: ${modelName} ແຈ້ງວ່າບໍລິການ "${serviceName}"${priceStr ? ` (${priceStr})` : ""} ສຳເລັດແລ້ວ! ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ ຫຼື ເງິນຈະຖືກໂອນອັດຕະໂນມັດ.`;
+  sendSMSToCustomer(customerId, smsMessage);
 }
 
 /**
@@ -511,6 +668,10 @@ export async function notifyCompletionConfirmed(
     message: `${customerName} has confirmed the booking. ${amount.toLocaleString()} LAK has been released to your wallet.`,
     data: { bookingId, customerId, amount },
   });
+
+  // Send SMS to model
+  const smsMessage = `XaoSao: ${customerName} ໄດ້ຢືນຢັນການສຳເລັດບໍລິການ "${serviceName}"! ເງິນ ${amount.toLocaleString()} LAK ໄດ້ຖືກໂອນເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 /**
@@ -530,6 +691,10 @@ export async function notifyBookingDisputed(
     message: `${customerName} has disputed the "${serviceName}" booking. Reason: ${reason}`,
     data: { bookingId, customerId, reason },
   });
+
+  // Send SMS to model
+  const smsMessage = `XaoSao: ມີການຮ້ອງຮຽນ! ${customerName} ຮ້ອງຮຽນການຈອງ "${serviceName}". ເຫດຜົນ: ${reason}. ກະລຸນາຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 /**
@@ -556,7 +721,8 @@ export async function notifyAutoReleasePayment(
   modelId: string,
   customerId: string,
   bookingId: string,
-  amount: number
+  amount: number,
+  serviceName?: string
 ) {
   // Notify model
   await createModelNotification(modelId, {
@@ -573,6 +739,37 @@ export async function notifyAutoReleasePayment(
     message: `Your booking has been automatically completed after the 48-hour confirmation window.`,
     data: { bookingId },
   });
+
+  // Send SMS to model
+  const smsMessage = `XaoSao: ເງິນ ${amount.toLocaleString()} LAK${serviceName ? ` ຈາກບໍລິການ "${serviceName}"` : ""} ໄດ້ຖືກໂອນອັດຕະໂນມັດເຂົ້າ Wallet ຂອງທ່ານແລ້ວ (ໝົດເວລາ 24 ຊົ່ວໂມງ).`;
+  sendSMSToModel(modelId, smsMessage);
+}
+
+/**
+ * Send notification when customer edits booking
+ */
+export async function notifyBookingEdited(
+  modelId: string,
+  customerId: string,
+  bookingId: string,
+  serviceName: string,
+  customerName: string,
+  startDate?: Date,
+  location?: string,
+  price?: number
+) {
+  await createModelNotification(modelId, {
+    type: "booking_created", // Reuse type for edit notification
+    title: "Booking Updated",
+    message: `${customerName} has updated the booking for "${serviceName}".`,
+    data: { bookingId, customerId },
+  });
+
+  // Send SMS to model
+  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const priceStr = price ? `${price.toLocaleString()} LAK` : "";
+  const smsMessage = `XaoSao: ການຈອງຖືກແກ້ໄຂ! ${customerName} ແກ້ໄຂການຈອງ "${serviceName}"${dateStr ? ` ວັນທີໃໝ່: ${dateStr}` : ""}${location ? ` ສະຖານທີ່: ${location}` : ""}${priceStr ? ` ລາຄາ: ${priceStr}` : ""}. ກະລຸນາກວດສອບໃນແອັບ.`;
+  sendSMSToModel(modelId, smsMessage);
 }
 
 // ========================================
