@@ -263,15 +263,16 @@ export default function SignUpPage() {
                             bg-black/50 backdrop-blur-lg shadow-2xl py-8 px-4 sm:p-8 flex flex-col justify-start z-20
                             lg:top-0 lg:right-0 lg:left-auto lg:translate-x-0 lg:translate-y-0 lg:w-2/5 lg:h-full lg:rounded-none">
 
-                <div className="rounded-full hidden sm:flex items-center justify-start mb-4 cursor-pointer" onClick={() => navigate("/")}>
-                    <img src="/images/logo-white.png" className="w-30 h-10" />
-                </div>
-
-                <div className="space-y-2 mb-6">
-                    <h1 className="flex items-center justify-start text-md sm:text-lg font-bold text-white uppercase">
-                        <UserPlus className="text-rose-500" />&nbsp;&nbsp;{t('register.title')}
-                    </h1>
-                    <p className="text-white text-xs sm:text-sm">{t('register.subtitle')}</p>
+                <div className="flex items-start justify-between">
+                    <div className="space-y-2 mb-6">
+                        <h1 className="flex items-center justify-start text-md sm:text-lg font-bold text-white uppercase">
+                            <UserPlus className="text-rose-500" />&nbsp;&nbsp;{t('register.title')}
+                        </h1>
+                        <p className="text-white text-xs sm:text-sm">{t('register.subtitle')}</p>
+                    </div>
+                    <div className="rounded-full hidden sm:flex items-center justify-start mb-4 cursor-pointer" onClick={() => navigate("/")}>
+                        <img src="/images/logo-white.png" className="w-30 h-10" />
+                    </div>
                 </div>
                 <Form method="post" encType="multipart/form-data" className="space-y-1 sm:space-y-4">
                     <div className="flex flex-col items-center justify-center space-y-2">

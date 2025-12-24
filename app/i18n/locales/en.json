@@ -368,6 +368,18 @@
       "adFree": "Ad-Free User Experience",
       "prioritySupport": "Priority Customer Support"
     },
+    "infoModal": {
+      "title": "Unlock Premium Features",
+      "subtitle": "Subscribe to access exclusive features and connect with amazing people!",
+      "chatTitle": "Private Chat Access",
+      "chatDesc": "Send unlimited messages and connect privately with your matches.",
+      "bookingTitle": "Easy Date Booking",
+      "bookingDesc": "Book dates directly through the app with just a few taps.",
+      "benefitsTitle": "Premium Benefits",
+      "benefitsDesc": "Get profile boosts, advanced filters, and priority support.",
+      "cancel": "Cancel",
+      "continue": "Continue"
+    },
     "payment": {
       "title": "Subscription Payment",
       "upgradeTitle": "Subscription Upgrade",
@@ -1369,7 +1381,8 @@
       "report": "Report an Issue",
       "reportDesc": "Report technical issues",
       "delete": "Delete Account",
-      "deleteDesc": "Permanently delete account"
+      "deleteDesc": "Permanently delete account",
+      "logoutDesc": "Sign out of your account"
     }
   },
   "modelProfile": {
@@ -1862,5 +1875,12 @@
     "booking_earning": "Booking Earning",
     "booking_refund": "Booking Refund",
     "deposit": "Deposit"
+  },
+  "walletStatus": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "held": "Held",
+    "released": "Released"
   }
 }

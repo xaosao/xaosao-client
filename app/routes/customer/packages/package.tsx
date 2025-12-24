@@ -6,15 +6,24 @@ import { Navigation, Pagination } from "swiper/modules";
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ArrowLeft, History } from "lucide-react"
 import { Link, useNavigate, type LoaderFunction } from "react-router"
+import { Check, ArrowLeft, History, MessageCircle, Calendar, Sparkles } from "lucide-react"
 
 // components:
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
+import {
+   Dialog,
+   DialogContent,
+   DialogDescription,
+   DialogFooter,
+   DialogHeader,
+   DialogTitle,
+   DialogOverlay,
+} from "~/components/ui/dialog"
 
-import { requireUserSession } from "~/services/auths.server";
 import { getPackages } from "~/services/package.server"
+import { requireUserSession } from "~/services/auths.server";
 import { calculateDiscountPercent, formatCurrency } from "~/utils"
 import type { ISubscriptionPlanWithCurrentResponse } from "~/interfaces/packages"
 
@@ -65,9 +74,76 @@ export default function PricingPage({ loaderData }: TransactionProps) {
    // Find the first non-current plan or popular plan for mobile default selection
    const defaultSelectedPlan = plans.find(p => !p.current && p.isPopular) || plans.find(p => !p.current) || plans[0];
    const [selectedPlan, setSelectedPlan] = useState<ISubscriptionPlanWithCurrentResponse>(defaultSelectedPlan)
+   const [showInfoModal, setShowInfoModal] = useState(true)
 
    return (
       <div className="sm:min-h-screen relative overflow-hidden px-3 sm:px-0">
+         {/* Subscription Info Modal */}
+         <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
+            <DialogOverlay className="bg-black/30 backdrop-blur-sm" />
+            <DialogContent className="sm:max-w-md">
+               <DialogHeader>
+                  <DialogTitle className="text-center text-xl font-bold text-gray-800">
+                     {t('packages.infoModal.title')}
+                  </DialogTitle>
+                  <DialogDescription className="text-center text-gray-600">
+                     {t('packages.infoModal.subtitle')}
+                  </DialogDescription>
+               </DialogHeader>
+
+               <div className="space-y-4 py-4">
+                  <div className="flex items-start gap-3 p-3 bg-rose-50 rounded-lg">
+                     <div className="p-2 bg-rose-100 rounded-full">
+                        <MessageCircle className="h-5 w-5 text-rose-500" />
+                     </div>
+                     <div>
+                        <h4 className="font-medium text-gray-800">{t('packages.infoModal.chatTitle')}</h4>
+                        <p className="text-sm text-gray-600">{t('packages.infoModal.chatDesc')}</p>
+                     </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 bg-pink-50 rounded-lg">
+                     <div className="p-2 bg-pink-100 rounded-full">
+                        <Calendar className="h-5 w-5 text-pink-500" />
+                     </div>
+                     <div>
+                        <h4 className="font-medium text-gray-800">{t('packages.infoModal.bookingTitle')}</h4>
+                        <p className="text-sm text-gray-600">{t('packages.infoModal.bookingDesc')}</p>
+                     </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
+                     <div className="p-2 bg-purple-100 rounded-full">
+                        <Sparkles className="h-5 w-5 text-purple-500" />
+                     </div>
+                     <div>
+                        <h4 className="font-medium text-gray-800">{t('packages.infoModal.benefitsTitle')}</h4>
+                        <p className="text-sm text-gray-600">{t('packages.infoModal.benefitsDesc')}</p>
+                     </div>
+                  </div>
+               </div>
+
+               <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                     variant="outline"
+                     onClick={() => {
+                        setShowInfoModal(false);
+                        navigate(-1);
+                     }}
+                     className="w-full sm:w-auto"
+                  >
+                     {t('packages.infoModal.cancel')}
+                  </Button>
+                  <Button
+                     onClick={() => setShowInfoModal(false)}
+                     className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white"
+                  >
+                     {t('packages.infoModal.continue')}
+                  </Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+
          <nav className="relative z-10 p-6">
             <div className="container mx-auto flex items-center justify-between">
                <button

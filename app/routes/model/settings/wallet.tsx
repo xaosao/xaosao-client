@@ -28,6 +28,24 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 import { formatCurrency } from "~/utils";
 import type { IWalletResponse } from "~/interfaces";
 import { capitalize } from "~/utils/functions/textFormat";
+
+const statusConfig: Record<string, { className: string }> = {
+  pending: {
+    className: "bg-amber-100 text-amber-600",
+  },
+  approved: {
+    className: "bg-green-100 text-green-600",
+  },
+  rejected: {
+    className: "bg-red-100 text-red-600",
+  },
+  held: {
+    className: "bg-blue-100 text-blue-600",
+  },
+  released: {
+    className: "bg-emerald-100 text-emerald-600",
+  },
+};
 import type { IModelBank } from "~/interfaces/model-profile";
 import type { PaginationProps } from "~/interfaces/pagination";
 import { getModelBanks } from "~/services/model-profile.server";
@@ -292,21 +310,10 @@ export default function ModelWalletPage() {
                         <p className="text-gray-500">{index + 1}</p>
                         <div className="flex items-center gap-4">
                           <div
-                            className={`hidden sm:block p-3 rounded-md ${transaction.status === "approved"
-                              ? "bg-green-100"
-                              : transaction.status === "rejected"
-                                ? "bg-red-100"
-                                : "bg-orange-100"
-                              }`}
+                            className={`hidden sm:block p-3 rounded-md ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}
                           >
                             <span
-                              className={
-                                transaction.status === "approved"
-                                  ? "text-green-600"
-                                  : transaction.status === "rejected"
-                                    ? "text-red-600"
-                                    : "text-orange-600"
-                              }
+                              className={statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}
                             >
                               LAK
                             </span>
@@ -340,14 +347,9 @@ export default function ModelWalletPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <p
-                          className={`text-center text-xs px-2 py-1 rounded-sm ${transaction.status === "approved"
-                            ? "bg-green-100 text-green-600"
-                            : transaction.status === "rejected"
-                              ? "bg-red-100 text-red-600"
-                              : "bg-orange-100 text-orange-600"
-                            }`}
+                          className={`text-center text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}
                         >
-                          {capitalize(transaction.status)}
+                          {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
                         </p>
 
                         <DropdownMenu>

@@ -99,17 +99,19 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         location.pathname.includes("realtime-chat") ||
         location.pathname.includes("chat");
 
-    // 👇 Show mobile header only on main navigation routes (hide on realtime-chat)
-    const showMobileHeader = !hideMobileNav && mobileNavigationItems.some(item => {
-        if (item.url === "/customer" && location.pathname === "/customer") return true;
-        if (item.url !== "/customer" && location.pathname.startsWith(item.url)) return true;
-        return false;
-    });
+    // 👇 Show mobile header only on main navigation routes (hide on realtime-chat and settings pages)
+    const showMobileHeader = !hideMobileNav &&
+        !location.pathname.startsWith("/customer/setting") &&
+        mobileNavigationItems.some(item => {
+            if (item.url === "/customer" && location.pathname === "/customer") return true;
+            if (item.url !== "/customer" && location.pathname.startsWith(item.url)) return true;
+            return false;
+        });
 
 
     return (
         <div className="flex min-h-screen w-full relative">
-            <div className="w-1/5 p-6 hidden sm:flex flex-col items-start justify-between sm:sticky sm:top-0 sm:h-screen">
+            <div className="w-1/5 p-6 hidden sm:flex flex-col items-start justify-between sm:sticky sm:top-0 sm:h-screen pb-10">
                 <div className="w-full">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
@@ -158,7 +160,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                 </div>
             </div>
 
-            <div className="w-full sm:w-4/5 flex flex-col min-h-screen">
+            <div className="w-full sm:w-4/5 flex flex-col min-h-screen pb-18 sm:pb-0">
                 {showMobileHeader && (
                     <div className="sm:hidden flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-30">
                         <Link to="/customer/profile"

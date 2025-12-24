@@ -1,5 +1,6 @@
 import {
   Lock,
+  LogOut,
   Trash2,
   Wallet,
   Settings,
@@ -11,7 +12,7 @@ import {
 import { useEffect } from "react";
 import type { MetaFunction } from "react-router";
 import { Separator } from "~/components/ui/separator";
-import { useNavigate, useLocation, Outlet } from "react-router";
+import { useNavigate, useLocation, Outlet, Form } from "react-router";
 import { useTranslation } from "react-i18next";
 
 export const meta: MetaFunction = () => {
@@ -96,6 +97,24 @@ export default function ModelSettings() {
                 </button>
               );
             })}
+
+            {/* Logout button - Mobile only */}
+            <Form method="post" action="/model-logout" className="border-t border-gray-100">
+              <button
+                type="submit"
+                className="cursor-pointer w-full flex items-center justify-between p-4 hover:bg-rose-50 transition-colors text-rose-600"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-left">
+                    <h3 className="font-medium">{t("settings.common.logout")}</h3>
+                    <p className="text-xs text-rose-400 mt-0.5">
+                      {t("modelSettings.tabs.logoutDesc")}
+                    </p>
+                  </div>
+                </div>
+                <LogOut className="w-4 h-4" />
+              </button>
+            </Form>
           </div>
         ) : (
           <div className="py-0 sm:py-4">

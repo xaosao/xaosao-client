@@ -401,13 +401,55 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                 </div>
 
                 <div className="pb-4">
-                    <Tabs defaultValue="account" className="w-full">
+                    <Tabs defaultValue="services" className="w-full">
                         <TabsList className='w-full mb-2'>
-                            <TabsTrigger value="account">{t('profile.tabs.accountInfo')}</TabsTrigger>
                             <TabsTrigger value="services">{t('profile.tabs.service')}</TabsTrigger>
+                            <TabsTrigger value="account">{t('profile.tabs.accountInfo')}</TabsTrigger>
                             <TabsTrigger value="images">{t('profile.tabs.images')}</TabsTrigger>
                             <TabsTrigger value="reviews">{t('profile.tabs.reviews')}</TabsTrigger>
                         </TabsList>
+                        <TabsContent value="services" className="space-y-4">
+                            {model.ModelService.length > 0 ?
+                                <div className="w-full">
+                                    <h3 className="text-sm font-semibold text-gray-800 mb-3 uppercase">{t('profile.serviceRating')}</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mx-auto ">
+                                        {model.ModelService.map((service) => {
+                                            const name = getFirstWord(service.service.name).toLowerCase();
+                                            return (
+                                                <Card key={service.id} className={`cursor-pointer w-full max-w-sm ${name === "sleep" ? "border-cyan-500" : name === "drinking" ? "border-green-500" : "border-rose-500"}`}>
+                                                    <CardHeader>
+                                                        <CardTitle className='text-sm'>{getServiceName(service.service.name)}</CardTitle>
+                                                        <CardDescription className='text-xs sm:text-sm'>
+                                                            {getServiceDescription(service.service.name, service.service.description)}
+                                                        </CardDescription>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <strong className="text-sm">{formatCurrency(Number(service.customRate ? service.customRate : service.service.baseRate))} {t('profile.perTime')}</strong>
+                                                    </CardContent>
+                                                    <CardFooter className="flex-col gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            className="w-full hover:border hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500"
+                                                            onClick={() => handleBookClick(model.id, service.id)}
+                                                        >
+                                                            {t('profile.bookNow')}
+                                                        </Button>
+                                                    </CardFooter>
+                                                </Card>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                                :
+                                <div className="w-full">
+                                    <EmptyPage
+                                        title={t('profile.noServices')}
+                                        description={t('profile.noServicesDesc')}
+                                    />
+                                </div>
+                            }
+                        </TabsContent>
                         <TabsContent value="account">
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
                                 <div className="w-full flex items-start justify-start flex-col space-y-3 text-sm p-2">
@@ -464,48 +506,6 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     </div>
                                 </div>
                             </div>
-                        </TabsContent>
-                        <TabsContent value="services" className="space-y-4">
-                            {model.ModelService.length > 0 ?
-                                <div className="w-full">
-                                    <h3 className="text-sm font-semibold text-gray-800 mb-3 uppercase">{t('profile.serviceRating')}</h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mx-auto ">
-                                        {model.ModelService.map((service) => {
-                                            const name = getFirstWord(service.service.name).toLowerCase();
-                                            return (
-                                                <Card key={service.id} className={`cursor-pointer w-full max-w-sm ${name === "sleep" ? "border-cyan-500" : name === "drinking" ? "border-green-500" : "border-rose-500"}`}>
-                                                    <CardHeader>
-                                                        <CardTitle className='text-sm'>{getServiceName(service.service.name)}</CardTitle>
-                                                        <CardDescription className='text-xs sm:text-sm'>
-                                                            {getServiceDescription(service.service.name, service.service.description)}
-                                                        </CardDescription>
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        <strong className="text-sm">{formatCurrency(Number(service.customRate ? service.customRate : service.service.baseRate))} {t('profile.perTime')}</strong>
-                                                    </CardContent>
-                                                    <CardFooter className="flex-col gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            className="w-full hover:border hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500"
-                                                            onClick={() => handleBookClick(model.id, service.id)}
-                                                        >
-                                                            {t('profile.bookNow')}
-                                                        </Button>
-                                                    </CardFooter>
-                                                </Card>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                                :
-                                <div className="w-full">
-                                    <EmptyPage
-                                        title={t('profile.noServices')}
-                                        description={t('profile.noServicesDesc')}
-                                    />
-                                </div>
-                            }
                         </TabsContent>
                         <TabsContent value="images" className='w-full'>
                             <div className="flex space-x-2 rounded-md h-full">

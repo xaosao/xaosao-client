@@ -42,7 +42,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
    },
    rejected: {
       label: "Rejected",
-      className: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
+      className: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
    },
    disputed: {
       label: "Disputed",
@@ -233,7 +233,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                     </>
                                  )}
 
-                                 {booking.model?.whatsapp && (
+                                 {booking.model?.whatsapp && booking.status !== "completed" && (
                                     <DropdownMenuItem
                                        onClick={() => {
                                           const bookingUrl = `${window.location.origin}/model/dating/detail/${booking.id}`;
