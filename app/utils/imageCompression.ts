@@ -2,6 +2,7 @@
  * Compress an image file to reduce its size before upload
  * This helps avoid Vercel's 4.5MB body size limit
  * Supports HEIC/HEIF files (common on iOS devices)
+ * WebP files are NOT supported - users must use JPG or PNG
  */
 
 export interface CompressOptions {
@@ -33,12 +34,20 @@ function isHeicFile(file: File): boolean {
 }
 
 /**
+ * Check if a file is WebP format
+ */
+function isWebpFile(file: File): boolean {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  return type === 'image/webp' || name.endsWith('.webp');
+}
+
+/**
  * Convert HEIC/HEIF file to JPEG
  * Uses dynamic import to avoid SSR issues (heic2any requires browser APIs)
  */
 async function convertHeicToJpeg(file: File): Promise<File> {
   try {
-    // Dynamic import to avoid "window is not defined" error during SSR
     const heic2any = (await import('heic2any')).default;
 
     const convertedBlob = await heic2any({
@@ -47,10 +56,8 @@ async function convertHeicToJpeg(file: File): Promise<File> {
       quality: 0.9,
     });
 
-    // heic2any can return a single blob or array of blobs
     const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
 
-    // Create a new file with .jpg extension
     const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
     return new File([blob], newFileName, {
       type: 'image/jpeg',
@@ -73,38 +80,52 @@ export async function compressImage(
   options: CompressOptions = {}
 ): Promise<File> {
   const opts = { ...defaultOptions, ...options };
+  console.log('[Compress] Starting:', file.name, file.type, file.size);
+
+  let processedFile = file;
 
   // Convert HEIC/HEIF files to JPEG first
-  let processedFile = file;
   if (isHeicFile(file)) {
+    console.log('[Compress] Converting HEIC to JPEG');
     processedFile = await convertHeicToJpeg(file);
   }
+  // Block WebP files - not supported
+  else if (isWebpFile(file)) {
+    console.error('[Compress] WebP files are not supported');
+    throw new Error('WebP format is not supported. Please use JPG or PNG instead.');
+  }
 
-  // If file is already small enough, return as-is (or converted HEIC)
+  console.log('[Compress] After format conversion:', processedFile.name, processedFile.type, processedFile.size);
+
+  // If file is already small enough, return as-is
   const maxSizeBytes = (opts.maxSizeMB || 2) * 1024 * 1024;
   if (processedFile.size <= maxSizeBytes) {
+    console.log('[Compress] File small enough, returning as-is');
     return processedFile;
   }
 
+  // File needs compression - resize and compress
+  console.log('[Compress] File too large, compressing...');
+  return compressWithCanvas(processedFile, opts, maxSizeBytes);
+}
+
+/**
+ * Compress image using canvas
+ */
+async function compressWithCanvas(
+  file: File,
+  opts: CompressOptions,
+  maxSizeBytes: number
+): Promise<File> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(processedFile);
+    const blobUrl = URL.createObjectURL(file);
+    const img = new Image();
 
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'));
-          return;
-        }
-
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
+    img.onload = () => {
+      try {
+        // Calculate new dimensions
+        let width = img.width;
+        let height = img.height;
         const maxW = opts.maxWidth || 1920;
         const maxH = opts.maxHeight || 1920;
 
@@ -117,29 +138,42 @@ export async function compressImage(
           height = maxH;
         }
 
+        const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
 
-        // Draw image on canvas
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(blobUrl);
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        // Fill with white background
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to blob with quality setting
         canvas.toBlob(
           (blob) => {
+            URL.revokeObjectURL(blobUrl);
+
             if (!blob) {
               reject(new Error('Could not compress image'));
               return;
             }
 
-            // Create a new file from the blob
-            const compressedFile = new File([blob], processedFile.name.replace(/\.[^.]+$/, '.jpg'), {
+            const newFileName = file.name.replace(/\.[^.]+$/, '.jpg');
+            const compressedFile = new File([blob], newFileName, {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
 
-            // If still too large, try again with lower quality
+            console.log('[Compress] Result:', compressedFile.name, compressedFile.size);
+
+            // If still too large, try with lower quality
             if (compressedFile.size > maxSizeBytes && (opts.quality || 0.8) > 0.3) {
-              compressImage(processedFile, {
+              compressImage(compressedFile, {
                 ...opts,
                 quality: (opts.quality || 0.8) - 0.1,
               })
@@ -152,16 +186,18 @@ export async function compressImage(
           'image/jpeg',
           opts.quality || 0.8
         );
-      };
-
-      img.onerror = () => {
-        reject(new Error('Could not load image'));
-      };
+      } catch (error) {
+        URL.revokeObjectURL(blobUrl);
+        reject(error);
+      }
     };
 
-    reader.onerror = () => {
-      reject(new Error('Could not read file'));
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      reject(new Error('Could not load image for compression'));
     };
+
+    img.src = blobUrl;
   });
 }
 

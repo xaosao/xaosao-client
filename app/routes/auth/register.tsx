@@ -234,24 +234,10 @@ export default function SignUpPage() {
             }
         } catch (error) {
             console.error('Error compressing image:', error);
-            // Fallback to original file if compression fails
-            try {
-                if (profileImage && profileImage.startsWith('blob:')) {
-                    URL.revokeObjectURL(profileImage);
-                }
-                const objectUrl = URL.createObjectURL(file);
-                setProfileImage(objectUrl);
-            } catch {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    setProfileImage(result);
-                };
-                reader.onerror = () => {
-                    setProfileError("Failed to load image preview");
-                };
-                reader.readAsDataURL(file);
-            }
+            const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
+            setProfileError(errorMessage);
+            setProfileImage("");
+            if (fileInputRef.current) fileInputRef.current.value = "";
         } finally {
             setIsCompressing(false);
         }

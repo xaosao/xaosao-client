@@ -130,7 +130,29 @@ export default function WalletTopUpPage() {
         }
     };
 
+    const [uploadError, setUploadError] = React.useState<string | null>(null);
+
+    // Check if file is WebP format
+    const isWebpFile = (file: File): boolean => {
+        const type = file.type.toLowerCase();
+        const name = file.name.toLowerCase();
+        return type === 'image/webp' || name.endsWith('.webp');
+    };
+
     const handleFileUpload = (file: File) => {
+        setUploadError(null);
+
+        // Block WebP files
+        if (isWebpFile(file)) {
+            setUploadError(t('wallet.topup.webpNotSupported', { defaultValue: 'WebP format is not supported. Please use JPG or PNG instead.' }));
+            setUploadedFile(null);
+            setPreviewSlip(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+            return;
+        }
+
         setUploadedFile(file);
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -176,7 +198,7 @@ export default function WalletTopUpPage() {
             case 2:
                 return paymentMethod;
             case 3:
-                return uploadedFile;
+                return uploadedFile && !uploadError;
             default:
                 return false;
         }
@@ -390,6 +412,11 @@ export default function WalletTopUpPage() {
                             <p className="text-xs text-gray-500 mt-2">
                                 {t('wallet.topup.supportedFormats')}
                             </p>
+                            {uploadError && (
+                                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
+                                    <p className="text-red-600 text-xs text-center">{uploadError}</p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="p-4 bg-amber-50 rounded-lg">

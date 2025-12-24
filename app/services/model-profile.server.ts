@@ -707,23 +707,20 @@ export async function deleteModelBank(id: string, modelId: string) {
       });
     }
 
-    const deleteBank = await prisma.banks.update({
+    // Hard delete to free up unique constraints (bank_account_name, bank_account_number)
+    // This allows the model to re-add the same bank account later if needed
+    const deletedBank = await prisma.banks.delete({
       where: { id },
-      data: {
-        status: "inactive",
-      },
     });
 
-    if (deleteBank.id) {
-      await createAuditLogs({
-        ...auditBase,
-        description: `Delete model bank: ${deleteBank.id} successfully.`,
-        status: "success",
-        onSuccess: deleteBank,
-      });
-    }
+    await createAuditLogs({
+      ...auditBase,
+      description: `Delete model bank: ${deletedBank.id} successfully.`,
+      status: "success",
+      onSuccess: deletedBank,
+    });
 
-    return deleteBank;
+    return deletedBank;
   } catch (error: any) {
     console.error("DELETE_MODEL_BANK_FAILED", error);
     await createAuditLogs({

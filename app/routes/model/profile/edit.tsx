@@ -132,13 +132,19 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
     const { modelData, modelId } = loaderData;
     const [image, setImage] = useState<string>("");
     const [isCompressing, setIsCompressing] = useState(false);
-    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "PATCH";
+    const [compressedFile, setCompressedFile] = useState<File | null>(null);
+    const [imageError, setImageError] = useState<string | null>(null);
+    const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
+    const isSubmitting = isCustomSubmitting || (navigation.state !== "idle" && navigation.formMethod === "PATCH");
     const isLoading = navigation.state === "loading";
 
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+            console.log('Original file:', { name: file.name, type: file.type, size: file.size });
             setIsCompressing(true);
+            setImageError(null);
+            setCompressedFile(null);
 
             try {
                 // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
@@ -149,31 +155,77 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                     maxSizeMB: 2,
                 });
 
+                console.log('Compressed file:', { name: compressed.name, type: compressed.type, size: compressed.size });
+
+                // Store the compressed file for form submission
+                setCompressedFile(compressed);
+
                 // Create preview from compressed file
                 const reader = new FileReader();
                 reader.onload = () => {
                     const result = reader.result as string;
+                    console.log('Preview DataURL length:', result.length);
                     setImage(result);
+                };
+                reader.onerror = (err) => {
+                    console.error('FileReader error:', err);
                 };
                 reader.readAsDataURL(compressed);
-
-                // Update the file input with compressed file
-                if (fileInputRef.current) {
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(compressed);
-                    fileInputRef.current.files = dataTransfer.files;
-                }
             } catch (error) {
                 console.error('Error compressing image:', error);
-                // Fallback to original file if compression fails
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    setImage(result);
-                };
-                reader.readAsDataURL(file);
+                const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
+                setImageError(errorMessage);
+                setImage("");
+                setCompressedFile(null);
             } finally {
                 setIsCompressing(false);
+            }
+        }
+    };
+
+    // Custom form submission to ensure compressed file is used
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        if (!compressedFile && !image) {
+            // No new image, let the form submit normally
+            return;
+        }
+
+        if (imageError) {
+            e.preventDefault();
+            return;
+        }
+
+        if (compressedFile) {
+            e.preventDefault();
+            setIsCustomSubmitting(true);
+
+            try {
+                const formData = new FormData(e.currentTarget);
+                // Remove the original file input and add our compressed file
+                formData.delete('newProfile');
+                formData.append('newProfile', compressedFile, compressedFile.name);
+
+                console.log('Submitting with compressed file:', {
+                    name: compressedFile.name,
+                    type: compressedFile.type,
+                    size: compressedFile.size
+                });
+
+                // Submit the form programmatically
+                const response = await fetch(window.location.pathname, {
+                    method: 'PATCH',
+                    body: formData,
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    // Reload to show any errors
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                setIsCustomSubmitting(false);
             }
         }
     };
@@ -213,7 +265,7 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
 
     return (
         <Modal onClose={closeHandler} className="w-full sm:w-3/5 h-[100dvh] sm:h-auto border overflow-hidden">
-            <Form method="patch" encType="multipart/form-data" className="py-2 space-y-4 h-full overflow-y-auto">
+            <Form method="patch" encType="multipart/form-data" className="py-2 space-y-4 h-full overflow-y-auto" onSubmit={handleSubmit}>
                 <div className="flex items-center justify-between block sm:hidden">
                     <div className="flex items-center" onClick={() => navigate("/model/profile")}>
                         <ChevronLeft />
@@ -241,6 +293,11 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                             </label>
                             <input className="hidden" name="profile" defaultValue={modelData.profile || ""} />
                         </div>
+                        {imageError && (
+                            <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
+                                <p className="text-red-600 text-xs text-center">{imageError}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -460,7 +517,7 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={isSubmitting || isCompressing}
+                                disabled={isSubmitting || isCompressing || !!imageError}
                                 className="flex cursor-pointer text-sm bg-rose-500 text-rose-500 hover:bg-rose-600 text-white font-medium disabled:opacity-50"
                             >
                                 {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}

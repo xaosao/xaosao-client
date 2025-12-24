@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v1';
-const STATIC_CACHE = 'xaosao-static-v1';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v1';
+const CACHE_NAME = 'xaosao-v2';
+const STATIC_CACHE = 'xaosao-static-v2';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v2';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
@@ -38,6 +38,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Helper function to check if response should be cached
+function shouldCacheResponse(response) {
+  // Only cache successful responses
+  if (!response || !response.ok) return false;
+
+  // Don't cache redirects
+  if (response.redirected) return false;
+
+  // Don't cache opaque responses (cross-origin without CORS)
+  if (response.type === 'opaque') return false;
+
+  return true;
+}
+
 // Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -52,22 +66,30 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests - always fetch from network
   if (url.pathname.startsWith('/api/')) return;
 
-  // For navigation requests (HTML pages) - network first
+  // For navigation requests (HTML pages) - network first, NO CACHING
+  // This prevents caching error pages that get "stuck"
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Clone and cache the response
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
+          // Only cache successful navigation responses
+          if (shouldCacheResponse(response)) {
+            const responseClone = response.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
           return response;
         })
         .catch(() => {
           // Fallback to cache if offline
           return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/');
+            // Only return cached response if it exists and was successful
+            if (cachedResponse && cachedResponse.ok) {
+              return cachedResponse;
+            }
+            // Fallback to home page if available
+            return caches.match('/');
           });
         })
     );
@@ -83,19 +105,23 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) {
           // Return cached version and update cache in background
           fetch(request).then((response) => {
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, response);
-            });
+            if (shouldCacheResponse(response)) {
+              caches.open(STATIC_CACHE).then((cache) => {
+                cache.put(request, response);
+              });
+            }
           });
           return cachedResponse;
         }
 
         // Not in cache - fetch and cache
         return fetch(request).then((response) => {
-          const responseClone = response.clone();
-          caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
+          if (shouldCacheResponse(response)) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
           return response;
         });
       })
@@ -103,14 +129,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default - network first with cache fallback
+  // Default - network first with cache fallback (only cache successful responses)
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const responseClone = response.clone();
-        caches.open(DYNAMIC_CACHE).then((cache) => {
-          cache.put(request, responseClone);
-        });
+        if (shouldCacheResponse(response)) {
+          const responseClone = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(request, responseClone);
+          });
+        }
         return response;
       })
       .catch(() => caches.match(request))
@@ -158,4 +186,15 @@ self.addEventListener('notificationclick', (event) => {
       }
     })
   );
+});
+
+// Listen for messages from the main thread to clear cache
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    event.waitUntil(
+      caches.keys().then((keys) => {
+        return Promise.all(keys.map((key) => caches.delete(key)));
+      })
+    );
+  }
 });

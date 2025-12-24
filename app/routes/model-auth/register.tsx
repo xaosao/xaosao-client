@@ -297,24 +297,10 @@ export default function ModelRegister() {
       }
     } catch (error) {
       console.error('Error compressing image:', error);
-      // Fallback to original file if compression fails
-      try {
-        if (image && image.startsWith('blob:')) {
-          URL.revokeObjectURL(image);
-        }
-        const objectUrl = URL.createObjectURL(file);
-        setImage(objectUrl);
-      } catch {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          setImage(result);
-        };
-        reader.onerror = () => {
-          setProfileError(t("modelAuth.errors.imagePreviewFailed"));
-        };
-        reader.readAsDataURL(file);
-      }
+      const errorMessage = error instanceof Error ? error.message : t("modelAuth.errors.imageProcessFailed", { defaultValue: "Failed to process image" });
+      setProfileError(errorMessage);
+      setImage("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } finally {
       setIsCompressing(false);
     }

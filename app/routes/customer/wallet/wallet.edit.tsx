@@ -97,6 +97,14 @@ export default function TransactionEdit() {
 
    const [previewSlip, setPreviewSlip] = useState<string | null>(null);
    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+   const [uploadError, setUploadError] = useState<string | null>(null);
+
+   // Check if file is WebP format
+   const isWebpFile = (file: File): boolean => {
+      const type = file.type.toLowerCase();
+      const name = file.name.toLowerCase();
+      return type === 'image/webp' || name.endsWith('.webp');
+   };
 
    const handleDownloadSlip = async () => {
       if (transaction?.paymentSlip) {
@@ -112,8 +120,20 @@ export default function TransactionEdit() {
    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0];
       console.log("File selected:", file);
+      setUploadError(null);
 
       if (file) {
+         // Block WebP files
+         if (isWebpFile(file)) {
+            setUploadError(t('wallet.edit.webpNotSupported', { defaultValue: 'WebP format is not supported. Please use JPG or PNG instead.' }));
+            setSelectedFile(null);
+            setPreviewSlip(null);
+            if (fileInputRef.current) {
+               fileInputRef.current.value = "";
+            }
+            return;
+         }
+
          setSelectedFile(file); // Store the actual file
 
          // Create object URL for preview (more reliable on iOS)
@@ -263,6 +283,12 @@ export default function TransactionEdit() {
                      </div>
                   </div>
 
+                  {uploadError && (
+                     <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
+                        <p className="text-red-600 text-xs text-center">{uploadError}</p>
+                     </div>
+                  )}
+
                   <input
                      type="file"
                      accept="image/*"
@@ -299,7 +325,8 @@ export default function TransactionEdit() {
                <Button
                   type="submit"
                   variant="outline"
-                  className="flex gap-2 bg-rose-500 text-white hover:bg-rose-600 hover:text-white"
+                  disabled={isSubmitting || !!uploadError}
+                  className="flex gap-2 bg-rose-500 text-white hover:bg-rose-600 hover:text-white disabled:opacity-50"
                >
                   {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
                   {isSubmitting ? t('wallet.edit.saving') : t('wallet.edit.saveChange')}
