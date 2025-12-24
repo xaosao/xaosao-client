@@ -53,7 +53,7 @@ export default function TransactionDetails() {
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
                         <label className="text-sm font-medium text-gray-500">{t('wallet.detail.identifier')}:</label>
-                        <p className="mt-0 sm:mt-1 text-sm font-mono">{transaction?.identifier}</p>
+                        <p className="mt-0 sm:mt-1 text-sm font-mono">{t(`transactionTypes.${transaction?.identifier}`, { defaultValue: capitalize(transaction?.identifier || "") })}</p>
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
                         <label className="text-sm font-medium text-gray-500">{t('wallet.detail.amount')}:</label>

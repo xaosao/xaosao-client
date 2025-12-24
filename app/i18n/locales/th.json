@@ -1878,5 +1878,16 @@
     "notNow": "ไม่ใช่ตอนนี้",
     "install": "ติดตั้ง",
     "gotIt": "เข้าใจแล้ว"
+  },
+  "transactionTypes": {
+    "recharge": "เติมเงิน",
+    "withdrawal": "ถอนเงิน",
+    "withdraw": "ถอนเงิน",
+    "subscription": "แพ็กเกจสมาชิก",
+    "referral": "แนะนำเพื่อน",
+    "booking_hold": "กันเงินจอง",
+    "booking_earning": "รายได้จากการจอง",
+    "booking_refund": "คืนเงินจอง",
+    "deposit": "ฝากเงิน"
   }
 }

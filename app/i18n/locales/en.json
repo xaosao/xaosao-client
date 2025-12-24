@@ -1851,5 +1851,16 @@
     "notNow": "Not now",
     "install": "Install",
     "gotIt": "Got it"
+  },
+  "transactionTypes": {
+    "recharge": "Top Up",
+    "withdrawal": "Withdrawal",
+    "withdraw": "Withdrawal",
+    "subscription": "Subscription",
+    "referral": "Referral",
+    "booking_hold": "Booking Hold",
+    "booking_earning": "Booking Earning",
+    "booking_refund": "Booking Refund",
+    "deposit": "Deposit"
   }
 }

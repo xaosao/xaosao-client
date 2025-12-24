@@ -1874,5 +1874,16 @@
     "notNow": "ບໍ່ແມ່ນຕອນນີ້",
     "install": "ຕິດຕັ້ງ",
     "gotIt": "ເຂົ້າໃຈແລ້ວ"
+  },
+  "transactionTypes": {
+    "recharge": "ເຕີມເງິນ",
+    "withdrawal": "ຖອນເງິນ",
+    "withdraw": "ຖອນເງິນ",
+    "subscription": "ແພັກເກດສະມາຊິກ",
+    "referral": "ແນະນຳໝູ່",
+    "booking_hold": "ກັນເງິນຈອງ",
+    "booking_earning": "ລາຍໄດ້ຈາກການຈອງ",
+    "booking_refund": "ຄືນເງິນຈອງ",
+    "deposit": "ຝາກເງິນ"
   }
 }

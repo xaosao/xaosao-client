@@ -197,7 +197,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                             </div>
 
                                             <div>
-                                                <h4 className="font-medium text-gray-900">{capitalize(transaction.identifier)}</h4>
+                                                <h4 className="font-medium text-gray-900">{t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}</h4>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-xs text-gray-500">{transaction.createdAt.toDateString()}</span>
                                                 </div>

@@ -235,7 +235,7 @@ export default function ModelWalletPage() {
                   <div className="">
                     <p className="text-lg">
                       {isBalanceVisible
-                        ? formatCurrency(wallet.totalDeposit)
+                        ? formatCurrency(wallet.totalRecharge)
                         : "******"}
                     </p>
                     <p className="text-white/80 text-sm">{t("modelWallet.totalEarnings")}</p>
@@ -314,7 +314,7 @@ export default function ModelWalletPage() {
 
                           <div>
                             <h4 className="font-medium text-gray-900">
-                              {capitalize(transaction.identifier)}
+                              {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
                             </h4>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-500">
