@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { AlertCircle, Calendar1, CalendarIcon, Loader, X } from "lucide-react"
-import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
+import { AlertCircle, Calendar1, CalendarIcon, Loader, X, Wallet } from "lucide-react"
+import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from 'react-i18next';
 
 // components:
@@ -351,11 +351,42 @@ export default function ServiceBooking() {
 
                <div>
                   {actionData?.error && (
-                     <div className="mb-4 p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
-                        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                        <span className="text-red-500 text-sm">
-                           {capitalize(actionData.message)}
-                        </span>
+                     <div className="mb-4 space-y-3">
+                        <div className="p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
+                           <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                           <span className="text-red-500 text-sm">
+                              {actionData.message?.toLowerCase().includes('insufficient balance') ? (() => {
+                                 // Parse the amounts from the error message
+                                 const match = actionData.message.match(/need\s+([\d,]+)\s+LAK\s+but\s+have\s+([\d,]+)\s+LAK/i);
+                                 if (match) {
+                                    return t('profileBook.insufficientBalance', {
+                                       required: match[1],
+                                       current: match[2]
+                                    });
+                                 }
+                                 return t('profileBook.insufficientBalanceGeneric');
+                              })() : capitalize(actionData.message)}
+                           </span>
+                        </div>
+
+                        {/* Show recharge button if insufficient balance */}
+                        {actionData.message?.toLowerCase().includes('insufficient balance') && (
+                           <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg space-y-3">
+                              <div className="flex items-start space-x-2">
+                                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                 <span className="text-amber-700 text-sm">
+                                    {t('profileBook.rechargeWarning')}
+                                 </span>
+                              </div>
+                              <Link
+                                 to="/customer/wallet-topup"
+                                 className="inline-flex items-center justify-center gap-2 py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors text-sm font-medium"
+                              >
+                                 <Wallet className="w-4 h-4" />
+                                 {t('profileBook.rechargeNow')}
+                              </Link>
+                           </div>
+                        )}
                      </div>
                   )}
                </div>

@@ -881,7 +881,11 @@
     "totalPrice": "Total Price",
     "close": "Close",
     "booking": "Booking....",
-    "bookNow": "Book Now"
+    "bookNow": "Book Now",
+    "rechargeWarning": "Your booking information will be lost after you leave this page. Please recharge your wallet and come back to book again.",
+    "rechargeNow": "Recharge Wallet",
+    "insufficientBalance": "Insufficient balance! You need {{required}} LAK but have {{current}} LAK.",
+    "insufficientBalanceGeneric": "Insufficient balance! Please recharge your wallet."
   },
   "modelAuth": {
     "login": {
