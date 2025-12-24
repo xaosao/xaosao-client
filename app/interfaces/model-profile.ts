@@ -76,7 +76,7 @@ export interface IModelBank {
   id: string;
   bank_name: string;
   bank_account_name: string;
-  bank_account_number: number;
+  bank_account_number: string;
   qr_code: string | null;
   status: string;
   createdAt: Date;

@@ -352,7 +352,7 @@ model banks {
   id                  String   @id @default(auto()) @map("_id") @db.ObjectId
   bank_name           String
   bank_account_name   String   @unique
-  bank_account_number Float    @unique
+  bank_account_number String   @unique
   qr_code             String?
   status              String   @default("active")
   createdAt           DateTime @default(now())

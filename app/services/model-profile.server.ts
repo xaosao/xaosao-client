@@ -542,7 +542,7 @@ export async function createModelBank(
   data: {
     bank_name: string;
     bank_account_name: string;
-    bank_account_number: number;
+    bank_account_number: string;
     qr_code?: string;
   }
 ) {
@@ -606,7 +606,7 @@ export async function updateModelBank(
   data: {
     bank_name: string;
     bank_account_name: string;
-    bank_account_number: number;
+    bank_account_number: string;
     qr_code?: string;
   }
 ) {

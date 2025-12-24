@@ -91,7 +91,7 @@ export async function action({ request }: ActionFunctionArgs) {
             await createModelBank(modelId, {
                 bank_name: bankName,
                 bank_account_name: bankAccountName,
-                bank_account_number: Number(bankAccountNumber),
+                bank_account_number: bankAccountNumber,
                 qr_code: qrCodeUrl,
             });
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankCreated")}&tab=banks`);
@@ -129,7 +129,7 @@ export async function action({ request }: ActionFunctionArgs) {
             await updateModelBank(bankId, modelId, {
                 bank_name: bankName,
                 bank_account_name: bankAccountName,
-                bank_account_number: Number(bankAccountNumber),
+                bank_account_number: bankAccountNumber,
                 qr_code: qrCodeUrl,
             });
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankUpdated")}&tab=banks`);
@@ -407,7 +407,7 @@ export default function ModelProfilePage() {
         setBankFormData({
             bank_name: bank.bank_name,
             bank_account_name: bank.bank_account_name,
-            bank_account_number: String(bank.bank_account_number),
+            bank_account_number: bank.bank_account_number,
         });
         setQrCodeFile(null);
         setQrCodePreview(bank.qr_code || null);
@@ -1129,7 +1129,7 @@ export default function ModelProfilePage() {
                             <div className="grid gap-2">
                                 <Label htmlFor="bank_account_number">{t("modelProfile.bankModal.accountNumberLabel")} <span className="text-red-500">*</span></Label>
                                 <Input
-                                    type="number"
+                                    type="text"
                                     className="text-sm"
                                     id="bank_account_number"
                                     placeholder={t("modelProfile.bankModal.accountNumberPlaceholder")}
