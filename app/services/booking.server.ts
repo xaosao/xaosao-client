@@ -531,6 +531,9 @@ export async function getAllMyServiceBookings(customerId: string) {
       where: {
         customerId,
       },
+      orderBy: {
+        createdAt: "desc",
+      },
       take: 20,
       select: {
         id: true,
