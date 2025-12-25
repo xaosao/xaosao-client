@@ -220,15 +220,7 @@ export default function ModelLogin() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition(
-                        () => window.location.reload(),
-                        () => window.location.reload(),
-                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                      );
-                    }
-                  }}
+                  onClick={requestLocation}
                   className="text-xs bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-full cursor-pointer"
                 >
                   {t("modelAuth.login.enableLocation", { defaultValue: "Enable" })}
@@ -243,15 +235,7 @@ export default function ModelLogin() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition(
-                        () => window.location.reload(),
-                        () => window.location.reload(),
-                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                      );
-                    }
-                  }}
+                  onClick={requestLocation}
                   className="text-xs text-rose-500 hover:text-rose-400 underline cursor-pointer"
                 >
                   {t("modelAuth.login.retry")}

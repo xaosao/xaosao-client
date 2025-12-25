@@ -22,23 +22,6 @@ function detectDevice(): DeviceType {
   return "desktop";
 }
 
-// Direct geolocation request - bypasses React state management
-// This ensures the geolocation call happens immediately on user gesture
-function requestLocationDirect() {
-  if (typeof navigator !== "undefined" && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        // Success - reload page to get location
-        window.location.reload();
-      },
-      () => {
-        // Error - reload anyway to update state
-        window.location.reload();
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
-  }
-}
 
 interface LocationPermissionGuideProps {
   variant?: "light" | "dark";
@@ -136,15 +119,13 @@ export function LocationPermissionGuide({
           <RefreshCw className="h-3 w-3" />
           {t("location.refresh", { defaultValue: "Refresh Page" })}
         </button>
-        {showRetry && (
+        {showRetry && onRetry && (
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              // Use direct geolocation call for mobile compatibility
-              // This bypasses React's callback wrapper which can lose user gesture context
-              requestLocationDirect();
+              onRetry();
             }}
             className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium rounded-md border cursor-pointer ${
               isDark

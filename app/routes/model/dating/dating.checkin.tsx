@@ -151,15 +151,7 @@ export default function ModelCheckInModal() {
                      <Button
                         type="button"
                         size="sm"
-                        onClick={() => {
-                           if (navigator.geolocation) {
-                              navigator.geolocation.getCurrentPosition(
-                                 () => window.location.reload(),
-                                 () => window.location.reload(),
-                                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                              );
-                           }
-                        }}
+                        onClick={requestLocation}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white"
                      >
                         <Navigation className="h-3 w-3 mr-1" />
@@ -176,15 +168,7 @@ export default function ModelCheckInModal() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                           if (navigator.geolocation) {
-                              navigator.geolocation.getCurrentPosition(
-                                 () => window.location.reload(),
-                                 () => window.location.reload(),
-                                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                              );
-                           }
-                        }}
+                        onClick={requestLocation}
                         className="mt-2"
                      >
                         <Navigation className="h-3 w-3 mr-1" />
