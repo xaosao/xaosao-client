@@ -9,6 +9,7 @@ import "swiper/css/pagination";
 import { Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { CustomerCardProps } from "~/interfaces/customer";
+import { formatDistance } from "~/utils";
 
 export default function CustomerCard({
   customer,
@@ -22,7 +23,7 @@ export default function CustomerCard({
     return differenceInYears(new Date(), new Date(dob));
   };
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Earth's radius in kilometers
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -33,22 +34,23 @@ export default function CustomerCard({
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c);
+    return R * c;
   };
 
-  const getDistance = () => {
+  const getDistanceFormatted = () => {
     if (
       customer.latitude &&
       customer.longitude &&
       modelLatitude &&
       modelLongitude
     ) {
-      return calculateDistance(
+      const distKm = calculateDistanceKm(
         customer.latitude,
         customer.longitude,
         modelLatitude,
         modelLongitude
       );
+      return formatDistance(distKm);
     }
     return null;
   };
@@ -62,7 +64,7 @@ export default function CustomerCard({
     ...(customer.Images || [])
   ];
 
-  const distance = getDistance();
+  const distance = getDistanceFormatted();
 
   return (
     <div className="group relative bg-white rounded-lg shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
@@ -192,7 +194,7 @@ export default function CustomerCard({
             {distance !== null && (
               <div className="flex items-center text-sm text-gray-200">
                 <MapPin className="w-4 h-4 mr-1" />
-                <span className="mt-1">{distance} km</span>
+                <span className="mt-1">{distance}</span>
               </div>
             )}
           </div>

@@ -53,8 +53,23 @@ export default function BookingServiceDetails() {
                         <p className="mt-0 sm:mt-1 text-sm">{formatDate(String(data?.startDate))} {data?.endDate ? "-" : ""} {data?.endDate && formatDate(String(data?.endDate))}</p>
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
-                        <label className="text-sm font-medium text-gray-500">{t('booking.detail.dayAmount')}:</label>
-                        <p className="mt-0 sm:mt-1 text-sm">{data?.dayAmount} {t('booking.days')}</p>
+                        <label className="text-sm font-medium text-gray-500">{t('booking.duration')}:</label>
+                        <p className="mt-0 sm:mt-1 text-sm">
+                           {/* Show duration based on billing type */}
+                           {data?.modelService?.service?.billingType === 'per_hour' && data?.hours ? (
+                              <>
+                                 {data.hours} {data.hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
+                              </>
+                           ) : data?.modelService?.service?.billingType === 'per_session' && data?.sessionType ? (
+                              <>
+                                 {data.sessionType === 'one_time' ? t('profileBook.oneTime') : t('profileBook.oneNight')}
+                              </>
+                           ) : (
+                              <>
+                                 {data?.dayAmount} {t('booking.days')}
+                              </>
+                           )}
+                        </p>
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
                         <label className="text-sm font-medium text-gray-500">{t('booking.price')}:</label>

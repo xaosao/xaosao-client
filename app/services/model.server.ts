@@ -552,6 +552,9 @@ export async function getModelService(modelId: string, serviceId: string) {
       select: {
         id: true,
         customRate: true,
+        customHourlyRate: true,
+        customOneTimePrice: true,
+        customOneNightPrice: true,
         isAvailable: true,
         service: {
           select: {
@@ -559,6 +562,10 @@ export async function getModelService(modelId: string, serviceId: string) {
             name: true,
             description: true,
             baseRate: true,
+            billingType: true,
+            hourlyRate: true,
+            oneTimePrice: true,
+            oneNightPrice: true,
           },
         },
       },

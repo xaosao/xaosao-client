@@ -1,13 +1,16 @@
 import { AlertCircle, CheckCircle2, Loader, MapPin, Navigation } from "lucide-react";
 import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
-import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 // components
 import Modal from "~/components/ui/model";
 import { Button } from "~/components/ui/button";
+import { LocationPermissionGuide } from "~/components/LocationPermissionGuide";
 import { requireModelSession } from "~/services/model-auth.server";
 import { modelCheckIn, getModelBookingDetail } from "~/services/booking.server";
+
+// hooks
+import { useGeolocation } from "~/hooks/useGeolocation";
 
 interface BookingData {
    id: string;
@@ -73,9 +76,17 @@ export default function ModelCheckInModal() {
    const actionData = useActionData<typeof action>();
    const isSubmitting = navigation.state !== 'idle' && navigation.formMethod === "POST";
 
-   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-   const [locationError, setLocationError] = useState<string | null>(null);
-   const [isGettingLocation, setIsGettingLocation] = useState(false);
+   // Use the geolocation hook
+   const {
+      latitude,
+      longitude,
+      loading: isGettingLocation,
+      error: locationError,
+      permissionState,
+      requestLocation,
+   } = useGeolocation({ enableHighAccuracy: true, timeout: 15000 });
+
+   const hasLocation = latitude !== null && longitude !== null;
 
    const serviceName = data?.modelService?.service?.name;
    const translatedServiceName = serviceName
@@ -85,52 +96,6 @@ export default function ModelCheckInModal() {
    function closeHandler() {
       navigate("/model/dating");
    }
-
-   function getLocation() {
-      setIsGettingLocation(true);
-      setLocationError(null);
-
-      if (!navigator.geolocation) {
-         setLocationError(t("modelDating.checkin.geoNotSupported"));
-         setIsGettingLocation(false);
-         return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-         (position) => {
-            setLocation({
-               lat: position.coords.latitude,
-               lng: position.coords.longitude,
-            });
-            setIsGettingLocation(false);
-         },
-         (error) => {
-            switch (error.code) {
-               case error.PERMISSION_DENIED:
-                  setLocationError(t("modelDating.checkin.permissionDenied"));
-                  break;
-               case error.POSITION_UNAVAILABLE:
-                  setLocationError(t("modelDating.checkin.locationUnavailable"));
-                  break;
-               case error.TIMEOUT:
-                  setLocationError(t("modelDating.checkin.timeout"));
-                  break;
-               default:
-                  setLocationError(t("modelDating.checkin.locationError"));
-            }
-            setIsGettingLocation(false);
-         },
-         {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
-         }
-      );
-   }
-
-   useEffect(() => {
-      getLocation();
-   }, []);
 
    return (
       <Modal onClose={closeHandler} className="w-11/12 sm:w-2/5 rounded-sm border p-6">
@@ -144,8 +109,8 @@ export default function ModelCheckInModal() {
          </p>
 
          <Form method="post" className="space-y-4 mt-4">
-            <input type="hidden" name="lat" value={location?.lat || ""} />
-            <input type="hidden" name="lng" value={location?.lng || ""} />
+            <input type="hidden" name="lat" value={latitude || ""} />
+            <input type="hidden" name="lng" value={longitude || ""} />
 
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                <div className="flex items-start space-x-2">
@@ -164,10 +129,42 @@ export default function ModelCheckInModal() {
                      <Loader className="h-4 w-4 animate-spin" />
                      <span className="text-sm">{t("modelDating.checkin.gettingLocation")}</span>
                   </div>
-               ) : location ? (
+               ) : hasLocation ? (
                   <div className="flex items-center space-x-2 text-emerald-600">
                      <CheckCircle2 className="h-4 w-4" />
                      <span className="text-sm">{t("modelDating.checkin.locationAcquired")}</span>
+                  </div>
+               ) : permissionState === 'denied' ? (
+                  <div className="space-y-3">
+                     <div className="flex items-center space-x-2 text-orange-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">{t("modelDating.checkin.locationBlocked", { defaultValue: "Location access blocked" })}</span>
+                     </div>
+                     <LocationPermissionGuide variant="light" onRetry={requestLocation} />
+                  </div>
+               ) : (permissionState === 'prompt' || permissionState === 'unknown') && !locationError ? (
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2 text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-sm">{t("modelDating.checkin.enableLocationPrompt", { defaultValue: "Click to enable location access" })}</span>
+                     </div>
+                     <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                           if (navigator.geolocation) {
+                              navigator.geolocation.getCurrentPosition(
+                                 () => window.location.reload(),
+                                 () => window.location.reload(),
+                                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                              );
+                           }
+                        }}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                     >
+                        <Navigation className="h-3 w-3 mr-1" />
+                        {t("modelDating.checkin.enableLocation", { defaultValue: "Enable" })}
+                     </Button>
                   </div>
                ) : locationError ? (
                   <div className="space-y-2">
@@ -179,7 +176,15 @@ export default function ModelCheckInModal() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={getLocation}
+                        onClick={() => {
+                           if (navigator.geolocation) {
+                              navigator.geolocation.getCurrentPosition(
+                                 () => window.location.reload(),
+                                 () => window.location.reload(),
+                                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                              );
+                           }
+                        }}
                         className="mt-2"
                      >
                         <Navigation className="h-3 w-3 mr-1" />
@@ -206,7 +211,7 @@ export default function ModelCheckInModal() {
                </Button>
                <Button
                   type="submit"
-                  disabled={isSubmitting || !location}
+                  disabled={isSubmitting || !hasLocation}
                   className="text-white bg-emerald-500 hover:bg-emerald-600"
                >
                   {isSubmitting && <Loader className="h-4 w-4 animate-spin" />}

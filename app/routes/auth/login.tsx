@@ -8,9 +8,11 @@ import { Form, Link, useActionData, useNavigate, useNavigation } from "react-rou
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
+import { LocationPermissionGuide } from "~/components/LocationPermissionGuide";
 
 // Hooks
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useGeolocation } from "~/hooks/useGeolocation";
 
 // Services & Types
 import { validateSignInInputs } from "~/services/validation.server";
@@ -199,15 +201,26 @@ export default function SignInPage() {
     const navigation = useNavigation();
     const actionData = useActionData<typeof action>();
 
+    // Geolocation hook - automatically requests location on mount
+    const {
+        latitude,
+        longitude,
+        loading: locationLoading,
+        error: locationError,
+        permissionState,
+        permissionDenied,
+        requestLocation,
+        canRetry
+    } = useGeolocation({ enableHighAccuracy: true, timeout: 15000 });
+
     // Local state
     const [showPassword, setShowPassword] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-    const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'denied' | 'error'>('loading');
 
     // Computed values
     const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
     const isMobile = useIsMobile();
+    const hasLocation = latitude !== null && longitude !== null;
 
     // Background image carousel effect
     useEffect(() => {
@@ -217,70 +230,6 @@ export default function SignInPage() {
 
         return () => clearInterval(interval);
     }, []);
-
-    // Function to request GPS location
-    const requestLocation = useCallback(() => {
-        if (!navigator.geolocation) {
-            setLocationStatus('error');
-            console.error("Geolocation is not supported by this browser");
-            return;
-        }
-
-        // Check if we're on a secure context (HTTPS or localhost)
-        const isSecureContext = window.isSecureContext ||
-            window.location.protocol === 'https:' ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname.startsWith('192.168.') ||
-            window.location.hostname.startsWith('10.');
-
-        if (!isSecureContext) {
-            console.warn("Geolocation requires HTTPS. Current URL:", window.location.href);
-            console.warn("Geolocation works on: HTTPS, localhost, 127.0.0.1, and local IPs (192.168.x.x, 10.x.x.x)");
-        }
-
-        setLocationStatus('loading');
-        console.log("Requesting GPS location from:", window.location.hostname);
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setLocation({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                });
-                setLocationStatus('success');
-                console.log("✅ GPS location obtained:", position.coords.latitude, position.coords.longitude);
-                console.log("Accuracy:", position.coords.accuracy, "meters");
-            },
-            (error) => {
-                console.error("❌ Geolocation error:", error.message, "Code:", error.code);
-
-                if (error.code === error.PERMISSION_DENIED) {
-                    setLocationStatus('denied');
-                    console.warn("User denied location permission. Login will work without GPS.");
-                    console.warn("To enable: Browser Settings → Site Settings → Location → Allow");
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    setLocationStatus('error');
-                    console.error("Location information unavailable (no GPS signal or position error)");
-                } else if (error.code === error.TIMEOUT) {
-                    setLocationStatus('error');
-                    console.error("Location request timed out after 15 seconds");
-                } else {
-                    setLocationStatus('error');
-                }
-            },
-            {
-                enableHighAccuracy: true, // Use GPS for maximum accuracy
-                timeout: 15000,           // Wait up to 15 seconds
-                maximumAge: 0,            // ALWAYS get fresh location (no cache)
-            }
-        );
-    }, []);
-
-    // Get user's GPS location on component mount - ALWAYS get fresh location
-    useEffect(() => {
-        requestLocation();
-    }, [requestLocation]);
 
     // Toggle password visibility handler
     const togglePasswordVisibility = useCallback(() => {
@@ -329,31 +278,72 @@ export default function SignInPage() {
                     <p className="text-white text-sm">{t('login.subtitle')}</p>
 
                     {/* Location status indicator */}
-                    <div className="flex items-center justify-between pt-2">
-                        {locationStatus === 'loading' && (
+                    <div className="pt-2">
+                        {locationLoading && (
                             <p className="text-xs text-yellow-300 flex items-center">
                                 <Loader className="w-3 h-3 mr-1 animate-spin" />
-                                Getting your location...
+                                {t('login.gettingLocation', { defaultValue: 'Getting your location...' })}
                             </p>
                         )}
-                        {locationStatus === 'success' && (
+                        {!locationLoading && hasLocation && (
                             <p className="text-xs text-green-400 flex items-center">
                                 <span className="mr-1">📍</span>
-                                Location detected
+                                {t('login.locationDetected', { defaultValue: 'Location detected' })}
                             </p>
                         )}
-                        {(locationStatus === 'denied' || locationStatus === 'error') && (
-                            <div className="flex items-center justify-between w-full">
-                                <p className="text-xs text-gray-400 flex items-center">
+                        {!locationLoading && !hasLocation && permissionState === 'denied' && (
+                            <div className="space-y-2">
+                                <p className="text-xs text-orange-400 flex items-center">
                                     <span className="mr-1">📍</span>
-                                    Location unavailable
+                                    {t('login.locationBlocked', { defaultValue: 'Location blocked' })}
+                                </p>
+                                <LocationPermissionGuide variant="dark" onRetry={requestLocation} />
+                            </div>
+                        )}
+                        {!locationLoading && !hasLocation && (permissionState === 'prompt' || permissionState === 'unknown') && !locationError && (
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-300 flex items-center">
+                                    <span className="mr-1">📍</span>
+                                    {t('login.enableLocationPrompt', { defaultValue: 'Enable location for better experience' })}
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={requestLocation}
-                                    className="text-xs text-rose-500 hover:text-rose-400 underline"
+                                    onClick={() => {
+                                        // Direct geolocation call for mobile compatibility
+                                        if (navigator.geolocation) {
+                                            navigator.geolocation.getCurrentPosition(
+                                                () => window.location.reload(),
+                                                () => window.location.reload(),
+                                                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                                            );
+                                        }
+                                    }}
+                                    className="text-xs bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-full cursor-pointer"
                                 >
-                                    Retry
+                                    {t('login.enableLocation', { defaultValue: 'Enable' })}
+                                </button>
+                            </div>
+                        )}
+                        {!locationLoading && !hasLocation && permissionState !== 'denied' && locationError && (
+                            <div className="flex items-center justify-between w-full">
+                                <p className="text-xs text-gray-400 flex items-center">
+                                    <span className="mr-1">📍</span>
+                                    {t('login.locationUnavailable', { defaultValue: 'Location unavailable' })}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (navigator.geolocation) {
+                                            navigator.geolocation.getCurrentPosition(
+                                                () => window.location.reload(),
+                                                () => window.location.reload(),
+                                                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                                            );
+                                        }
+                                    }}
+                                    className="text-xs text-rose-500 hover:text-rose-400 underline cursor-pointer"
+                                >
+                                    {t('login.retry', { defaultValue: 'Retry' })}
                                 </button>
                             </div>
                         )}
@@ -362,10 +352,10 @@ export default function SignInPage() {
 
                 <Form method="post" className="space-y-4 sm:space-y-6" noValidate>
                     {/* Hidden fields for GPS coordinates */}
-                    {location && (
+                    {hasLocation && (
                         <>
-                            <input type="hidden" name="latitude" value={location.latitude} />
-                            <input type="hidden" name="longitude" value={location.longitude} />
+                            <input type="hidden" name="latitude" value={latitude!} />
+                            <input type="hidden" name="longitude" value={longitude!} />
                         </>
                     )}
 

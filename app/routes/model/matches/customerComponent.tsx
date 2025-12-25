@@ -9,7 +9,7 @@ import { Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 
 // utils
-import { calculateAgeFromDOB, calculateDistance } from "~/utils";
+import { calculateAgeFromDOB, calculateDistance, formatDistance } from "~/utils";
 
 interface CustomerCardProps {
     customer: any;
@@ -130,12 +130,12 @@ export default function CustomerCard({ customer, modelLatitude, modelLongitude }
                         <MapPin size={14} />
                         <span className="text-sm font-medium drop-shadow-lg">
                             {modelLatitude && modelLongitude && customer?.latitude && customer?.longitude
-                                ? `${calculateDistance(
+                                ? formatDistance(calculateDistance(
                                     Number(customer.latitude),
                                     Number(customer.longitude),
                                     Number(modelLatitude),
                                     Number(modelLongitude)
-                                ).toFixed(1)} km`
+                                ))
                                 : `-- km`
                             }
                         </span>

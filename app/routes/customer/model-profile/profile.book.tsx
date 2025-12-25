@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { AlertCircle, Calendar1, CalendarIcon, Loader, X, Wallet } from "lucide-react"
+import { AlertCircle, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon } from "lucide-react"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button"
 import { Textarea } from "~/components/ui/textarea"
 import { Calendar } from "~/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 // utils:
 import { cn } from "~/lib/utils"
@@ -39,11 +40,20 @@ export async function action({ params, request }: Route.ActionArgs) {
 
    const formData = await request.formData()
    const bookingData = Object.fromEntries(formData) as Partial<IServiceBookingCredentials>
-   const dayAmount = calculateDayAmount(String(bookingData?.startDate), String(bookingData?.endDate))
+   const billingType = formData.get('billingType') as string
 
    try {
       bookingData.price = parseFormattedNumber(bookingData.price)
-      bookingData.dayAmount = parseFormattedNumber(dayAmount)
+
+      // Handle different billing types
+      if (billingType === 'per_day') {
+         const dayAmount = calculateDayAmount(String(bookingData?.startDate), String(bookingData?.endDate))
+         bookingData.dayAmount = parseFormattedNumber(dayAmount)
+      } else if (billingType === 'per_hour') {
+         bookingData.hours = parseFormattedNumber(bookingData.hours)
+      } else if (billingType === 'per_session') {
+         bookingData.sessionType = formData.get('sessionType') as 'one_time' | 'one_night'
+      }
 
       await validateServiceBookingInputs(bookingData as IServiceBookingCredentials);
       const res = await createServiceBooking(customerId, modelId, modelServiceId, bookingData as IServiceBookingCredentials);
@@ -84,11 +94,35 @@ export default function ServiceBooking() {
    const { t } = useTranslation();
    const [startDate, setStartDate] = useState<Date>()
    const [endDate, setEndDate] = useState<Date>()
+   const [selectedHours, setSelectedHours] = useState<number>(2)
+   const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
 
    const actionData = useActionData<typeof action>()
    const service = useLoaderData<IServiceBookingResponse>();
    const isSubmitting =
       navigation.state !== "idle" && navigation.formMethod === "POST";
+
+   // Get billing type from service (default to per_day for backward compatibility)
+   const billingType = service.service.billingType || 'per_day';
+
+   // Calculate price based on billing type
+   const calculateTotalPrice = () => {
+      if (billingType === 'per_hour') {
+         const hourlyRate = service.customHourlyRate || service.service.hourlyRate || 0;
+         return hourlyRate * selectedHours;
+      } else if (billingType === 'per_session') {
+         if (selectedSessionType === 'one_time') {
+            return service.customOneTimePrice || service.service.oneTimePrice || 0;
+         } else {
+            return service.customOneNightPrice || service.service.oneNightPrice || 0;
+         }
+      } else {
+         // per_day
+         const dailyRate = service.customRate || service.service.baseRate;
+         const days = calculateDayAmount(String(startDate), endDate ? String(endDate) : "");
+         return dailyRate * days;
+      }
+   };
 
    function closeHandler() {
       navigate(`/customer/user-profile/${params.modelId}`);
@@ -141,14 +175,19 @@ export default function ServiceBooking() {
             </div>
 
             <Form method="post" className="space-y-4">
+               {/* Hidden fields for billing type and calculated price */}
+               <input type="hidden" name="billingType" value={billingType} />
+               <input type="hidden" name="price" value={calculateTotalPrice()} />
+               {billingType === 'per_hour' && (
+                  <input type="hidden" name="hours" value={selectedHours} />
+               )}
+               {billingType === 'per_session' && (
+                  <input type="hidden" name="sessionType" value={selectedSessionType} />
+               )}
+
                <div className="space-y-6">
                   <div>
                      <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
-                        <input
-                           type="hidden"
-                           name="price"
-                           value={service.customRate ? service.customRate : service.service.baseRate}
-                        />
                         <div className="space-y-2">
                            <Label htmlFor="start-date" className="text-sm font-medium">
                               {t('profileBook.startDate')} <span className="text-destructive">*</span>
@@ -233,60 +272,114 @@ export default function ServiceBooking() {
                            )}
                         </div>
 
-                        <div className="space-y-2">
-                           <Label htmlFor="end-date" className="text-sm font-medium">
-                              {t('profileBook.endDate')}
-                           </Label>
-                           <Popover>
-                              <PopoverTrigger asChild>
-                                 <Button
-                                    id="end-date"
-                                    variant="outline"
-                                    className={cn(
-                                       "w-full justify-start text-left font-normal h-11",
-                                       !endDate && "text-muted-foreground",
-                                    )}
-                                 >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {endDate ? format(endDate, "PPP p") : t('profileBook.pickDateTime')}
-                                 </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0 space-y-3" align="start">
-                                 <Calendar
-                                    mode="single"
-                                    selected={endDate}
-                                    onSelect={setEndDate}
-                                    disabled={(date) => {
-                                       if (!startDate) return isDateDisabled(date);
-                                       return date < startDate;
-                                    }}
-                                    initialFocus
-                                 />
-                                 <div className="p-2">
-                                    <Input
-                                       type="time"
-                                       name="endDate"
-                                       className="w-full"
-                                       onChange={(e) => {
-                                          if (!endDate) return;
-                                          const [hours, minutes] = e.target.value.split(":").map(Number);
-                                          const newDate = new Date(endDate);
-                                          newDate.setHours(hours);
-                                          newDate.setMinutes(minutes);
-                                          setEndDate(newDate);
+                        {/* For per_day: Show End Date picker */}
+                        {billingType === 'per_day' && (
+                           <div className="space-y-2">
+                              <Label htmlFor="end-date" className="text-sm font-medium">
+                                 {t('profileBook.endDate')}
+                              </Label>
+                              <Popover>
+                                 <PopoverTrigger asChild>
+                                    <Button
+                                       id="end-date"
+                                       variant="outline"
+                                       className={cn(
+                                          "w-full justify-start text-left font-normal h-11",
+                                          !endDate && "text-muted-foreground",
+                                       )}
+                                    >
+                                       <CalendarIcon className="mr-2 h-4 w-4" />
+                                       {endDate ? format(endDate, "PPP p") : t('profileBook.pickDateTime')}
+                                    </Button>
+                                 </PopoverTrigger>
+                                 <PopoverContent className="w-auto p-0 space-y-3" align="start">
+                                    <Calendar
+                                       mode="single"
+                                       selected={endDate}
+                                       onSelect={setEndDate}
+                                       disabled={(date) => {
+                                          if (!startDate) return isDateDisabled(date);
+                                          return date < startDate;
                                        }}
+                                       initialFocus
                                     />
-                                 </div>
-                              </PopoverContent>
-                           </Popover>
-                           {endDate && (
-                              <input
-                                 type="hidden"
-                                 name="endDate"
-                                 value={endDate.toISOString()}
-                              />
-                           )}
-                        </div>
+                                    <div className="p-2">
+                                       <Input
+                                          type="time"
+                                          name="endDate"
+                                          className="w-full"
+                                          onChange={(e) => {
+                                             if (!endDate) return;
+                                             const [hours, minutes] = e.target.value.split(":").map(Number);
+                                             const newDate = new Date(endDate);
+                                             newDate.setHours(hours);
+                                             newDate.setMinutes(minutes);
+                                             setEndDate(newDate);
+                                          }}
+                                       />
+                                    </div>
+                                 </PopoverContent>
+                              </Popover>
+                              {endDate && (
+                                 <input
+                                    type="hidden"
+                                    name="endDate"
+                                    value={endDate.toISOString()}
+                                 />
+                              )}
+                           </div>
+                        )}
+
+                        {/* For per_hour: Show Hours selector */}
+                        {billingType === 'per_hour' && (
+                           <div className="space-y-2">
+                              <Label htmlFor="hours-select" className="text-sm font-medium">
+                                 {t('profileBook.numberOfHours')} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={String(selectedHours)}
+                                 onValueChange={(value) => setSelectedHours(Number(value))}
+                              >
+                                 <SelectTrigger id="hours-select" className="w-full h-11">
+                                    <Clock className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.selectHours')} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((hour) => (
+                                       <SelectItem key={hour} value={String(hour)}>
+                                          {hour} {t('profileBook.hours')}
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                        )}
+
+                        {/* For per_session: Show Session Type selector */}
+                        {billingType === 'per_session' && (
+                           <div className="space-y-2">
+                              <Label htmlFor="session-type-select" className="text-sm font-medium">
+                                 {t('profileBook.sessionType')} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={selectedSessionType}
+                                 onValueChange={(value: 'one_time' | 'one_night') => setSelectedSessionType(value)}
+                              >
+                                 <SelectTrigger id="session-type-select" className="w-full h-11">
+                                    <Moon className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.selectSessionType')} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                    <SelectItem value="one_time">
+                                       {t('profileBook.oneTime')} ({t('profileBook.oneTimeDesc')})
+                                    </SelectItem>
+                                    <SelectItem value="one_night">
+                                       {t('profileBook.oneNight')} ({t('profileBook.oneNightDesc')})
+                                    </SelectItem>
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                        )}
 
                      </div>
                   </div>
@@ -324,25 +417,63 @@ export default function ServiceBooking() {
                   <h3 className="text-sm font-bold">{t('profileBook.summary')}</h3>
 
                   <div className="space-y-3 bg-secondary/30 p-2 rounded-lg">
-                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">{t('profileBook.pricePerDay')}</span>
-                        <span className="font-medium">{formatCurrency(service.customRate ? service.customRate : service.service.baseRate)}</span>
-                     </div>
+                     {/* Per Day Summary */}
+                     {billingType === 'per_day' && (
+                        <>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.pricePerDay')}</span>
+                              <span className="font-medium">{formatCurrency(service.customRate || service.service.baseRate)}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.numberOfDays')}</span>
+                              <span className="font-medium">{calculateDayAmount(String(startDate), endDate ? String(endDate) : "")} {t('profileBook.days')}</span>
+                           </div>
+                        </>
+                     )}
 
-                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">{t('profileBook.numberOfDays')}</span>
-                        <span className="font-medium">{calculateDayAmount(String(startDate), endDate ? String(endDate) : "")} {t('profileBook.days')}</span>
-                     </div>
+                     {/* Per Hour Summary */}
+                     {billingType === 'per_hour' && (
+                        <>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.pricePerHour')}</span>
+                              <span className="font-medium">{formatCurrency(service.customHourlyRate || service.service.hourlyRate || 0)}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.numberOfHours')}</span>
+                              <span className="font-medium">{selectedHours} {t('profileBook.hours')}</span>
+                           </div>
+                        </>
+                     )}
+
+                     {/* Per Session Summary */}
+                     {billingType === 'per_session' && (
+                        <>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.sessionType')}</span>
+                              <span className="font-medium">
+                                 {selectedSessionType === 'one_time'
+                                    ? t('profileBook.oneTime')
+                                    : t('profileBook.oneNight')}
+                              </span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.sessionPrice')}</span>
+                              <span className="font-medium">
+                                 {formatCurrency(
+                                    selectedSessionType === 'one_time'
+                                       ? (service.customOneTimePrice || service.service.oneTimePrice || 0)
+                                       : (service.customOneNightPrice || service.service.oneNightPrice || 0)
+                                 )}
+                              </span>
+                           </div>
+                        </>
+                     )}
 
                      <div className="border-t pt-3 mt-3">
                         <div className="flex justify-between items-center">
                            <span className="text-sm font-bold">{t('profileBook.totalPrice')}</span>
                            <span className="text-md font-bold text-primary">
-                              {
-                                 formatCurrency((service.customRate ? service.customRate : service.service.baseRate)
-                                    *
-                                    calculateDayAmount(String(startDate), endDate ? String(endDate) : ""))
-                              }
+                              {formatCurrency(calculateTotalPrice())}
                            </span>
                         </div>
                      </div>

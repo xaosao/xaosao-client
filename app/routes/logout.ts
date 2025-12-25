@@ -1,7 +1,7 @@
 import { redirect } from "react-router";
 import { destroyUserSession } from "~/services/auths.server";
 
-export function action({ request }: { request: Request }) {
+export async function action({ request }: { request: Request }) {
   if (request.method !== "POST") {
     return redirect(
       `/customer/setting?toastMessage=${encodeURIComponent(
@@ -10,5 +10,5 @@ export function action({ request }: { request: Request }) {
     );
   }
 
-  return destroyUserSession(request);
+  return await destroyUserSession(request);
 }

@@ -144,14 +144,11 @@ export async function destroyUserSession(request: Request) {
     request.headers.get("Cookie")
   );
 
-  return redirect("/login", {
-    headers: {
-      "Set-Cookie": [
-        await sessionStorage.destroySession(session),
-        `whoxa_customer_auth_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
-      ].join(", "),
-    },
-  });
+  const headers = new Headers();
+  headers.append("Set-Cookie", await sessionStorage.destroySession(session));
+  headers.append("Set-Cookie", `whoxa_customer_auth_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
+
+  return redirect("/login", { headers });
 }
 
 export async function createUserSession(

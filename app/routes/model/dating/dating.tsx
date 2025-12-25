@@ -58,6 +58,8 @@ interface BookingData {
    endDate: string;
    status: string;
    dayAmount: number;
+   hours: number | null;
+   sessionType: 'one_time' | 'one_night' | null;
    createdAt: string;
    isContact: boolean;
    modelCheckedInAt: string | null;
@@ -77,6 +79,7 @@ interface BookingData {
          name: string;
          description: string;
          baseRate: number;
+         billingType: 'per_day' | 'per_hour' | 'per_session';
       };
    } | null;
 }
@@ -332,7 +335,20 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                     {t("modelDating.card.duration")}:
                                  </p>
                                  <p className="text-sm text-muted-foreground">
-                                    {booking.dayAmount} {booking.dayAmount !== 1 ? t("modelDating.card.days") : t("modelDating.card.day")}
+                                    {/* Show duration based on billing type */}
+                                    {booking.modelService?.service?.billingType === 'per_hour' && booking.hours ? (
+                                       <>
+                                          {booking.hours} {booking.hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
+                                       </>
+                                    ) : booking.modelService?.service?.billingType === 'per_session' && booking.sessionType ? (
+                                       <>
+                                          {booking.sessionType === 'one_time' ? t('profileBook.oneTime') : t('profileBook.oneNight')}
+                                       </>
+                                    ) : (
+                                       <>
+                                          {booking.dayAmount} {booking.dayAmount !== 1 ? t("modelDating.card.days") : t("modelDating.card.day")}
+                                       </>
+                                    )}
                                  </p>
                               </div>
                            </div>

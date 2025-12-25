@@ -28,7 +28,7 @@ import { Navigation, Pagination } from "swiper/modules";
 
 // service and backend
 import { capitalize } from "~/utils/functions/textFormat";
-import { calculateAgeFromDOB, calculateDistance } from "~/utils";
+import { calculateAgeFromDOB, calculateDistance, formatDistance } from "~/utils";
 import { getUserTokenFromSession, requireUserSession } from "~/services/auths.server";
 import type { Gender, IAvailableStatus, IUserImages } from "~/interfaces/base";
 import { createCustomerInteraction, customerAddFriend } from "~/services/interaction.server";
@@ -354,7 +354,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <div className="block sm:hidden absolute bottom-8 left-4 text-white gap-4">
                                                 <h3 className="flex items-center justify-start text-md mb-1 text-shadow-lg"><User size={16} />&nbsp;{selectedProfile.firstName}&nbsp;{selectedProfile.lastName}</h3>
                                                 <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
-                                                <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} km</h3>
+                                                <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                             </div>
                                             <Form method="post">
                                                 <input type="hidden" name="like" value={selectedProfile.customerAction === "LIKE" ? "true" : "flase"} id="likeInput" />
@@ -481,7 +481,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         <div className="block sm:hidden absolute bottom-8 left-4 text-white gap-4">
                                             <h3 className="flex items-center justify-start text-md mb-1 text-shadow-lg"><User size={16} />&nbsp;{selectedProfile.firstName}&nbsp;{selectedProfile.lastName}</h3>
                                             <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
-                                            <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} km</h3>
+                                            <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                         </div>
                                         <Form method="post">
                                             <input type="hidden" name="like" value={selectedProfile.customerAction === "LIKE" ? "true" : "flase"} id="likeInput" />
@@ -768,7 +768,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             textShadow: "1px 1px 2px rgba(35, 35, 35, 0.8)",
                                                         }}
                                                     >
-                                                        <MapPin size={16} />&nbsp;{calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} km
+                                                        <MapPin size={16} />&nbsp;{formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
                                                     </p>
                                                 </div>
                                             </div>
@@ -872,7 +872,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </div>
                                         <div className="flex items-center text-sm opacity-90 mb-3">
                                             <MapPin className="h-4 w-4 mr-1" />
-                                            {calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} Km
+                                            {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
                                         </div>
                                     </div>
                                 </div>
@@ -914,7 +914,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </p>
                                         <div className="flex items-center text-sm opacity-90">
                                             <MapPin className="h-3 w-3 mr-1 text-rose-500" />
-                                            {calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude))} Km
+                                            {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
 
                                         </div>
                                     </div>

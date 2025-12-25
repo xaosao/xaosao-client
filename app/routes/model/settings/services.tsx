@@ -25,6 +25,7 @@ import {
 } from "~/services/service.server";
 import { requireModelSession } from "~/services/model-auth.server";
 import { formatMoney } from "~/utils/functions/moneyFormat";
+import type { BillingType } from "~/interfaces/service";
 
 export const meta: MetaFunction = () => {
   return [
@@ -40,9 +41,16 @@ interface Service {
   baseRate: number;
   commission: number;
   status: string;
+  billingType: BillingType;
+  hourlyRate: number | null;
+  oneTimePrice: number | null;
+  oneNightPrice: number | null;
   isApplied: boolean;
   modelServiceId: string | null;
   customRate: number | null;
+  customHourlyRate: number | null;
+  customOneTimePrice: number | null;
+  customOneNightPrice: number | null;
   isAvailable: boolean;
 }
 
@@ -62,10 +70,26 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const serviceId = formData.get("serviceId") as string;
   const actionType = formData.get("actionType") as string;
+  const billingType = formData.get("billingType") as BillingType;
+
+  // Build rates object based on billing type
+  const buildRates = () => {
+    const customRateStr = formData.get("customRate") as string;
+    const customHourlyRateStr = formData.get("customHourlyRate") as string;
+    const customOneTimePriceStr = formData.get("customOneTimePrice") as string;
+    const customOneNightPriceStr = formData.get("customOneNightPrice") as string;
+
+    return {
+      customRate: customRateStr ? parseFloat(customRateStr) : undefined,
+      customHourlyRate: customHourlyRateStr ? parseFloat(customHourlyRateStr) : undefined,
+      customOneTimePrice: customOneTimePriceStr ? parseFloat(customOneTimePriceStr) : undefined,
+      customOneNightPrice: customOneNightPriceStr ? parseFloat(customOneNightPriceStr) : undefined,
+    };
+  };
 
   if (actionType === "apply") {
-    const customRate = parseFloat(formData.get("customRate") as string);
-    const result = await applyForService(modelId, serviceId, customRate);
+    const rates = buildRates();
+    const result = await applyForService(modelId, serviceId, rates);
     if (result?.success) {
       return redirect(
         `/model/settings/services?toastMessage=${encodeURIComponent("modelServices.success.applied")}&toastType=success`
@@ -76,13 +100,13 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
   } else if (actionType === "edit") {
-    const customRate = parseFloat(formData.get("customRate") as string);
+    const rates = buildRates();
     const modelServiceId = formData.get("modelServiceId") as string;
     const result = await updateServiceApplication(
       modelId,
       serviceId,
       modelServiceId,
-      customRate
+      rates
     );
     if (result?.success) {
       return redirect(
@@ -115,10 +139,36 @@ export default function ServicesSettings() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
+  // Rate states for different billing types
   const [customRate, setCustomRate] = useState<string>("");
+  const [customHourlyRate, setCustomHourlyRate] = useState<string>("");
+  const [customOneTimePrice, setCustomOneTimePrice] = useState<string>("");
+  const [customOneNightPrice, setCustomOneNightPrice] = useState<string>("");
+
   const [applyModal, setApplyModal] = useState<Service | null>(null);
   const [editModal, setEditModal] = useState<Service | null>(null);
   const [cancelModal, setCancelModal] = useState<Service | null>(null);
+
+  // Helper to initialize rates when opening modal
+  const initializeRatesForService = (service: Service) => {
+    setCustomRate(service.customRate?.toString() || service.baseRate.toString());
+    setCustomHourlyRate(service.customHourlyRate?.toString() || service.hourlyRate?.toString() || "");
+    setCustomOneTimePrice(service.customOneTimePrice?.toString() || service.oneTimePrice?.toString() || "");
+    setCustomOneNightPrice(service.customOneNightPrice?.toString() || service.oneNightPrice?.toString() || "");
+  };
+
+  // Helper to get billing type label
+  const getBillingTypeLabel = (billingType: BillingType) => {
+    switch (billingType) {
+      case "per_hour":
+        return t("modelServices.billingTypes.perHour");
+      case "per_session":
+        return t("modelServices.billingTypes.perSession");
+      case "per_day":
+      default:
+        return t("modelServices.billingTypes.perDay");
+    }
+  };
 
   // Helper function to get translated service name
   const getServiceName = (nameKey: string) => {
@@ -191,7 +241,7 @@ export default function ServicesSettings() {
                     type="button"
                     onClick={() => {
                       setEditModal(service);
-                      setCustomRate(service.customRate?.toString() || service.baseRate.toString());
+                      initializeRatesForService(service);
                     }}
                     className="p-1.5 rounded-full bg-white border border-rose-300 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors shadow-sm"
                     title={t("modelServices.edit")}
@@ -221,26 +271,98 @@ export default function ServicesSettings() {
                 </p>
 
                 <div className="space-y-2 mb-4">
+                  {/* Billing Type Badge */}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{t("modelServices.baseRate")}</span>
-                    <span className="font-semibold text-gray-900 flex items-center gap-1">
-                      {formatMoney(service.baseRate)}
+                    <span className="text-gray-600">{t("modelServices.billingType")}</span>
+                    <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700">
+                      {getBillingTypeLabel(service.billingType)}
                     </span>
                   </div>
+
+                  {/* Per Day - Show base rate */}
+                  {service.billingType === "per_day" && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{t("modelServices.baseRate")}</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1">
+                          {formatMoney(service.baseRate)}/{t("modelServices.day")}
+                        </span>
+                      </div>
+                      {service.isApplied && service.customRate && (
+                        <div className="flex items-center justify-between text-sm pt-2 border-t">
+                          <span className="text-gray-600">{t("modelServices.yourRate")}</span>
+                          <span className="font-bold text-rose-600 flex items-center gap-1">
+                            {formatMoney(service.customRate)}/{t("modelServices.day")}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Per Hour - Show hourly rate */}
+                  {service.billingType === "per_hour" && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1">
+                          {formatMoney(service.hourlyRate || 0)}/{t("modelServices.hour")}
+                        </span>
+                      </div>
+                      {service.isApplied && service.customHourlyRate && (
+                        <div className="flex items-center justify-between text-sm pt-2 border-t">
+                          <span className="text-gray-600">{t("modelServices.yourRate")}</span>
+                          <span className="font-bold text-rose-600 flex items-center gap-1">
+                            {formatMoney(service.customHourlyRate)}/{t("modelServices.hour")}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Per Session - Show one time and one night prices */}
+                  {service.billingType === "per_session" && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{t("modelServices.oneTimePrice")}</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1">
+                          {formatMoney(service.oneTimePrice || 0)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{t("modelServices.oneNightPrice")}</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1">
+                          {formatMoney(service.oneNightPrice || 0)}
+                        </span>
+                      </div>
+                      {service.isApplied && (service.customOneTimePrice || service.customOneNightPrice) && (
+                        <div className="pt-2 border-t space-y-1">
+                          {service.customOneTimePrice && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">{t("modelServices.yourOneTimeRate")}</span>
+                              <span className="font-bold text-rose-600 flex items-center gap-1">
+                                {formatMoney(service.customOneTimePrice)}
+                              </span>
+                            </div>
+                          )}
+                          {service.customOneNightPrice && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">{t("modelServices.yourOneNightRate")}</span>
+                              <span className="font-bold text-rose-600 flex items-center gap-1">
+                                {formatMoney(service.customOneNightPrice)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
                     <span className="font-semibold text-rose-600">
                       {service.commission}%
                     </span>
                   </div>
-                  {service.isApplied && service.customRate && (
-                    <div className="flex items-center justify-between text-sm pt-2 border-t">
-                      <span className="text-gray-600">{t("modelServices.yourRate")}</span>
-                      <span className="font-bold text-rose-600 flex items-center gap-1">
-                        {formatMoney(service.customRate)}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Apply button - only shown when not applied */}
@@ -251,7 +373,7 @@ export default function ServicesSettings() {
                       variant="outline"
                       onClick={() => {
                         setApplyModal(service);
-                        setCustomRate(service.baseRate.toString());
+                        initializeRatesForService(service);
                       }}
                       className="w-full border-rose-300 text-rose-500 hover:bg-rose-500 hover:text-white"
                     >
@@ -296,11 +418,44 @@ export default function ServicesSettings() {
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t("modelServices.baseRate")}</span>
-                    <span className="font-semibold flex items-center gap-1">
-                      {formatMoney(applyModal.baseRate)}
+                    <span className="text-gray-600">{t("modelServices.billingType")}</span>
+                    <span className="px-2 py-0.5 bg-white rounded text-xs font-medium text-gray-700">
+                      {getBillingTypeLabel(applyModal.billingType)}
                     </span>
                   </div>
+                  {/* Show rates based on billing type */}
+                  {applyModal.billingType === "per_day" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.baseRate")}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(applyModal.baseRate)}/{t("modelServices.day")}
+                      </span>
+                    </div>
+                  )}
+                  {applyModal.billingType === "per_hour" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(applyModal.hourlyRate || 0)}/{t("modelServices.hour")}
+                      </span>
+                    </div>
+                  )}
+                  {applyModal.billingType === "per_session" && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t("modelServices.oneTimePrice")}</span>
+                        <span className="font-semibold flex items-center gap-1">
+                          {formatMoney(applyModal.oneTimePrice || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t("modelServices.oneNightPrice")}</span>
+                        <span className="font-semibold flex items-center gap-1">
+                          {formatMoney(applyModal.oneNightPrice || 0)}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
                     <span className="font-semibold text-rose-600">
@@ -313,27 +468,110 @@ export default function ServicesSettings() {
               <Form method="post" className="space-y-4">
                 <input type="hidden" name="serviceId" value={applyModal.id} />
                 <input type="hidden" name="actionType" value="apply" />
+                <input type="hidden" name="billingType" value={applyModal.billingType} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="customRate">
-                    {t("modelServices.customRateLabel")} <span className="text-rose-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
-                    <Input
-                      id="customRate"
-                      type="number"
-                      name="customRate"
-                      value={customRate}
-                      onChange={(e) => setCustomRate(e.target.value)}
-                      step="0.01"
-                      min="0"
-                      required
-                      className="pl-10"
-                      placeholder={t("modelServices.enterYourRate")}
-                    />
+                {/* Per Day - Custom daily rate */}
+                {applyModal.billingType === "per_day" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customRate">
+                      {t("modelServices.customDailyRateLabel")} <span className="text-rose-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                      <Input
+                        id="customRate"
+                        type="number"
+                        name="customRate"
+                        value={customRate}
+                        onChange={(e) => setCustomRate(e.target.value)}
+                        step="1"
+                        min="0"
+                        required
+                        className="pl-10"
+                        placeholder={t("modelServices.enterYourDailyRate")}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Per Hour - Custom hourly rate */}
+                {applyModal.billingType === "per_hour" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customHourlyRate">
+                      {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                      <Input
+                        id="customHourlyRate"
+                        type="number"
+                        name="customHourlyRate"
+                        value={customHourlyRate}
+                        onChange={(e) => setCustomHourlyRate(e.target.value)}
+                        step="1"
+                        min="0"
+                        required
+                        className="pl-10"
+                        placeholder={t("modelServices.enterYourHourlyRate")}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {t("modelServices.hourlyRateHint")}
+                    </p>
+                  </div>
+                )}
+
+                {/* Per Session - Custom one time and one night prices */}
+                {applyModal.billingType === "per_session" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="customOneTimePrice">
+                        {t("modelServices.customOneTimePriceLabel")} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="customOneTimePrice"
+                          type="number"
+                          name="customOneTimePrice"
+                          value={customOneTimePrice}
+                          onChange={(e) => setCustomOneTimePrice(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterOneTimePrice")}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.oneTimePriceHint")}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customOneNightPrice">
+                        {t("modelServices.customOneNightPriceLabel")} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="customOneNightPrice"
+                          type="number"
+                          name="customOneNightPrice"
+                          value={customOneNightPrice}
+                          onChange={(e) => setCustomOneNightPrice(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterOneNightPrice")}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.oneNightPriceHint")}
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <DialogFooter className="flex flex-row gap-2">
                   <Button
@@ -381,11 +619,44 @@ export default function ServicesSettings() {
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t("modelServices.baseRate")}</span>
-                    <span className="font-semibold flex items-center gap-1">
-                      {formatMoney(editModal.baseRate)}
+                    <span className="text-gray-600">{t("modelServices.billingType")}</span>
+                    <span className="px-2 py-0.5 bg-white rounded text-xs font-medium text-gray-700">
+                      {getBillingTypeLabel(editModal.billingType)}
                     </span>
                   </div>
+                  {/* Show rates based on billing type */}
+                  {editModal.billingType === "per_day" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.baseRate")}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(editModal.baseRate)}/{t("modelServices.day")}
+                      </span>
+                    </div>
+                  )}
+                  {editModal.billingType === "per_hour" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(editModal.hourlyRate || 0)}/{t("modelServices.hour")}
+                      </span>
+                    </div>
+                  )}
+                  {editModal.billingType === "per_session" && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t("modelServices.oneTimePrice")}</span>
+                        <span className="font-semibold flex items-center gap-1">
+                          {formatMoney(editModal.oneTimePrice || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">{t("modelServices.oneNightPrice")}</span>
+                        <span className="font-semibold flex items-center gap-1">
+                          {formatMoney(editModal.oneNightPrice || 0)}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
                     <span className="font-semibold text-rose-600">
@@ -399,30 +670,113 @@ export default function ServicesSettings() {
                 <input type="hidden" name="serviceId" value={editModal.id} />
                 <input type="hidden" name="modelServiceId" value={editModal.modelServiceId || ""} />
                 <input type="hidden" name="actionType" value="edit" />
+                <input type="hidden" name="billingType" value={editModal.billingType} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="editCustomRate">
-                    {t("modelServices.customRateLabel")} <span className="text-rose-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
-                    <Input
-                      id="editCustomRate"
-                      type="number"
-                      name="customRate"
-                      value={customRate}
-                      onChange={(e) => setCustomRate(e.target.value)}
-                      step="0.01"
-                      min="0"
-                      required
-                      className="pl-10"
-                      placeholder={t("modelServices.enterYourRate")}
-                    />
+                {/* Per Day - Custom daily rate */}
+                {editModal.billingType === "per_day" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="editCustomRate">
+                      {t("modelServices.customDailyRateLabel")} <span className="text-rose-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                      <Input
+                        id="editCustomRate"
+                        type="number"
+                        name="customRate"
+                        value={customRate}
+                        onChange={(e) => setCustomRate(e.target.value)}
+                        step="1"
+                        min="0"
+                        required
+                        className="pl-10"
+                        placeholder={t("modelServices.enterYourDailyRate")}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {t("modelServices.editModal.rateHint")}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {t("modelServices.editModal.rateHint")}
-                  </p>
-                </div>
+                )}
+
+                {/* Per Hour - Custom hourly rate */}
+                {editModal.billingType === "per_hour" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="editCustomHourlyRate">
+                      {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                      <Input
+                        id="editCustomHourlyRate"
+                        type="number"
+                        name="customHourlyRate"
+                        value={customHourlyRate}
+                        onChange={(e) => setCustomHourlyRate(e.target.value)}
+                        step="1"
+                        min="0"
+                        required
+                        className="pl-10"
+                        placeholder={t("modelServices.enterYourHourlyRate")}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {t("modelServices.hourlyRateHint")}
+                    </p>
+                  </div>
+                )}
+
+                {/* Per Session - Custom one time and one night prices */}
+                {editModal.billingType === "per_session" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="editCustomOneTimePrice">
+                        {t("modelServices.customOneTimePriceLabel")} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="editCustomOneTimePrice"
+                          type="number"
+                          name="customOneTimePrice"
+                          value={customOneTimePrice}
+                          onChange={(e) => setCustomOneTimePrice(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterOneTimePrice")}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.oneTimePriceHint")}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editCustomOneNightPrice">
+                        {t("modelServices.customOneNightPriceLabel")} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="editCustomOneNightPrice"
+                          type="number"
+                          name="customOneNightPrice"
+                          value={customOneNightPrice}
+                          onChange={(e) => setCustomOneNightPrice(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterOneNightPrice")}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.oneNightPriceHint")}
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <DialogFooter className="flex flex-row gap-2">
                   <Button

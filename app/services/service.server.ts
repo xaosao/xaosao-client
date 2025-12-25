@@ -1,6 +1,30 @@
 import { prisma } from "./database.server";
 import { FieldValidationError } from "./base.server";
 
+// Get all active services for public display (home page)
+export async function getPublicServices() {
+  try {
+    const services = await prisma.service.findMany({
+      where: {
+        status: "active",
+      },
+      orderBy: {
+        order: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+      },
+    });
+
+    return services;
+  } catch (error: any) {
+    console.error("GET_PUBLIC_SERVICES_ERROR:", error);
+    return [];
+  }
+}
+
 // Get all services with model's application status
 export async function getServicesForModel(modelId: string) {
   try {
@@ -10,6 +34,18 @@ export async function getServicesForModel(modelId: string) {
       },
       orderBy: {
         order: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        baseRate: true,
+        commission: true,
+        status: true,
+        billingType: true,
+        hourlyRate: true,
+        oneTimePrice: true,
+        oneNightPrice: true,
       },
     });
 
@@ -35,6 +71,9 @@ export async function getServicesForModel(modelId: string) {
         isApplied: !!modelService,
         modelServiceId: modelService?.id || null,
         customRate: modelService?.customRate || null,
+        customHourlyRate: modelService?.customHourlyRate || null,
+        customOneTimePrice: modelService?.customOneTimePrice || null,
+        customOneNightPrice: modelService?.customOneNightPrice || null,
         isAvailable: modelService?.isAvailable || true,
       };
     });
@@ -51,10 +90,17 @@ export async function getServicesForModel(modelId: string) {
 }
 
 // Apply for a service
+export interface ServiceRates {
+  customRate?: number;
+  customHourlyRate?: number;
+  customOneTimePrice?: number;
+  customOneNightPrice?: number;
+}
+
 export async function applyForService(
   modelId: string,
   serviceId: string,
-  customRate: number
+  rates: ServiceRates
 ) {
   try {
     // Check if already applied
@@ -87,12 +133,15 @@ export async function applyForService(
       };
     }
 
-    // Create application with custom rate
+    // Create application with custom rates based on billing type
     await prisma.model_service.create({
       data: {
         modelId,
         serviceId,
-        customRate: customRate,
+        customRate: rates.customRate ?? null,
+        customHourlyRate: rates.customHourlyRate ?? null,
+        customOneTimePrice: rates.customOneTimePrice ?? null,
+        customOneNightPrice: rates.customOneNightPrice ?? null,
         isAvailable: true,
         status: "active",
       },
@@ -163,7 +212,7 @@ export async function updateServiceApplication(
   modelId: string,
   serviceId: string,
   modelServiceId: string,
-  customRate: number
+  rates: ServiceRates
 ) {
   try {
     // Verify the model service exists and belongs to this model
@@ -184,13 +233,16 @@ export async function updateServiceApplication(
       };
     }
 
-    // Update the custom rate
+    // Update the custom rates
     await prisma.model_service.update({
       where: {
         id: modelServiceId,
       },
       data: {
-        customRate: customRate,
+        customRate: rates.customRate ?? modelService.customRate,
+        customHourlyRate: rates.customHourlyRate ?? modelService.customHourlyRate,
+        customOneTimePrice: rates.customOneTimePrice ?? modelService.customOneTimePrice,
+        customOneNightPrice: rates.customOneNightPrice ?? modelService.customOneNightPrice,
       },
     });
 

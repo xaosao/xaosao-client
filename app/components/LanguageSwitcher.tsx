@@ -33,7 +33,7 @@ export default function LanguageSwitcher() {
           <div className="flex items-center gap-2">
             <Languages className="w-4 h-4 text-rose-500" />
             <SelectValue>
-              <span className='text-rose-500'>{currentLanguage.name}</span>
+              <span className='hidden sm:block text-rose-500'>{currentLanguage.name}</span>
             </SelectValue>
           </div>
         </SelectTrigger>

@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react"
 
 const backgroundImages = [
+  // {
+  //   src: "https://images.pexels.com/photos/5911151/pexels-photo-5911151.jpeg?w=1920&h=1080&fit=crop&crop=center",
+  //   alt: "Couple with city lights at night",
+  // },
+  // {
+  //   src: "https://images.pexels.com/photos/269583/pexels-photo-269583.jpeg?w=1920&h=1080&fit=crop&crop=center",
+  //   alt: "Couple with city lights at night",
+  // },
   {
-    src: "https://images.pexels.com/photos/5911151/pexels-photo-5911151.jpeg?w=1920&h=1080&fit=crop&crop=center",
+    src: "https://images.pexels.com/photos/348520/pexels-photo-348520.jpeg?w=1920&h=1080&fit=crop&crop=center",
     alt: "Couple with city lights at night",
   },
   {
-    src: "https://images.pexels.com/photos/269583/pexels-photo-269583.jpeg?w=1920&h=1080&fit=crop&crop=center",
+    src: "https://images.pexels.com/photos/348520/pexels-photo-348520.jpeg?w=1920&h=1080&fit=crop&crop=center",
     alt: "Couple with city lights at night",
   },
   {

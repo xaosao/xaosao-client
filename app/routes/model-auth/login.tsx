@@ -1,6 +1,6 @@
 import { Loader } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
 import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation } from "react-router";
 
@@ -8,6 +8,12 @@ import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation } 
 import { modelLogin } from "~/services/model-auth.server";
 import type { IModelSigninCredentials } from "~/services/model-auth.server";
 import { validateModelSignInInputs } from "~/services/model-validation.server";
+
+// components
+import { LocationPermissionGuide } from "~/components/LocationPermissionGuide";
+
+// hooks
+import { useGeolocation } from "~/hooks/useGeolocation";
 
 export const meta: MetaFunction = () => {
   return [
@@ -146,6 +152,18 @@ export default function ModelLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(showResetSuccess);
 
+  // Geolocation hook - automatically requests location on mount
+  const {
+    latitude,
+    longitude,
+    loading: locationLoading,
+    error: locationError,
+    permissionState,
+    requestLocation,
+  } = useGeolocation({ enableHighAccuracy: true, timeout: 15000 });
+
+  const hasLocation = latitude !== null && longitude !== null;
+
   // Hide success message after 5 seconds
   useEffect(() => {
     if (showResetSuccess) {
@@ -156,68 +174,6 @@ export default function ModelLogin() {
       return () => clearTimeout(timer);
     }
   }, [showResetSuccess]);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'denied' | 'error'>('loading');
-
-  // Function to request GPS location
-  const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('error');
-      // console.error("Geolocation is not supported by this browser");
-      return;
-    }
-
-    // Check if we're on a secure context (HTTPS or localhost)
-    const isSecureContext = window.isSecureContext ||
-      window.location.protocol === 'https:' ||
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname.startsWith('192.168.') ||
-      window.location.hostname.startsWith('10.');
-
-    if (!isSecureContext) {
-      // console.warn("Geolocation requires HTTPS. Current URL:", window.location.href);
-    }
-
-    setLocationStatus('loading');
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setLocationStatus('success');
-        // console.log("✅ Model GPS location obtained:", position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        console.error("❌ Geolocation error:", error.message, "Code:", error.code);
-
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationStatus('denied');
-          // console.warn("User denied location permission. Login will work without GPS.");
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          setLocationStatus('error');
-          // console.error("Location information unavailable");
-        } else if (error.code === error.TIMEOUT) {
-          setLocationStatus('error');
-          // console.error("Location request timed out");
-        } else {
-          setLocationStatus('error');
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
-  }, []);
-
-  // Get user's GPS location on component mount
-  useEffect(() => {
-    requestLocation();
-  }, [requestLocation]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-4">
@@ -234,29 +190,69 @@ export default function ModelLogin() {
           </p>
 
           {/* Location status indicator */}
-          <div className="flex items-center justify-center pt-3">
-            {locationStatus === 'loading' && (
-              <p className="text-xs text-yellow-600 flex items-center">
+          <div className="pt-3">
+            {locationLoading && (
+              <p className="text-xs text-yellow-600 flex items-center justify-center">
                 <Loader className="w-3 h-3 mr-1 animate-spin" />
                 {t("modelAuth.login.gettingLocation")}
               </p>
             )}
-            {locationStatus === 'success' && (
-              <p className="text-xs text-green-600 flex items-center">
+            {!locationLoading && hasLocation && (
+              <p className="text-xs text-green-600 flex items-center justify-center">
                 <span className="mr-1">📍</span>
                 {t("modelAuth.login.locationDetected")}
               </p>
             )}
-            {(locationStatus === 'denied' || locationStatus === 'error') && (
-              <div className="flex items-center gap-2">
+            {!locationLoading && !hasLocation && permissionState === 'denied' && (
+              <div className="space-y-2 text-center">
+                <p className="text-xs text-orange-600 flex items-center justify-center">
+                  <span className="mr-1">📍</span>
+                  {t("modelAuth.login.locationBlocked", { defaultValue: "Location blocked" })}
+                </p>
+                <LocationPermissionGuide variant="light" onRetry={requestLocation} />
+              </div>
+            )}
+            {!locationLoading && !hasLocation && (permissionState === 'prompt' || permissionState === 'unknown') && !locationError && (
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-xs text-gray-500 flex items-center">
+                  <span className="mr-1">📍</span>
+                  {t("modelAuth.login.enableLocationPrompt", { defaultValue: "Enable location for better experience" })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        () => window.location.reload(),
+                        () => window.location.reload(),
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                      );
+                    }
+                  }}
+                  className="text-xs bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-full cursor-pointer"
+                >
+                  {t("modelAuth.login.enableLocation", { defaultValue: "Enable" })}
+                </button>
+              </div>
+            )}
+            {!locationLoading && !hasLocation && permissionState !== 'denied' && locationError && (
+              <div className="flex items-center justify-center gap-2">
                 <p className="text-xs text-gray-500 flex items-center">
                   <span className="mr-1">📍</span>
                   {t("modelAuth.login.locationUnavailable")}
                 </p>
                 <button
                   type="button"
-                  onClick={requestLocation}
-                  className="text-xs text-rose-500 hover:text-rose-400 underline"
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        () => window.location.reload(),
+                        () => window.location.reload(),
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                      );
+                    }
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-400 underline cursor-pointer"
                 >
                   {t("modelAuth.login.retry")}
                 </button>
@@ -279,10 +275,10 @@ export default function ModelLogin() {
         )}
 
         <Form method="post" className="mt-8 space-y-6">
-          {location && (
+          {hasLocation && (
             <>
-              <input type="hidden" name="latitude" value={location.latitude} />
-              <input type="hidden" name="longitude" value={location.longitude} />
+              <input type="hidden" name="latitude" value={latitude!} />
+              <input type="hidden" name="longitude" value={longitude!} />
             </>
           )}
 

@@ -313,7 +313,20 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                  {t('booking.duration')}:
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                 {booking.dayAmount} {booking.dayAmount !== 1 ? t('booking.days') : t('booking.day')}
+                                 {/* Show duration based on billing type */}
+                                 {booking.modelService?.service?.billingType === 'per_hour' && booking.hours ? (
+                                    <>
+                                       {booking.hours} {booking.hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
+                                    </>
+                                 ) : booking.modelService?.service?.billingType === 'per_session' && booking.sessionType ? (
+                                    <>
+                                       {booking.sessionType === 'one_time' ? t('profileBook.oneTime') : t('profileBook.oneNight')}
+                                    </>
+                                 ) : (
+                                    <>
+                                       {booking.dayAmount} {booking.dayAmount !== 1 ? t('booking.days') : t('booking.day')}
+                                    </>
+                                 )}
                               </p>
                            </div>
                         </div>

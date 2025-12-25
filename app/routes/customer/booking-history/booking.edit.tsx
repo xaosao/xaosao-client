@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { format } from "date-fns"
 import { useTranslation } from "react-i18next"
-import { AlertCircle, Calendar1, CalendarIcon, Loader } from "lucide-react"
+import { AlertCircle, Calendar1, CalendarIcon, Loader, Clock, Moon } from "lucide-react"
 import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router"
 
 // components:
@@ -24,7 +24,7 @@ import { getAllMyServiceBooking, updateServiceBooking } from "~/services/booking
 import { requireUserSession } from "~/services/auths.server";
 import { getModelService } from "~/services/model.server";
 import { validateServiceBookingInputs } from "~/services/validation.server";
-import type { IServiceBookingCredentials, IServiceBookingResponse, ISingleServiceBooking } from "~/interfaces/service"
+import type { IServiceBookingCredentials, IServiceBookingResponse, ISingleServiceBooking, SessionType, BillingType } from "~/interfaces/service"
 
 interface LoaderReturn {
    service: IServiceBookingResponse;
@@ -48,13 +48,32 @@ export async function action({ params, request }: Route.ActionArgs) {
 
    const formData = await request.formData()
    const bookingData = Object.fromEntries(formData) as Partial<IServiceBookingCredentials>
-   const dayAmount = bookingData.endDate
-      ? calculateDayAmount(String(bookingData.startDate), String(bookingData.endDate))
-      : calculateDayAmount(String(bookingData.startDate), "");
+   const billingType = formData.get("billingType") as BillingType;
+
+   // Calculate day amount only for per_day billing
+   const dayAmount = billingType === 'per_day'
+      ? (bookingData.endDate
+         ? calculateDayAmount(String(bookingData.startDate), String(bookingData.endDate))
+         : calculateDayAmount(String(bookingData.startDate), ""))
+      : undefined;
 
    try {
       bookingData.price = parseFormattedNumber(bookingData.price)
-      bookingData.dayAmount = parseFormattedNumber(dayAmount)
+
+      // Set appropriate fields based on billing type
+      if (billingType === 'per_day') {
+         bookingData.dayAmount = parseFormattedNumber(dayAmount)
+         bookingData.hours = undefined;
+         bookingData.sessionType = undefined;
+      } else if (billingType === 'per_hour') {
+         bookingData.hours = parseFormattedNumber(bookingData.hours);
+         bookingData.dayAmount = undefined;
+         bookingData.sessionType = undefined;
+      } else if (billingType === 'per_session') {
+         bookingData.sessionType = formData.get("sessionType") as SessionType;
+         bookingData.hours = undefined;
+         bookingData.dayAmount = undefined;
+      }
 
       await validateServiceBookingInputs(bookingData as IServiceBookingCredentials);
       const res = await updateServiceBooking(id, customerId, bookingData as IServiceBookingCredentials);
@@ -96,6 +115,8 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
    const actionData = useActionData<typeof action>()
    const { dateBooking, service } = loaderData;
 
+   const billingType = service?.service?.billingType || 'per_day';
+
    const getServiceName = (): string => {
       const serviceName = service?.service?.name;
       if (!serviceName) return t("booking.serviceUnavailable");
@@ -116,8 +137,76 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
       dateBooking?.endDate ? new Date(dateBooking.endDate) : undefined
    );
 
+   // State for per_hour services
+   const [hours, setHours] = useState<number>(dateBooking?.hours || 2);
+
+   // State for per_session services
+   const [sessionType, setSessionType] = useState<SessionType>(
+      dateBooking?.sessionType || 'one_time'
+   );
+
    const isSubmitting =
       navigation.state !== "idle" && navigation.formMethod === "POST";
+
+   // Get the appropriate rate based on billing type
+   const getRate = (): number => {
+      if (billingType === 'per_hour') {
+         return service.customHourlyRate || service.service.hourlyRate || service.customRate || service.service.baseRate;
+      } else if (billingType === 'per_session') {
+         if (sessionType === 'one_time') {
+            return service.customOneTimePrice || service.service.oneTimePrice || service.customRate || service.service.baseRate;
+         } else {
+            return service.customOneNightPrice || service.service.oneNightPrice || service.customRate || service.service.baseRate;
+         }
+      }
+      return service.customRate || service.service.baseRate;
+   };
+
+   // Calculate total price based on billing type
+   const calculateTotalPrice = (): number => {
+      const rate = getRate();
+      if (billingType === 'per_hour') {
+         return rate * hours;
+      } else if (billingType === 'per_session') {
+         return rate; // Session price is fixed
+      }
+      // per_day billing
+      const days = calculateDayAmount(String(startDate), endDate ? String(endDate) : "");
+      return rate * days;
+   };
+
+   // Get rate label based on billing type
+   const getRateLabel = (): string => {
+      if (billingType === 'per_hour') {
+         return t('booking.edit.summary.pricePerHour');
+      } else if (billingType === 'per_session') {
+         return sessionType === 'one_time'
+            ? t('profileBook.oneTimePrice')
+            : t('profileBook.oneNightPrice');
+      }
+      return t('booking.edit.summary.pricePerDay');
+   };
+
+   // Get quantity label based on billing type
+   const getQuantityLabel = (): string => {
+      if (billingType === 'per_hour') {
+         return t('booking.edit.summary.numberOfHours');
+      } else if (billingType === 'per_session') {
+         return t('booking.edit.summary.sessionType');
+      }
+      return t('booking.edit.summary.numberOfDays');
+   };
+
+   // Get quantity value based on billing type
+   const getQuantityValue = (): string => {
+      if (billingType === 'per_hour') {
+         return `${hours} ${hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}`;
+      } else if (billingType === 'per_session') {
+         return sessionType === 'one_time' ? t('profileBook.oneTime') : t('profileBook.oneNight');
+      }
+      const days = calculateDayAmount(String(startDate), endDate ? String(endDate) : "");
+      return `${days} ${t('booking.days')}`;
+   };
 
    function closeHandler() {
       navigate("/customer/dates-history");
@@ -134,14 +223,19 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
             </div>
 
             <Form method="post" className="space-y-4">
+               {/* Hidden inputs for billing type, price, hours, sessionType */}
+               <input type="hidden" name="billingType" value={billingType} />
+               <input type="hidden" name="price" value={calculateTotalPrice()} />
+               {billingType === 'per_hour' && (
+                  <input type="hidden" name="hours" value={hours} />
+               )}
+               {billingType === 'per_session' && (
+                  <input type="hidden" name="sessionType" value={sessionType} />
+               )}
+
                <div className="space-y-6">
                   <div>
                      <div className="grid gap-6 md:grid-cols-2">
-                        <input
-                           type="hidden"
-                           name="price"
-                           value={service.customRate ? service.customRate : service.service.baseRate}
-                        />
                         <div className="space-y-2">
                            <Label htmlFor="start-date" className="text-sm font-medium">
                               {t('booking.edit.startDate')} <span className="text-destructive">*</span>
@@ -255,6 +349,84 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
 
                      </div>
                   </div>
+
+                  {/* Hours selector for per_hour services */}
+                  {billingType === 'per_hour' && (
+                     <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                           {t('profileBook.selectHours')} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="flex items-center gap-3">
+                           <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setHours(Math.max(2, hours - 1))}
+                              disabled={hours <= 2}
+                           >
+                              -
+                           </Button>
+                           <div className="flex items-center gap-2 px-4 py-2 border rounded-md min-w-[80px] justify-center">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{hours}</span>
+                           </div>
+                           <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setHours(Math.min(10, hours + 1))}
+                              disabled={hours >= 10}
+                           >
+                              +
+                           </Button>
+                           <span className="text-sm text-muted-foreground">
+                              {hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
+                           </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{t('profileBook.hoursHint')}</p>
+                     </div>
+                  )}
+
+                  {/* Session type selector for per_session services */}
+                  {billingType === 'per_session' && (
+                     <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                           {t('profileBook.selectSessionType')} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4">
+                           <button
+                              type="button"
+                              onClick={() => setSessionType('one_time')}
+                              className={cn(
+                                 "flex flex-col items-center justify-between rounded-md border-2 p-4 hover:bg-accent cursor-pointer transition-colors",
+                                 sessionType === 'one_time' ? "border-rose-500 bg-rose-50" : "border-muted"
+                              )}
+                           >
+                              <Clock className="mb-2 h-6 w-6" />
+                              <span className="text-sm font-medium">{t('profileBook.oneTime')}</span>
+                              <span className="text-xs text-muted-foreground">{t('profileBook.oneTimeDescription')}</span>
+                              <span className="mt-2 text-sm font-bold text-rose-600">
+                                 {formatCurrency(service.customOneTimePrice || service.service.oneTimePrice || 0)}
+                              </span>
+                           </button>
+                           <button
+                              type="button"
+                              onClick={() => setSessionType('one_night')}
+                              className={cn(
+                                 "flex flex-col items-center justify-between rounded-md border-2 p-4 hover:bg-accent cursor-pointer transition-colors",
+                                 sessionType === 'one_night' ? "border-rose-500 bg-rose-50" : "border-muted"
+                              )}
+                           >
+                              <Moon className="mb-2 h-6 w-6" />
+                              <span className="text-sm font-medium">{t('profileBook.oneNight')}</span>
+                              <span className="text-xs text-muted-foreground">{t('profileBook.oneNightDescription')}</span>
+                              <span className="mt-2 text-sm font-bold text-rose-600">
+                                 {formatCurrency(service.customOneNightPrice || service.service.oneNightPrice || 0)}
+                              </span>
+                           </button>
+                        </div>
+                     </div>
+                  )}
                </div>
 
                <div className="space-y-4">
@@ -292,24 +464,29 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
 
                   <div className="space-y-3 bg-secondary/30 p-2 rounded-lg">
                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">{t('booking.edit.summary.pricePerDay')}</span>
-                        <span className="font-medium">{formatCurrency(service.customRate ? service.customRate : service.service.baseRate)}</span>
+                        <span className="text-muted-foreground">{getRateLabel()}</span>
+                        <span className="font-medium">{formatCurrency(getRate())}</span>
                      </div>
 
-                     <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">{t('booking.edit.summary.numberOfDays')}</span>
-                        <span className="font-medium">{calculateDayAmount(String(startDate), endDate ? String(endDate) : "")} {t('booking.days')}</span>
-                     </div>
+                     {billingType !== 'per_session' && (
+                        <div className="flex justify-between items-center text-sm">
+                           <span className="text-muted-foreground">{getQuantityLabel()}</span>
+                           <span className="font-medium">{getQuantityValue()}</span>
+                        </div>
+                     )}
+
+                     {billingType === 'per_session' && (
+                        <div className="flex justify-between items-center text-sm">
+                           <span className="text-muted-foreground">{getQuantityLabel()}</span>
+                           <span className="font-medium">{getQuantityValue()}</span>
+                        </div>
+                     )}
 
                      <div className="border-t pt-3 mt-3">
                         <div className="flex justify-between items-center">
                            <span className="text-sm font-bold">{t('booking.edit.summary.totalPrice')}</span>
                            <span className="text-md font-bold text-primary">
-                              {
-                                 formatCurrency((service.customRate ? service.customRate : service.service.baseRate)
-                                    *
-                                    calculateDayAmount(String(startDate), endDate ? String(endDate) : ""))
-                              }
+                              {formatCurrency(calculateTotalPrice())}
                            </span>
                         </div>
                      </div>

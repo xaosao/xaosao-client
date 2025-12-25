@@ -476,6 +476,12 @@ model service {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Billing type configuration
+  billingType   String  @default("per_day") // per_day, per_hour, per_session
+  hourlyRate    Float?  // For per_hour services (e.g., drinkingFriend)
+  oneTimePrice  Float?  // For per_session services (e.g., sleepPartner - 1-2 hours)
+  oneNightPrice Float?  // For per_session services (e.g., sleepPartner - overnight)
+
   createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
   createdById String? @db.ObjectId
 
@@ -490,7 +496,7 @@ model service {
 
 model model_service {
   id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  customRate         Float?
+  customRate         Float?   // Custom rate for per_day services
   isAvailable        Boolean  @default(false)
   minSessionDuration Int      @default(0)
   maxSessionDuration Int      @default(0)
@@ -498,6 +504,11 @@ model model_service {
   status             String   @default("active")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  // Custom rates for different billing types
+  customHourlyRate    Float? // For per_hour services (e.g., drinkingFriend)
+  customOneTimePrice  Float? // For per_session services (e.g., sleepPartner - 1-2 hours)
+  customOneNightPrice Float? // For per_session services (e.g., sleepPartner - overnight)
 
   model   model?  @relation(fields: [modelId], references: [id])
   modelId String? @db.ObjectId
@@ -512,7 +523,9 @@ model model_service {
 model service_booking {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   price           Float
-  dayAmount       Int
+  dayAmount       Int?      // For per_day services (optional for hourly/session)
+  hours           Int?      // For per_hour services (e.g., drinkingFriend: 2-10 hours)
+  sessionType     String?   // For per_session services: "one_time" or "one_night" (sleepPartner)
   location        String
   locationLat     Float?    // Booking location latitude for GPS verification
   locationLng     Float?    // Booking location longitude for GPS verification

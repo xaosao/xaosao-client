@@ -21,6 +21,8 @@ interface BookingDetail {
    endDate: string;
    status: string;
    dayAmount: number;
+   hours: number | null;
+   sessionType: 'one_time' | 'one_night' | null;
    createdAt: string;
    customer: {
       id: string;
@@ -39,6 +41,7 @@ interface BookingDetail {
          name: string;
          description: string;
          baseRate: number;
+         billingType: 'per_day' | 'per_hour' | 'per_session';
       };
    } | null;
 }
@@ -87,7 +90,22 @@ export default function DatingDetailModal() {
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
                         <label className="text-sm font-medium text-gray-500">{t("modelDating.detail.duration")}:</label>
-                        <p className="mt-0 sm:mt-1 text-sm">{data?.dayAmount} {t("modelDating.card.days")}</p>
+                        <p className="mt-0 sm:mt-1 text-sm">
+                           {/* Show duration based on billing type */}
+                           {data?.modelService?.service?.billingType === 'per_hour' && data?.hours ? (
+                              <>
+                                 {data.hours} {data.hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
+                              </>
+                           ) : data?.modelService?.service?.billingType === 'per_session' && data?.sessionType ? (
+                              <>
+                                 {data.sessionType === 'one_time' ? t('profileBook.oneTime') : t('profileBook.oneNight')}
+                              </>
+                           ) : (
+                              <>
+                                 {data?.dayAmount} {t("modelDating.card.days")}
+                              </>
+                           )}
+                        </p>
                      </div>
                      <div className="flex flow-row sm:flex-col items-start justify-start space-x-3 sm:space-x-0">
                         <label className="text-sm font-medium text-gray-500">{t("modelDating.detail.price")}:</label>

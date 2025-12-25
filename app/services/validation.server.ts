@@ -310,7 +310,9 @@ const bookingServiceSchema = z.object({
     message: "Invalid end date format. Please enter a valid start date.",
   }),
   price: z.number().min(10000, "Price should be 5 digits at least!"),
-  dayAmount: z.number(),
+  dayAmount: z.number().optional(),  // Optional for per_hour and per_session
+  hours: z.number().min(2).max(10).optional(),  // For per_hour services (2-10 hours)
+  sessionType: z.enum(['one_time', 'one_night']).optional(),  // For per_session services
   location: refineSafe(
     z
       .string()

@@ -174,12 +174,33 @@ export function InstallPrompt() {
                 </div>
               </div>
             </div>
-          ) : (
-            // Android/Chrome Install Button
+          ) : deferredPrompt ? (
+            // Android/Chrome Install Button (when beforeinstallprompt fired)
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Download className="w-4 h-4" />
                 <span>{t("pwa.quickInstall")}</span>
+              </div>
+            </div>
+          ) : (
+            // Android Manual Instructions (when beforeinstallprompt didn't fire)
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium text-gray-700">
+                {t("pwa.androidTitle", { defaultValue: "To install this app:" })}
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                    <span className="text-rose-500 font-bold text-sm">⋮</span>
+                  </div>
+                  <span>{t("pwa.androidStep1", { defaultValue: "Tap the menu button (⋮) in Chrome" })}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <span>{t("pwa.androidStep2", { defaultValue: "Select 'Install app' or 'Add to Home screen'" })}</span>
+                </div>
               </div>
             </div>
           )}
@@ -194,7 +215,7 @@ export function InstallPrompt() {
           >
             {t("pwa.notNow")}
           </Button>
-          {!isIOSDevice && (
+          {!isIOSDevice && deferredPrompt && (
             <Button
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
               onClick={handleInstall}
@@ -203,7 +224,7 @@ export function InstallPrompt() {
               {t("pwa.install")}
             </Button>
           )}
-          {isIOSDevice && (
+          {(isIOSDevice || !deferredPrompt) && (
             <Button
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
               onClick={handleDismiss}

@@ -311,7 +311,9 @@ export async function createServiceBooking(
     const result = await prisma.service_booking.create({
       data: {
         price: data.price,
-        dayAmount: data.dayAmount,
+        dayAmount: data.dayAmount ?? null,
+        hours: data.hours ?? null,
+        sessionType: data.sessionType ?? null,
         location: data.location,
         preferredAttire: data.preferred ?? "",
         startDate: data.startDate,
@@ -404,7 +406,9 @@ export async function updateServiceBooking(
       },
       data: {
         price: data.price,
-        dayAmount: data.dayAmount,
+        dayAmount: data.dayAmount ?? null,
+        hours: data.hours ?? null,
+        sessionType: data.sessionType ?? null,
         location: data.location,
         preferredAttire: data.preferred ?? "",
         startDate: data.startDate,
@@ -537,6 +541,8 @@ export async function getAllMyServiceBookings(customerId: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        hours: true,
+        sessionType: true,
         completionToken: true,
         model: {
           select: {
@@ -570,6 +576,7 @@ export async function getAllMyServiceBookings(customerId: string) {
                 name: true,
                 description: true,
                 baseRate: true,
+                billingType: true,
               },
             },
           },
@@ -603,6 +610,8 @@ export async function getAllMyServiceBooking(id: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        hours: true,
+        sessionType: true,
         modelId: true,
         modelServiceId: true,
       },
@@ -628,6 +637,8 @@ export async function getMyServiceBookingDetail(id: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        hours: true,
+        sessionType: true,
         model: {
           select: {
             id: true,
@@ -646,6 +657,7 @@ export async function getMyServiceBookingDetail(id: string) {
                 name: true,
                 description: true,
                 baseRate: true,
+                billingType: true,
               },
             },
           },
@@ -879,6 +891,8 @@ export async function getAllModelBookings(modelId: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        hours: true,
+        sessionType: true,
         createdAt: true,
         modelCheckedInAt: true,
         customer: {
@@ -909,6 +923,7 @@ export async function getAllModelBookings(modelId: string) {
                 name: true,
                 description: true,
                 baseRate: true,
+                billingType: true,
               },
             },
           },
@@ -945,6 +960,8 @@ export async function getModelBookingDetail(id: string, modelId: string) {
         endDate: true,
         status: true,
         dayAmount: true,
+        hours: true,
+        sessionType: true,
         createdAt: true,
         customer: {
           select: {
@@ -967,6 +984,7 @@ export async function getModelBookingDetail(id: string, modelId: string) {
                 name: true,
                 description: true,
                 baseRate: true,
+                billingType: true,
               },
             },
           },
