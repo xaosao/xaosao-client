@@ -288,6 +288,69 @@ export function canCancelBooking(startDate: Date): { canCancel: boolean; message
   return { canCancel: true, message: "" };
 }
 
+/**
+ * Check for overlapping bookings for a model
+ * Prevents double-booking by checking if the requested time slot conflicts with existing bookings
+ * @param excludeBookingId - Optional booking ID to exclude from check (used when updating a booking)
+ */
+async function checkForOverlappingBookings(
+  modelId: string,
+  startDate: Date,
+  endDate?: Date,
+  excludeBookingId?: string
+): Promise<{ hasOverlap: boolean; conflictingBooking?: any }> {
+  const requestedStart = new Date(startDate);
+  const requestedEnd = endDate ? new Date(endDate) : new Date(requestedStart.getTime() + 60 * 60 * 1000); // Default 1 hour if no end date
+
+  // Find any active bookings (pending or confirmed) for this model that might overlap
+  const existingBookings = await prisma.service_booking.findMany({
+    where: {
+      modelId,
+      status: {
+        in: ["pending", "confirmed", "in_progress"],
+      },
+      // Exclude the booking being updated (if provided)
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      hours: true,
+      status: true,
+      customer: {
+        select: {
+          firstName: true,
+        },
+      },
+    },
+  });
+
+  for (const booking of existingBookings) {
+    const existingStart = new Date(booking.startDate);
+    // Calculate end time: use endDate if available, otherwise use hours, default to 1 hour
+    const existingEnd = booking.endDate
+      ? new Date(booking.endDate)
+      : new Date(existingStart.getTime() + (booking.hours || 1) * 60 * 60 * 1000);
+
+    // Check for overlap: two time ranges overlap if start1 < end2 AND end1 > start2
+    const hasOverlap = requestedStart < existingEnd && requestedEnd > existingStart;
+
+    if (hasOverlap) {
+      return {
+        hasOverlap: true,
+        conflictingBooking: {
+          ...booking,
+          existingStart,
+          existingEnd,
+        },
+      };
+    }
+  }
+
+  return { hasOverlap: false };
+}
+
 // ========================================
 // Booking CRUD Functions
 // ========================================
@@ -304,6 +367,21 @@ export async function createServiceBooking(
   };
 
   try {
+    // Check for overlapping bookings before proceeding
+    const overlapCheck = await checkForOverlappingBookings(
+      modelId,
+      data.startDate,
+      data.endDate
+    );
+
+    if (overlapCheck.hasOverlap) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "This time slot is no longer available. The model already has a booking during this time. Please select a different date or time.",
+      });
+    }
+
     // First, hold the payment from customer wallet
     const holdTransaction = await holdPaymentFromCustomer(customerId, data.price, "pending");
 
@@ -400,6 +478,46 @@ export async function updateServiceBooking(
   };
 
   try {
+    // First, get the existing booking to check ownership and get modelId
+    const existingBooking = await prisma.service_booking.findUnique({
+      where: { id },
+      select: { modelId: true, customerId: true },
+    });
+
+    if (!existingBooking) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Booking not found!",
+      });
+    }
+
+    if (existingBooking.customerId !== customerId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Unauthorized to update this booking!",
+      });
+    }
+
+    // Check for overlapping bookings (exclude the current booking being updated)
+    if (existingBooking.modelId) {
+      const overlapCheck = await checkForOverlappingBookings(
+        existingBooking.modelId,
+        data.startDate,
+        data.endDate,
+        id // Exclude this booking from the check
+      );
+
+      if (overlapCheck.hasOverlap) {
+        throw new FieldValidationError({
+          success: false,
+          error: true,
+          message: "This time slot is no longer available. The model already has a booking during this time. Please select a different date or time.",
+        });
+      }
+    }
+
     const result = await prisma.service_booking.update({
       where: {
         id,
@@ -459,6 +577,12 @@ export async function updateServiceBooking(
       status: "failed",
       onError: error,
     });
+
+    // Preserve specific error messages (like overlap errors)
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
     throw new FieldValidationError({
       success: false,
       error: true,
@@ -547,6 +671,7 @@ export async function getAllMyServiceBookings(customerId: string) {
         hours: true,
         sessionType: true,
         completionToken: true,
+        modelCheckedInAt: true,
         model: {
           select: {
             id: true,
@@ -642,6 +767,7 @@ export async function getMyServiceBookingDetail(id: string) {
         dayAmount: true,
         hours: true,
         sessionType: true,
+        modelCheckedInAt: true,
         model: {
           select: {
             id: true,
@@ -1038,6 +1164,22 @@ export async function acceptBooking(id: string, modelId: string) {
         success: false,
         error: true,
         message: "Only pending bookings can be accepted!",
+      });
+    }
+
+    // Check for overlapping confirmed bookings before accepting
+    const overlapCheck = await checkForOverlappingBookings(
+      modelId,
+      booking.startDate,
+      booking.endDate ?? undefined,
+      id // Exclude this booking from the check
+    );
+
+    if (overlapCheck.hasOverlap) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "You already have a confirmed booking during this time. Please reject this booking or cancel your other booking first.",
       });
     }
 

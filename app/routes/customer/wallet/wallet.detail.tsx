@@ -68,9 +68,10 @@ export default function TransactionDetails() {
                         <button className={`text-center text-xs px-2 py-1 rounded-sm ${transaction.status === 'approved'
                            ? 'bg-green-100 text-green-600'
                            : transaction.status === 'rejected' ? "bg-red-100 text-red-600"
-                              : 'bg-orange-100 text-orange-600'
+                              : transaction.status === 'refunded' ? "bg-purple-100 text-purple-600"
+                                 : 'bg-orange-100 text-orange-600'
                            }`}>
-                           {capitalize(transaction.status)}
+                           {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
                         </button>
 
                      </div>
@@ -131,6 +132,20 @@ export default function TransactionDetails() {
                            <div>
                               <p className="font-medium text-sm">{t('wallet.detail.timeline.pending')}</p>
                               <p className="text-xs text-gray-500">{t('wallet.detail.timeline.pendingMessage')}</p>
+                           </div>
+                        </div>
+                     )}
+
+                     {transaction?.status === "refunded" && (
+                        <div className="flex items-start space-x-3">
+                           <div className="p-2 rounded-lg bg-purple-50 border border-purple-300">
+                              <Check className="h-4 w-4 text-purple-600" />
+                           </div>
+                           <div>
+                              <p className="font-medium text-sm">{t('wallet.detail.timeline.refunded')}</p>
+                              <p className="text-xs text-gray-500">
+                                 {transaction?.updatedAt.toDateString()}
+                              </p>
                            </div>
                         </div>
                      )}

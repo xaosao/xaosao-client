@@ -23,6 +23,29 @@
     "ourServices": "Our Services",
     "noDescription": "Experience our premium companion service"
   },
+  "location": {
+    "enableTitle": "To enable location:",
+    "mustEnableFirst": "⚠️ Enable location in settings first, then click Refresh",
+    "refresh": "Refresh Page",
+    "refreshing": "Refreshing...",
+    "tryAgain": "Try Again",
+    "openSettings": "Open Settings",
+    "openBrowserSettings": "How to Enable Location",
+    "desktopSettingsAlert": "Please click the lock/info icon in your browser's address bar to enable location access, then refresh the page.",
+    "iosSafari": "For Safari:",
+    "iosStep1": "Open Settings app on your device",
+    "iosStep2": "Scroll down and tap Safari (or your browser)",
+    "iosStep3": "Tap Location → Select \"Allow\"",
+    "iosStep4": "Return here and refresh the page",
+    "androidStep1": "Tap the ⋮ menu (3 dots) at top right",
+    "androidStep2": "Tap \"Site settings\" or \"Settings\"",
+    "androidStep3": "Tap \"Location\" → Select \"Allow\"",
+    "androidStep4": "Return here and refresh the page",
+    "androidAlt": "Or: Device Settings → Apps → Browser → Permissions → Location",
+    "desktopStep1": "Click the lock/info icon in address bar",
+    "desktopStep2": "Find \"Location\" and set to \"Allow\"",
+    "desktopStep3": "Refresh the page"
+  },
   "navigation": {
     "discover": "Discover",
     "match": "Match",
@@ -543,7 +566,8 @@
         "approved": "Transaction Approved",
         "rejected": "Transaction Rejected",
         "pending": "Awaiting Review",
-        "pendingMessage": "Transaction is pending admin approval"
+        "pendingMessage": "Transaction is pending admin approval",
+        "refunded": "Transaction Refunded"
       },
       "paymentSlip": {
         "available": "Payment Slip Available",
@@ -1926,6 +1950,7 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "held": "Held",
-    "released": "Released"
+    "released": "Released",
+    "refunded": "Refunded"
   }
 }

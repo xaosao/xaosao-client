@@ -89,6 +89,19 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       return t(`booking.status.${status}`, { defaultValue: statusConfig[status]?.label || status });
    };
 
+   // Check if dispute should be available (2+ hours after start time, model hasn't checked in)
+   const canDispute = (booking: IServiceBooking): boolean => {
+      // Only for confirmed bookings where model hasn't checked in
+      if (booking.status !== "confirmed" || booking.modelCheckedInAt) {
+         return false;
+      }
+      // Check if 2+ hours have passed since start date
+      const now = new Date();
+      const startDate = new Date(booking.startDate);
+      const hoursDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      return hoursDiff >= 2;
+   };
+
    if (isLoading) {
       return (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
@@ -228,6 +241,17 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           >
                                              <Phone className="h-4 w-4" />
                                              {t('booking.callModel')}
+                                          </DropdownMenuItem>
+                                       )}
+                                       {canDispute(booking) && (
+                                          <DropdownMenuItem
+                                             onClick={() =>
+                                                navigate(`/customer/book-service/dispute/${booking.id}`)
+                                             }
+                                             className="cursor-pointer text-red-600"
+                                          >
+                                             <AlertTriangle className="h-4 w-4" />
+                                             {t('booking.dispute')}
                                           </DropdownMenuItem>
                                        )}
                                     </>

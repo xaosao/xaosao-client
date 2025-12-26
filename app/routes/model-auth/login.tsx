@@ -209,7 +209,7 @@ export default function ModelLogin() {
                   <span className="mr-1">📍</span>
                   {t("modelAuth.login.locationBlocked", { defaultValue: "Location blocked" })}
                 </p>
-                <LocationPermissionGuide variant="light" onRetry={requestLocation} />
+                <LocationPermissionGuide variant="light" onRetry={requestLocation} permissionDenied={true} />
               </div>
             )}
             {!locationLoading && !hasLocation && (permissionState === 'prompt' || permissionState === 'unknown') && !locationError && (

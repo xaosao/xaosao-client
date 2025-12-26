@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
-import { LogIn, User, Wine, Plane, PartyPopper, Moon } from "lucide-react";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
+import { LogIn, User, Wine, Plane, PartyPopper, Moon } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";

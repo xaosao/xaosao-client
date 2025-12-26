@@ -140,7 +140,7 @@ export default function ModelCheckInModal() {
                         <AlertCircle className="h-4 w-4" />
                         <span className="text-sm font-medium">{t("modelDating.checkin.locationBlocked", { defaultValue: "Location access blocked" })}</span>
                      </div>
-                     <LocationPermissionGuide variant="light" onRetry={requestLocation} />
+                     <LocationPermissionGuide variant="light" onRetry={requestLocation} permissionDenied={true} />
                   </div>
                ) : (permissionState === 'prompt' || permissionState === 'unknown') && !locationError ? (
                   <div className="flex items-center justify-between">

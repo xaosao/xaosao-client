@@ -36,6 +36,9 @@ const statusConfig: Record<string, { className: string }> = {
     released: {
         className: "bg-emerald-100 text-emerald-600",
     },
+    refunded: {
+        className: "bg-purple-100 text-purple-600",
+    },
 };
 import type { PaginationProps } from '~/interfaces/pagination';
 import type { ITransactionResponse } from '~/interfaces/transaction';

@@ -46,6 +46,7 @@ export type IServiceBooking = {
   hours: number | null;
   sessionType: SessionType | null;
   completionToken: string | null;
+  modelCheckedInAt: Date | null;
   model: {
     id: string;
     firstName: string;

@@ -297,7 +297,7 @@ export default function SignInPage() {
                                     <span className="mr-1">📍</span>
                                     {t('login.locationBlocked', { defaultValue: 'Location blocked' })}
                                 </p>
-                                <LocationPermissionGuide variant="dark" onRetry={requestLocation} />
+                                <LocationPermissionGuide variant="dark" onRetry={requestLocation} permissionDenied={true} />
                             </div>
                         )}
                         {!locationLoading && !hasLocation && (permissionState === 'prompt' || permissionState === 'unknown') && !locationError && (

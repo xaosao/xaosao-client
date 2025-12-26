@@ -1,4 +1,4 @@
-import { Clock, Check, X, BadgeCheck, User } from "lucide-react"
+import { Clock, Check, X, BadgeCheck, User, AlertTriangle } from "lucide-react"
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
 
@@ -25,6 +25,17 @@ export default function BookingServiceDetails() {
       const serviceName = data?.modelService?.service?.name;
       if (!serviceName) return t("booking.serviceUnavailable");
       return t(`modelServices.serviceItems.${serviceName}.name`, { defaultValue: serviceName });
+   };
+
+   // Check if dispute should be available (2+ hours after start time, model hasn't checked in)
+   const canDispute = (): boolean => {
+      if (!data || data.status !== "confirmed" || data.modelCheckedInAt) {
+         return false;
+      }
+      const now = new Date();
+      const startDate = new Date(data.startDate);
+      const hoursDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      return hoursDiff >= 2;
    };
 
    function closeHandler() {
@@ -101,16 +112,42 @@ export default function BookingServiceDetails() {
                      )}
 
                      {data?.status === "confirmed" && (
-                        <div className="flex items-start space-x-3">
-                           <div className="p-2 rounded-lg bg-blue-50 border border-blue-300">
-                              <Check className="h-4 w-4 text-blue-600" />
+                        <div className="space-y-3">
+                           <div className="flex items-start space-x-3">
+                              <div className="p-2 rounded-lg bg-blue-50 border border-blue-300">
+                                 <Check className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                 <p className="font-medium text-sm">{t('booking.detail.status.confirmedTitle')}</p>
+                                 <p className="text-xs text-gray-500">
+                                    {t('booking.detail.status.confirmedMessage')}
+                                 </p>
+                              </div>
                            </div>
-                           <div>
-                              <p className="font-medium text-sm">{t('booking.detail.status.confirmedTitle')}</p>
-                              <p className="text-xs text-gray-500">
-                                 {t('booking.detail.status.confirmedMessage')}
-                              </p>
-                           </div>
+                           {canDispute() && (
+                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                                 <div className="flex items-start space-x-3">
+                                    <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                                    <div className="flex-1">
+                                       <p className="font-medium text-sm text-orange-800">
+                                          {t('booking.detail.status.noCheckinTitle', { defaultValue: 'Model has not checked in' })}
+                                       </p>
+                                       <p className="text-xs text-orange-600 mt-1">
+                                          {t('booking.detail.status.noCheckinMessage', { defaultValue: 'More than 2 hours have passed since the booking start time and the model has not checked in. You can file a dispute.' })}
+                                       </p>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/dispute/${data.id}`)}
+                                          className="mt-2 bg-orange-500 text-white hover:bg-orange-600 hover:text-white"
+                                       >
+                                          <AlertTriangle className="h-4 w-4 mr-1" />
+                                          {t('booking.dispute')}
+                                       </Button>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
                         </div>
                      )}
 
