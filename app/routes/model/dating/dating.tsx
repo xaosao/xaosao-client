@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 
 // interface and service
-import { getAllModelBookings, processAutoRelease, processAutoRefundNoShow } from "~/services/booking.server"
+import { getAllModelBookings } from "~/services/booking.server"
 import { requireModelSession } from "~/services/model-auth.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 
@@ -94,13 +94,6 @@ interface DatingPageProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
    const modelId = await requireModelSession(request)
-
-   // Process auto-release and auto-refund for no-show (runs in background, doesn't block)
-   Promise.all([
-      processAutoRelease(),
-      processAutoRefundNoShow(),
-   ]).catch(err => console.error("AUTO_PROCESS_ERROR", err));
-
    const bookings = await getAllModelBookings(modelId)
 
    return { bookings };
