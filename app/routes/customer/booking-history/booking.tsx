@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 // interface and service
 import type { IServiceBooking } from "~/interfaces/service"
 import { requireUserSession } from "~/services/auths.server";
-import { getAllMyServiceBookings } from "~/services/booking.server"
+import { getAllMyServiceBookings, processAutoRelease, processAutoRefundNoShow } from "~/services/booking.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -62,6 +62,12 @@ interface DiscoverPageProps {
 export const loader: LoaderFunction = async ({ request }) => {
    const customerId = await requireUserSession(request)
    const { hasActiveSubscription } = await import("~/services/package.server");
+
+   // Process auto-release and auto-refund for no-show (runs in background, doesn't block)
+   Promise.all([
+      processAutoRelease(),
+      processAutoRefundNoShow(),
+   ]).catch(err => console.error("AUTO_PROCESS_ERROR", err));
 
    const [bookInfos, hasSubscription] = await Promise.all([
       getAllMyServiceBookings(customerId),

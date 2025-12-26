@@ -2414,6 +2414,114 @@ export async function processAutoRelease() {
 }
 
 /**
+ * Process auto-refund for model no-show
+ * If model doesn't check-in within 24 hours after booking start time, auto-refund customer
+ * Call this on page load or via scheduled job
+ */
+export async function processAutoRefundNoShow() {
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  try {
+    // Find all confirmed bookings where:
+    // - Booking start time is more than 24 hours ago
+    // - Model hasn't checked in
+    // - Payment is still held
+    const bookingsToRefund = await prisma.service_booking.findMany({
+      where: {
+        status: "confirmed",
+        paymentStatus: "held",
+        modelCheckedInAt: null,
+        startDate: {
+          lte: twentyFourHoursAgo, // Booking started more than 24 hours ago
+        },
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+          },
+        },
+        model: {
+          select: {
+            id: true,
+            firstName: true,
+          },
+        },
+        modelService: {
+          include: {
+            service: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const results = [];
+
+    for (const booking of bookingsToRefund) {
+      try {
+        // Refund payment to customer
+        if (booking.holdTransactionId && booking.customerId) {
+          await refundPaymentToCustomer(
+            booking.customerId,
+            booking.price,
+            booking.id,
+            booking.holdTransactionId,
+            "Model no-show - automatic refund after 24 hours"
+          );
+        }
+
+        // Update booking status
+        const refundedBooking = await prisma.service_booking.update({
+          where: { id: booking.id },
+          data: {
+            status: "cancelled",
+            paymentStatus: "refunded",
+            rejectReason: "Model no-show - automatic refund after 24 hours",
+          },
+        });
+
+        await createAuditLogs({
+          action: "AUTO_REFUND_NO_SHOW",
+          description: `Auto-refunded booking ${booking.id} due to model no-show after 24 hours. Amount: ${booking.price.toLocaleString()} LAK`,
+          status: "success",
+          onSuccess: refundedBooking,
+        });
+
+        // Send notification to customer
+        try {
+          if (booking.customerId) {
+            await notifyPaymentRefunded(
+              booking.customerId,
+              booking.id,
+              booking.price,
+              "Model did not check-in within 24 hours"
+            );
+          }
+        } catch (notifyError) {
+          console.error("NOTIFY_NO_SHOW_REFUND_FAILED", notifyError);
+        }
+
+        results.push({ bookingId: booking.id, status: "refunded" });
+      } catch (error) {
+        console.error(`Failed to auto-refund booking ${booking.id}:`, error);
+        results.push({ bookingId: booking.id, status: "failed", error });
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error("PROCESS_AUTO_REFUND_NO_SHOW_FAILED", error);
+    throw error;
+  }
+}
+
+/**
  * Get pending booking count for a model
  */
 export async function getModelPendingBookingCount(modelId: string): Promise<number> {

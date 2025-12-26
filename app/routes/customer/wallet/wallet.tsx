@@ -225,9 +225,9 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                         </div>
 
                                         <div className="flex items-center justify-center space-y-1 space-x-4 mt-2">
-                                            <p className={`font-semibold ${transaction.identifier === 'recharge' ? 'text-green-600' : 'text-red-600'
+                                            <p className={`font-semibold ${['recharge', 'booking_refund'].includes(transaction.identifier) ? 'text-green-600' : 'text-red-600'
                                                 }`}>
-                                                {transaction.identifier === 'recharge' ? '+' : transaction.identifier === "booking_hold" ? "" : '-'}{formatCurrency(transaction.amount)}
+                                                {['recharge', 'booking_refund'].includes(transaction.identifier) ? '+' : transaction.identifier === "booking_hold" ? "" : '-'}{formatCurrency(transaction.amount)}
                                             </p>
                                         </div>
                                     </div>
