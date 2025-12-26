@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v2';
-const STATIC_CACHE = 'xaosao-static-v2';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v2';
+const CACHE_NAME = 'xaosao-v3';
+const STATIC_CACHE = 'xaosao-static-v3';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v3';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
