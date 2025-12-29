@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
-const sloganKeys = ["1", "2", "3", "4", "5", "6", "7", "8"]
+const sloganKeys = ["1", "2", "3", "4", "5", "6"]
 
 export function DynamicSlogan() {
     const { t } = useTranslation()

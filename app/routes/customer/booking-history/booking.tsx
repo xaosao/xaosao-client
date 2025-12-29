@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, Eye, SquarePen, X, MapPinCheck, Trash2 } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -200,6 +200,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                     }
                                     className="cursor-pointer"
                                  >
+                                    <Eye className="h-4 w-4" />
                                     {t('booking.viewDetails')}
                                  </DropdownMenuItem>
 
@@ -211,6 +212,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           }
                                           className="cursor-pointer"
                                        >
+                                          <SquarePen className="h-4 w-5" />
                                           {t('booking.editBooking')}
                                        </DropdownMenuItem>
                                        <DropdownMenuItem
@@ -219,6 +221,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                              navigate(`/customer/book-service/cancel/${booking.id}`)
                                           }
                                        >
+                                          <X className="w-4 h-4" />
                                           {t('booking.cancelBooking')}
                                        </DropdownMenuItem>
                                     </>
@@ -232,6 +235,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           }
                                           className="cursor-pointer"
                                        >
+                                          <MapPinCheck className="h-4 w-4" />
                                           {t('booking.checkIn')}
                                        </DropdownMenuItem>
                                        {booking.model?.whatsapp && (
@@ -308,6 +312,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                              navigate(`/customer/book-service/delete/${booking.id}`)
                                           }
                                        >
+                                          <Trash2 className="h-4 w-4" />
                                           {t('booking.deleteBooking')}
                                        </DropdownMenuItem>
                                     )}

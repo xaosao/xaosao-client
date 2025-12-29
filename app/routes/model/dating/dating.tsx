@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone, MessageCircleMore } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone, MessageCircleMore, Eye, MapPinCheck } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -216,6 +216,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        onClick={() => navigate(`/model/dating/detail/${booking.id}`)}
                                        className="cursor-pointer"
                                     >
+                                       <Eye className="h-4 w-4" />
                                        {t("modelDating.actions.viewDetails")}
                                     </DropdownMenuItem>
 
@@ -245,6 +246,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                                 onClick={() => navigate(`/model/dating/checkin/${booking.id}`)}
                                                 className="cursor-pointer"
                                              >
+                                                <MapPinCheck className="h-4 w-4" />
                                                 {t("modelDating.actions.checkIn")}
                                              </DropdownMenuItem>
                                           )}

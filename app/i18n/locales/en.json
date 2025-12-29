@@ -1,7 +1,8 @@
 {
   "header": {
     "login": "Login",
-    "companionLogin": "Companion Login"
+    "companionLogin": "Companion Login",
+    "myAccount": "My Account"
   },
   "home": {
     "slogans": {
@@ -12,6 +13,7 @@
       "5": "Where souls meet and hearts unite.",
       "6": "Discover your happily-ever-after."
     },
+    "myAccount": "My Account",
     "heroSubtitle": "Join millions of people finding meaningful connections and lasting relationships.",
     "getStarted": "Get Started",
     "login": "Login",

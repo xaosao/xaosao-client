@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
@@ -38,6 +39,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { services } = loaderData
+  const [hasCustomerToken, setHasCustomerToken] = useState(false)
+
+  useEffect(() => {
+    // Check for customer auth token
+    const customerToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('whoxa_customer_auth_token='))
+    setHasCustomerToken(!!customerToken)
+  }, [])
 
   // Helper function to get translated service name
   const getServiceName = (nameKey: string) => {
@@ -82,10 +92,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <Button
               size="lg"
               className="flex cursor-pointer w-auto border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
             >
               <LogIn className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
-              {t('home.login')}
+              {hasCustomerToken ? t('home.myAccount') : t('home.login')}
             </Button>
           </div>
 
