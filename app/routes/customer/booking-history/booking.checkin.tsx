@@ -31,13 +31,13 @@ export async function action({ params, request }: ActionFunctionArgs) {
             return {
                success: false,
                error: true,
-               message: "Unable to get your location. Please enable GPS and try again.",
+               message: "booking.checkin.errors.locationRequired",
             };
          }
 
          const res = await customerCheckIn(id!, customerId, lat, lng);
          if (res.id) {
-            return redirect(`/customer/dates-history?toastMessage=Checked+in+successfully!&toastType=success`);
+            return redirect(`/customer/dates-history?toastMessage=${encodeURIComponent("booking.checkin.success")}&toastType=success`);
          }
       } catch (error: any) {
          if (error?.payload) {
@@ -46,12 +46,12 @@ export async function action({ params, request }: ActionFunctionArgs) {
          return {
             success: false,
             error: true,
-            message: error?.message || "Failed to check in!",
+            message: error?.message || "booking.checkin.errors.failed",
          };
       }
    }
 
-   return { success: false, error: true, message: "Invalid request method!" };
+   return { success: false, error: true, message: "booking.checkin.errors.invalidRequest" };
 }
 
 export default function CustomerCheckInModal() {
@@ -138,7 +138,7 @@ export default function CustomerCheckInModal() {
                   <div className="space-y-2">
                      <div className="flex items-center space-x-2 text-red-600">
                         <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm">{locationError}</span>
+                        <span className="text-sm">{t(`booking.checkin.errors.locationError`, { defaultValue: locationError })}</span>
                      </div>
                      <Button
                         type="button"
@@ -159,7 +159,7 @@ export default function CustomerCheckInModal() {
                   <div className="mb-4 p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                      <span className="text-red-500 text-sm">
-                        {capitalize(actionData.message)}
+                        {capitalize(t(actionData.message, { defaultValue: actionData.message }))}
                      </span>
                   </div>
                )}

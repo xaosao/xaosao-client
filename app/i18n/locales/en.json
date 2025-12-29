@@ -307,7 +307,19 @@
       "locationAcquired": "Location acquired",
       "retry": "Retry",
       "close": "Close",
-      "checkInButton": "Check In"
+      "checkInButton": "Check In",
+      "checkingIn": "Checking in...",
+      "success": "Checked in successfully!",
+      "errors": {
+        "locationRequired": "Unable to get your location. Please enable GPS and try again.",
+        "failed": "Failed to check in. Please try again.",
+        "invalidRequest": "Invalid request method.",
+        "geoNotSupported": "Geolocation is not supported by your browser.",
+        "permissionDenied": "Please allow location access to check in.",
+        "locationUnavailable": "Location information is unavailable.",
+        "timeout": "Location request timed out.",
+        "locationError": "An error occurred while getting your location."
+      }
     },
     "confirmModal": {
       "title": "Confirm Completion",
@@ -934,7 +946,16 @@
     "rechargeNow": "Recharge Wallet",
     "insufficientBalance": "Insufficient balance! You need {{required}} LAK but have {{current}} LAK.",
     "insufficientBalanceGeneric": "Insufficient balance! Please recharge your wallet.",
-    "minTimeToday": "Minimum time for today: {{time}}"
+    "minTimeToday": "Minimum time for today: {{time}}",
+    "unavailableTimes": "Unavailable times:",
+    "andMoreSlots": "...and {{count}} more",
+    "success": {
+      "booked": "Service booked successfully!"
+    },
+    "errors": {
+      "bookingFailed": "Failed to book service. Please try again.",
+      "timeSlotUnavailable": "This time slot is no longer available. The model already has a booking during this time. Please select a different date or time."
+    }
   },
   "modelAuth": {
     "login": {
@@ -1842,7 +1863,8 @@
       "errors": {
         "locationRequired": "Unable to get your location. Please enable GPS and try again.",
         "failed": "Failed to check in!",
-        "invalidRequest": "Invalid request method!"
+        "invalidRequest": "Invalid request method!",
+        "locationError": "An error occurred while getting your location."
       }
     },
     "complete": {

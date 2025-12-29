@@ -143,77 +143,79 @@ export default function ModelDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6">
-      <div className="mb-8 space-y-1 sm:space-y-2">
-        <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
-          {t("modelDashboard.title")}
-        </h1>
-        <p className="text-sm text-gray-600">
-          {t("modelDashboard.subtitle")}
-        </p>
-      </div>
+    <div className="min-h-screen p-4 sm:p-6 flex items-center justify-center">
+      <div className="w-11/12">
+        <div className="mb-8 space-y-1 sm:space-y-2">
+          <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
+            {t("modelDashboard.title")}
+          </h1>
+          <p className="text-sm text-gray-600">
+            {t("modelDashboard.subtitle")}
+          </p>
+        </div>
 
-      {customers.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
-            {customers.map((customer: any) => (
-              <CustomerCard
-                key={customer.id}
-                customer={customer}
-                modelLatitude={initialData.modelLatitude}
-                modelLongitude={initialData.modelLongitude}
-                onViewProfile={handleViewProfile}
-              />
-            ))}
-          </div>
+        {customers.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
+              {customers.map((customer: any) => (
+                <CustomerCard
+                  key={customer.id}
+                  customer={customer}
+                  modelLatitude={initialData.modelLatitude}
+                  modelLongitude={initialData.modelLongitude}
+                  onViewProfile={handleViewProfile}
+                />
+              ))}
+            </div>
 
-          {hasMore && (
-            <div className="flex justify-center mt-12">
+            {hasMore && (
+              <div className="flex justify-center mt-12">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={fetcher.state === "loading"}
+                  className="group relative bg-gradient-to-r from-rose-500 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-2xl hover:from-rose-600 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3"
+                >
+                  {fetcher.state === "loading" ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>{t("modelDashboard.loadingMore")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{t("modelDashboard.loadMoreCustomers")}</span>
+                      <div className="bg-white/20 rounded-full p-1">
+                        <Heart className="w-4 h-4" />
+                      </div>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            <div className="text-center mt-6 text-gray-500 text-sm">
+              {t("modelDashboard.showingCustomers", { count: customers.length })}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md text-center">
+              <div className="text-6xl mb-6">💕</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                {t("modelDashboard.noCustomersTitle")}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {t("modelDashboard.noCustomersMessage")}
+              </p>
               <button
-                onClick={handleLoadMore}
-                disabled={fetcher.state === "loading"}
-                className="group relative bg-gradient-to-r from-rose-500 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-2xl hover:from-rose-600 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3"
+                onClick={() => window.location.reload()}
+                className="bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-rose-600 hover:to-purple-700 transition-all duration-300"
               >
-                {fetcher.state === "loading" ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>{t("modelDashboard.loadingMore")}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{t("modelDashboard.loadMoreCustomers")}</span>
-                    <div className="bg-white/20 rounded-full p-1">
-                      <Heart className="w-4 h-4" />
-                    </div>
-                  </>
-                )}
+                {t("modelDashboard.refreshPage")}
               </button>
             </div>
-          )}
-
-          <div className="text-center mt-6 text-gray-500 text-sm">
-            {t("modelDashboard.showingCustomers", { count: customers.length })}
           </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md text-center">
-            <div className="text-6xl mb-6">💕</div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              {t("modelDashboard.noCustomersTitle")}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              {t("modelDashboard.noCustomersMessage")}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-rose-600 hover:to-purple-700 transition-all duration-300"
-            >
-              {t("modelDashboard.refreshPage")}
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

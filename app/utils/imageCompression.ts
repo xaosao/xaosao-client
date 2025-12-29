@@ -13,10 +13,10 @@ export interface CompressOptions {
 }
 
 const defaultOptions: CompressOptions = {
-  maxWidth: 1600,
-  maxHeight: 1600,
-  quality: 0.7,
-  maxSizeMB: 1,
+  maxWidth: 1920,
+  maxHeight: 1920,
+  quality: 0.8,
+  maxSizeMB: 3,
 };
 
 /**
@@ -115,19 +115,23 @@ export async function compressImage(
 async function compressWithCanvas(
   file: File,
   opts: CompressOptions,
-  maxSizeBytes: number
+  maxSizeBytes: number,
+  attempt: number = 1
 ): Promise<File> {
+  const MAX_ATTEMPTS = 8;
+
   return new Promise((resolve, reject) => {
     const blobUrl = URL.createObjectURL(file);
     const img = new Image();
 
     img.onload = () => {
       try {
-        // Calculate new dimensions
+        // Calculate new dimensions - reduce more aggressively on each attempt
         let width = img.width;
         let height = img.height;
-        const maxW = opts.maxWidth || 1920;
-        const maxH = opts.maxHeight || 1920;
+        const scaleFactor = Math.max(0.5, 1 - (attempt - 1) * 0.1); // Reduce dimensions on retries
+        const maxW = Math.floor((opts.maxWidth || 1920) * scaleFactor);
+        const maxH = Math.floor((opts.maxHeight || 1920) * scaleFactor);
 
         if (width > maxW) {
           height = (height * maxW) / width;
@@ -139,8 +143,8 @@ async function compressWithCanvas(
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.floor(width);
+        canvas.height = Math.floor(height);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -151,8 +155,11 @@ async function compressWithCanvas(
 
         // Fill with white background
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Reduce quality more aggressively on each attempt
+        const currentQuality = Math.max(0.3, (opts.quality || 0.8) - (attempt - 1) * 0.1);
 
         canvas.toBlob(
           (blob) => {
@@ -169,22 +176,23 @@ async function compressWithCanvas(
               lastModified: Date.now(),
             });
 
-            console.log('[Compress] Result:', compressedFile.name, compressedFile.size);
+            console.log(`[Compress] Attempt ${attempt} - Result:`, compressedFile.name, (compressedFile.size / 1024 / 1024).toFixed(2), 'MB', `(quality: ${currentQuality.toFixed(1)}, dims: ${canvas.width}x${canvas.height})`);
 
-            // If still too large, try with lower quality
-            if (compressedFile.size > maxSizeBytes && (opts.quality || 0.8) > 0.3) {
-              compressImage(compressedFile, {
-                ...opts,
-                quality: (opts.quality || 0.8) - 0.1,
-              })
+            // If still too large and haven't exceeded max attempts, try again
+            if (compressedFile.size > maxSizeBytes && attempt < MAX_ATTEMPTS) {
+              compressWithCanvas(file, opts, maxSizeBytes, attempt + 1)
                 .then(resolve)
                 .catch(reject);
+            } else if (compressedFile.size > maxSizeBytes) {
+              // Max attempts reached but still too large - return anyway with warning
+              console.warn(`[Compress] Max attempts reached. Final size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB (target: ${(maxSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
+              resolve(compressedFile);
             } else {
               resolve(compressedFile);
             }
           },
           'image/jpeg',
-          opts.quality || 0.8
+          currentQuality
         );
       } catch (error) {
         URL.revokeObjectURL(blobUrl);

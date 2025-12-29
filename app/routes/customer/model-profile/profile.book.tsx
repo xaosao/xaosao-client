@@ -27,9 +27,11 @@ import { calculateDayAmount, formatCurrency, parseFormattedNumber } from "~/util
 import type { IServiceBookingCredentials, IServiceBookingResponse } from "~/interfaces/service"
 
 export async function loader({ params }: LoaderFunctionArgs) {
+   const { getModelBookedSlots } = await import("~/services/booking.server");
    const service = await getModelService(params.modelId!, params.serviceId!);
+   const { bookedSlots } = await getModelBookedSlots(params.modelId!);
 
-   return service;
+   return { service, bookedSlots };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -58,7 +60,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       await validateServiceBookingInputs(bookingData as IServiceBookingCredentials);
       const res = await createServiceBooking(customerId, modelId, modelServiceId, bookingData as IServiceBookingCredentials);
       if (res.id) {
-         return redirect(`/customer/dates-history?toastMessage=Book+service+successfully!&toastType=success`);
+         return redirect(`/customer/dates-history?toastMessage=${encodeURIComponent("profileBook.success.booked")}&toastType=success`);
       }
    } catch (error: any) {
       if (error?.payload) {
@@ -82,7 +84,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       return {
          success: false,
          error: true,
-         message: error || "Failed to edit top-up information!",
+         message: error || "profileBook.errors.bookingFailed",
       };
    }
 }
@@ -98,7 +100,9 @@ export default function ServiceBooking() {
    const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
 
    const actionData = useActionData<typeof action>()
-   const service = useLoaderData<IServiceBookingResponse>();
+   const loaderData = useLoaderData<{ service: IServiceBookingResponse; bookedSlots: Array<{ startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }> }>();
+   const service = loaderData.service;
+   const bookedSlots = loaderData.bookedSlots || [];
    const isSubmitting =
       navigation.state !== "idle" && navigation.formMethod === "POST";
 
@@ -164,6 +168,30 @@ export default function ServiceBooking() {
       return oneHourFromNow > endOfDay;
    };
 
+   // Helper function to format booked slots for display
+   const formatBookedSlot = (slot: { startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }) => {
+      const start = new Date(slot.startDate);
+      const end = slot.endDate
+         ? new Date(slot.endDate)
+         : slot.hours
+            ? new Date(start.getTime() + slot.hours * 60 * 60 * 1000)
+            : null;
+
+      if (slot.isDateOnly) {
+         // For date-only services (hmongNewYear, traveling), show date range
+         if (end && end.toDateString() !== start.toDateString()) {
+            return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+         }
+         return format(start, 'MMM d, yyyy');
+      } else {
+         // For time-based services (drinkingPartner, sleepPartner), show date + time
+         if (end) {
+            return `${format(start, 'MMM d, HH:mm')} - ${format(end, 'HH:mm')}`;
+         }
+         return format(start, 'MMM d, yyyy HH:mm');
+      }
+   };
+
    return (
       <Modal onClose={closeHandler} className="h-screen sm:h-auto w-full sm:w-3/6 py-8 sm:py-4 px-4 border rounded-xl">
          <div className="space-y-3 sm:space-y-6">
@@ -173,6 +201,30 @@ export default function ServiceBooking() {
                   {getServiceDescription(service.service.name, service.service.description)}
                </div>
             </div>
+
+            {/* Display model's booked time slots */}
+            {bookedSlots.length > 0 && (
+               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                     <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                     <div className="text-sm text-amber-800">
+                        <p className="font-medium mb-1">{t('profileBook.unavailableTimes', { defaultValue: 'Unavailable times:' })}</p>
+                        <ul className="space-y-1">
+                           {bookedSlots.slice(0, 5).map((slot, index) => (
+                              <li key={index} className="text-amber-700">
+                                 • {formatBookedSlot(slot)}
+                              </li>
+                           ))}
+                           {bookedSlots.length > 5 && (
+                              <li className="text-amber-600 italic">
+                                 {t('profileBook.andMoreSlots', { count: bookedSlots.length - 5, defaultValue: `...and ${bookedSlots.length - 5} more` })}
+                              </li>
+                           )}
+                        </ul>
+                     </div>
+                  </div>
+               </div>
+            )}
 
             <Form method="post" className="space-y-4">
                {/* Hidden fields for billing type and calculated price */}
@@ -496,7 +548,7 @@ export default function ServiceBooking() {
                                     });
                                  }
                                  return t('profileBook.insufficientBalanceGeneric');
-                              })() : capitalize(actionData.message)}
+                              })() : capitalize(t(actionData.message, { defaultValue: actionData.message }))}
                            </span>
                         </div>
 

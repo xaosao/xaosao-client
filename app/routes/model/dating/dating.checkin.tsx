@@ -162,7 +162,7 @@ export default function ModelCheckInModal() {
                   <div className="space-y-2">
                      <div className="flex items-center space-x-2 text-red-600">
                         <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm">{locationError}</span>
+                        <span className="text-sm">{t("modelDating.checkin.errors.locationError", { defaultValue: locationError })}</span>
                      </div>
                      <Button
                         type="button"
@@ -183,7 +183,7 @@ export default function ModelCheckInModal() {
                   <div className="mb-4 p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                      <span className="text-red-500 text-sm">
-                        {t(actionData.message)}
+                        {t(actionData.message, { defaultValue: actionData.message })}
                      </span>
                   </div>
                )}

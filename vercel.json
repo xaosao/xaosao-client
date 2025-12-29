@@ -2,9 +2,10 @@
   "functions": {
     "api/**/*": {
       "maxDuration": 60
+    },
+    "app/**/*.tsx": {
+      "maxDuration": 60,
+      "memory": 1024
     }
-  },
-  "serverless": {
-    "maxBodySize": "15mb"
   }
 }

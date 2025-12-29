@@ -292,16 +292,54 @@ export function canCancelBooking(startDate: Date): { canCancel: boolean; message
 /**
  * Check for overlapping bookings for a model
  * Prevents double-booking by checking if the requested time slot conflicts with existing bookings
+ * @param modelId - The model's ID
+ * @param startDate - Requested booking start date
+ * @param endDate - Optional end date
  * @param excludeBookingId - Optional booking ID to exclude from check (used when updating a booking)
+ * @param customerId - Optional customer ID for same-customer logic
+ * @param serviceName - Optional service name to determine date-only vs date+time checking
+ * @param modelServiceId - Optional model service ID to check same-service conflicts for same customer
+ *
+ * Overlap rules:
+ * - Different customer + any service + same datetime → BLOCKED
+ * - Same customer + same service + same datetime → BLOCKED
+ * - Same customer + different service + same datetime → ALLOWED
  */
 async function checkForOverlappingBookings(
   modelId: string,
   startDate: Date,
   endDate?: Date,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  customerId?: string,
+  serviceName?: string,
+  modelServiceId?: string
 ): Promise<{ hasOverlap: boolean; conflictingBooking?: any }> {
   const requestedStart = new Date(startDate);
   const requestedEnd = endDate ? new Date(endDate) : new Date(requestedStart.getTime() + 60 * 60 * 1000); // Default 1 hour if no end date
+
+  // Determine if this is a date-only service (hmongNewYear, traveling)
+  const isDateOnlyService = serviceName && ['hmongNewYear', 'traveling'].includes(serviceName);
+
+  // Build conflict conditions based on customer and service
+  // Rules:
+  // - Different customer → always check for conflicts
+  // - Same customer + same service → check for conflicts
+  // - Same customer + different service → no conflict (allowed)
+  let customerServiceFilter: any = {};
+  if (customerId && modelServiceId) {
+    // Find overlapping bookings where either:
+    // 1. Customer is different (any service at same time is conflict)
+    // 2. Customer is same AND service is same (same service at same time is conflict)
+    customerServiceFilter = {
+      OR: [
+        { customerId: { not: customerId } }, // Different customer
+        { customerId: customerId, modelServiceId: modelServiceId }, // Same customer, same service
+      ],
+    };
+  } else if (customerId) {
+    // Fallback: If we don't have modelServiceId, block different customers only
+    customerServiceFilter = { customerId: { not: customerId } };
+  }
 
   // Find any active bookings (pending or confirmed) for this model that might overlap
   const existingBookings = await prisma.service_booking.findMany({
@@ -312,6 +350,8 @@ async function checkForOverlappingBookings(
       },
       // Exclude the booking being updated (if provided)
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+      // Apply customer/service filter
+      ...customerServiceFilter,
     },
     select: {
       id: true,
@@ -319,9 +359,15 @@ async function checkForOverlappingBookings(
       endDate: true,
       hours: true,
       status: true,
-      customer: {
+      customerId: true,
+      modelServiceId: true,
+      modelService: {
         select: {
-          firstName: true,
+          service: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
     },
@@ -334,8 +380,27 @@ async function checkForOverlappingBookings(
       ? new Date(booking.endDate)
       : new Date(existingStart.getTime() + (booking.hours || 1) * 60 * 60 * 1000);
 
-    // Check for overlap: two time ranges overlap if start1 < end2 AND end1 > start2
-    const hasOverlap = requestedStart < existingEnd && requestedEnd > existingStart;
+    // Determine if existing booking is date-only service
+    const existingServiceName = booking.modelService?.service?.name;
+    const existingIsDateOnly = existingServiceName && ['hmongNewYear', 'traveling'].includes(existingServiceName);
+
+    let hasOverlap = false;
+
+    // If either service is date-only (hmongNewYear, traveling), check date only
+    if (isDateOnlyService || existingIsDateOnly) {
+      // Date-only check: compare dates without time
+      const requestedDateStart = new Date(requestedStart.getFullYear(), requestedStart.getMonth(), requestedStart.getDate());
+      const requestedDateEnd = new Date(requestedEnd.getFullYear(), requestedEnd.getMonth(), requestedEnd.getDate());
+      const existingDateStart = new Date(existingStart.getFullYear(), existingStart.getMonth(), existingStart.getDate());
+      const existingDateEnd = new Date(existingEnd.getFullYear(), existingEnd.getMonth(), existingEnd.getDate());
+
+      // Check if date ranges overlap
+      hasOverlap = requestedDateStart <= existingDateEnd && requestedDateEnd >= existingDateStart;
+    } else {
+      // For drinkingPartner and sleepPartner: check both date AND time
+      // Check for overlap: two time ranges overlap if start1 < end2 AND end1 > start2
+      hasOverlap = requestedStart < existingEnd && requestedEnd > existingStart;
+    }
 
     if (hasOverlap) {
       return {
@@ -350,6 +415,64 @@ async function checkForOverlappingBookings(
   }
 
   return { hasOverlap: false };
+}
+
+/**
+ * Get model's booked time slots for display on booking page
+ * Only returns dates/times, not customer info
+ */
+export async function getModelBookedSlots(modelId: string): Promise<{
+  bookedSlots: Array<{
+    startDate: Date;
+    endDate: Date | null;
+    hours: number | null;
+    serviceName: string;
+    isDateOnly: boolean;
+  }>;
+}> {
+  const bookings = await prisma.service_booking.findMany({
+    where: {
+      modelId,
+      status: {
+        in: ["pending", "confirmed", "in_progress"],
+      },
+      // Only show future or ongoing bookings
+      startDate: {
+        gte: new Date(new Date().setHours(0, 0, 0, 0)), // Start of today
+      },
+    },
+    select: {
+      startDate: true,
+      endDate: true,
+      hours: true,
+      modelService: {
+        select: {
+          service: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      startDate: 'asc',
+    },
+  });
+
+  return {
+    bookedSlots: bookings.map((booking) => {
+      const serviceName = booking.modelService?.service?.name || '';
+      const isDateOnly = ['hmongNewYear', 'traveling'].includes(serviceName);
+      return {
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        hours: booking.hours,
+        serviceName,
+        isDateOnly,
+      };
+    }),
+  };
 }
 
 // ========================================
@@ -368,18 +491,33 @@ export async function createServiceBooking(
   };
 
   try {
+    // Get the service name for overlap check logic
+    const modelService = await prisma.model_service.findUnique({
+      where: { id: modelServiceId },
+      include: { service: { select: { name: true } } },
+    });
+    const serviceName = modelService?.service?.name;
+
     // Check for overlapping bookings before proceeding
+    // Rules:
+    // - Different customer + any service + same datetime → BLOCKED
+    // - Same customer + same service + same datetime → BLOCKED
+    // - Same customer + different service + same datetime → ALLOWED
     const overlapCheck = await checkForOverlappingBookings(
       modelId,
       data.startDate,
-      data.endDate
+      data.endDate,
+      undefined, // excludeBookingId
+      customerId, // for same-customer logic
+      serviceName, // for date-only vs date+time checking
+      modelServiceId // for same-service conflict checking
     );
 
     if (overlapCheck.hasOverlap) {
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: "This time slot is no longer available. The model already has a booking during this time. Please select a different date or time.",
+        message: "profileBook.errors.timeSlotUnavailable",
       });
     }
 
@@ -501,7 +639,18 @@ export async function updateServiceBooking(
     // First, get the existing booking to check ownership and get modelId
     const existingBooking = await prisma.service_booking.findUnique({
       where: { id },
-      select: { modelId: true, customerId: true },
+      select: {
+        modelId: true,
+        customerId: true,
+        modelServiceId: true,
+        modelService: {
+          select: {
+            service: {
+              select: { name: true },
+            },
+          },
+        },
+      },
     });
 
     if (!existingBooking) {
@@ -521,19 +670,27 @@ export async function updateServiceBooking(
     }
 
     // Check for overlapping bookings (exclude the current booking being updated)
+    // Rules:
+    // - Different customer + any service + same datetime → BLOCKED
+    // - Same customer + same service + same datetime → BLOCKED
+    // - Same customer + different service + same datetime → ALLOWED
     if (existingBooking.modelId) {
+      const serviceName = existingBooking.modelService?.service?.name;
       const overlapCheck = await checkForOverlappingBookings(
         existingBooking.modelId,
         data.startDate,
         data.endDate,
-        id // Exclude this booking from the check
+        id, // Exclude this booking from the check
+        customerId, // for same-customer logic
+        serviceName, // for date-only vs date+time checking
+        existingBooking.modelServiceId || undefined // for same-service conflict checking
       );
 
       if (overlapCheck.hasOverlap) {
         throw new FieldValidationError({
           success: false,
           error: true,
-          message: "This time slot is no longer available. The model already has a booking during this time. Please select a different date or time.",
+          message: "profileBook.errors.timeSlotUnavailable",
         });
       }
     }

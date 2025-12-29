@@ -307,7 +307,19 @@
       "locationAcquired": "ได้รับตำแหน่งแล้ว",
       "retry": "ลองใหม่",
       "close": "ปิด",
-      "checkInButton": "เช็คอิน"
+      "checkInButton": "เช็คอิน",
+      "checkingIn": "กำลังเช็คอิน...",
+      "success": "เช็คอินสำเร็จแล้ว!",
+      "errors": {
+        "locationRequired": "ไม่สามารถรับตำแหน่งของคุณได้ กรุณาเปิด GPS แล้วลองใหม่",
+        "failed": "เช็คอินไม่สำเร็จ กรุณาลองใหม่",
+        "invalidRequest": "วิธีการร้องขอไม่ถูกต้อง",
+        "geoNotSupported": "เบราว์เซอร์ของคุณไม่รองรับ Geolocation",
+        "permissionDenied": "กรุณาอนุญาตให้เข้าถึงตำแหน่งเพื่อเช็คอิน",
+        "locationUnavailable": "ข้อมูลตำแหน่งไม่สามารถใช้ได้",
+        "timeout": "การร้องขอตำแหน่งหมดเวลา",
+        "locationError": "เกิดข้อผิดพลาดในการรับตำแหน่งของคุณ"
+      }
     },
     "confirmModal": {
       "title": "ยืนยันการเสร็จสิ้น",
@@ -934,7 +946,16 @@
     "rechargeNow": "เติมเงินกระเป๋า",
     "insufficientBalance": "ยอดเงินไม่เพียงพอ! คุณต้องการ {{required}} บาท แต่มีเพียง {{current}} บาท",
     "insufficientBalanceGeneric": "ยอดเงินไม่เพียงพอ! กรุณาเติมเงินกระเป๋าของคุณ",
-    "minTimeToday": "เวลาขั้นต่ำสำหรับวันนี้: {{time}}"
+    "minTimeToday": "เวลาขั้นต่ำสำหรับวันนี้: {{time}}",
+    "unavailableTimes": "เวลาที่ไม่ว่าง:",
+    "andMoreSlots": "...และอีก {{count}}",
+    "success": {
+      "booked": "จองบริการสำเร็จแล้ว!"
+    },
+    "errors": {
+      "bookingFailed": "การจองบริการล้มเหลว กรุณาลองใหม่",
+      "timeSlotUnavailable": "เวลานี้ไม่สามารถใช้ได้แล้ว โมเดลมีการจองในเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น"
+    }
   },
   "modelAuth": {
     "login": {
@@ -1878,8 +1899,10 @@
       "checkinButton": "เช็คอินด้วย GPS",
       "errors": {
         "gpsRequired": "ต้องระบุพิกัด GPS!",
+        "locationRequired": "ไม่สามารถรับตำแหน่งของคุณได้ กรุณาเปิด GPS แล้วลองใหม่",
         "failed": "ไม่สามารถเช็คอินได้!",
-        "invalidRequest": "คำขอไม่ถูกต้อง!"
+        "invalidRequest": "คำขอไม่ถูกต้อง!",
+        "locationError": "เกิดข้อผิดพลาดในการรับตำแหน่งของคุณ"
       }
     },
     "complete": {

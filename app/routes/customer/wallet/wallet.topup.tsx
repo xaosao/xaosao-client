@@ -16,7 +16,7 @@ import { compressImage } from "~/utils/imageCompression";
 
 // Constants for file upload limits
 const MAX_FILE_SIZE_MB = 50; // Maximum file size before compression (50MB - generous limit)
-const COMPRESSED_MAX_SIZE_MB = 4; // Target size after compression (under Vercel's 4.5MB limit)
+const COMPRESSED_MAX_SIZE_MB = 3; // Target size after compression (safely under Vercel's 4.5MB limit with buffer for form data)
 
 export async function action({ request }: Route.ActionArgs) {
     const { topUpWallet } = await import("~/services/wallet.server");
@@ -29,6 +29,16 @@ export async function action({ request }: Route.ActionArgs) {
     if (request.method === "POST") {
         try {
             if (voucher && voucher instanceof File && voucher.size > 0) {
+                // Check if file is too large (Vercel limit is ~4.5MB for body)
+                const fileSizeMB = voucher.size / (1024 * 1024);
+                if (fileSizeMB > 4) {
+                    return {
+                        success: false,
+                        error: true,
+                        message: `File is too large (${fileSizeMB.toFixed(1)}MB). Please compress the image or use a smaller file.`,
+                    };
+                }
+
                 const buffer = Buffer.from(await voucher.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type);
                 transactionData.paymentSlip = url;
@@ -204,6 +214,21 @@ export default function WalletTopUpPage() {
             } finally {
                 setIsCompressing(false);
             }
+        }
+
+        // Final size check after compression
+        const finalSizeMB = processedFile.size / (1024 * 1024);
+        if (finalSizeMB > 4) {
+            setUploadError(t('wallet.topup.fileTooLargeAfterCompression', {
+                defaultValue: `File is still too large after compression (${finalSizeMB.toFixed(1)}MB). Please use a smaller image.`,
+                size: finalSizeMB.toFixed(1)
+            }));
+            setUploadedFile(null);
+            setPreviewSlip(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+            return;
         }
 
         setUploadedFile(processedFile);
