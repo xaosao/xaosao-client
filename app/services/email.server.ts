@@ -3,7 +3,7 @@ import Telbiz from "telbiz";
 
 // Admin email and phone for notifications
 const ADMIN_EMAIL = "xaosao95@gmail.com";
-const ADMIN_PHONE = "2078856194";
+const ADMIN_PHONE = "2012345678";
 
 // Initialize Telbiz SMS client
 const tb = new Telbiz(
@@ -257,9 +257,7 @@ interface DepositData {
   customerName: string;
 }
 
-export async function notifyAdminNewDeposit(
-  data: DepositData
-): Promise<void> {
+export async function notifyAdminNewDeposit(data: DepositData): Promise<void> {
   console.log("Sending deposit notification to admin...");
   const subject = `[XaoSao] New Deposit Request - ${data.amount.toLocaleString()} LAK`;
 
@@ -317,9 +315,7 @@ export async function notifyAdminNewDeposit(
     to: ADMIN_EMAIL,
     subject,
     html,
-  }).catch((err) =>
-    console.error("Failed to send deposit notification:", err)
-  );
+  }).catch((err) => console.error("Failed to send deposit notification:", err));
 
   // Send SMS to admin
   const smsMessage = `XaoSao: ມີຄຳຮ້ອງເຕີມເງິນໃໝ່ - ${data.amount.toLocaleString()} LAK ຈາກ ${data.customerName}. ກະລຸນາກວດສອບ.`;

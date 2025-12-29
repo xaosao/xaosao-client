@@ -3,18 +3,18 @@ import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
 import {
-    HandHeart,
+    User,
     Heart,
     Search,
-    Settings,
-    User,
     Wallet,
     Wallet2,
+    Settings,
+    HandHeart,
 } from "lucide-react";
 import type { Notification } from "~/hooks/useNotifications";
 import { requireUserSession } from "~/services/auths.server";
-import type { ICustomerResponse } from "~/interfaces/customer";
 import { getCustomerProfile } from "~/services/profile.server";
+import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { getCustomerUnreadCount, getCustomerNotifications } from "~/services/notification.server";
 
@@ -165,19 +165,19 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     <div className="sm:hidden flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-30">
                         <Link to="/customer/profile"
                             prefetch="intent"
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 min-w-0"
                         >
-                            <div className="relative">
+                            <div className="relative flex-shrink-0">
                                 <img
                                     src={customerData.profile}
                                     alt="Profile"
-                                    className="w-10 h-10 rounded-full object-cover border border-rose-300"
+                                    className="w-10 h-10 min-w-10 min-h-10 rounded-full object-cover border border-rose-300 aspect-square"
                                 />
                                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
                             </div>
-                            <div className="flex items-start justify-center flex-col">
-                                <span className="text-sm font-medium uppercase">{customerData.firstName} {customerData.lastName}</span>
-                                <span className="text-xs text-gray-500">{customerData.bio}</span>
+                            <div className="flex items-start justify-center flex-col min-w-0">
+                                <span className="text-sm font-medium uppercase truncate max-w-full">{customerData.firstName} {customerData.lastName}</span>
+                                <span className="text-xs text-gray-500 truncate max-w-full">{customerData.bio}</span>
                             </div>
                         </Link>
                         <div className="flex items-center justify-center gap-4">

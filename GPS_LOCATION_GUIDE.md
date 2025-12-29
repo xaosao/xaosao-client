@@ -46,7 +46,7 @@ GPS coordinates are sent with login credentials:
 ```
 POST /login
 {
-  whatsapp: "2078856194",
+  whatsapp: "2012345678",
   password: "***",
   latitude: 17.9876543,    // Precise GPS
   longitude: 102.6234567   // Precise GPS

@@ -160,7 +160,7 @@ export default function ResetPasswordPage() {
                     <div className="text-center pt-4">
                         <p className="text-md text-gray-400">
                             {t('resetPassword.rememberPassword')}{" "}&nbsp;&nbsp;
-                            <Link to="/login" className="text-xs text-white hover:text-rose-600 font-medium uppercase">
+                            <Link to="/login" className="text-sm text-white hover:text-rose-600 font-medium uppercase">
                                 {t('login.loginButton')}
                             </Link>
                         </p>

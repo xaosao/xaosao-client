@@ -270,9 +270,9 @@ export default function SignUpPage() {
                         </h1>
                         <p className="text-white text-xs sm:text-sm">{t('register.subtitle')}</p>
                     </div>
-                    <div className="rounded-full hidden sm:flex items-center justify-start mb-4 cursor-pointer" onClick={() => navigate("/")}>
+                    {/* <div className="rounded-full hidden sm:flex items-center justify-start mb-4 cursor-pointer" onClick={() => navigate("/")}>
                         <img src="/images/logo-white.png" className="w-30 h-10" />
-                    </div>
+                    </div> */}
                 </div>
                 <Form method="post" encType="multipart/form-data" className="space-y-1 sm:space-y-4">
                     <div className="flex flex-col items-center justify-center space-y-2">
@@ -387,7 +387,7 @@ export default function SignUpPage() {
                                 id="tel"
                                 type="tel"
                                 name="whatsapp"
-                                placeholder="2078856194"
+                                placeholder="2012345678"
                                 className="mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm"
                             />
                         </div>
@@ -519,7 +519,7 @@ export default function SignUpPage() {
 
                     <div className="text-center space-x-2">
                         <span className="text-white">{t('register.alreadyHaveAccount')} </span>
-                        <Link to="/login" className="text-white text-xs font-bold hover:text-rose-600 font-xs uppercase">
+                        <Link to="/login" className="text-white text-sm font-bold hover:text-rose-600 font-xs uppercase">
                             {t('register.backLogin')}
                         </Link>
                     </div>

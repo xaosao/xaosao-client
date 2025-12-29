@@ -5,14 +5,12 @@
   },
   "home": {
     "slogans": {
-      "1": "Find love — not just a date.",
-      "2": "Your perfect match is waiting!",
-      "3": "Love is just a swipe away.",
+      "1": "Love is at your fingertips.",
+      "2": "Every love story begins here.",
+      "3": "Choose anytime.",
       "4": "Connecting hearts, creating magic!",
       "5": "Where souls meet and hearts unite.",
-      "6": "Discover your happily-ever-after.",
-      "7": "Every love story starts here.",
-      "8": "Find your person, find your peace."
+      "6": "Discover your happily-ever-after."
     },
     "heroSubtitle": "Join millions of people finding meaningful connections and lasting relationships.",
     "getStarted": "Get Started",
@@ -65,7 +63,7 @@
     "subtitle": "Welcome back! Please enter your details.",
     "phoneNumber": "Phone number",
     "password": "Password",
-    "phonePlaceholder": "2078856194",
+    "phonePlaceholder": "2012345678",
     "passwordPlaceholder": "************",
     "rememberMe": "Remember Me",
     "forgotPassword": "Forgot Password?",

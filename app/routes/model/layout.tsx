@@ -182,19 +182,19 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     <div className="sm:hidden flex items-center justify-between px-4 py-2 border-b bg-white sticky top-0 z-30">
                         <Link to="/model/profile"
                             prefetch="intent"
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 min-w-0"
                         >
-                            <div className="relative">
+                            <div className="relative flex-shrink-0">
                                 <img
                                     src={modelData.profile}
                                     alt="Profile"
-                                    className="w-10 h-10 rounded-full object-cover border border-rose-300"
+                                    className="w-10 h-10 min-w-10 min-h-10 rounded-full object-cover border border-rose-300 aspect-square"
                                 />
                                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
                             </div>
-                            <div className="flex items-start justify-center flex-col">
-                                <span className="text-sm font-medium uppercase">{modelData.firstName} {modelData.lastName}</span>
-                                <span className="text-xs text-gray-500">{capitalize(modelData.available_status)}</span>
+                            <div className="flex items-start justify-center flex-col min-w-0">
+                                <span className="text-sm font-medium uppercase truncate max-w-full">{modelData.firstName} {modelData.lastName}</span>
+                                <span className="text-xs text-gray-500 truncate max-w-full">{capitalize(modelData.available_status)}</span>
                             </div>
                         </Link>
                         <div className="flex items-center justify-center gap-4">

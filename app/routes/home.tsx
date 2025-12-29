@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, Moon } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";
@@ -15,10 +15,10 @@ import { getPublicServices } from "~/services/service.server";
 // Service icon mapping based on service name
 const getServiceIcon = (serviceName: string) => {
   const name = serviceName.toLowerCase();
-  if (name.includes("drinking") || name.includes("friend")) return Wine;
-  if (name.includes("travel")) return Plane;
+  if (name.includes("traveling")) return Plane;
+  if (name.includes("drinking")) return Wine;
   if (name.includes("hmong") || name.includes("new year") || name.includes("party")) return PartyPopper;
-  if (name.includes("sleep") || name.includes("partner") || name.includes("night")) return Moon;
+  if (name.includes("sleep") || name.includes("partner") || name.includes("night")) return BedDouble;
   return User;
 };
 
@@ -61,14 +61,16 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <section className="relative min-h-screen flex items-center justify-center">
         <HeroBackground />
 
-        <div className="w-full relative z-10 px-2 mx-auto text-center lg:px-8 leading-3 space-y-6">
-          <DynamicSlogan />
+        <div className="w-full relative z-10 px-2 mx-auto text-center lg:px-8 leading-3 space-y-4 sm:space-y-8">
+          <div className="mb-2 sm:mb-6">
+            <DynamicSlogan />
 
-          <p className="text-white max-w-4xl mx-auto leading-relaxed px-4 text-sm sm:text-md uppercase">
-            {t('home.heroSubtitle')}
-          </p>
+            <p className="hidden sm:block text-white max-w-4xl mx-auto leading-relaxed px-4 text-sm sm:text-md uppercase">
+              {t('home.heroSubtitle')}
+            </p>
+          </div>
 
-          <div className="flex gap-4 justify-center items-center max-w-md mx-auto">
+          <div className="flex gap-4 justify-center items-center max-w-md mx-auto mb-3 sm:mb-10">
             <Button
               size="lg"
               className="cursor-pointer w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
@@ -87,7 +89,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </Button>
           </div>
 
-          <div className="mt-6 sm:mt-8 flex items-center justify-around sm:justify-center space-x-2 sm:space-x-6 text-sm sm:text-md text-white lowercase sm:uppercase">
+          {/* <div className="mt-6 sm:mt-8 flex items-center justify-around sm:justify-center space-x-2 sm:space-x-6 text-sm sm:text-md text-white lowercase sm:uppercase">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
               <span className="font-light">{t('home.freeToJoin')}</span>
@@ -100,7 +102,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
               <span className="font-light">{t('home.safeSecure')}</span>
             </div>
-          </div>
+          </div> */}
 
           {services && services.length > 0 && (
             <section className="py-4 px-1 sm:px-4">
@@ -123,7 +125,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                           <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center group-hover:bg-rose-500 transition-colors duration-300">
                             <IconComponent className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors duration-300" />
                           </div>
-                          <h3 className="text-md sm:text-lg font-semibold text-white text-center sm:text-left">
+                          <h3 className="mt-2 sm:mt-0 text-md sm:text-lg font-semibold text-white text-center sm:text-left">
                             {getServiceName(service.name)}
                           </h3>
                         </div>

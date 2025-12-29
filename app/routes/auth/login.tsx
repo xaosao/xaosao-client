@@ -440,7 +440,7 @@ export default function SignInPage() {
                             <span className="text-white">{t('login.noAccount')}</span>
                             <Link
                                 to="/register"
-                                className="text-white text-xs font-bold transition-colors rounded uppercase hover:text-rose-500"
+                                className="text-white text-sm font-bold transition-colors rounded uppercase hover:text-rose-500"
                             >
                                 {isMobile ? t('login.createAccountMobile') : t('login.createAccount')}
                             </Link>

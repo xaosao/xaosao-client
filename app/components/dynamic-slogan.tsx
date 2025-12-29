@@ -19,7 +19,7 @@ export function DynamicSlogan() {
     }, [])
 
     return (
-        <h2 className="text-2xl sm:text-6xl font-bold bg-gradient-to-r from-white to-white bg-clip-text text-transparent mb-2 font-serif uppercase">
+        <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-white bg-clip-text text-transparent mb-0 font-serif uppercase py-3">
             {t(`home.slogans.${sloganKeys[currentSlogan]}`)}
         </h2>
     )
