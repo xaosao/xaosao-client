@@ -58,6 +58,9 @@ export interface IModelOwnProfileResponse {
   ModelService: {
     id: string;
     customRate: number | null;
+    customHourlyRate: number | null;
+    customOneTimePrice: number | null;
+    customOneNightPrice: number | null;
     isAvailable: boolean;
     minSessionDuration: number;
     maxSessionDuration: number;
@@ -66,6 +69,10 @@ export interface IModelOwnProfileResponse {
       name: string;
       description: string | null;
       baseRate: number;
+      billingType: 'per_day' | 'per_hour' | 'per_session';
+      hourlyRate: number | null;
+      oneTimePrice: number | null;
+      oneNightPrice: number | null;
     };
   }[];
   totalLikes: number;

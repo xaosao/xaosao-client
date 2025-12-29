@@ -284,6 +284,19 @@ export default function ModelProfilePage() {
         return translatedDesc;
     };
 
+    // Helper to get billing type label
+    const getBillingTypeLabel = (billingType: string) => {
+        switch (billingType) {
+            case "per_hour":
+                return t("modelServices.billingTypes.perHour");
+            case "per_session":
+                return t("modelServices.billingTypes.perSession");
+            case "per_day":
+            default:
+                return t("modelServices.billingTypes.perDay");
+        }
+    };
+
     // Handle file selection and upload
     const handleFileInputClick = (imageId: string, imageName: string) => {
         // Set refs immediately for use in handleFileChange (avoids closure issues)
@@ -857,6 +870,7 @@ export default function ModelProfilePage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mx-auto ">
                                         {model.ModelService.map((service) => {
                                             const name = getFirstWord(service.service.name).toLowerCase();
+                                            const billingType = service.service.billingType || 'per_day';
                                             return (
                                                 <Card key={service.id} className={`cursor-pointer w-full max-w-sm ${name === "sleep" ? "border-cyan-500" : name === "drinking" ? "border-green-500" : "border-rose-500"}`}>
                                                     <CardHeader>
@@ -865,8 +879,52 @@ export default function ModelProfilePage() {
                                                             {getServiceDescription(service.service.name, service.service.description)}
                                                         </CardDescription>
                                                     </CardHeader>
-                                                    <CardContent>
-                                                        <strong className="text-sm">{formatCurrency(Number(service.customRate ? service.customRate : service.service.baseRate))} {t("modelProfile.services.perTime")}</strong>
+                                                    <CardContent className="space-y-2">
+                                                        {/* Billing Type Badge */}
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-gray-500">{t("modelServices.billingType")}</span>
+                                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-medium text-gray-700">
+                                                                {getBillingTypeLabel(billingType)}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Per Day - Show daily rate */}
+                                                        {billingType === "per_day" && (
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span className="text-gray-500">{t("modelServices.rate")}</span>
+                                                                <span className="font-semibold text-rose-600">
+                                                                    {formatCurrency(Number(service.customRate || service.service.baseRate))}/{t("modelServices.day")}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Per Hour - Show hourly rate */}
+                                                        {billingType === "per_hour" && (
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span className="text-gray-500">{t("modelServices.hourlyRate")}</span>
+                                                                <span className="font-semibold text-rose-600">
+                                                                    {formatCurrency(Number(service.customHourlyRate || service.service.hourlyRate || 0))}/{t("modelServices.hour")}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Per Session - Show one time and one night prices */}
+                                                        {billingType === "per_session" && (
+                                                            <>
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="text-gray-500">{t("modelServices.oneTimePrice")}</span>
+                                                                    <span className="font-semibold text-rose-600">
+                                                                        {formatCurrency(Number(service.customOneTimePrice || service.service.oneTimePrice || 0))}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="text-gray-500">{t("modelServices.oneNightPrice")}</span>
+                                                                    <span className="font-semibold text-rose-600">
+                                                                        {formatCurrency(Number(service.customOneNightPrice || service.service.oneNightPrice || 0))}
+                                                                    </span>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </CardContent>
                                                     <CardFooter className="flex-col gap-2">
                                                         <Badge variant="outline" className={`${service.isAvailable ? "bg-green-100 text-green-700 border-green-200" : "bg-orange-100 text-orange-700 border-orange-200"} px-3 py-1`}>
