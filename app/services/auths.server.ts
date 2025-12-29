@@ -145,10 +145,36 @@ export async function destroyUserSession(request: Request) {
     request.headers.get("Cookie")
   );
 
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Build cookie clearing headers that match the creation attributes
+  const customerCookieParts = [
+    `whoxa_customer_auth_token=`,
+    `Path=/`,
+    `Max-Age=0`,
+    `SameSite=Lax`,
+    `Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+  ];
+
+  const modelCookieParts = [
+    `whoxa_model_auth_token=`,
+    `Path=/`,
+    `Max-Age=0`,
+    `SameSite=Lax`,
+    `Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+  ];
+
+  if (isProduction) {
+    customerCookieParts.push(`Domain=.xaosao.com`);
+    customerCookieParts.push(`Secure`);
+    modelCookieParts.push(`Domain=.xaosao.com`);
+    modelCookieParts.push(`Secure`);
+  }
+
   const headers = new Headers();
   headers.append("Set-Cookie", await sessionStorage.destroySession(session));
-  headers.append("Set-Cookie", `whoxa_customer_auth_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
-  headers.append("Set-Cookie", `whoxa_model_auth_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
+  headers.append("Set-Cookie", customerCookieParts.join("; "));
+  headers.append("Set-Cookie", modelCookieParts.join("; "));
 
   return redirect("/login", { headers });
 }
