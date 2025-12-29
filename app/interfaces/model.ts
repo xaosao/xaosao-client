@@ -41,16 +41,25 @@ export interface IHotmodelsResponse {
 }
 
 // For model profile
+export type BillingType = 'per_day' | 'per_hour' | 'per_session';
+
 export interface IService {
   id: string;
   name: string;
   description: string;
   baseRate: string;
+  billingType: BillingType;
+  hourlyRate: number | null;
+  oneTimePrice: number | null;
+  oneNightPrice: number | null;
 }
 
 export interface IModelService {
   id: string;
   customRate: number;
+  customHourlyRate: number | null;
+  customOneTimePrice: number | null;
+  customOneNightPrice: number | null;
   isAvailable: boolean;
   minSessionDuration: number;
   maxSessionDuration: number;

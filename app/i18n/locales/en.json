@@ -75,7 +75,15 @@
     "createAccount": "Create one its Free!",
     "createAccountMobile": "Create New",
     "invalidCredentials": "Invalid phone number or password!",
-    "incorrectCredentials": "Phone number or password incorrect!"
+    "incorrectCredentials": "Phone number or password incorrect!",
+    "errors": {
+      "phoneAndPasswordRequired": "Phone number and password are required.",
+      "invalidPhoneFormat": "Invalid phone number format.",
+      "invalidCredentials": "Invalid phone number or password. Please try again.",
+      "accountUnavailable": "Your account is currently unavailable. Please contact support.",
+      "loginFailed": "Login failed. Please try again.",
+      "unexpectedError": "An unexpected error occurred. Please try again."
+    }
   },
   "forgotPassword": {
     "title": "Forgot Password?",
@@ -1169,6 +1177,7 @@
     },
     "day": "day",
     "hour": "hour",
+    "rate": "Rate:",
     "baseRate": "Base Rate:",
     "hourlyRate": "Hourly Rate:",
     "oneTimePrice": "One Time Price:",

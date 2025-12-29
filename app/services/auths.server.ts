@@ -7,6 +7,7 @@ import { prisma } from "./database.server";
 import { createAuditLogs } from "./log.server";
 import { UserStatus } from "~/interfaces/base";
 import { createWallet } from "./wallet.server";
+import { notifyAdminNewCustomer } from "./email.server";
 import type {
   ICustomerSigninCredentials,
   ICustomerSignupCredentials,
@@ -241,7 +242,7 @@ export async function customerLogin({
 
   if (!existingUser) {
     const error = new Error(
-      "Could not log you in, please check the provided credentials."
+      "login.errors.invalidCredentials"
     ) as Error & {
       status?: number;
     };
@@ -259,7 +260,7 @@ export async function customerLogin({
 
   if (existingUser.status !== "active") {
     const error = new Error(
-      "Could not log you in, Your account is unavailable now!"
+      "login.errors.accountUnavailable"
     ) as Error & {
       status?: number;
     };
@@ -278,7 +279,7 @@ export async function customerLogin({
   const passwordCorrect = await compare(password, existingUser.password);
   if (!passwordCorrect) {
     const error = new Error(
-      "Could not log you in, Your account is not available now."
+      "login.errors.invalidCredentials"
     ) as Error & {
       status?: number;
     };
@@ -507,6 +508,19 @@ export async function customerRegister(
         );
       }
     }
+
+    // Notify admin about new customer registration
+    try {
+      await notifyAdminNewCustomer({
+        id: customer.id,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        gender: customer.gender,
+      });
+    } catch (notifyError) {
+      console.error("NOTIFY_ADMIN_NEW_CUSTOMER_FAILED", notifyError);
+    }
+
     return {
       success: true,
       error: false,

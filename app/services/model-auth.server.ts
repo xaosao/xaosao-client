@@ -301,7 +301,7 @@ export async function modelLogin({
   const passwordCorrect = await compare(password, existingModel.password);
   if (!passwordCorrect) {
     const error = new Error(
-      "modelAuth.serverMessages.loginAccountNotActive"
+      "modelAuth.serverMessages.loginInvalidCredentials"
     ) as Error & {
       status?: number;
     };

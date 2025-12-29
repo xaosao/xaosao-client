@@ -75,7 +75,15 @@
     "createAccount": "ສ້າງບັນຊີໃໝ່ເລີຍ ຟຣີ!",
     "createAccountMobile": "ສ້າງໃໝ່",
     "invalidCredentials": "ເບີໂທລະສັບຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!",
-    "incorrectCredentials": "ເບີໂທລະສັບຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!"
+    "incorrectCredentials": "ເບີໂທລະສັບຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!",
+    "errors": {
+      "phoneAndPasswordRequired": "ກະລຸນາໃສ່ເບີໂທລະສັບ ແລະ ລະຫັດຜ່ານ.",
+      "invalidPhoneFormat": "ຮູບແບບເບີໂທລະສັບບໍ່ຖືກຕ້ອງ.",
+      "invalidCredentials": "ເບີໂທລະສັບ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງໃໝ່.",
+      "accountUnavailable": "ບັນຊີຂອງທ່ານບໍ່ສາມາດໃຊ້ງານໄດ້ໃນຂະນະນີ້. ກະລຸນາຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອ.",
+      "loginFailed": "ການເຂົ້າສູ່ລະບົບລົ້ມເຫຼວ. ກະລຸນາລອງໃໝ່.",
+      "unexpectedError": "ເກີດຂໍ້ຜິດພາດທີ່ບໍ່ຄາດຄິດ. ກະລຸນາລອງໃໝ່."
+    }
   },
   "forgotPassword": {
     "title": "ລືມລະຫັດຜ່ານບໍ?",
@@ -1112,7 +1120,7 @@
       "profileImageRequiredUpload": "ກະລຸນາອັບໂຫຼດຮູບໂປຣໄຟລ໌ຂອງທ່ານກ່ອນ"
     },
     "serverMessages": {
-      "loginInvalidCredentials": "ບໍ່ສາມາດເຂົ້າສູ່ລະບົບໄດ້ ກະລຸນາກວດສອບຂໍ້ມູນປະຈຳຕົວຂອງທ່ານ",
+      "loginInvalidCredentials": "ບໍ່ສາມາດເຂົ້າສູ່ລະບົບໄດ້ ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານຄືນ",
       "loginAccountUnavailable": "ບໍ່ສາມາດເຂົ້າສູ່ລະບົບໄດ້ ບັນຊີຂອງທ່ານບໍ່ພ້ອມໃຊ້ງານໃນຕອນນີ້!",
       "loginAccountNotActive": "ບໍ່ສາມາດເຂົ້າສູ່ລະບົບໄດ້ ບັນຊີຂອງທ່ານຍັງບໍ່ພ້ອມໃຊ້ງານ",
       "loginFailed": "ບໍ່ສາມາດເຂົ້າສູ່ລະບົບໂມເດວໄດ້",
@@ -1202,6 +1210,7 @@
     },
     "day": "ວັນ",
     "hour": "ຊົ່ວໂມງ",
+    "rate": "ລາຄາ:",
     "baseRate": "ລາຄາຂອງລະບົບ:",
     "hourlyRate": "ລາຄາຕໍ່ຊົ່ວໂມງ:",
     "oneTimePrice": "ລາຄາຕໍ່ຄັ້ງ:",
@@ -1767,7 +1776,7 @@
       "reject": "ປະຕິເສດ",
       "checkIn": "ເຊັກອິນ",
       "callCustomer": "ໂທຫາລູກຄ້າ",
-      "completeGetPaid": "ສຳເລັດ ແລະ ຮັບເງິນ",
+      "completeGetPaid": "ສ້າງຄິວອາໂຄດເພື່ອຮັບເງີນ",
       "viewQRCode": "ເບິ່ງ QR Code",
       "messageCustomer": "ສົ່ງຂໍ້ຄວາມຫາລູກຄ້າ",
       "delete": "ລຶບ"

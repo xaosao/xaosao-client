@@ -3,7 +3,7 @@ import Telbiz from "telbiz";
 
 // Admin email and phone for notifications
 const ADMIN_EMAIL = "xaosao95@gmail.com";
-const ADMIN_PHONE = "2012345678";
+const ADMIN_PHONE = "8562078856194";
 
 // Initialize Telbiz SMS client
 const tb = new Telbiz(
@@ -321,5 +321,258 @@ export async function notifyAdminNewDeposit(data: DepositData): Promise<void> {
   const smsMessage = `XaoSao: ມີຄຳຮ້ອງເຕີມເງິນໃໝ່ - ${data.amount.toLocaleString()} LAK ຈາກ ${data.customerName}. ກະລຸນາກວດສອບ.`;
   sendAdminSMS(smsMessage).catch((err) =>
     console.error("Failed to send deposit SMS notification:", err)
+  );
+}
+
+// ========================================
+// Notify Admin: New Customer Registration
+// ========================================
+
+interface NewCustomerData {
+  id: string;
+  firstName: string;
+  lastName?: string | null;
+  tel?: number;
+  gender?: string;
+}
+
+export async function notifyAdminNewCustomer(
+  customer: NewCustomerData
+): Promise<void> {
+  console.log("Sending new customer registration notification to admin...");
+  const subject = `[XaoSao] New Customer Registration - ${customer.firstName} ${customer.lastName || ""}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+        .info-row { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+        .label { font-weight: bold; color: #6b7280; }
+        .value { color: #111827; }
+        .highlight { font-size: 18px; font-weight: bold; color: #3b82f6; }
+        .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2 style="margin: 0;">🎉 New Customer Registration</h2>
+          <p style="margin: 5px 0 0;">A new customer has joined XaoSao!</p>
+        </div>
+        <div class="content">
+          <div class="info-row">
+            <span class="label">Customer ID:</span>
+            <span class="value">${customer.id}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Name:</span>
+            <span class="highlight">${customer.firstName} ${customer.lastName || ""}</span>
+          </div>
+          ${
+            customer.tel
+              ? `
+          <div class="info-row">
+            <span class="label">Phone:</span>
+            <span class="value">${customer.tel}</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            customer.gender
+              ? `
+          <div class="info-row">
+            <span class="label">Gender:</span>
+            <span class="value">${customer.gender}</span>
+          </div>
+          `
+              : ""
+          }
+          <div class="info-row">
+            <span class="label">Registered At:</span>
+            <span class="value">${new Date().toLocaleString("en-US", { timeZone: "Asia/Vientiane" })}</span>
+          </div>
+
+          <a href="${process.env.ADMIN_URL || "https://admin.xaosao.la"}/dashboard/customers/${customer.id}" class="button">
+            View Customer Profile
+          </a>
+        </div>
+        <div class="footer">
+          <p>This is an automated notification from XaoSao System.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Send email without awaiting to not block the registration flow
+  sendEmail({
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+  }).catch((err) =>
+    console.error("Failed to send new customer notification:", err)
+  );
+
+  // Send SMS to admin
+  const smsMessage = `XaoSao: ມີລູກຄ້າໃໝ່ລົງທະບຽນ - ${customer.firstName} ${customer.lastName || ""} (${customer.tel || "N/A"}). ຍິນດີຕ້ອນຮັບ!`;
+  sendAdminSMS(smsMessage).catch((err) =>
+    console.error("Failed to send new customer SMS notification:", err)
+  );
+}
+
+// ========================================
+// Notify Admin: New Booking Created
+// ========================================
+
+interface NewBookingData {
+  id: string;
+  customerName: string;
+  customerPhone?: string;
+  modelName: string;
+  serviceName: string;
+  totalPrice: number;
+  startDate: Date | string;
+  endDate: Date | string;
+  location?: string;
+}
+
+export async function notifyAdminNewBooking(
+  booking: NewBookingData
+): Promise<void> {
+  console.log("Sending new booking notification to admin...");
+
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date);
+    return d.toLocaleString("en-US", {
+      timeZone: "Asia/Vientiane",
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  };
+
+  const subject = `[XaoSao] New Booking - ${booking.serviceName} (${booking.totalPrice.toLocaleString()} LAK)`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+        .info-row { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; display: flex; justify-content: space-between; }
+        .label { font-weight: bold; color: #6b7280; }
+        .value { color: #111827; }
+        .amount { font-size: 24px; font-weight: bold; color: #ec4899; }
+        .section-title { font-weight: bold; color: #374151; margin: 20px 0 10px; padding-bottom: 5px; border-bottom: 2px solid #e5e7eb; }
+        .button { display: inline-block; background: #ec4899; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; }
+        .badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2 style="margin: 0;">💕 New Booking Created!</h2>
+          <p style="margin: 5px 0 0;">A customer has made a new booking</p>
+        </div>
+        <div class="content">
+          <div class="info-row">
+            <span class="label">Booking ID:</span>
+            <span class="value">${booking.id}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Total Amount:</span>
+            <span class="amount">${booking.totalPrice.toLocaleString()} LAK</span>
+          </div>
+
+          <p class="section-title">📋 Service Details</p>
+          <div class="info-row">
+            <span class="label">Service:</span>
+            <span class="value">${booking.serviceName}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Start Date:</span>
+            <span class="value">${formatDate(booking.startDate)}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">End Date:</span>
+            <span class="value">${formatDate(booking.endDate)}</span>
+          </div>
+          ${
+            booking.location
+              ? `
+          <div class="info-row">
+            <span class="label">Location:</span>
+            <span class="value">${booking.location}</span>
+          </div>
+          `
+              : ""
+          }
+
+          <p class="section-title">👤 Customer Information</p>
+          <div class="info-row">
+            <span class="label">Customer:</span>
+            <span class="value">${booking.customerName}</span>
+          </div>
+          ${
+            booking.customerPhone
+              ? `
+          <div class="info-row">
+            <span class="label">Phone:</span>
+            <span class="value">${booking.customerPhone}</span>
+          </div>
+          `
+              : ""
+          }
+
+          <p class="section-title">💃 Model Information</p>
+          <div class="info-row">
+            <span class="label">Model:</span>
+            <span class="value">${booking.modelName}</span>
+          </div>
+
+          <div class="info-row">
+            <span class="label">Status:</span>
+            <span class="badge">Pending Confirmation</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Created At:</span>
+            <span class="value">${new Date().toLocaleString("en-US", { timeZone: "Asia/Vientiane" })}</span>
+          </div>
+
+          <a href="${process.env.ADMIN_URL || "https://admin.xaosao.la"}/dashboard/bookings/${booking.id}" class="button">
+            View Booking Details
+          </a>
+        </div>
+        <div class="footer">
+          <p>This is an automated notification from XaoSao System.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Send email without awaiting to not block the booking flow
+  sendEmail({
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+  }).catch((err) =>
+    console.error("Failed to send new booking notification:", err)
+  );
+
+  // Send SMS to admin
+  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${booking.customerName} ຈອງ ${booking.serviceName} ກັບ ${booking.modelName} - ${booking.totalPrice.toLocaleString()} LAK. ກະລຸນາກວດສອບ.`;
+  sendAdminSMS(smsMessage).catch((err) =>
+    console.error("Failed to send new booking SMS notification:", err)
   );
 }

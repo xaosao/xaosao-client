@@ -16,6 +16,7 @@ import {
   notifyAutoReleasePayment,
   notifyBookingEdited,
 } from "./notification.server";
+import { notifyAdminNewBooking } from "./email.server";
 
 import crypto from "crypto";
 
@@ -423,11 +424,15 @@ export async function createServiceBooking(
       try {
         const customer = await prisma.customer.findUnique({
           where: { id: customerId },
-          select: { firstName: true },
+          select: { firstName: true, tel: true },
         });
         const modelService = await prisma.model_service.findUnique({
           where: { id: modelServiceId },
           include: { service: true },
+        });
+        const model = await prisma.model.findUnique({
+          where: { id: modelId },
+          select: { firstName: true, lastName: true },
         });
         if (customer && modelService?.service) {
           await notifyBookingCreated(
@@ -440,6 +445,21 @@ export async function createServiceBooking(
             data.location,
             data.price
           );
+        }
+
+        // Notify admin about new booking
+        if (customer && model && modelService?.service) {
+          await notifyAdminNewBooking({
+            id: result.id,
+            customerName: customer.firstName,
+            customerPhone: customer.tel?.toString(),
+            modelName: `${model.firstName} ${model.lastName || ""}`.trim(),
+            serviceName: modelService.service.name,
+            totalPrice: data.price,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            location: data.location,
+          });
         }
       } catch (notifyError) {
         console.error("NOTIFY_BOOKING_CREATED_FAILED", notifyError);

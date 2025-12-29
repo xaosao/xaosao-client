@@ -90,7 +90,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
             return {
                 success: false,
                 error: true,
-                message: "Phone number and password are required"
+                message: "login.errors.phoneAndPasswordRequired"
             };
         }
 
@@ -100,7 +100,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
             return {
                 success: false,
                 error: true,
-                message: "Invalid phone number format"
+                message: "login.errors.invalidPhoneFormat"
             };
         }
 
@@ -156,7 +156,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
             return {
                 success: false,
                 error: true,
-                message: "Login failed. Please try again."
+                message: "login.errors.loginFailed"
             };
         }
 
@@ -170,7 +170,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
                 return {
                     success: false,
                     error: true,
-                    message: httpError.message || "Invalid phone number or password"
+                    message: httpError.message || "login.errors.invalidCredentials"
                 };
             }
         }
@@ -189,7 +189,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         return {
             success: false,
             error: true,
-            message: "An unexpected error occurred. Please try again."
+            message: "login.errors.unexpectedError"
         };
     }
 }
@@ -398,7 +398,7 @@ export default function SignInPage() {
                         >
                             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" aria-hidden="true" />
                             <span className="text-red-200 text-sm">
-                                {actionData.message}
+                                {t(actionData.message)}
                             </span>
                         </div>
                     )}

@@ -42,12 +42,26 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [hasCustomerToken, setHasCustomerToken] = useState(false)
 
   useEffect(() => {
-    // Check for customer auth token
+    // Check for auth tokens
     const customerToken = document.cookie
       .split('; ')
       .find(row => row.startsWith('whoxa_customer_auth_token='))
+    const modelToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('whoxa_model_auth_token='))
+
+    // Auto-redirect if logged in (customer takes priority)
+    if (customerToken) {
+      navigate('/customer', { replace: true })
+      return
+    }
+    if (modelToken) {
+      navigate('/model', { replace: true })
+      return
+    }
+
     setHasCustomerToken(!!customerToken)
-  }, [])
+  }, [navigate])
 
   // Helper function to get translated service name
   const getServiceName = (nameKey: string) => {
