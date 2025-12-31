@@ -8,55 +8,48 @@ interface PushNotificationPromptProps {
   userType: "model" | "customer";
 }
 
-// Storage key per user type - so customer and model have separate dismissal states
-const getStorageKey = (userType: string) => `push-notification-prompt-dismissed-${userType}`;
 // Only remember dismissal for current session (until page refresh)
 const sessionDismissed: Record<string, boolean> = {};
 
 // Check if app is running as PWA
 function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
-  );
+  try {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true
+    );
+  } catch {
+    return false;
+  }
 }
 
 // Check if device is iOS
 function isIOS(): boolean {
-  if (typeof window === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  try {
+    if (typeof window === "undefined") return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  } catch {
+    return false;
+  }
 }
 
 // Check if iOS version supports Web Push (16.4+)
 function isIOSVersionSupported(): boolean {
-  if (!isIOS()) return true; // Non-iOS devices don't need this check
+  try {
+    if (!isIOS()) return true; // Non-iOS devices don't need this check
 
-  const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
-  if (!match) return false;
+    const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+    if (!match) return false;
 
-  const major = parseInt(match[1], 10);
-  const minor = parseInt(match[2], 10);
+    const major = parseInt(match[1], 10);
+    const minor = parseInt(match[2], 10);
 
-  // iOS 16.4+ supports Web Push
-  return major > 16 || (major === 16 && minor >= 4);
-}
-
-// Check if push could potentially be supported (for showing iOS instructions)
-function canPotentiallySupportPush(): boolean {
-  if (typeof window === "undefined") return false;
-
-  // On iOS, check if version supports it and if in standalone mode
-  if (isIOS()) {
-    return isIOSVersionSupported();
+    // iOS 16.4+ supports Web Push
+    return major > 16 || (major === 16 && minor >= 4);
+  } catch {
+    return false;
   }
-
-  // For other devices, check standard support
-  return (
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
 }
 
 export function PushNotificationPrompt({ userType }: PushNotificationPromptProps) {
@@ -64,6 +57,7 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isIOSSafari, setIsIOSSafari] = useState(false);
+  const [isIOSPWA, setIsIOSPWA] = useState(false);
 
   const {
     isSupported,
@@ -79,84 +73,89 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
     // Only run on client
     if (typeof window === "undefined") return;
 
-    // Check if we're on iOS Safari (not PWA)
-    const iosInSafari = isIOS() && !isStandalone();
-    setIsIOSSafari(iosInSafari);
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    // For iOS Safari, we don't need to wait for the hook since push isn't available
-    // We just want to show the iOS instructions
-    if (iosInSafari) {
-      console.log("[PushPrompt] iOS Safari detected, checking if can show instructions");
+    try {
+      const iosDevice = isIOS();
+      const standalonePWA = isStandalone();
+      const iosVersionOK = isIOSVersionSupported();
 
-      // Check if iOS version supports push (16.4+)
-      if (!isIOSVersionSupported()) {
-        console.log("[PushPrompt] iOS version too old for Web Push");
+      console.log("[PushPrompt] Device detection:", {
+        isIOS: iosDevice,
+        isStandalone: standalonePWA,
+        isIOSVersionSupported: iosVersionOK,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "N/A",
+      });
+
+      // Check if we're on iOS Safari (not PWA)
+      const iosInSafari = iosDevice && !standalonePWA;
+      setIsIOSSafari(iosInSafari);
+
+      // Check if we're on iOS PWA (standalone mode)
+      const iosInPWA = iosDevice && standalonePWA && iosVersionOK;
+      setIsIOSPWA(iosInPWA);
+
+      // For iOS Safari, show instructions to add to home screen
+      if (iosInSafari && iosVersionOK) {
+        console.log("[PushPrompt] iOS Safari detected");
+
+        if (sessionDismissed[userType]) {
+          console.log("[PushPrompt] Not showing: Dismissed in current session");
+          return;
+        }
+
+        console.log("[PushPrompt] Will show iOS instructions in 3 seconds...");
+        timer = setTimeout(() => {
+          console.log("[PushPrompt] Showing iOS instructions now!");
+          setShowPrompt(true);
+        }, 3000);
         return;
       }
 
-      // Only check session dismissal
+      // For iOS PWA or other devices, use the standard flow
+      // Wait for hook to finish initializing
+      if (isInitializing) {
+        console.log("[PushPrompt] Still initializing, waiting...");
+        return;
+      }
+
+      console.log("[PushPrompt] Checking conditions:", {
+        isSupported,
+        isSubscribed,
+        permission,
+        userType,
+        iosInPWA,
+      });
+
+      // For iOS PWA, show prompt if not subscribed (even if isSupported is false)
+      const shouldShowForIOSPWA = iosInPWA && !isSubscribed && permission !== "denied";
+
+      // For other devices, check isSupported
+      const shouldShowForOther = !iosDevice && isSupported && !isSubscribed && permission !== "denied";
+
+      if (!shouldShowForIOSPWA && !shouldShowForOther) {
+        console.log("[PushPrompt] Not showing prompt");
+        return;
+      }
+
       if (sessionDismissed[userType]) {
         console.log("[PushPrompt] Not showing: Dismissed in current session");
         return;
       }
 
-      console.log("[PushPrompt] Will show iOS instructions in 3 seconds...");
-
-      const timer = setTimeout(() => {
-        console.log("[PushPrompt] Showing iOS instructions now!");
+      console.log("[PushPrompt] Will show prompt in 3 seconds...");
+      timer = setTimeout(() => {
+        console.log("[PushPrompt] Showing prompt now!");
         setShowPrompt(true);
       }, 3000);
 
-      return () => clearTimeout(timer);
+    } catch (err) {
+      console.error("[PushPrompt] Error in useEffect:", err);
     }
 
-    // For non-iOS or iOS PWA, wait for hook to finish initializing
-    if (isInitializing) {
-      console.log("[PushPrompt] Still initializing, waiting...");
-      return;
-    }
-
-    console.log("[PushPrompt] Checking conditions:", {
-      isSupported,
-      isSubscribed,
-      permission,
-      userType,
-      isInitializing,
-    });
-
-    // Don't show if not supported
-    if (!isSupported) {
-      console.log("[PushPrompt] Not showing: Push not supported");
-      return;
-    }
-
-    // Don't show if already subscribed
-    if (isSubscribed) {
-      console.log("[PushPrompt] Not showing: Already subscribed");
-      return;
-    }
-
-    // Don't show if permission denied
-    if (permission === "denied") {
-      console.log("[PushPrompt] Not showing: Permission denied");
-      return;
-    }
-
-    // Only check session dismissal (shows again on page refresh if not enabled)
-    if (sessionDismissed[userType]) {
-      console.log("[PushPrompt] Not showing: Dismissed in current session");
-      return;
-    }
-
-    console.log("[PushPrompt] Will show prompt in 3 seconds...");
-
-    // Show prompt after a short delay
-    const timer = setTimeout(() => {
-      console.log("[PushPrompt] Showing prompt now!");
-      setShowPrompt(true);
-    }, 3000);
-
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isSupported, isSubscribed, permission, userType, isInitializing]);
 
   const handleEnable = async () => {
@@ -177,18 +176,21 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
   };
 
   // For iOS Safari, we show even when isSupported is false (to show instructions)
+  // For iOS PWA, we show the enable button (bypass isSupported check)
   // For other platforms, we need isSupported to be true
   if (!showPrompt) {
     return null;
   }
 
   // On non-iOS platforms, still check isSupported
-  if (!isIOSSafari && !isSupported) {
+  // But skip this check for iOS PWA (we handle it separately)
+  if (!isIOSSafari && !isIOSPWA && !isSupported) {
     return null;
   }
 
   // Show iOS-specific instructions if in Safari (not PWA)
-  const showIOSInstructions = isIOSSafari;
+  // iOS PWA should show the enable button, not instructions
+  const showIOSInstructions = isIOSSafari && !isIOSPWA;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">

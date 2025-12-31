@@ -62,19 +62,27 @@ function setStoredSubscriptionStatus(userType: string, isSubscribed: boolean): v
 
 // Synchronous support check - can be called during initial render
 function checkPushSupport(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
+  try {
+    if (typeof window === "undefined") return false;
+    return (
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      "Notification" in window
+    );
+  } catch {
+    return false;
+  }
 }
 
 // Get initial permission synchronously
 function getInitialPermission(): NotificationPermission | "default" {
-  if (typeof window === "undefined") return "default";
-  if (!("Notification" in window)) return "default";
-  return Notification.permission;
+  try {
+    if (typeof window === "undefined") return "default";
+    if (!("Notification" in window)) return "default";
+    return Notification.permission;
+  } catch {
+    return "default";
+  }
 }
 
 export function usePushNotifications({
@@ -84,16 +92,28 @@ export function usePushNotifications({
   // Initialize with synchronous checks so components get correct values immediately
   // Use localStorage value for isSubscribed to prevent prompt flashing
   const [state, setState] = useState<PushNotificationState>(() => {
-    const storedSubscription = getStoredSubscriptionStatus(userType);
-    console.log("[Push] Initial state from localStorage:", { userType, storedSubscription });
-    return {
-      isSupported: checkPushSupport(),
-      permission: getInitialPermission(),
-      isSubscribed: storedSubscription, // Use localStorage value initially
-      isLoading: false,
-      isInitializing: !storedSubscription, // Skip initialization if already subscribed per localStorage
-      error: null,
-    };
+    try {
+      const storedSubscription = getStoredSubscriptionStatus(userType);
+      console.log("[Push] Initial state from localStorage:", { userType, storedSubscription });
+      return {
+        isSupported: checkPushSupport(),
+        permission: getInitialPermission(),
+        isSubscribed: storedSubscription, // Use localStorage value initially
+        isLoading: false,
+        isInitializing: !storedSubscription, // Skip initialization if already subscribed per localStorage
+        error: null,
+      };
+    } catch (err) {
+      console.error("[Push] Error initializing state:", err);
+      return {
+        isSupported: false,
+        permission: "default" as const,
+        isSubscribed: false,
+        isLoading: false,
+        isInitializing: false,
+        error: null,
+      };
+    }
   });
 
   const vapidKeyRef = useRef<string | null>(null);
