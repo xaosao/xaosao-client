@@ -30,14 +30,52 @@ function usePWA() {
     if (!isMobileDevice()) return;
     if (!("serviceWorker" in navigator)) return;
 
+    // First, check if there's an existing service worker and clear old caches
+    navigator.serviceWorker.getRegistration().then((existingReg) => {
+      if (existingReg && existingReg.active) {
+        // Send message to clear old caches and force update
+        existingReg.active.postMessage({ type: 'FORCE_UPDATE' });
+      }
+    });
+
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
         console.log("[PWA] Service Worker registered:", registration.scope);
+
+        // Check for updates
+        registration.update();
+
+        // If there's a waiting worker, activate it
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        // Listen for new service worker
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New version available, activate it immediately
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
       })
       .catch((error) => {
         console.error("[PWA] Service Worker registration failed:", error);
       });
+
+    // Reload page when new service worker takes control
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   }, []);
 }
 

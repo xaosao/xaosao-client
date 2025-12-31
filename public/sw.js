@@ -1,13 +1,17 @@
-const CACHE_NAME = 'xaosao-v3';
-const STATIC_CACHE = 'xaosao-static-v3';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v3';
+const CACHE_NAME = 'xaosao-v4';
+const STATIC_CACHE = 'xaosao-static-v4';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v4';
 
 // Assets to cache immediately on install
+// NOTE: Don't cache '/' as it's dynamic and depends on auth state
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/favicon.ico',
+  '/favicon.png',
   '/images/logo-pink.png',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-192x192.png',
 ];
 
 // Install event - cache static assets
@@ -66,31 +70,33 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests - always fetch from network
   if (url.pathname.startsWith('/api/')) return;
 
-  // For navigation requests (HTML pages) - network first, NO CACHING
-  // This prevents caching error pages that get "stuck"
+  // Skip auth-related routes - always fetch from network (no caching)
+  // This prevents issues with login/logout on iOS Safari
+  const authPaths = ['/login', '/logout', '/register', '/model-auth', '/model-logout', '/forgot-password', '/reset-password', '/verify-otp'];
+  if (authPaths.some(path => url.pathname.startsWith(path))) return;
+
+  // For navigation requests (HTML pages) - ALWAYS go to network
+  // Don't cache navigation requests as they depend on auth state and can cause issues on iOS Safari
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Only cache successful navigation responses
-          if (shouldCacheResponse(response)) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
+          // Don't cache navigation responses - they are dynamic and auth-dependent
           return response;
         })
-        .catch(() => {
-          // Fallback to cache if offline
-          return caches.match(request).then((cachedResponse) => {
-            // Only return cached response if it exists and was successful
-            if (cachedResponse && cachedResponse.ok) {
-              return cachedResponse;
+        .catch((error) => {
+          // On network error, don't try to serve cached pages
+          // This prevents iOS Safari from getting stuck with stale pages
+          console.error('[SW] Navigation fetch failed:', error);
+          // Return a simple offline response instead of cached content
+          return new Response(
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1a1a1a;color:white;text-align:center;"><div><h1>You are offline</h1><p>Please check your internet connection and try again.</p><button onclick="location.reload()" style="padding:12px 24px;background:#f43f5e;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;">Retry</button></div></body></html>',
+            {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/html; charset=utf-8' }
             }
-            // Fallback to home page if available
-            return caches.match('/');
-          });
+          );
         })
     );
     return;
@@ -188,7 +194,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Listen for messages from the main thread to clear cache
+// Listen for messages from the main thread
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
@@ -196,5 +202,19 @@ self.addEventListener('message', (event) => {
         return Promise.all(keys.map((key) => caches.delete(key)));
       })
     );
+  }
+
+  // Force update - clear all caches and update
+  if (event.data && event.data.type === 'FORCE_UPDATE') {
+    event.waitUntil(
+      caches.keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .then(() => self.skipWaiting())
+    );
+  }
+
+  // Skip waiting when requested
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
