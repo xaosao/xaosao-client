@@ -432,28 +432,28 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         </div>
                         <div className="w-full hidden sm:flex items-start justify-start flex-col space-y-2 text-sm">
                             <h3 className="text-md text-gray-800 font-bold">{t('profile.personalInfo')}</h3>
-                            <p><strong>{t('profile.id')}:</strong> {customerData.number}</p>
-                            <p><strong>{t('profile.fullname')}:</strong> {customerData.firstName}&nbsp;{customerData.lastName}</p>
-                            <p><strong>{t('profile.age')}:</strong> {calculateAgeFromDOB(customerData.dob)} {t('profile.yearsOld')}</p>
-                            <p><strong>{t('profile.gender')}:</strong> {customerData.gender}</p>
-                            <p><strong>{t('profile.whatsapp')}:</strong> {customerData.whatsapp}</p>
-                            <div><strong>{t('profile.status')}:</strong>&nbsp;&nbsp;
-                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                            <p>{t('profile.id')}:&nbsp;<span className="font-semibold">{customerData.number}</span></p>
+                            <p>{t('profile.fullname')}:&nbsp;<span className="font-semibold">{customerData.firstName}&nbsp;{customerData.lastName}</span></p>
+                            <p>{t('profile.age')}:&nbsp;<span className="font-semibold">{calculateAgeFromDOB(customerData.dob)} {t('profile.yearsOld')}</span></p>
+                            <p>{t('profile.gender')}:&nbsp;<span className="font-semibold">{customerData.gender}</span></p>
+                            <p>{t('profile.whatsapp')}:&nbsp;<span className="font-semibold">{customerData.whatsapp}</span></p>
+                            <div>{t('profile.status')}:&nbsp;&nbsp;
+                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-semibold">
                                     {capitalize(customerData.status)}
                                 </Badge>
                             </div>
                             {customerData.relationshipStatus &&
                                 <div>
-                                    <strong>{t('profile.relationshipStatus')}:</strong>&nbsp;&nbsp;
-                                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-0.5">
+                                    {t('profile.relationshipStatus')}:&nbsp;&nbsp;
+                                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-0.5 font-semibold">
                                         {capitalize(customerData.relationshipStatus)}
                                     </Badge>
                                 </div>
                             }
-                            {customerData.bio && <p><strong>{t('profile.bio')}:</strong> {customerData.bio}</p>}
-                            {customerData.career && <p><strong>{t('profile.career')}:</strong> {customerData.career}</p>}
-                            {customerData.education && <p><strong>{t('profile.education')}:</strong> {customerData.education}</p>}
-                            <p><strong>{t('profile.memberSince')}:</strong> {customerData.createdAt.toDateString()}</p>
+                            {customerData.bio && <p>{t('profile.bio')}:&nbsp;<span className="font-semibold">{customerData.bio}</span></p>}
+                            {customerData.career && <p>{t('profile.career')}:&nbsp;<span className="font-semibold">{customerData.career}</span></p>}
+                            {customerData.education && <p>{t('profile.education')}:&nbsp;<span className="font-semibold">{customerData.education}</span></p>}
+                            <p>{t('profile.memberSince')}:&nbsp;<span className="font-semibold">{customerData.createdAt.toDateString()}</span></p>
                         </div>
 
                         <div className="hidden sm:block">
@@ -523,25 +523,25 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                             <TabsContent value="account">
                                 <div className="w-full flex items-start justify-start flex-col space-y-2 text-sm p-2">
                                     <h3 className="text-md text-gray-800 font-bold">{t('profile.personalInfo')}</h3>
-                                    <p><strong>{t('profile.id')}:</strong> {customerData.number}</p>
-                                    <p><strong>{t('profile.fullname')}:</strong> {customerData.firstName}&nbsp;{customerData.lastName}</p>
-                                    <p><strong>{t('profile.age')}:</strong> {calculateAgeFromDOB(customerData.dob)} {t('profile.yearsOld')}</p>
-                                    <p><strong>{t('profile.gender')}:</strong> {customerData.gender}</p>
-                                    <p><strong>{t('profile.whatsapp')}:</strong> {customerData.whatsapp}</p>
-                                    <div><strong>{t('profile.status')}:</strong>&nbsp;&nbsp;
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                                    <p>{t('profile.id')}:&nbsp;<span className="font-semibold">{customerData.number}</span></p>
+                                    <p>{t('profile.fullname')}:&nbsp;<span className="font-semibold">{customerData.firstName}&nbsp;{customerData.lastName}</span></p>
+                                    <p>{t('profile.age')}:&nbsp;<span className="font-semibold">{calculateAgeFromDOB(customerData.dob)} {t('profile.yearsOld')}</span></p>
+                                    <p>{t('profile.gender')}:&nbsp;<span className="font-semibold">{customerData.gender}</span></p>
+                                    <p>{t('profile.whatsapp')}:&nbsp;<span className="font-semibold">{customerData.whatsapp}</span></p>
+                                    <div>{t('profile.status')}:&nbsp;&nbsp;
+                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-semibold">
                                             {customerData.status}
                                         </Badge>
                                     </div>
-                                    <div><strong>{t('profile.relationshipStatus')}:</strong>&nbsp;&nbsp;
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                                    <div>{t('profile.relationshipStatus')}:&nbsp;&nbsp;
+                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-semibold">
                                             {customerData.relationshipStatus}
                                         </Badge>
                                     </div>
-                                    {customerData.bio && <p><strong>{t('profile.bio')}:</strong> {customerData.bio}</p>}
-                                    {customerData.career && <p><strong>{t('profile.career')}:</strong> {customerData.career}</p>}
-                                    {customerData.education && <p><strong>{t('profile.education')}:</strong> {customerData.education}</p>}
-                                    <p><strong>{t('profile.memberSince')}:</strong> {customerData.createdAt.toDateString()}</p>
+                                    {customerData.bio && <p>{t('profile.bio')}:&nbsp;<span className="font-semibold">{customerData.bio}</span></p>}
+                                    {customerData.career && <p>{t('profile.career')}:&nbsp;<span className="font-semibold">{customerData.career}</span></p>}
+                                    {customerData.education && <p>{t('profile.education')}:&nbsp;<span className="font-semibold">{customerData.education}</span></p>}
+                                    <p>{t('profile.memberSince')}:&nbsp;<span className="font-semibold">{customerData.createdAt.toDateString()}</span></p>
                                 </div>
                             </TabsContent>
                             <TabsContent value="interest">

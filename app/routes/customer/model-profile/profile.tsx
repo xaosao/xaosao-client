@@ -512,28 +512,28 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
                                 <div className="w-full flex items-start justify-start flex-col space-y-3 text-sm p-2">
                                     <h3 className="text-gray-800 font-bold">{t('profile.personalInfo')}</h3>
-                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}: {model.firstName}&nbsp;{model.lastName}</p>
-                                    <p className="flex items-center"> <Calendar size={14} />&nbsp;{t('profile.age')}: {calculateAgeFromDOB(model.dob)} {t('profile.yearsOld')}</p>
+                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}:&nbsp;<span className="font-semibold">{model.firstName}&nbsp;{model.lastName}</span></p>
+                                    <p className="flex items-center"> <Calendar size={14} />&nbsp;{t('profile.age')}:&nbsp;<span className="font-semibold">{calculateAgeFromDOB(model.dob)} {t('profile.yearsOld')}</span></p>
                                     <div className="flex items-center"><MarsStroke size={14} />&nbsp;{t('profile.gender')}:&nbsp;&nbsp;
-                                        <Badge variant="outline" className={`${model.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1`}>
+                                        <Badge variant="outline" className={`${model.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1 font-semibold`}>
                                             {capitalize(model.gender)}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center"><ToggleLeft size={14} />&nbsp;{t('profile.status')}:&nbsp;&nbsp;
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-semibold">
                                             {capitalize(model.status)}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center"><ToggleLeft size={14} />&nbsp;{t('profile.availableStatus')}:&nbsp;&nbsp;
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-semibold">
                                             {capitalize(model.available_status)}
                                         </Badge>
                                     </div>
-                                    <p className="flex items-center"><MapPin size={14} />&nbsp;{t('profile.address')}: {model.address}</p>
-                                    <p className="flex items-center"><Calendar size={14} />&nbsp;{t('profile.memberSince')}: {model.createdAt.toDateString()}</p>
-                                    {model.career && <p className="flex items-center"><BriefcaseBusiness size={14} />&nbsp;{t('profile.career')}: {model.career}</p>}
-                                    {model.education && <p className="flex items-center"><Book size={14} />&nbsp;{t('profile.education')}: {model.education}</p>}
-                                    {model.bio && <p className="flex items-center"><User size={14} />&nbsp;{t('profile.bio')}: {model.bio}</p>}
+                                    <p className="flex items-center"><MapPin size={14} />&nbsp;{t('profile.address')}:&nbsp;<span className="font-semibold">{model.address}</span></p>
+                                    <p className="flex items-center"><Calendar size={14} />&nbsp;{t('profile.memberSince')}:&nbsp;<span className="font-semibold">{model.createdAt.toDateString()}</span></p>
+                                    {model.career && <p className="flex items-center"><BriefcaseBusiness size={14} />&nbsp;{t('profile.career')}:&nbsp;<span className="font-semibold">{model.career}</span></p>}
+                                    {model.education && <p className="flex items-center"><Book size={14} />&nbsp;{t('profile.education')}:&nbsp;<span className="font-semibold">{model.education}</span></p>}
+                                    {model.bio && <p className="flex items-center"><User size={14} />&nbsp;{t('profile.bio')}:&nbsp;<span className="font-semibold">{model.bio}</span></p>}
                                 </div>
                                 <Separator className="block sm:hidden" />
                                 <div className="w-full mb-8 space-y-4">

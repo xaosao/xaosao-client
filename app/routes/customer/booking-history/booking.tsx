@@ -351,11 +351,11 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                         <div className="flex items-start gap-3">
                            <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                            <p className="text-sm text-muted-foreground">
-                              {formatDate(String(booking.startDate))}
+                              <span className="font-semibold">{formatDate(String(booking.startDate))}</span>
                               {booking.endDate && (
                                  <>
                                     <span className="text-rose-600"> {t('booking.to')} </span>
-                                    {formatDate(String(booking.endDate))}
+                                    <span className="font-semibold">{formatDate(String(booking.endDate))}</span>
                                  </>
                               )}
                            </p>
@@ -364,10 +364,10 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                         <div className="flex items-start gap-3">
                            <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                            <div className="flex gap-2">
-                              <p className="text-sm font-medium text-muted-foreground">
+                              <p className="text-sm text-muted-foreground">
                                  {t('booking.duration')}:
                               </p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground font-semibold">
                                  {/* Show duration based on billing type */}
                                  {booking.modelService?.service?.billingType === 'per_hour' && booking.hours ? (
                                     <>
@@ -388,7 +388,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
 
                         <div className="flex items-start gap-3">
                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                           <p className="text-sm text-muted-foreground text-pretty">
+                           <p className="text-sm text-muted-foreground text-pretty font-semibold">
                               {booking.location}
                            </p>
                         </div>
@@ -396,7 +396,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                         {booking.preferredAttire && (
                            <div className="flex items-start gap-3">
                               <Shirt className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground font-semibold">
                                  {booking.preferredAttire}
                               </p>
                            </div>
@@ -404,10 +404,10 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
 
                         <div className="flex items-center gap-2">
                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                           <span className="text-sm font-medium text-muted-foreground">
+                           <span className="text-sm text-muted-foreground">
                               {t('booking.price')}:
                            </span>
-                           <span className="text-sm text-muted-foreground">
+                           <span className="text-sm text-muted-foreground font-semibold">
                               {formatCurrency(booking.price)}
                            </span>
                         </div>
@@ -415,7 +415,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                         {booking.model && (
                            <div className="flex items-center gap-2">
                               <UserRoundCheck className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-sm text-muted-foreground font-semibold">
                                  {booking.model.firstName + " " + (booking.model.lastName || "")} (
                                  {calculateAgeFromDOB(String(booking.model.dob))} {t('booking.years')})
                               </span>

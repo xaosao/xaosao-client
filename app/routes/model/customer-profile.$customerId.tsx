@@ -329,30 +329,30 @@ export default function CustomerProfilePage({ loaderData }: ProfilePageProps) {
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
                                 <div className="w-full flex items-start justify-start flex-col space-y-3 text-sm p-2">
                                     <h3 className="text-gray-800 font-bold">{t('profile.personalInfo')}</h3>
-                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}: {customer.firstName}&nbsp;{customer.lastName}</p>
-                                    <p className="flex items-center"> <Calendar size={14} />&nbsp;{t('profile.age')}: {calculateAgeFromDOB(customer.dob)} {t('profile.yearsOld')}</p>
+                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}:&nbsp;<span className="font-bold">{customer.firstName}&nbsp;{customer.lastName}</span></p>
+                                    <p className="flex items-center"> <Calendar size={14} />&nbsp;{t('profile.age')}:&nbsp;<span className="font-bold">{calculateAgeFromDOB(customer.dob)} {t('profile.yearsOld')}</span></p>
                                     <div className="flex items-center"><MarsStroke size={14} />&nbsp;{t('profile.gender')}:&nbsp;&nbsp;
-                                        <Badge variant="outline" className={`${customer.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1`}>
+                                        <Badge variant="outline" className={`${customer.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1 font-bold`}>
                                             {capitalize(customer.gender)}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center"><ToggleLeft size={14} />&nbsp;{t('profile.status')}:&nbsp;&nbsp;
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1">
+                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-bold">
                                             {capitalize(customer.status)}
                                         </Badge>
                                     </div>
                                     {customer.relationshipStatus && (
                                         <div className="flex items-center"><ToggleLeft size={14} />&nbsp;Relationship:&nbsp;&nbsp;
-                                            <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 px-3 py-1">
+                                            <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 px-3 py-1 font-bold">
                                                 {capitalize(customer.relationshipStatus)}
                                             </Badge>
                                         </div>
                                     )}
-                                    {customer.address && <p className="flex items-center"><MapPin size={14} />&nbsp;{t('profile.address')}: {customer.address}</p>}
-                                    <p className="flex items-center"><Calendar size={14} />&nbsp;{t('profile.memberSince')}: {new Date(customer.createdAt).toDateString()}</p>
-                                    {customer.career && <p className="flex items-center"><BriefcaseBusiness size={14} />&nbsp;{t('profile.career')}: {customer.career}</p>}
-                                    {customer.education && <p className="flex items-center"><Book size={14} />&nbsp;{t('profile.education')}: {customer.education}</p>}
-                                    {customer.bio && <p className="flex items-center"><User size={14} />&nbsp;{t('profile.bio')}: {customer.bio}</p>}
+                                    {customer.address && <p className="flex items-center"><MapPin size={14} />&nbsp;{t('profile.address')}:&nbsp;<span className="font-bold">{customer.address}</span></p>}
+                                    <p className="flex items-center"><Calendar size={14} />&nbsp;{t('profile.memberSince')}:&nbsp;<span className="font-bold">{new Date(customer.createdAt).toDateString()}</span></p>
+                                    {customer.career && <p className="flex items-center"><BriefcaseBusiness size={14} />&nbsp;{t('profile.career')}:&nbsp;<span className="font-bold">{customer.career}</span></p>}
+                                    {customer.education && <p className="flex items-center"><Book size={14} />&nbsp;{t('profile.education')}:&nbsp;<span className="font-bold">{customer.education}</span></p>}
+                                    {customer.bio && <p className="flex items-center"><User size={14} />&nbsp;{t('profile.bio')}:&nbsp;<span className="font-bold">{customer.bio}</span></p>}
                                 </div>
                                 <Separator className="block sm:hidden" />
                                 <div className="w-full mb-8 space-y-4">
