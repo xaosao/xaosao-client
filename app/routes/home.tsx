@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";
@@ -122,7 +122,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           {services && services.length > 0 && (
             <section className="py-4 px-1 sm:px-4">
               <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4 text-white">
+                <h2 className="text-md sm:text-lg text-center mb-4 text-white">
                   {t('home.ourServices', { defaultValue: 'Our Services' })}
                 </h2>
 
@@ -164,7 +164,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50"
             >
               {t('home.companionLoginHere', { defaultValue: 'Login here' })}
-              <span>→</span>
+              <ArrowRight className="w-4 h-4 animate-bounce" />
             </button>
           </div>
         </div>
