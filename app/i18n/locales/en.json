@@ -2,6 +2,8 @@
   "header": {
     "login": "Login",
     "companionLogin": "Companion Login",
+    "forCompanions": "For Companions",
+    "companion": "Companion",
     "myAccount": "My Account"
   },
   "home": {
@@ -21,7 +23,10 @@
     "verifiedProfiles": "Verified profiles",
     "safeSecure": "Safe & secure",
     "ourServices": "Our Services",
-    "noDescription": "Experience our premium companion service"
+    "noDescription": "Experience our premium companion service",
+    "customerLoginHint": "For customers looking for companions 👆",
+    "areYouCompanion": "Are you a companion?",
+    "companionLoginHere": "Login here"
   },
   "location": {
     "enableTitle": "To enable location:",

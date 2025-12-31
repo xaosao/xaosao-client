@@ -94,39 +94,30 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </p>
           </div>
 
-          <div className="flex gap-4 justify-center items-center max-w-md mx-auto mb-3 sm:mb-10">
-            <Button
-              size="lg"
-              className="cursor-pointer w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-              onClick={() => navigate("/register")}
-            >
-              <User className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
-              {t('home.getStarted')}
-            </Button>
-            <Button
-              size="lg"
-              className="flex cursor-pointer w-auto border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-              onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
-            >
-              <LogIn className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
-              {hasCustomerToken ? t('home.myAccount') : t('home.login')}
-            </Button>
-          </div>
+          <div className="flex flex-col items-center max-w-md mx-auto mb-3 sm:mb-10 space-y-4">
+            <div className="flex gap-4 justify-center items-center">
+              <Button
+                size="lg"
+                className="cursor-pointer w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
+                onClick={() => navigate("/register")}
+              >
+                <User className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+                {t('home.getStarted')}
+              </Button>
+              <Button
+                size="lg"
+                className="flex cursor-pointer w-auto border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
+                onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
+              >
+                <LogIn className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
+                {hasCustomerToken ? t('home.myAccount') : t('home.login')}
+              </Button>
+            </div>
 
-          {/* <div className="mt-6 sm:mt-8 flex items-center justify-around sm:justify-center space-x-2 sm:space-x-6 text-sm sm:text-md text-white lowercase sm:uppercase">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
-              <span className="font-light">{t('home.freeToJoin')}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
-              <span className="font-light">{t('home.verifiedProfiles')}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
-              <span className="font-light">{t('home.safeSecure')}</span>
-            </div>
-          </div> */}
+            <p className="text-white/80 text-xs sm:text-sm">
+              {t('home.customerLoginHint', { defaultValue: '👆 For customers looking for companions' })}
+            </p>
+          </div>
 
           {services && services.length > 0 && (
             <section className="py-4 px-1 sm:px-4">
@@ -135,7 +126,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                   {t('home.ourServices', { defaultValue: 'Our Services' })}
                 </h2>
 
-                {/* Services Grid - 2 cols mobile, 2 cols tablet, 4 cols desktop */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
                   {services.map((service: { id: string; name: string; description: string | null }) => {
                     const IconComponent = getServiceIcon(service.name);
@@ -163,6 +153,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </div>
             </section>
           )}
+
+          {/* Companion/Model login section */}
+          <div className="flex items-center justify-center py-2 text-center">
+            <p className="text-white text-md">
+              {t('home.areYouCompanion', { defaultValue: 'Are you a companion?' })}
+            </p>
+            <button
+              onClick={() => navigate("/model-auth/login")}
+              className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50"
+            >
+              {t('home.companionLoginHere', { defaultValue: 'Login here' })}
+              <span>→</span>
+            </button>
+          </div>
         </div>
       </section>
 
