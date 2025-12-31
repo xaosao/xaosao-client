@@ -74,7 +74,10 @@ export default function PricingPage({ loaderData }: TransactionProps) {
    // Find the first non-current plan or popular plan for mobile default selection
    const defaultSelectedPlan = plans.find(p => !p.current && p.isPopular) || plans.find(p => !p.current) || plans[0];
    const [selectedPlan, setSelectedPlan] = useState<ISubscriptionPlanWithCurrentResponse>(defaultSelectedPlan)
-   const [showInfoModal, setShowInfoModal] = useState(true)
+
+   // Only show info modal if user doesn't have an active subscription
+   const hasCurrentSubscription = plans.some(p => p.current);
+   const [showInfoModal, setShowInfoModal] = useState(!hasCurrentSubscription)
 
    return (
       <div className="sm:min-h-screen relative overflow-hidden px-3 sm:px-0">
@@ -128,7 +131,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                      variant="outline"
                      onClick={() => {
                         setShowInfoModal(false);
-                        navigate(-1);
+                        navigate("/customer/discover");
                      }}
                      className="w-full sm:w-auto"
                   >
@@ -147,7 +150,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
          <nav className="relative z-10 p-6">
             <div className="container mx-auto flex items-center justify-between">
                <button
-                  onClick={() => navigate(-1)}
+                  onClick={() => navigate("/customer/discover")}
                   className="flex items-center space-x-2 group"
                >
                   <ArrowLeft className="h-5 w-5 text-rose-500 group-hover:-translate-x-1 transition-transform" />

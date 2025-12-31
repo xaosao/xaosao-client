@@ -32,6 +32,34 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // Global state to track subscription status per user type
 const subscriptionStatus: Map<string, boolean> = new Map();
 
+// localStorage key for subscription status
+const getSubscriptionStorageKey = (userType: string) => `push-subscription-status-${userType}`;
+
+// Get subscription status from localStorage (synchronous, for quick initial check)
+function getStoredSubscriptionStatus(userType: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = localStorage.getItem(getSubscriptionStorageKey(userType));
+    return stored === "true";
+  } catch {
+    return false;
+  }
+}
+
+// Store subscription status in localStorage
+function setStoredSubscriptionStatus(userType: string, isSubscribed: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (isSubscribed) {
+      localStorage.setItem(getSubscriptionStorageKey(userType), "true");
+    } else {
+      localStorage.removeItem(getSubscriptionStorageKey(userType));
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 // Synchronous support check - can be called during initial render
 function checkPushSupport(): boolean {
   if (typeof window === "undefined") return false;
@@ -54,14 +82,19 @@ export function usePushNotifications({
   autoSubscribe = false,
 }: UsePushNotificationsOptions) {
   // Initialize with synchronous checks so components get correct values immediately
-  const [state, setState] = useState<PushNotificationState>(() => ({
-    isSupported: checkPushSupport(),
-    permission: getInitialPermission(),
-    isSubscribed: false, // Will be updated async
-    isLoading: false,
-    isInitializing: true, // Start as initializing until we check subscription
-    error: null,
-  }));
+  // Use localStorage value for isSubscribed to prevent prompt flashing
+  const [state, setState] = useState<PushNotificationState>(() => {
+    const storedSubscription = getStoredSubscriptionStatus(userType);
+    console.log("[Push] Initial state from localStorage:", { userType, storedSubscription });
+    return {
+      isSupported: checkPushSupport(),
+      permission: getInitialPermission(),
+      isSubscribed: storedSubscription, // Use localStorage value initially
+      isLoading: false,
+      isInitializing: !storedSubscription, // Skip initialization if already subscribed per localStorage
+      error: null,
+    };
+  });
 
   const vapidKeyRef = useRef<string | null>(null);
   const initializingRef = useRef(false);
@@ -136,6 +169,9 @@ export function usePushNotifications({
     if (typeof window === "undefined") return;
     if (initializingRef.current) return;
 
+    // If localStorage says subscribed, we trust it initially but still verify in background
+    const storedSubscription = getStoredSubscriptionStatus(userType);
+
     initializingRef.current = true;
 
     const initialize = async () => {
@@ -145,6 +181,7 @@ export function usePushNotifications({
         serviceWorker: "serviceWorker" in navigator,
         pushManager: "PushManager" in window,
         notification: "Notification" in window,
+        storedSubscription,
       });
 
       if (!isSupported) {
@@ -155,15 +192,29 @@ export function usePushNotifications({
 
       const permission = Notification.permission;
 
-      // Check subscription status (may return false if SW not ready yet, that's OK)
-      let isSubscribed = false;
+      // Check subscription status with PushManager
+      let isSubscribed = storedSubscription; // Start with localStorage value
       try {
-        isSubscribed = await checkSubscription();
+        const actualSubscription = await checkSubscription();
+        console.log("[Push] PushManager subscription check:", actualSubscription);
+
+        // If PushManager says not subscribed but localStorage says subscribed,
+        // trust PushManager (user may have cleared browser data)
+        if (!actualSubscription && storedSubscription) {
+          console.log("[Push] localStorage says subscribed but PushManager says no - clearing localStorage");
+          setStoredSubscriptionStatus(userType, false);
+          isSubscribed = false;
+        } else if (actualSubscription) {
+          // PushManager confirms subscription
+          isSubscribed = true;
+          setStoredSubscriptionStatus(userType, true);
+        }
       } catch (error) {
-        console.log("[Push] Subscription check failed, will retry on subscribe:", error);
+        console.log("[Push] Subscription check failed, using localStorage value:", error);
+        // Keep localStorage value on error
       }
 
-      console.log("[Push] Initial state:", { permission, isSubscribed, userType });
+      console.log("[Push] Initial state:", { permission, isSubscribed, storedSubscription, userType });
 
       // Update global status
       subscriptionStatus.set(userType, isSubscribed);
@@ -308,8 +359,9 @@ export function usePushNotifications({
 
       console.log("[Push] Saved to server successfully!");
 
-      // Update state
+      // Update state and localStorage
       subscriptionStatus.set(userType, true);
+      setStoredSubscriptionStatus(userType, true);
       setState((prev) => ({
         ...prev,
         isSubscribed: true,
@@ -354,8 +406,9 @@ export function usePushNotifications({
         });
       }
 
-      // Update state
+      // Update state and localStorage
       subscriptionStatus.set(userType, false);
+      setStoredSubscriptionStatus(userType, false);
       setState((prev) => ({
         ...prev,
         isSubscribed: false,
@@ -400,8 +453,9 @@ export function usePushNotifications({
         }),
       });
 
-      // Update state
+      // Update state and localStorage
       subscriptionStatus.set(userType, false);
+      setStoredSubscriptionStatus(userType, false);
       setState((prev) => ({
         ...prev,
         isSubscribed: false,

@@ -8,8 +8,10 @@ interface PushNotificationPromptProps {
   userType: "model" | "customer";
 }
 
-const STORAGE_KEY = "push-notification-prompt-dismissed";
-const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Storage key per user type - so customer and model have separate dismissal states
+const getStorageKey = (userType: string) => `push-notification-prompt-dismissed-${userType}`;
+// Only remember dismissal for current session (until page refresh)
+const sessionDismissed: Record<string, boolean> = {};
 
 // Check if app is running as PWA
 function isStandalone(): boolean {
@@ -26,10 +28,42 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
+// Check if iOS version supports Web Push (16.4+)
+function isIOSVersionSupported(): boolean {
+  if (!isIOS()) return true; // Non-iOS devices don't need this check
+
+  const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+  if (!match) return false;
+
+  const major = parseInt(match[1], 10);
+  const minor = parseInt(match[2], 10);
+
+  // iOS 16.4+ supports Web Push
+  return major > 16 || (major === 16 && minor >= 4);
+}
+
+// Check if push could potentially be supported (for showing iOS instructions)
+function canPotentiallySupportPush(): boolean {
+  if (typeof window === "undefined") return false;
+
+  // On iOS, check if version supports it and if in standalone mode
+  if (isIOS()) {
+    return isIOSVersionSupported();
+  }
+
+  // For other devices, check standard support
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
+}
+
 export function PushNotificationPrompt({ userType }: PushNotificationPromptProps) {
   const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isIOSSafari, setIsIOSSafari] = useState(false);
 
   const {
     isSupported,
@@ -45,7 +79,38 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
     // Only run on client
     if (typeof window === "undefined") return;
 
-    // Wait for hook to finish initializing
+    // Check if we're on iOS Safari (not PWA)
+    const iosInSafari = isIOS() && !isStandalone();
+    setIsIOSSafari(iosInSafari);
+
+    // For iOS Safari, we don't need to wait for the hook since push isn't available
+    // We just want to show the iOS instructions
+    if (iosInSafari) {
+      console.log("[PushPrompt] iOS Safari detected, checking if can show instructions");
+
+      // Check if iOS version supports push (16.4+)
+      if (!isIOSVersionSupported()) {
+        console.log("[PushPrompt] iOS version too old for Web Push");
+        return;
+      }
+
+      // Only check session dismissal
+      if (sessionDismissed[userType]) {
+        console.log("[PushPrompt] Not showing: Dismissed in current session");
+        return;
+      }
+
+      console.log("[PushPrompt] Will show iOS instructions in 3 seconds...");
+
+      const timer = setTimeout(() => {
+        console.log("[PushPrompt] Showing iOS instructions now!");
+        setShowPrompt(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+
+    // For non-iOS or iOS PWA, wait for hook to finish initializing
     if (isInitializing) {
       console.log("[PushPrompt] Still initializing, waiting...");
       return;
@@ -77,14 +142,10 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
       return;
     }
 
-    // Check if user dismissed recently
-    const dismissedAt = localStorage.getItem(STORAGE_KEY);
-    if (dismissedAt) {
-      const dismissedTime = parseInt(dismissedAt, 10);
-      if (Date.now() - dismissedTime < DISMISS_DURATION) {
-        console.log("[PushPrompt] Not showing: Dismissed recently");
-        return;
-      }
+    // Only check session dismissal (shows again on page refresh if not enabled)
+    if (sessionDismissed[userType]) {
+      console.log("[PushPrompt] Not showing: Dismissed in current session");
+      return;
     }
 
     console.log("[PushPrompt] Will show prompt in 3 seconds...");
@@ -102,6 +163,7 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
     const success = await subscribe();
     if (success) {
       setShowSuccess(true);
+      // Auto close modal after showing success message
       setTimeout(() => {
         setShowPrompt(false);
       }, 2000);
@@ -109,16 +171,24 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    // Only dismiss for current session - will show again on page refresh
+    sessionDismissed[userType] = true;
     setShowPrompt(false);
   };
 
-  if (!showPrompt || !isSupported) {
+  // For iOS Safari, we show even when isSupported is false (to show instructions)
+  // For other platforms, we need isSupported to be true
+  if (!showPrompt) {
     return null;
   }
 
-  // Show iOS-specific instructions if needed
-  const showIOSInstructions = isIOS() && !isStandalone();
+  // On non-iOS platforms, still check isSupported
+  if (!isIOSSafari && !isSupported) {
+    return null;
+  }
+
+  // Show iOS-specific instructions if in Safari (not PWA)
+  const showIOSInstructions = isIOSSafari;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
@@ -170,6 +240,17 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
                     "To receive notifications on iOS, please add this app to your home screen first.",
                 })}
               </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-medium text-blue-800">
+                  {t("push.iosStepsTitle", { defaultValue: "How to add:" })}
+                </p>
+                <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                  <li>{t("push.iosStep1", { defaultValue: "Tap the Share button (square with arrow)" })}</li>
+                  <li>{t("push.iosStep2", { defaultValue: "Scroll down and tap \"Add to Home Screen\"" })}</li>
+                  <li>{t("push.iosStep3", { defaultValue: "Tap \"Add\" to confirm" })}</li>
+                  <li>{t("push.iosStep4", { defaultValue: "Open the app from your home screen" })}</li>
+                </ol>
+              </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-sm text-amber-800">
                   {t("push.iosNote", {
