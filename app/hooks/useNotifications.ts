@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useId } from "react";
 import { useNotificationStore, type Notification } from "~/stores/notification.store";
 
 // Re-export the Notification type for convenience
@@ -13,6 +13,14 @@ interface UseNotificationsOptions {
 // Notification sound URL
 const NOTIFICATION_SOUND_URL = "/sound/messeger.mp3";
 
+// Callback registry - stores all component callbacks per userType
+type CallbackEntry = {
+  onNewNotification?: (notification: Notification) => void;
+  playSound: boolean;
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
+};
+const callbackRegistry: Map<string, Map<string, CallbackEntry>> = new Map();
+
 // Global singleton to prevent multiple SSE connections per userType
 const activeConnections: Map<string, { eventSource: EventSource; refCount: number }> = new Map();
 
@@ -21,6 +29,9 @@ export function useNotifications({
   onNewNotification,
   playSound = true,
 }: UseNotificationsOptions) {
+  // Unique ID for this component instance
+  const componentId = useId();
+
   const {
     notifications,
     isConnected,
@@ -51,30 +62,51 @@ export function useNotifications({
     };
   }, [playSound]);
 
-  // Play notification sound
-  const playNotificationSound = useCallback(() => {
-    if (audioRef.current && playSound) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch((err) => {
-        // Auto-play might be blocked by browser
-        console.log("Could not play notification sound:", err);
-      });
-    }
-  }, [playSound]);
-
-  // Store callbacks in refs to avoid useEffect dependency issues
+  // Store callback ref for updates
   const onNewNotificationRef = useRef(onNewNotification);
-  const playNotificationSoundRef = useRef(playNotificationSound);
   const addNotificationRef = useRef(addNotification);
   const setConnectedRef = useRef(setConnected);
 
   // Keep refs updated
   useEffect(() => {
     onNewNotificationRef.current = onNewNotification;
-    playNotificationSoundRef.current = playNotificationSound;
     addNotificationRef.current = addNotification;
     setConnectedRef.current = setConnected;
   });
+
+  // Register this component's callbacks in the registry
+  useEffect(() => {
+    const connectionKey = userType;
+
+    // Initialize registry for this userType if needed
+    if (!callbackRegistry.has(connectionKey)) {
+      callbackRegistry.set(connectionKey, new Map());
+    }
+
+    // Register this component's callback
+    const registry = callbackRegistry.get(connectionKey)!;
+    registry.set(componentId, {
+      onNewNotification: onNewNotificationRef.current,
+      playSound,
+      audioRef,
+    });
+
+    // Keep the registry entry updated
+    const updateInterval = setInterval(() => {
+      const entry = registry.get(componentId);
+      if (entry) {
+        entry.onNewNotification = onNewNotificationRef.current;
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(updateInterval);
+      registry.delete(componentId);
+      if (registry.size === 0) {
+        callbackRegistry.delete(connectionKey);
+      }
+    };
+  }, [userType, componentId, playSound]);
 
   // Connect to SSE - singleton per userType
   useEffect(() => {
@@ -120,6 +152,8 @@ export function useNotifications({
             return;
           }
 
+          console.log(`[useNotifications] Received notification:`, data.type, data.title);
+
           // This is a real notification
           const notification: Notification = {
             id: data.id,
@@ -131,14 +165,32 @@ export function useNotifications({
             createdAt: data.createdAt || new Date().toISOString(),
           };
 
+          // Add to store
           addNotificationRef.current(notification);
 
-          // Play sound
-          playNotificationSoundRef.current();
+          // Call all registered callbacks for this userType
+          const registry = callbackRegistry.get(connectionKey);
+          console.log(`[useNotifications] Callback registry size for ${connectionKey}:`, registry?.size || 0);
 
-          // Callback
-          if (onNewNotificationRef.current) {
-            onNewNotificationRef.current(notification);
+          if (registry) {
+            let soundPlayed = false;
+            registry.forEach((entry, componentId) => {
+              console.log(`[useNotifications] Calling callback for component ${componentId}, hasCallback:`, !!entry.onNewNotification);
+
+              // Play sound only once (from the first component with playSound=true)
+              if (entry.playSound && !soundPlayed && entry.audioRef.current) {
+                entry.audioRef.current.currentTime = 0;
+                entry.audioRef.current.play().catch((err) => {
+                  console.log("Could not play notification sound:", err);
+                });
+                soundPlayed = true;
+              }
+
+              // Call the callback
+              if (entry.onNewNotification) {
+                entry.onNewNotification(notification);
+              }
+            });
           }
         } catch (error) {
           console.error("Error parsing SSE message:", error);

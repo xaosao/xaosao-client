@@ -1,6 +1,22 @@
 import { prisma } from "./database.server";
 import { EventEmitter } from "events";
 import Telbiz from "telbiz";
+import {
+  pushBookingCreated,
+  pushBookingConfirmed,
+  pushBookingRejected,
+  pushBookingCancelled,
+  pushModelCheckedIn,
+  pushCustomerCheckedIn,
+  pushBookingCompleted,
+  pushPaymentReleased,
+  pushNewMatch,
+  pushNewMessage,
+  pushDepositApproved,
+  pushWithdrawApproved,
+  sendPushToModel,
+  sendPushToCustomer,
+} from "./push.server";
 
 // ========================================
 // SMS Configuration
@@ -215,8 +231,12 @@ export async function createModelNotification(
       },
     });
 
+    const channel = getModelChannel(modelId);
+    const listenerCount = notificationEmitter.listenerCount(channel);
+    console.log(`[Notification] Emitting ${payload.type} to ${channel}, listeners: ${listenerCount}`);
+
     // Emit real-time event
-    notificationEmitter.emit(getModelChannel(modelId), {
+    notificationEmitter.emit(channel, {
       id: notification.id,
       type: payload.type,
       title: payload.title,
@@ -509,6 +529,11 @@ export async function notifyBookingCreated(
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
   const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
+
+  // Send push notification to model
+  pushBookingCreated(modelId, customerName, serviceName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send booking created push:", err)
+  );
 }
 
 /**
@@ -534,6 +559,11 @@ export async function notifyBookingConfirmed(
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
   const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາ Check-in ເມື່ອຮອດເວລານັດໝາຍ.`;
   sendSMSToCustomer(customerId, smsMessage);
+
+  // Send push notification to customer
+  pushBookingConfirmed(customerId, modelName, serviceName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send booking confirmed push:", err)
+  );
 }
 
 /**
@@ -557,6 +587,11 @@ export async function notifyBookingRejected(
   // Send SMS to customer
   const smsMessage = `XaoSao: ການຈອງຖືກປະຕິເສດ. ${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້${reason ? `. ເຫດຜົນ: ${reason}` : ""}. ເງິນໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ແລ້ວ.`;
   sendSMSToCustomer(customerId, smsMessage);
+
+  // Send push notification to customer
+  pushBookingRejected(customerId, modelName, serviceName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send booking rejected push:", err)
+  );
 }
 
 /**
@@ -581,6 +616,11 @@ export async function notifyBookingCancelled(
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
   const smsMessage = `XaoSao: ການຈອງຖືກຍົກເລີກ! ${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}.`;
   sendSMSToModel(modelId, smsMessage);
+
+  // Send push notification to model
+  pushBookingCancelled(modelId, customerName, serviceName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send booking cancelled push:", err)
+  );
 }
 
 /**
@@ -603,6 +643,11 @@ export async function notifyModelCheckedIn(
   // Send SMS to customer
   const smsMessage = `XaoSao: ${modelName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
   sendSMSToCustomer(customerId, smsMessage);
+
+  // Send push notification to customer
+  pushModelCheckedIn(customerId, modelName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send model checked in push:", err)
+  );
 }
 
 /**
@@ -625,6 +670,11 @@ export async function notifyCustomerCheckedIn(
   // Send SMS to model
   const smsMessage = `XaoSao: ${customerName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
   sendSMSToModel(modelId, smsMessage);
+
+  // Send push notification to model
+  pushCustomerCheckedIn(modelId, customerName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send customer checked in push:", err)
+  );
 }
 
 /**
@@ -649,6 +699,11 @@ export async function notifyBookingCompleted(
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
   const smsMessage = `XaoSao: ${modelName} ແຈ້ງວ່າບໍລິການ "${serviceName}"${priceStr ? ` (${priceStr})` : ""} ສຳເລັດແລ້ວ! ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ ຫຼື ເງິນຈະຖືກໂອນອັດຕະໂນມັດ.`;
   sendSMSToCustomer(customerId, smsMessage);
+
+  // Send push notification to customer
+  pushBookingCompleted(customerId, modelName, serviceName, bookingId).catch((err) =>
+    console.error("[Push] Failed to send booking completed push:", err)
+  );
 }
 
 /**
@@ -672,6 +727,11 @@ export async function notifyCompletionConfirmed(
   // Send SMS to model
   const smsMessage = `XaoSao: ${customerName} ໄດ້ຢືນຢັນການສຳເລັດບໍລິການ "${serviceName}"! ເງິນ ${amount.toLocaleString()} LAK ໄດ້ຖືກໂອນເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
   sendSMSToModel(modelId, smsMessage);
+
+  // Send push notification to model
+  pushPaymentReleased(modelId, amount, bookingId).catch((err) =>
+    console.error("[Push] Failed to send payment released push:", err)
+  );
 }
 
 /**
@@ -743,6 +803,11 @@ export async function notifyAutoReleasePayment(
   // Send SMS to model
   const smsMessage = `XaoSao: ເງິນ ${amount.toLocaleString()} LAK${serviceName ? ` ຈາກບໍລິການ "${serviceName}"` : ""} ໄດ້ຖືກໂອນອັດຕະໂນມັດເຂົ້າ Wallet ຂອງທ່ານແລ້ວ (ໝົດເວລາ 24 ຊົ່ວໂມງ).`;
   sendSMSToModel(modelId, smsMessage);
+
+  // Send push notification to model
+  pushPaymentReleased(modelId, amount, bookingId).catch((err) =>
+    console.error("[Push] Failed to send auto-release payment push:", err)
+  );
 }
 
 /**
@@ -832,6 +897,11 @@ export async function notifyNewMatch(
     message: `You and ${modelName} have matched! Start a conversation now.`,
     data: { modelId },
   });
+
+  // Send push notifications to both
+  pushNewMatch(modelId, customerId, modelName, customerName).catch((err) =>
+    console.error("[Push] Failed to send new match push:", err)
+  );
 }
 
 /**
@@ -918,6 +988,11 @@ export async function notifyModelNewMessage(
     message: `${customerName}: ${messagePreview.substring(0, 50)}${messagePreview.length > 50 ? "..." : ""}`,
     data: { customerId, conversationId },
   });
+
+  // Send push notification to model
+  pushNewMessage("model", modelId, customerName, messagePreview, conversationId).catch((err) =>
+    console.error("[Push] Failed to send new message push to model:", err)
+  );
 }
 
 /**
@@ -936,6 +1011,11 @@ export async function notifyCustomerNewMessage(
     message: `${modelName}: ${messagePreview.substring(0, 50)}${messagePreview.length > 50 ? "..." : ""}`,
     data: { modelId, conversationId },
   });
+
+  // Send push notification to customer
+  pushNewMessage("customer", customerId, modelName, messagePreview, conversationId).catch((err) =>
+    console.error("[Push] Failed to send new message push to customer:", err)
+  );
 }
 
 // ========================================
@@ -1028,6 +1108,11 @@ export async function notifyCustomerDepositApproved(
     message: `Your deposit of ${amount.toLocaleString()} LAK has been approved and added to your wallet.`,
     data: { amount, transactionId },
   });
+
+  // Send push notification to customer
+  pushDepositApproved(customerId, amount).catch((err) =>
+    console.error("[Push] Failed to send deposit approved push:", err)
+  );
 }
 
 /**
@@ -1061,6 +1146,11 @@ export async function notifyModelWithdrawApproved(
     message: `Your withdrawal of ${amount.toLocaleString()} LAK has been approved and processed.`,
     data: { amount, transactionId },
   });
+
+  // Send push notification to model
+  pushWithdrawApproved(modelId, amount).catch((err) =>
+    console.error("[Push] Failed to send withdraw approved push:", err)
+  );
 }
 
 /**

@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { useNavigate, useNavigation, type LoaderFunction } from "react-router"
+import { useNavigate, useNavigation, useRevalidator, type LoaderFunction } from "react-router"
 import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, Eye, SquarePen, X, MapPinCheck, Trash2 } from "lucide-react"
 
 // components:
@@ -14,6 +14,7 @@ import type { IServiceBooking } from "~/interfaces/service"
 import { requireUserSession } from "~/services/auths.server";
 import { getAllMyServiceBookings } from "~/services/booking.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
+import { useNotifications, type Notification } from "~/hooks/useNotifications"
 
 const statusConfig: Record<string, { label: string; className: string }> = {
    pending: {
@@ -75,9 +76,34 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
    const { t } = useTranslation()
    const navigate = useNavigate()
    const navigation = useNavigation()
+   const revalidator = useRevalidator()
    const { bookInfos } = loaderData
    const isLoading = navigation.state === "loading";
    const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+
+   // Booking notification types that should trigger a refresh
+   const bookingNotificationTypes = [
+      "booking_confirmed",
+      "booking_rejected",
+      "booking_completed",
+      "booking_checkin_model",
+      "booking_confirmed_completion",
+   ];
+
+   // Handle new notifications - refresh bookings when booking-related
+   const handleNewNotification = useCallback((notification: Notification) => {
+      if (bookingNotificationTypes.includes(notification.type)) {
+         console.log("[CustomerBooking] Booking notification received, refreshing...", notification.type);
+         revalidator.revalidate();
+      }
+   }, [revalidator]);
+
+   // Connect to real-time notifications
+   useNotifications({
+      userType: "customer",
+      onNewNotification: handleNewNotification,
+      playSound: false, // Don't play sound here, already handled by notification center
+   });
 
    const getServiceName = (booking: IServiceBooking): string => {
       const serviceName = booking.modelService?.service?.name;

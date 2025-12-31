@@ -17,6 +17,7 @@ import { getCustomerProfile } from "~/services/profile.server";
 import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { getCustomerUnreadCount, getCustomerNotifications } from "~/services/notification.server";
+import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -222,6 +223,9 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     </div>
                 </div>
             )}
+
+            {/* Push Notification Permission Prompt */}
+            <PushNotificationPrompt userType="customer" />
         </div>
     );
 }

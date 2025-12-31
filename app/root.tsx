@@ -24,11 +24,12 @@ function isMobileDevice(): boolean {
   );
 }
 
-// Register service worker for mobile devices only
+// Register service worker for all devices (needed for push notifications)
 function usePWA() {
   useEffect(() => {
-    if (!isMobileDevice()) return;
     if (!("serviceWorker" in navigator)) return;
+
+    console.log("[PWA] Device check:", { isMobile: isMobileDevice(), userAgent: navigator.userAgent });
 
     // First, check if there's an existing service worker and clear old caches
     navigator.serviceWorker.getRegistration().then((existingReg) => {

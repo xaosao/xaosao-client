@@ -7,5 +7,6 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
   server: {
     port: 5176,
+    allowedHosts: [".ngrok-free.app", ".ngrok-free.dev", ".ngrok.io"],
   },
 });

@@ -562,7 +562,7 @@ export async function createServiceBooking(
       try {
         const customer = await prisma.customer.findUnique({
           where: { id: customerId },
-          select: { firstName: true, tel: true },
+          select: { firstName: true, whatsapp: true },
         });
         const modelService = await prisma.model_service.findUnique({
           where: { id: modelServiceId },
@@ -590,7 +590,7 @@ export async function createServiceBooking(
           await notifyAdminNewBooking({
             id: result.id,
             customerName: customer.firstName,
-            customerPhone: customer.tel?.toString(),
+            customerPhone: customer.whatsapp?.toString(),
             modelName: `${model.firstName} ${model.lastName || ""}`.trim(),
             serviceName: modelService.service.name,
             totalPrice: data.price,

@@ -764,3 +764,19 @@ model model_notification {
   model   model  @relation(fields: [modelId], references: [id])
   modelId String @db.ObjectId
 }
+
+// Push notification subscriptions for Web Push API
+// Stores push subscriptions for both customers and models
+model push_subscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  endpoint  String   @unique // Push service endpoint URL
+  p256dh    String   // Public key for encryption
+  auth      String   // Authentication secret
+  userType  String   // "customer" or "model"
+  userId    String   @db.ObjectId // Reference to customer or model ID
+  userAgent String?  // Device/browser info
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userType, userId])
+}

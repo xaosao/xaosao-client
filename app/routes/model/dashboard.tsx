@@ -144,7 +144,7 @@ export default function ModelDashboard() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 flex items-center justify-center">
-      <div className="w-11/12">
+      <div>
         <div className="mb-8 space-y-1 sm:space-y-2">
           <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
             {t("modelDashboard.title")}

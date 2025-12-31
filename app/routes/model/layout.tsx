@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Form, Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     HandHeart,
     Heart,
@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
+import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 
 // services
 import { capitalize } from "~/utils/functions/textFormat";
-import type { Notification } from "~/hooks/useNotifications";
+import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
 import { requireModelSession } from "~/services/model-auth.server";
 import { getModelUnreadCount, getModelNotifications } from "~/services/notification.server";
@@ -69,8 +70,31 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
+    const revalidator = useRevalidator();
     const { modelData, unreadNotifications, initialNotifications, pendingBookingCount } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Booking notification types that should trigger a layout refresh (for pending count)
+    const bookingNotificationTypes = [
+        "booking_created",
+        "booking_cancelled",
+        "booking_disputed",
+    ];
+
+    // Handle new notifications - refresh layout when booking-related
+    const handleNewNotification = useCallback((notification: Notification) => {
+        if (bookingNotificationTypes.includes(notification.type)) {
+            console.log("[ModelLayout] Booking notification received, refreshing pending count...", notification.type);
+            revalidator.revalidate();
+        }
+    }, [revalidator]);
+
+    // Connect to real-time notifications for layout updates
+    useNotifications({
+        userType: "model",
+        onNewNotification: handleNewNotification,
+        playSound: false, // Sound handled by NotificationBell
+    });
 
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
@@ -245,6 +269,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     </div>
                 </div>
             )}
+
+            {/* Push Notification Permission Prompt */}
+            <PushNotificationPrompt userType="model" />
         </div>
     );
 }

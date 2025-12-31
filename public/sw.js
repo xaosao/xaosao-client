@@ -4,9 +4,9 @@ const DYNAMIC_CACHE = 'xaosao-dynamic-v4';
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
+// NOTE: Only include files that definitely exist to prevent install failure
 const STATIC_ASSETS = [
   '/manifest.json',
-  '/favicon.ico',
   '/favicon.png',
   '/images/logo-pink.png',
   '/icons/icon-72x72.png',
@@ -151,46 +151,123 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle push notifications (for future use)
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
+// ========================================
+// Push Notification Handlers
+// ========================================
 
-  const data = event.data.json();
+// Handle incoming push notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received');
+
+  if (!event.data) {
+    console.log('[SW] No push data');
+    return;
+  }
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch (e) {
+    console.error('[SW] Failed to parse push data:', e);
+    data = {
+      title: 'XaoSao',
+      body: event.data.text() || 'New notification',
+    };
+  }
+
+  // Build notification options
   const options = {
     body: data.body || 'New notification from XaoSao',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: data.badge || '/icons/icon-72x72.png',
+    image: data.image,
+    tag: data.tag || `notification-${Date.now()}`,
+    renotify: true, // Vibrate even if same tag
+    requireInteraction: false, // Auto-dismiss on mobile
+    vibrate: [200, 100, 200],
     data: {
-      url: data.url || '/',
+      url: data.data?.url || '/',
+      type: data.data?.type,
+      ...data.data,
     },
+    actions: data.actions || [],
   };
 
+  // Show notification
   event.waitUntil(
     self.registration.showNotification(data.title || 'XaoSao', options)
+      .then(() => console.log('[SW] Notification shown'))
+      .catch((err) => console.error('[SW] Failed to show notification:', err))
   );
 });
 
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.action);
   event.notification.close();
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      const url = event.notification.data?.url || '/';
+  const notificationData = event.notification.data || {};
+  let targetUrl = notificationData.url || '/';
 
-      // Focus existing window if available
+  // Handle action buttons
+  if (event.action === 'view' || event.action === 'confirm') {
+    // Use the URL from notification data
+    targetUrl = notificationData.url || '/';
+  } else if (event.action === 'dispute') {
+    // Navigate to dispute page if booking ID exists
+    if (notificationData.bookingId) {
+      targetUrl = `/customer/book-service/dispute/${notificationData.bookingId}`;
+    }
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Try to find an existing window with the app
       for (const client of clientList) {
-        if (client.url === url && 'focus' in client) {
+        // Check if any window has the app loaded
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          // Navigate the existing window
+          client.postMessage({
+            type: 'NOTIFICATION_CLICK',
+            url: targetUrl,
+            data: notificationData,
+          });
           return client.focus();
         }
       }
 
-      // Open new window
+      // No existing window - open new one
       if (clients.openWindow) {
-        return clients.openWindow(url);
+        return clients.openWindow(targetUrl);
       }
     })
+  );
+});
+
+// Handle notification close (for analytics if needed)
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed');
+});
+
+// Handle push subscription change (browser renewed the subscription)
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('[SW] Push subscription changed');
+
+  event.waitUntil(
+    // Re-subscribe with the new subscription
+    self.registration.pushManager.subscribe(event.oldSubscription.options)
+      .then((subscription) => {
+        // Send new subscription to server
+        return fetch('/api/push/resubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oldEndpoint: event.oldSubscription.endpoint,
+            newSubscription: subscription.toJSON(),
+          }),
+        });
+      })
+      .catch((err) => console.error('[SW] Failed to resubscribe:', err))
   );
 });
 

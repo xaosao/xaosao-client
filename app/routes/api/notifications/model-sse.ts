@@ -17,6 +17,8 @@ export const loader: LoaderFunction = async ({ request }) => {
       const encoder = new TextEncoder();
       const channel = getModelChannel(modelId);
 
+      console.log(`[SSE] Model ${modelId} connected, subscribing to ${channel}`);
+
       // Send initial connection message
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ type: "connected" })}\n\n`)
@@ -24,6 +26,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 
       // Handler for new notifications
       const handler = (notification: any) => {
+        console.log(`[SSE] Received notification for model ${modelId}:`, notification.type);
         try {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(notification)}\n\n`)
@@ -36,6 +39,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 
       // Subscribe to model channel
       notificationEmitter.on(channel, handler);
+      console.log(`[SSE] Listener count for ${channel}:`, notificationEmitter.listenerCount(channel));
 
       // Keep connection alive with heartbeat
       const heartbeat = setInterval(() => {
