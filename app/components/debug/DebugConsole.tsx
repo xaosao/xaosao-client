@@ -100,12 +100,26 @@ export function DebugConsole() {
   const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
-    // Check URL param or localStorage
+    // Check URL param or localStorage or iOS PWA
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const debugParam = urlParams.get("debug");
       const stored = localStorage.getItem("debug-console");
-      setShowDebug(debugParam === "push" || stored === "true");
+
+      // Auto-enable for iOS PWA for easier debugging
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+                          (window.navigator as any).standalone === true;
+      const isIOSPWA = isIOS && isStandalone;
+
+      // If URL has debug=push, save to localStorage for PWA
+      if (debugParam === "push") {
+        localStorage.setItem("debug-console", "true");
+        setShowDebug(true);
+      } else if (stored === "true" || isIOSPWA) {
+        // Show for iOS PWA or if stored
+        setShowDebug(true);
+      }
     }
   }, []);
 
