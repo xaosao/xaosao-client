@@ -150,8 +150,8 @@ model customer {
   career             String? // 5
   education          String? // 6
   sendMailNoti       Boolean   @default(true) // 7
-  sendSMSNoti        Boolean   @default(false) // 8
-  sendPushNoti       Boolean   @default(false) // 9
+  sendSMSNoti        Boolean   @default(true) // 8 - default ON for new users
+  sendPushNoti       Boolean   @default(true) // 9 - default ON for new users
   defaultLanguage    String    @default("en") // 10
   defaultTheme       String    @default("light") // 11
 
@@ -214,8 +214,8 @@ model model {
   career              String? // 5
   education           String? // 6
   sendMailNoti        Boolean   @default(true) // 7
-  sendSMSNoti         Boolean   @default(false) // 8
-  sendPushNoti        Boolean   @default(false) // 9
+  sendSMSNoti         Boolean   @default(true) // 8 - default ON for new users
+  sendPushNoti        Boolean   @default(true) // 9 - default ON for new users
   defaultLanguage     String    @default("en") // 10
   defaultTheme        String    @default("light") // 11
 

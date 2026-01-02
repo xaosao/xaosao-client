@@ -7,7 +7,8 @@ import {
   Briefcase,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from "lucide-react";
 import { useEffect } from "react";
 import type { MetaFunction } from "react-router";
@@ -30,6 +31,7 @@ export default function ModelSettings() {
   const tabs = [
     { id: "services", label: t("modelSettings.tabs.services"), icon: Briefcase, path: "/model/settings/services", description: t("modelSettings.tabs.servicesDesc") },
     { id: "wallet", label: t("modelSettings.tabs.wallet"), icon: Wallet, path: "/model/settings/wallet", description: t("modelSettings.tabs.walletDesc") },
+    { id: "notifications", label: t("modelSettings.tabs.notifications", { defaultValue: "Notifications" }), icon: Bell, path: "/model/settings/notifications", description: t("modelSettings.tabs.notificationsDesc", { defaultValue: "Manage your notification preferences" }) },
     { id: "password", label: t("modelSettings.tabs.password"), icon: Lock, path: "/model/settings/password", description: t("modelSettings.tabs.passwordDesc") },
     { id: "report", label: t("modelSettings.tabs.report"), icon: AlertCircle, path: "/model/settings/report", description: t("modelSettings.tabs.reportDesc") },
     { id: "delete", label: t("modelSettings.tabs.delete"), icon: Trash2, path: "/model/settings/delete-account", description: t("modelSettings.tabs.deleteDesc") },

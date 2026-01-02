@@ -745,6 +745,81 @@ export function usePushNotifications({
             console.error("[Push] SW re-register failed:", reregError);
           }
         }
+
+        // Approach 5: Try directly accessing Notification constructor (might bypass check)
+        if (!pushManagerAvailable) {
+          console.log("[Push] iOS PWA: Trying direct Notification constructor access...");
+          try {
+            // Some browsers expose Notification differently
+            const NotificationCtor = (window as any).Notification ||
+                                     (window as any).webkitNotification ||
+                                     (globalThis as any).Notification;
+
+            if (NotificationCtor) {
+              console.log("[Push] Found Notification constructor via alternative access");
+              const perm = await NotificationCtor.requestPermission();
+              console.log("[Push] Permission from direct access:", perm);
+
+              // Re-check registration after permission
+              await new Promise(resolve => setTimeout(resolve, 500));
+              registration = await navigator.serviceWorker.ready;
+              pushManagerAvailable = !!registration.pushManager;
+              pushManager = registration.pushManager || null;
+              console.log("[Push] pushManager after direct Notification:", pushManagerAvailable);
+            }
+          } catch (directError) {
+            console.log("[Push] Direct Notification access failed:", directError);
+          }
+        }
+
+        // Approach 6: Try accessing PushManager through ServiceWorkerRegistration prototype
+        if (!pushManagerAvailable) {
+          console.log("[Push] iOS PWA: Checking ServiceWorkerRegistration.prototype...");
+          try {
+            const SWReg = (window as any).ServiceWorkerRegistration;
+            if (SWReg && SWReg.prototype) {
+              const protoDesc = Object.getOwnPropertyDescriptor(SWReg.prototype, 'pushManager');
+              console.log("[Push] pushManager descriptor on SWRegistration.prototype:", {
+                exists: !!protoDesc,
+                hasGetter: protoDesc?.get ? true : false,
+              });
+
+              if (protoDesc && protoDesc.get) {
+                // Try using the getter directly
+                const pm = protoDesc.get.call(registration);
+                console.log("[Push] pushManager from prototype getter:", !!pm);
+                if (pm) {
+                  pushManager = pm;
+                  pushManagerAvailable = true;
+                }
+              }
+            }
+          } catch (protoDescError) {
+            console.log("[Push] Prototype descriptor check failed:", protoDescError);
+          }
+        }
+
+        // Approach 7: Wait longer and try one more time (iOS sometimes needs more time)
+        if (!pushManagerAvailable) {
+          console.log("[Push] iOS PWA: Final attempt - waiting 5 seconds...");
+          await new Promise(resolve => setTimeout(resolve, 5000));
+
+          try {
+            // Check if APIs appeared
+            const nowHasPushManager = "PushManager" in window;
+            const nowHasNotification = "Notification" in window;
+            console.log("[Push] After 5s wait - PushManager:", nowHasPushManager, "Notification:", nowHasNotification);
+
+            if (nowHasPushManager || nowHasNotification) {
+              registration = await navigator.serviceWorker.ready;
+              pushManagerAvailable = !!registration.pushManager;
+              pushManager = registration.pushManager || null;
+              console.log("[Push] pushManager after long wait:", pushManagerAvailable);
+            }
+          } catch (finalError) {
+            console.log("[Push] Final attempt failed:", finalError);
+          }
+        }
       }
 
       if (!pushManagerAvailable) {
@@ -783,8 +858,16 @@ export function usePushNotifications({
             throw new Error("Push notifications only work when added from Safari. Please open this website in Safari (not Chrome or other browsers), then add to home screen.");
           }
 
-          // This is likely an iOS 18.x bug
-          throw new Error(`iOS ${versionStr} is not exposing Push API to this app. This appears to be an iOS bug.\n\nPlease try:\n1. Go to Settings > Apps > Safari > Advanced > Feature Flags\n2. Make sure "Notifications" is ON\n3. Restart your iPhone completely\n4. Delete the app from home screen\n5. Clear Safari data (Settings > Apps > Safari > Clear History and Website Data)\n6. Re-add the app from Safari\n\nIf this still doesn't work, please report this bug to Apple.`);
+          // Check for known buggy iOS versions (18.6.x has a regression)
+          const isIOS186 = iosMajor === 18 && iosMinor >= 6;
+
+          if (isIOS186) {
+            // Friendly message for iOS 18.6.x users - known bug
+            throw new Error(`Push notifications are temporarily unavailable on iOS ${versionStr} due to an Apple bug. Please update your iOS when a new version is available, or enable SMS notifications instead.`);
+          }
+
+          // Generic iOS PWA error for other versions
+          throw new Error(`Push notifications are not available on iOS ${versionStr}. Please try updating your iOS or enable SMS notifications instead.`);
         }
         throw new Error("Push notifications are not supported in this browser");
       }

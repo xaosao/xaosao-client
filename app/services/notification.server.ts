@@ -79,40 +79,52 @@ async function sendSMS(phone: string | number | null, message: string): Promise<
 }
 
 /**
- * Get model's WhatsApp number
+ * Get model's WhatsApp number and SMS preference
  */
-async function getModelPhone(modelId: string): Promise<number | null> {
+async function getModelSMSInfo(modelId: string): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
   try {
     const model = await prisma.model.findUnique({
       where: { id: modelId },
-      select: { whatsapp: true },
+      select: { whatsapp: true, sendSMSNoti: true },
     });
-    return model?.whatsapp || null;
+    return {
+      phone: model?.whatsapp || null,
+      sendSMSNoti: model?.sendSMSNoti ?? true, // Default to true if not set
+    };
   } catch {
-    return null;
+    return { phone: null, sendSMSNoti: false };
   }
 }
 
 /**
- * Get customer's WhatsApp number
+ * Get customer's WhatsApp number and SMS preference
  */
-async function getCustomerPhone(customerId: string): Promise<number | null> {
+async function getCustomerSMSInfo(customerId: string): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
   try {
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
-      select: { whatsapp: true },
+      select: { whatsapp: true, sendSMSNoti: true },
     });
-    return customer?.whatsapp || null;
+    return {
+      phone: customer?.whatsapp || null,
+      sendSMSNoti: customer?.sendSMSNoti ?? true, // Default to true if not set
+    };
   } catch {
-    return null;
+    return { phone: null, sendSMSNoti: false };
   }
 }
 
 /**
- * Send SMS to model
+ * Send SMS to model (only if SMS notifications are enabled)
  */
 async function sendSMSToModel(modelId: string, message: string): Promise<void> {
-  const phone = await getModelPhone(modelId);
+  const { phone, sendSMSNoti } = await getModelSMSInfo(modelId);
+
+  if (!sendSMSNoti) {
+    console.log(`[SMS] Model ${modelId} has SMS notifications disabled, skipping`);
+    return;
+  }
+
   if (phone) {
     sendSMS(phone, message).catch((err) =>
       console.error("Failed to send SMS to model:", err)
@@ -121,10 +133,16 @@ async function sendSMSToModel(modelId: string, message: string): Promise<void> {
 }
 
 /**
- * Send SMS to customer
+ * Send SMS to customer (only if SMS notifications are enabled)
  */
 async function sendSMSToCustomer(customerId: string, message: string): Promise<void> {
-  const phone = await getCustomerPhone(customerId);
+  const { phone, sendSMSNoti } = await getCustomerSMSInfo(customerId);
+
+  if (!sendSMSNoti) {
+    console.log(`[SMS] Customer ${customerId} has SMS notifications disabled, skipping`);
+    return;
+  }
+
   if (phone) {
     sendSMS(phone, message).catch((err) =>
       console.error("Failed to send SMS to customer:", err)
