@@ -60,26 +60,58 @@ function setStoredSubscriptionStatus(userType: string, isSubscribed: boolean): v
   }
 }
 
+// Check if this looks like an iOS PWA context
+function isIOSPWA(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+                        (window.navigator as any).standalone === true;
+    return isIOS && isStandalone;
+  } catch {
+    return false;
+  }
+}
+
 // Synchronous support check - can be called during initial render
+// Note: On iOS PWA, both PushManager and serviceWorker might not be directly detectable
+// but could still work. We return optimistic support for iOS PWA.
 function checkPushSupport(): boolean {
   try {
     if (typeof window === "undefined") return false;
-    return (
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window
-    );
+
+    // For iOS PWA, return true optimistically - we'll do the real check when subscribing
+    // iOS Safari PWA might not expose serviceWorker/PushManager on navigator/window directly
+    // but they become available when actually used
+    if (isIOSPWA()) {
+      console.log("[Push] iOS PWA detected, returning optimistic support");
+      return true;
+    }
+
+    // For other browsers, check for service worker
+    if (!("serviceWorker" in navigator)) return false;
+
+    // If PushManager is on window, definitely supported
+    if ("PushManager" in window) return true;
+
+    return false;
   } catch {
     return false;
   }
 }
 
 // Get initial permission synchronously
+// Returns "default" if Notification API is not available (some PWA contexts)
 function getInitialPermission(): NotificationPermission | "default" {
   try {
     if (typeof window === "undefined") return "default";
-    if (!("Notification" in window)) return "default";
-    return Notification.permission;
+    // If Notification API is available, use it
+    if ("Notification" in window) {
+      return Notification.permission;
+    }
+    // In some PWA contexts, Notification might not be available
+    // Return "default" and let the subscribe function handle it
+    return "default";
   } catch {
     return "default";
   }
@@ -123,6 +155,11 @@ export function usePushNotifications({
   const checkSupport = useCallback(() => {
     if (typeof window === "undefined") return false;
 
+    // For iOS PWA, return true optimistically
+    if (isIOSPWA()) {
+      return true;
+    }
+
     const isSupported =
       "serviceWorker" in navigator &&
       "PushManager" in window &&
@@ -162,6 +199,13 @@ export function usePushNotifications({
       });
 
       const checkPromise = async (): Promise<boolean> => {
+        // For iOS PWA, service worker might not be in navigator initially
+        if (!("serviceWorker" in navigator)) {
+          console.log("[Push] Service worker not in navigator");
+          // For iOS PWA, return stored value from localStorage
+          return false;
+        }
+
         // Check if service worker is registered first
         const registrations = await navigator.serviceWorker.getRegistrations();
         console.log("[Push] Service worker registrations:", registrations.length);
@@ -172,6 +216,13 @@ export function usePushNotifications({
         }
 
         const registration = await navigator.serviceWorker.ready;
+
+        // For iOS PWA, pushManager might not be available on registration
+        if (!registration.pushManager) {
+          console.log("[Push] PushManager not available on registration");
+          return false;
+        }
+
         const subscription = await registration.pushManager.getSubscription();
         console.log("[Push] Current subscription:", !!subscription);
         return subscription !== null;
@@ -195,9 +246,11 @@ export function usePushNotifications({
     initializingRef.current = true;
 
     const initialize = async () => {
+      const iosPWA = isIOSPWA();
       const isSupported = checkSupport();
       console.log("[Push] Support check:", {
         isSupported,
+        iosPWA,
         serviceWorker: "serviceWorker" in navigator,
         pushManager: "PushManager" in window,
         notification: "Notification" in window,
@@ -210,7 +263,21 @@ export function usePushNotifications({
         return;
       }
 
-      const permission = Notification.permission;
+      // Get permission - handle iOS PWA where Notification might not be directly available
+      let permission: NotificationPermission = "default";
+      if ("Notification" in window) {
+        permission = Notification.permission;
+      } else {
+        // iOS PWA might not have Notification on window, use permissions API
+        try {
+          const permResult = await navigator.permissions.query({ name: "notifications" as PermissionName });
+          permission = permResult.state === "granted" ? "granted" :
+                       permResult.state === "denied" ? "denied" : "default";
+        } catch {
+          // Default to "default" if can't check
+          permission = "default";
+        }
+      }
 
       // Check subscription status with PushManager
       let isSubscribed = storedSubscription; // Start with localStorage value
@@ -263,17 +330,17 @@ export function usePushNotifications({
 
   // Request permission
   const requestPermission = useCallback(async (): Promise<boolean> => {
+    // Don't fail immediately - try anyway for iOS PWA support
     if (!state.isSupported) {
-      setState((prev) => ({
-        ...prev,
-        error: "Push notifications are not supported",
-      }));
-      return false;
+      console.log("[Push] isSupported is false, but will try requesting permission anyway");
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      if (typeof window === "undefined" || !("Notification" in window)) {
+        throw new Error("Notifications not available");
+      }
       const permission = await Notification.requestPermission();
       setState((prev) => ({ ...prev, permission, isLoading: false }));
       return permission === "granted";
@@ -292,31 +359,111 @@ export function usePushNotifications({
   const subscribe = useCallback(async (): Promise<boolean> => {
     console.log("[Push] Starting subscription process...");
 
+    // Don't fail immediately if isSupported is false - try anyway
+    // This is important for iOS PWA where the initial check might fail
+    // but push is actually supported
     if (!state.isSupported) {
-      console.log("[Push] Not supported");
-      setState((prev) => ({
-        ...prev,
-        error: "Push notifications are not supported",
-      }));
-      return false;
+      console.log("[Push] isSupported is false, but will try anyway (iOS PWA support)");
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Check/request permission first
-      let permission = Notification.permission;
-      console.log("[Push] Current permission:", permission);
-
-      if (permission === "default") {
-        console.log("[Push] Requesting permission...");
-        permission = await Notification.requestPermission();
-        console.log("[Push] Permission result:", permission);
-        setState((prev) => ({ ...prev, permission }));
+      // Check if we're in a valid environment
+      if (typeof window === "undefined") {
+        throw new Error("Notifications not available in this environment");
       }
 
-      if (permission !== "granted") {
-        console.log("[Push] Permission not granted");
+      // Detect device/browser for better error messages
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+                          (window.navigator as any).standalone === true;
+      const iosPWA = isIOS && isStandalone;
+      const hasServiceWorkerAPI = "serviceWorker" in navigator;
+      const hasPushManagerOnWindow = "PushManager" in window;
+
+      // Parse iOS version early for logging and error messages
+      let iosVersion = "unknown";
+      let iosMajor = 0;
+      let iosMinor = 0;
+      if (isIOS) {
+        const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+        if (match) {
+          iosMajor = parseInt(match[1], 10);
+          iosMinor = parseInt(match[2], 10);
+          iosVersion = `${iosMajor}.${iosMinor}`;
+        }
+      }
+
+      console.log("[Push] Environment check:", {
+        isIOS,
+        iosVersion,
+        isAndroid,
+        isStandalone,
+        iosPWA,
+        hasServiceWorkerAPI,
+        hasPushManagerOnWindow,
+        userAgent: navigator.userAgent,
+      });
+
+      // On iOS, push ONLY works in Safari PWA (standalone mode)
+      if (isIOS && !isStandalone) {
+        throw new Error(`On iOS ${iosVersion}, please open this app in Safari and add it to your home screen first. Tap the Share button, then "Add to Home Screen".`);
+      }
+
+      // Check iOS version for PWA (must be 16.4+)
+      if (iosPWA) {
+        if (iosMajor > 0 && (iosMajor < 16 || (iosMajor === 16 && iosMinor < 4))) {
+          throw new Error(`Your iOS version (${iosVersion}) doesn't support push notifications. Please update to iOS 16.4 or later.`);
+        }
+        console.log("[Push] iOS version check passed:", iosVersion);
+      }
+
+      // Check if service worker is available (required for push)
+      // For iOS PWA, we skip this check and try directly - iOS might not expose it on navigator
+      if (!iosPWA && !hasServiceWorkerAPI) {
+        throw new Error("Service Worker is not supported in this browser");
+      }
+
+      // Try to get/request permission
+      // On some PWA contexts, Notification might not be directly available
+      // but we can still use push via service worker
+      let permission: NotificationPermission = "default";
+
+      if ("Notification" in window) {
+        // Standard browser/PWA with Notification API
+        permission = Notification.permission;
+        console.log("[Push] Current permission:", permission);
+
+        if (permission === "default") {
+          console.log("[Push] Requesting permission...");
+          permission = await Notification.requestPermission();
+          console.log("[Push] Permission result:", permission);
+          setState((prev) => ({ ...prev, permission }));
+        }
+      } else {
+        // Fallback: try using permissions API (for some PWA contexts)
+        console.log("[Push] Notification API not available, trying permissions API...");
+        try {
+          const permResult = await navigator.permissions.query({ name: "notifications" as PermissionName });
+          permission = permResult.state === "granted" ? "granted" :
+                       permResult.state === "denied" ? "denied" : "default";
+          console.log("[Push] Permission from permissions API:", permission);
+
+          // If default, we'll try to subscribe anyway and let PushManager handle permission
+          if (permission === "default") {
+            console.log("[Push] Permission is default, will try subscribing directly...");
+            permission = "granted"; // Optimistically proceed - PushManager will prompt
+          }
+        } catch (permError) {
+          console.log("[Push] Permissions API failed, will try subscribing directly:", permError);
+          permission = "granted"; // Optimistically proceed
+        }
+      }
+
+      if (permission === "denied") {
+        console.log("[Push] Permission denied");
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -341,8 +488,124 @@ export function usePushNotifications({
 
       // Get service worker registration
       console.log("[Push] Getting service worker...");
-      const registration = await navigator.serviceWorker.ready;
-      console.log("[Push] Service worker ready");
+      let registration: ServiceWorkerRegistration;
+
+      // Step 1: Check if serviceWorker API exists
+      const swInNavigator = "serviceWorker" in navigator;
+      console.log("[Push] Step 1 - serviceWorker in navigator:", swInNavigator);
+
+      if (!swInNavigator) {
+        if (iosPWA) {
+          // Wait and retry for iOS PWA
+          console.log("[Push] iOS PWA: serviceWorker not found, waiting 2 seconds...");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          if (!("serviceWorker" in navigator)) {
+            console.error("[Push] iOS PWA: serviceWorker still not available after waiting");
+            throw new Error("Service worker not available. Make sure you opened the app from your home screen (not Safari). Try: Settings > Safari > Clear History and Website Data, then re-add the app.");
+          }
+          console.log("[Push] iOS PWA: serviceWorker now available after waiting");
+        } else {
+          throw new Error("Push notifications are not supported on this device.");
+        }
+      }
+
+      try {
+        // Step 2: Check for existing registrations
+        console.log("[Push] Step 2 - Getting existing registrations...");
+        const existingRegs = await navigator.serviceWorker.getRegistrations();
+        console.log("[Push] Existing service worker registrations:", existingRegs.length);
+
+        // Step 3: Register if needed
+        if (existingRegs.length === 0) {
+          console.log("[Push] Step 3 - No SW registered, registering /sw.js...");
+          try {
+            registration = await navigator.serviceWorker.register("/sw.js");
+            console.log("[Push] Service worker registered, scope:", registration.scope);
+            console.log("[Push] SW state - installing:", !!registration.installing, "waiting:", !!registration.waiting, "active:", !!registration.active);
+
+            // Wait for the service worker to be active
+            if (registration.installing) {
+              console.log("[Push] Waiting for service worker to install and activate...");
+              await new Promise<void>((resolve, reject) => {
+                const sw = registration.installing!;
+                const checkState = () => {
+                  console.log("[Push] SW state changed to:", sw.state);
+                  if (sw.state === "activated") {
+                    resolve();
+                  } else if (sw.state === "redundant") {
+                    reject(new Error("Service worker became redundant"));
+                  }
+                };
+                sw.addEventListener("statechange", checkState);
+                // Also check if already activated
+                if (sw.state === "activated") {
+                  resolve();
+                }
+                // Timeout after 15 seconds
+                setTimeout(() => reject(new Error("Service worker installation timeout (15s)")), 15000);
+              });
+              console.log("[Push] Service worker activated successfully");
+            }
+          } catch (regError: any) {
+            console.error("[Push] Failed to register service worker:", regError);
+            throw new Error(`Failed to register service worker: ${regError.message || regError}`);
+          }
+        } else {
+          console.log("[Push] Step 3 - Using existing registration");
+        }
+
+        // Step 4: Wait for service worker to be ready
+        console.log("[Push] Step 4 - Waiting for service worker to be ready...");
+        const readyPromise = navigator.serviceWorker.ready;
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Service worker ready timeout (10s)")), 10000)
+        );
+
+        registration = await Promise.race([readyPromise, timeoutPromise]);
+        console.log("[Push] Service worker ready, scope:", registration.scope);
+        console.log("[Push] Registration has pushManager:", !!registration.pushManager);
+
+      } catch (swError: any) {
+        console.error("[Push] Service worker error at step:", swError);
+        const errorMsg = swError.message || String(swError);
+
+        if (iosPWA) {
+          // Provide specific guidance for iOS PWA
+          if (errorMsg.includes("timeout")) {
+            throw new Error("Service worker is taking too long. Please close the app completely (swipe up), wait 5 seconds, then reopen from home screen.");
+          }
+          throw new Error(`Push setup failed: ${errorMsg}. Try closing the app completely and reopening.`);
+        }
+        throw new Error(`Service worker error: ${errorMsg}`);
+      }
+
+      // Step 5: Check if pushManager is available on the registration
+      console.log("[Push] Step 5 - Checking pushManager availability...");
+      if (!registration.pushManager) {
+        console.error("[Push] pushManager not available on registration");
+        console.log("[Push] Registration object keys:", Object.keys(registration));
+
+        if (isIOS && !isStandalone) {
+          throw new Error("On iOS, push notifications require adding this app to your home screen first. Open in Safari, tap Share, then 'Add to Home Screen'.");
+        } else if (iosPWA) {
+          // iOS PWA but push not available
+          // Check iOS version again for better error message
+          const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+          if (match) {
+            const major = parseInt(match[1], 10);
+            const minor = parseInt(match[2], 10);
+            const versionStr = `${major}.${minor}`;
+            if (major < 16 || (major === 16 && minor < 4)) {
+              throw new Error(`Your iOS version (${versionStr}) doesn't support push notifications. iOS 16.4 or later is required.`);
+            }
+            throw new Error(`Push notifications not available on iOS ${versionStr}. Try: 1) Close app completely, 2) Go to Settings > Safari > Clear History and Website Data, 3) Re-add app to home screen.`);
+          }
+          throw new Error("Push notifications are not available. Try removing the app from home screen and adding it again from Safari.");
+        }
+        throw new Error("Push notifications are not supported in this browser");
+      }
+      console.log("[Push] pushManager is available!");
 
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
@@ -351,11 +614,19 @@ export function usePushNotifications({
       // Create new subscription if none exists
       if (!subscription) {
         console.log("[Push] Creating new subscription...");
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
-        });
-        console.log("[Push] Subscription created:", subscription.endpoint.substring(0, 50) + "...");
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          });
+          console.log("[Push] Subscription created:", subscription.endpoint.substring(0, 50) + "...");
+        } catch (subscribeError: any) {
+          console.error("[Push] Subscribe failed:", subscribeError);
+          if (subscribeError.name === "NotAllowedError") {
+            throw new Error("Notification permission was denied. Please enable it in your settings.");
+          }
+          throw new Error(subscribeError.message || "Failed to subscribe to push notifications");
+        }
       }
 
       // Send subscription to server

@@ -2,7 +2,8 @@ import React, { useState, useCallback } from "react";
 import type { Route } from "./+types/setting";
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
-import { User, Lock, Bell, Globe, Flag, Trash2, LogOut, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes } from "lucide-react";
+import { User, Lock, Bell, Globe, Flag, Trash2, LogOut, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check } from "lucide-react";
+import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 // components
 import { Label } from "~/components/ui/label";
@@ -19,7 +20,7 @@ import type { ICustomerCredentials, ICustomerResponse, ICustomerSettingCredentia
 import { validateICustomerSettingInputs, validateReportUpInputs, validateUpdateProfileInputs } from "~/services/validation.server";
 import { changeCustomerPassword, createReport, deleteAccount, getCustomerProfile, updateCustomerSetting, updateProfile } from "~/services/profile.server";
 
-type NotificationType = "email" | "push" | "sms";
+type NotificationType = "push" | "sms"; // "email" disabled for now
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -242,11 +243,23 @@ export default function SettingPage({ loaderData }: TransactionProps) {
     // const [darkMode, setDarkMode] = useState(customerData.defaultTheme === "dark");
     const [activeSection, setActiveSection] = useState('basic');
     const [notifications, setNotifications] = useState({
-        email: customerData.sendMailNoti,
+        // email: customerData.sendMailNoti, // Email notification disabled for now
         push: customerData.sendPushNoti,
         sms: customerData.sendSMSNoti,
     });
     const [deleteAccountText, setDeleteAccountText] = useState("");
+    const [showPushDialog, setShowPushDialog] = useState(false);
+    const [pushSuccess, setPushSuccess] = useState(false);
+
+    // Push notifications hook
+    const {
+        isSubscribed: isPushSubscribed,
+        isLoading: isPushLoading,
+        permission: pushPermission,
+        error: pushError,
+        subscribe: subscribePush,
+        unsubscribe: unsubscribePush,
+    } = usePushNotifications({ userType: "customer" });
 
     const menuItems = [
         { id: 'basic', label: t('settings.menu.basic'), icon: User },
@@ -272,10 +285,44 @@ export default function SettingPage({ loaderData }: TransactionProps) {
     }, []);
 
     const handleNotificationChange = useCallback((type: NotificationType) => {
+        // For push notifications, show dialog if trying to enable and not subscribed
+        if (type === "push") {
+            if (!notifications.push && !isPushSubscribed) {
+                // Trying to enable push - show the dialog first
+                setShowPushDialog(true);
+                setPushSuccess(false);
+                return;
+            } else if (notifications.push && isPushSubscribed) {
+                // Trying to disable push - unsubscribe
+                unsubscribePush();
+            }
+        }
         setNotifications(prev => ({
             ...prev,
             [type]: !prev[type],
         }));
+    }, [notifications.push, isPushSubscribed, unsubscribePush]);
+
+    const handleEnablePush = useCallback(async () => {
+        const success = await subscribePush();
+        if (success) {
+            setPushSuccess(true);
+            // Update local state
+            setNotifications(prev => ({
+                ...prev,
+                push: true,
+            }));
+            // Auto close after showing success
+            setTimeout(() => {
+                setShowPushDialog(false);
+                setPushSuccess(false);
+            }, 2000);
+        }
+    }, [subscribePush]);
+
+    const handleDismissPushDialog = useCallback(() => {
+        setShowPushDialog(false);
+        setPushSuccess(false);
     }, []);
 
     if (isSubmitting || isCreating || isDeleting) {
@@ -610,6 +657,8 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                             <input type="hidden" name="defaultLanguage" defaultValue={customerData.defaultLanguage} />
                             <input type="hidden" name="defaultTheme" defaultValue={customerData.defaultTheme} />
                             <input type="hidden" name="twofactorEnabled" value={String(customerData.twofactorEnabled)} />
+                            {/* Keep email notification value for server */}
+                            <input type="hidden" name="notifications_email" value={String(customerData.sendMailNoti)} />
                             {Object.entries(notifications).map(([type, enabled]) => (
                                 <input
                                     key={type}
@@ -834,6 +883,138 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                     </Form>
                 </div>
             </div>
+
+            {/* Push Notification Enable Dialog */}
+            {showPushDialog && (
+                <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
+                        {/* Header */}
+                        <div className="relative p-4 border-b">
+                            <button
+                                onClick={handleDismissPushDialog}
+                                className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100"
+                            >
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                            <div className="flex items-center gap-3">
+                                <div className="w-14 h-14 rounded-xl shadow-md bg-rose-500 flex items-center justify-center">
+                                    {pushSuccess ? (
+                                        <Check className="w-8 h-8 text-white" />
+                                    ) : (
+                                        <Bell className="w-8 h-8 text-white" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        {pushSuccess
+                                            ? t("push.enabled", { defaultValue: "Notifications Enabled!" })
+                                            : t("push.title", { defaultValue: "Stay Updated" })}
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        {pushSuccess
+                                            ? t("push.enabledDesc", { defaultValue: "You'll receive important updates" })
+                                            : t("push.subtitle", { defaultValue: "Enable push notifications" })}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4 space-y-4">
+                            {pushSuccess ? (
+                                <p className="text-sm text-gray-600 text-center">
+                                    {t("push.successMessage", {
+                                        defaultValue: "You'll now receive notifications for bookings, messages, and updates.",
+                                    })}
+                                </p>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-gray-600">
+                                        {t("push.description", {
+                                            defaultValue:
+                                                "Get notified about new bookings, messages, and important updates even when you're not using the app.",
+                                        })}
+                                    </p>
+
+                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                                            <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                                                <Bell className="w-4 h-4 text-rose-500" />
+                                            </div>
+                                            <span>{t("push.benefitCustomer1", { defaultValue: "Booking confirmations" })}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                                            <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                                                <Bell className="w-4 h-4 text-rose-500" />
+                                            </div>
+                                            <span>{t("push.benefitMessages", { defaultValue: "New messages" })}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                                            <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                                                <Bell className="w-4 h-4 text-rose-500" />
+                                            </div>
+                                            <span>{t("push.benefitCustomer3", { defaultValue: "Service updates" })}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {pushError && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <p className="text-sm text-red-600">{pushError}</p>
+                                </div>
+                            )}
+
+                            {pushPermission === "denied" && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <p className="text-sm text-amber-800">
+                                        {t("push.permissionDenied", {
+                                            defaultValue:
+                                                "Notifications are blocked. Please enable them in your browser settings.",
+                                        })}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t flex gap-3">
+                            {!pushSuccess && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={handleDismissPushDialog}
+                                        disabled={isPushLoading}
+                                    >
+                                        {t("push.notNow", { defaultValue: "Not Now" })}
+                                    </Button>
+                                    <Button
+                                        className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
+                                        onClick={handleEnablePush}
+                                        disabled={isPushLoading || pushPermission === "denied"}
+                                    >
+                                        {isPushLoading ? (
+                                            <span className="flex items-center gap-2">
+                                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                {t("push.enabling", { defaultValue: "Enabling..." })}
+                                            </span>
+                                        ) : (
+                                            <>
+                                                <Bell className="w-4 h-4 mr-2" />
+                                                {t("push.enable", { defaultValue: "Enable Notifications" })}
+                                            </>
+                                        )}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Safe area padding for iOS */}
+                        <div className="h-safe-area-inset-bottom" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
