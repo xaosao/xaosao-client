@@ -15,6 +15,7 @@ import "./i18n/config";
 import Toast from "./components/toast";
 import { useLanguageInit } from "./hooks/use-language-init";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
+import { DebugConsole } from "./components/debug/DebugConsole";
 
 // Check if device is mobile
 function isMobileDevice(): boolean {
@@ -194,6 +195,7 @@ export default function App() {
       <GlobalLoadingIndicator />
       <Outlet />
       <InstallPrompt />
+      <DebugConsole />
     </>
   );
 }
