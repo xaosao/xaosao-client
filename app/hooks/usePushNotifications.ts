@@ -564,7 +564,54 @@ export function usePushNotifications({
 
         registration = await Promise.race([readyPromise, timeoutPromise]);
         console.log("[Push] Service worker ready, scope:", registration.scope);
-        console.log("[Push] Registration has pushManager:", !!registration.pushManager);
+        console.log("[Push] Registration state:", {
+          active: !!registration.active,
+          activeState: registration.active?.state,
+          installing: !!registration.installing,
+          waiting: !!registration.waiting,
+          hasPushManager: !!registration.pushManager,
+          scope: registration.scope,
+        });
+
+        // Step 4b: For iOS PWA, ensure service worker is actively controlling the page
+        if (iosPWA && registration.active && registration.active.state !== "activated") {
+          console.log("[Push] iOS PWA: Waiting for service worker to fully activate...");
+          await new Promise<void>((resolve, reject) => {
+            const sw = registration.active!;
+            const timeout = setTimeout(() => reject(new Error("SW activation timeout")), 10000);
+
+            if (sw.state === "activated") {
+              clearTimeout(timeout);
+              resolve();
+              return;
+            }
+
+            sw.addEventListener("statechange", () => {
+              console.log("[Push] SW state changed to:", sw.state);
+              if (sw.state === "activated") {
+                clearTimeout(timeout);
+                resolve();
+              }
+            });
+          });
+        }
+
+        // Step 4c: Ensure the page is controlled by the service worker (important for iOS)
+        if (iosPWA && !navigator.serviceWorker.controller) {
+          console.log("[Push] iOS PWA: Page not controlled by SW, calling clients.claim()...");
+          // The SW should call clients.claim() on activate, but we wait a bit
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          if (!navigator.serviceWorker.controller) {
+            console.log("[Push] iOS PWA: Still no controller, will try to refresh SW...");
+            // Try to force the service worker to take control
+            if (registration.active) {
+              registration.active.postMessage({ type: 'SKIP_WAITING' });
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+          console.log("[Push] iOS PWA: Controller status:", !!navigator.serviceWorker.controller);
+        }
 
       } catch (swError: any) {
         console.error("[Push] Service worker error at step:", swError);
@@ -582,26 +629,60 @@ export function usePushNotifications({
 
       // Step 5: Check if pushManager is available on the registration
       console.log("[Push] Step 5 - Checking pushManager availability...");
-      if (!registration.pushManager) {
+
+      // For iOS PWA, pushManager might not be immediately available
+      // Try with retries
+      let pushManagerAvailable = !!registration.pushManager;
+
+      if (!pushManagerAvailable && iosPWA) {
+        console.log("[Push] iOS PWA: pushManager not available, retrying with delays...");
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          console.log(`[Push] iOS PWA: Retry attempt ${attempt}/3...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+
+          // Re-fetch the registration
+          try {
+            registration = await navigator.serviceWorker.ready;
+            pushManagerAvailable = !!registration.pushManager;
+            console.log(`[Push] iOS PWA: Attempt ${attempt} - pushManager available:`, pushManagerAvailable);
+
+            if (pushManagerAvailable) {
+              console.log("[Push] iOS PWA: pushManager became available on retry!");
+              break;
+            }
+          } catch (retryError) {
+            console.error(`[Push] iOS PWA: Retry ${attempt} failed:`, retryError);
+          }
+        }
+      }
+
+      if (!pushManagerAvailable) {
         console.error("[Push] pushManager not available on registration");
         console.log("[Push] Registration object keys:", Object.keys(registration));
+        console.log("[Push] Registration details:", {
+          scope: registration.scope,
+          active: !!registration.active,
+          activeState: registration.active?.state,
+          installing: !!registration.installing,
+          waiting: !!registration.waiting,
+          updateViaCache: registration.updateViaCache,
+        });
 
         if (isIOS && !isStandalone) {
           throw new Error("On iOS, push notifications require adding this app to your home screen first. Open in Safari, tap Share, then 'Add to Home Screen'.");
         } else if (iosPWA) {
-          // iOS PWA but push not available
-          // Check iOS version again for better error message
-          const match = navigator.userAgent.match(/OS (\d+)_(\d+)/);
-          if (match) {
-            const major = parseInt(match[1], 10);
-            const minor = parseInt(match[2], 10);
-            const versionStr = `${major}.${minor}`;
-            if (major < 16 || (major === 16 && minor < 4)) {
-              throw new Error(`Your iOS version (${versionStr}) doesn't support push notifications. iOS 16.4 or later is required.`);
-            }
-            throw new Error(`Push notifications not available on iOS ${versionStr}. Try: 1) Close app completely, 2) Go to Settings > Safari > Clear History and Website Data, 3) Re-add app to home screen.`);
+          // iOS PWA but push not available - provide very specific instructions
+          const versionStr = iosVersion !== "unknown" ? iosVersion : "your version";
+
+          // Check if this might be a WKWebView issue (Chrome, Firefox, etc. on iOS)
+          const isRealSafari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(navigator.userAgent);
+
+          if (!isRealSafari) {
+            throw new Error("Push notifications only work when added from Safari. Please open this website in Safari (not Chrome or other browsers), then add to home screen.");
           }
-          throw new Error("Push notifications are not available. Try removing the app from home screen and adding it again from Safari.");
+
+          throw new Error(`Push notifications failed on iOS ${versionStr}. Please try:\n1. Delete the app from home screen\n2. Go to Settings > Safari > Clear History and Website Data\n3. Open Safari and visit this website\n4. Tap Share > Add to Home Screen\n5. Open the app and try again`);
         }
         throw new Error("Push notifications are not supported in this browser");
       }
