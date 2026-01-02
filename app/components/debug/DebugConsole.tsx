@@ -204,7 +204,7 @@ export function DebugConsole() {
       {/* Quick Info */}
       {!isMinimized && (
         <div className="px-3 py-2 bg-gray-800 border-t border-gray-700 text-xs">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
               <span className="text-gray-500">SW in navigator:</span>{" "}
               <span className={typeof navigator !== "undefined" && "serviceWorker" in navigator ? "text-green-400" : "text-red-400"}>
@@ -230,6 +230,77 @@ export function DebugConsole() {
               </span>
             </div>
           </div>
+          {/* Run Diagnostics Button */}
+          <button
+            onClick={async () => {
+              addLog("info", "=== Running iOS PWA Diagnostics ===");
+
+              // Basic checks
+              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+              const iosMatch = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+              const iosVersion = iosMatch ? `${iosMatch[1]}.${iosMatch[2]}` : "unknown";
+              const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+
+              addLog("info", `iOS: ${isIOS}, Version: ${iosVersion}, Standalone: ${isStandalone}`);
+              addLog("info", `PushManager in window: ${"PushManager" in window}`);
+              addLog("info", `Notification in window: ${"Notification" in window}`);
+              addLog("info", `serviceWorker in navigator: ${"serviceWorker" in navigator}`);
+
+              // Check service worker registration
+              if ("serviceWorker" in navigator) {
+                try {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  addLog("info", `SW registrations: ${regs.length}`);
+
+                  if (regs.length > 0) {
+                    const reg = await navigator.serviceWorker.ready;
+                    addLog("info", `SW ready, scope: ${reg.scope}`);
+                    addLog("info", `SW active: ${!!reg.active}, state: ${reg.active?.state}`);
+                    addLog("info", `SW pushManager: ${!!reg.pushManager}`);
+
+                    // Check prototype
+                    const proto = Object.getPrototypeOf(reg);
+                    const protoKeys = proto ? Object.getOwnPropertyNames(proto) : [];
+                    addLog("info", `SW Registration prototype: ${proto?.constructor?.name}`);
+                    addLog("info", `Prototype has pushManager: ${protoKeys.includes('pushManager')}`);
+
+                    // Try to access pushManager
+                    if (reg.pushManager) {
+                      try {
+                        const sub = await reg.pushManager.getSubscription();
+                        addLog("info", `Existing subscription: ${!!sub}`);
+                      } catch (e: any) {
+                        addLog("error", `getSubscription error: ${e.message}`);
+                      }
+                    }
+                  }
+                } catch (e: any) {
+                  addLog("error", `SW check error: ${e.message}`);
+                }
+              }
+
+              // Check permissions API
+              if ("permissions" in navigator) {
+                try {
+                  const perm = await navigator.permissions.query({ name: "notifications" as PermissionName });
+                  addLog("info", `Permissions API notifications: ${perm.state}`);
+                } catch (e: any) {
+                  addLog("warn", `Permissions API error: ${e.message}`);
+                }
+              }
+
+              // Notification permission
+              if ("Notification" in window) {
+                addLog("info", `Notification.permission: ${Notification.permission}`);
+              }
+
+              addLog("info", "=== Diagnostics Complete ===");
+              addLog("info", "If PushManager is 'false', go to Settings > Apps > Safari > Advanced > Feature Flags and enable 'Notifications'");
+            }}
+            className="w-full py-1 px-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs"
+          >
+            Run Diagnostics
+          </button>
         </div>
       )}
     </div>

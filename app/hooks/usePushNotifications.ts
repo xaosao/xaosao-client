@@ -633,26 +633,116 @@ export function usePushNotifications({
       // For iOS PWA, pushManager might not be immediately available
       // Try with retries
       let pushManagerAvailable = !!registration.pushManager;
+      let pushManager: PushManager | null = registration.pushManager || null;
 
+      // iOS 18.4+ supports Declarative Web Push - try accessing PushManager differently
       if (!pushManagerAvailable && iosPWA) {
-        console.log("[Push] iOS PWA: pushManager not available, retrying with delays...");
+        console.log("[Push] iOS PWA: pushManager not available on registration, trying alternative approaches...");
 
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          console.log(`[Push] iOS PWA: Retry attempt ${attempt}/3...`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        // Approach 1: Try accessing through prototype
+        try {
+          const proto = Object.getPrototypeOf(registration);
+          console.log("[Push] Registration prototype:", proto?.constructor?.name);
+          console.log("[Push] Registration prototype keys:", proto ? Object.getOwnPropertyNames(proto) : []);
 
-          // Re-fetch the registration
+          // Check if pushManager is defined on prototype
+          if (proto && 'pushManager' in proto) {
+            console.log("[Push] pushManager found in prototype!");
+            pushManager = registration.pushManager;
+            pushManagerAvailable = !!pushManager;
+          }
+        } catch (protoError) {
+          console.log("[Push] Prototype check failed:", protoError);
+        }
+
+        // Approach 2: Try requesting notification permission first (might unlock PushManager)
+        if (!pushManagerAvailable && "Notification" in window) {
+          console.log("[Push] Trying to request Notification permission to unlock PushManager...");
           try {
+            const notifPerm = await Notification.requestPermission();
+            console.log("[Push] Notification permission after request:", notifPerm);
+
+            // Re-check pushManager after permission request
             registration = await navigator.serviceWorker.ready;
             pushManagerAvailable = !!registration.pushManager;
-            console.log(`[Push] iOS PWA: Attempt ${attempt} - pushManager available:`, pushManagerAvailable);
+            pushManager = registration.pushManager || null;
+            console.log("[Push] pushManager after notification permission:", pushManagerAvailable);
+          } catch (notifError) {
+            console.log("[Push] Notification permission request failed:", notifError);
+          }
+        }
 
-            if (pushManagerAvailable) {
-              console.log("[Push] iOS PWA: pushManager became available on retry!");
-              break;
+        // Approach 3: Retry with increasing delays
+        if (!pushManagerAvailable) {
+          console.log("[Push] iOS PWA: Retrying with delays...");
+
+          for (let attempt = 1; attempt <= 5; attempt++) {
+            console.log(`[Push] iOS PWA: Retry attempt ${attempt}/5...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+
+            // Re-fetch the registration
+            try {
+              registration = await navigator.serviceWorker.ready;
+              pushManagerAvailable = !!registration.pushManager;
+              pushManager = registration.pushManager || null;
+
+              // Also check window.PushManager
+              const windowPushManager = (window as any).PushManager;
+              console.log(`[Push] iOS PWA: Attempt ${attempt}:`, {
+                registrationPushManager: pushManagerAvailable,
+                windowPushManager: !!windowPushManager,
+                notificationAPI: "Notification" in window,
+              });
+
+              if (pushManagerAvailable) {
+                console.log("[Push] iOS PWA: pushManager became available on retry!");
+                break;
+              }
+            } catch (retryError) {
+              console.error(`[Push] iOS PWA: Retry ${attempt} failed:`, retryError);
             }
-          } catch (retryError) {
-            console.error(`[Push] iOS PWA: Retry ${attempt} failed:`, retryError);
+          }
+        }
+
+        // Approach 4: Try force re-registering the service worker
+        if (!pushManagerAvailable) {
+          console.log("[Push] iOS PWA: Trying to re-register service worker...");
+          try {
+            // Unregister existing service workers
+            const existingRegs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of existingRegs) {
+              await reg.unregister();
+              console.log("[Push] Unregistered SW with scope:", reg.scope);
+            }
+
+            // Wait a moment
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Re-register
+            const newReg = await navigator.serviceWorker.register("/sw.js");
+            console.log("[Push] Re-registered SW, scope:", newReg.scope);
+
+            // Wait for activation
+            if (newReg.installing) {
+              await new Promise<void>((resolve) => {
+                const sw = newReg.installing!;
+                sw.addEventListener("statechange", () => {
+                  if (sw.state === "activated") {
+                    resolve();
+                  }
+                });
+                setTimeout(resolve, 10000); // Timeout after 10s
+              });
+            }
+
+            // Get fresh ready registration
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            registration = await navigator.serviceWorker.ready;
+            pushManagerAvailable = !!registration.pushManager;
+            pushManager = registration.pushManager || null;
+            console.log("[Push] pushManager after SW re-register:", pushManagerAvailable);
+          } catch (reregError) {
+            console.error("[Push] SW re-register failed:", reregError);
           }
         }
       }
@@ -669,10 +759,21 @@ export function usePushNotifications({
           updateViaCache: registration.updateViaCache,
         });
 
+        // Extra diagnostics for iOS
+        if (iosPWA) {
+          console.log("[Push] iOS PWA Diagnostics:", {
+            windowPushManager: "PushManager" in window,
+            windowNotification: "Notification" in window,
+            navigatorPermissions: "permissions" in navigator,
+            documentVisibility: document.visibilityState,
+            windowFocused: document.hasFocus(),
+          });
+        }
+
         if (isIOS && !isStandalone) {
           throw new Error("On iOS, push notifications require adding this app to your home screen first. Open in Safari, tap Share, then 'Add to Home Screen'.");
         } else if (iosPWA) {
-          // iOS PWA but push not available - provide very specific instructions
+          // iOS PWA but push not available - this is likely an iOS bug
           const versionStr = iosVersion !== "unknown" ? iosVersion : "your version";
 
           // Check if this might be a WKWebView issue (Chrome, Firefox, etc. on iOS)
@@ -682,7 +783,8 @@ export function usePushNotifications({
             throw new Error("Push notifications only work when added from Safari. Please open this website in Safari (not Chrome or other browsers), then add to home screen.");
           }
 
-          throw new Error(`Push notifications failed on iOS ${versionStr}. Please try:\n1. Delete the app from home screen\n2. Go to Settings > Safari > Clear History and Website Data\n3. Open Safari and visit this website\n4. Tap Share > Add to Home Screen\n5. Open the app and try again`);
+          // This is likely an iOS 18.x bug
+          throw new Error(`iOS ${versionStr} is not exposing Push API to this app. This appears to be an iOS bug.\n\nPlease try:\n1. Go to Settings > Apps > Safari > Advanced > Feature Flags\n2. Make sure "Notifications" is ON\n3. Restart your iPhone completely\n4. Delete the app from home screen\n5. Clear Safari data (Settings > Apps > Safari > Clear History and Website Data)\n6. Re-add the app from Safari\n\nIf this still doesn't work, please report this bug to Apple.`);
         }
         throw new Error("Push notifications are not supported in this browser");
       }
