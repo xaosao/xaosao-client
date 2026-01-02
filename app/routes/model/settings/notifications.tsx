@@ -12,7 +12,7 @@ import { Switch } from "~/components/ui/switch";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 // service:
-import { getModelProfile, updateModelSetting } from "~/services/model-profile.server";
+import { getModelOwnProfile, updateModelSetting } from "~/services/model-profile.server";
 import { requireModelSession } from "~/services/model-auth.server";
 
 type NotificationType = "push" | "sms";
@@ -26,7 +26,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const modelId = await requireModelSession(request);
-  const model = await getModelProfile(modelId);
+  const model = await getModelOwnProfile(modelId);
   return { model };
 }
 
