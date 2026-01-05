@@ -85,6 +85,7 @@ export default [
           "./routes/model/settings/wallet/delete.$transactionId.tsx"
         ),
       ]),
+      route("notifications", "./routes/model/settings/notifications.tsx"),
       route("password", "./routes/model/settings/password.tsx"),
       route("report", "./routes/model/settings/report.tsx"),
       route("delete-account", "./routes/model/settings/delete-account.tsx"),

@@ -82,7 +82,9 @@ export default function CompleteBookingModal() {
       : t("modelDating.serviceUnavailable");
 
    const hasQRCode = booking?.completionToken && booking?.status === "awaiting_confirmation";
-   const qrUrl = hasQRCode ? `${VITE_FRONTEND_URL}customer/confirm-booking/${booking.completionToken}` : "";
+   // Ensure the URL has proper slash between base URL and path
+   const baseUrl = VITE_FRONTEND_URL.endsWith('/') ? VITE_FRONTEND_URL : `${VITE_FRONTEND_URL}/`;
+   const qrUrl = hasQRCode ? `${baseUrl}customer/confirm-booking/${booking.completionToken}` : "";
 
    useEffect(() => {
       if (qrUrl) {

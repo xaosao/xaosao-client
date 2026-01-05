@@ -90,13 +90,13 @@ export default function VerifyOTPPage() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="flex justify-center space-x-3">
+                        <div className="flex justify-center space-x-1 sm:space-x-3">
                             {otp.map((digit, index) => (
                                 <input
                                     key={index}
                                     ref={(el) => (inputRefs.current[index] = el)}
                                     type="text"
-                                    inputMode="numeric"
+                                    // inputMode="numeric"
                                     maxLength={1}
                                     value={digit}
                                     onChange={(e) => handleChange(index, e.target.value)}
