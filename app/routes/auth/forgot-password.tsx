@@ -55,45 +55,46 @@ export async function action({ request }: Route.ActionArgs) {
             if (res.isValid) {
                 return redirect("/reset-password?otp=" + otp);
             }
-            return { success: false, error: true, message: "Invalid OTP. Please request new one!" };
+            return { success: false, error: true, messageKey: "forgotPassword.errors.invalidOtp" };
         } catch (error) {
             console.error("Reset password error:", error);
-            return { success: false, error: true, message: "Something went wrong. Please try again later." };
+            return { success: false, error: true, messageKey: "forgotPassword.errors.somethingWentWrong" };
         }
     }
 
     try {
         if (isResend) {
             if (!phoneNumber) {
-                return { success: false, error: true, message: "Phone number is required!" };
+                return { success: false, error: true, messageKey: "forgotPassword.errors.phoneRequired" };
             }
             await validateForgotInputs({ whatsapp: Number(phoneNumber) });
             const resendRes = await resendResetToken(Number(phoneNumber));
-            return { ...resendRes, phone: Number(phoneNumber), isResend: true };
+            return { ...resendRes, phone: Number(phoneNumber), isResend: true, messageKey: resendRes.success ? "forgotPassword.errors.otpSentSuccess" : "forgotPassword.errors.failedToSendOtp" };
         }
         if (!phone) {
-            return { success: false, error: true, message: "Phone number is required!" };
+            return { success: false, error: true, messageKey: "forgotPassword.errors.phoneRequired" };
         }
         await validateForgotInputs({ whatsapp: Number(phone) });
         const forgotRes = await forgotPassword(Number(phone));
         if (forgotRes.success) {
-            return { phone: Number(phone), success: true, error: false, message: "OTP sent successfully to your phone number!", isResend: false };
+            return { phone: Number(phone), success: true, error: false, messageKey: "forgotPassword.errors.otpSentSuccess", isResend: false };
         }
 
-        return { success: false, error: true, message: forgotRes.message ?? "Failed to send OTP", isResend: false, phone: Number(phone) };
+        return { success: false, error: true, messageKey: "forgotPassword.errors.failedToSendOtp", isResend: false, phone: Number(phone) };
     } catch (error: any) {
         console.error("Forgot password error:", error);
         if (error instanceof FieldValidationError) {
             return {
                 success: false,
                 error: true,
-                message: error.payload.message || "Something went wrong. Try again later!",
+                message: error.payload.message,
+                messageKey: "forgotPassword.errors.somethingWentWrong",
                 isResend: isResend,
                 phone: isResend ? Number(phoneNumber) : (phone ? Number(phone) : undefined),
             };
         }
         const value = Object.values(error)[0];
-        return { success: false, error: true, message: value, isResend: isResend, phone: isResend ? Number(phoneNumber) : undefined };
+        return { success: false, error: true, message: value as string, messageKey: "forgotPassword.errors.somethingWentWrong", isResend: isResend, phone: isResend ? Number(phoneNumber) : undefined };
     }
 }
 
@@ -212,7 +213,7 @@ export default function ForgotPasswordPage() {
                                 <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                                     <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                                     <span className="text-red-200 text-sm">
-                                        {actionData?.message}
+                                        {actionData?.messageKey ? t(actionData.messageKey) : actionData?.message}
                                     </span>
                                 </div>
                             )}
@@ -296,7 +297,7 @@ export default function ForgotPasswordPage() {
                                         <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                                             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                                             <span className="text-red-200 text-sm">
-                                                {actionData?.message}
+                                                {actionData?.messageKey ? t(actionData.messageKey) : actionData?.message}
                                             </span>
                                         </div>
                                     )}

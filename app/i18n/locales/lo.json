@@ -103,7 +103,14 @@
     "dontReceive": "ບໍ່ໄດ້ຮັບລະຫັດ OTP?",
     "resendCode": "ສົ່ງອີກຄັ້ງ",
     "resending": "ກຳລັງສົ່ງອີກຄັ້ງ...",
-    "resendCodeIn": "ທ່ານສາມາດສົ່ງລະຫັດອີກຄັ້ງໃນ:"
+    "resendCodeIn": "ທ່ານສາມາດສົ່ງລະຫັດອີກຄັ້ງໃນ:",
+    "errors": {
+      "invalidOtp": "ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ. ກະລຸນາຂໍລະຫັດໃໝ່!",
+      "somethingWentWrong": "ມີບາງຢ່າງຜິດພາດ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
+      "phoneRequired": "ກະລຸນາໃສ່ເບີໂທລະສັບ!",
+      "otpSentSuccess": "ສົ່ງລະຫັດ OTP ໄປຫາເບີໂທລະສັບຂອງທ່ານສຳເລັດແລ້ວ!",
+      "failedToSendOtp": "ບໍ່ສາມາດສົ່ງລະຫັດ OTP ໄດ້"
+    }
   },
   "resetPassword": {
     "title": "ຣີເຊັດລະຫັດຜ່ານ?",
@@ -113,7 +120,19 @@
     "passwordMismatch": "ລະຫັດຜ່ານບໍ່ຕົງກັນ!",
     "reset": "ຣີເຊັດ",
     "reseting": "ກຳລັງຣີເຊັດ...",
-    "rememberPassword": "ຈື່ລະຫັດຜ່ານໄດ້ແລ້ວ?"
+    "rememberPassword": "ຈື່ລະຫັດຜ່ານໄດ້ແລ້ວ?",
+    "errors": {
+      "invalidOtpOrPassword": "ລະຫັດ OTP ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!",
+      "passwordMismatch": "ລະຫັດຜ່ານບໍ່ຕົງກັນ!",
+      "somethingWentWrong": "ມີບາງຢ່າງຜິດພາດ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ!"
+    }
+  },
+  "verifyOtp": {
+    "title": "ໃກ້ຈະສຳເລັດແລ້ວ!",
+    "subtitle": "ໃສ່ລະຫັດ 6 ຕົວເລກທີ່ສົ່ງໄປຫາເບີໂທລະສັບຂອງທ່ານເພື່ອຢືນຢັນຕົວຕົນ",
+    "verifyCode": "ຢືນຢັນລະຫັດ",
+    "resendCodeIn": "ສົ່ງລະຫັດອີກຄັ້ງໃນ",
+    "resendCode": "ສົ່ງລະຫັດອີກຄັ້ງ"
   },
   "register": {
     "title": "ສ້າງບັນຊີໃໝ່!",

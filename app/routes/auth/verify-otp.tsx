@@ -1,8 +1,10 @@
 import type React from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "~/components/ui/button"
 import { useState, useRef, useEffect } from "react"
 
 export default function VerifyOTPPage() {
+    const { t } = useTranslation()
     const [otp, setOtp] = useState(["", "", "", "", "", ""])
     const [timeLeft, setTimeLeft] = useState(60)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -84,9 +86,9 @@ export default function VerifyOTPPage() {
                 <div className="space-y-6">
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-rose-500 mb-2">
-                            Almost There!
+                            {t('verifyOtp.title')}
                         </h1>
-                        <p className="text-gray-400">Enter the 6-digit code sent to your phone number to verify your identity</p>
+                        <p className="text-gray-400">{t('verifyOtp.subtitle')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -111,16 +113,16 @@ export default function VerifyOTPPage() {
                             className="text-xs uppercase w-full bg-rose-500 text-white py-3 font-medium shadow-lg hover:shadow-rose-500/25 transition-all duration-300"
                             disabled={otp.some((digit) => !digit)}
                         >
-                            Verify Code
+                            {t('verifyOtp.verifyCode')}
                         </Button>
                     </form>
 
                     <div className="text-center">
                         {timeLeft > 0 ? (
-                            <p className="text-sm text-gray-400">Resend code in {timeLeft}s</p>
+                            <p className="text-sm text-gray-400">{t('verifyOtp.resendCodeIn')} {timeLeft}s</p>
                         ) : (
                             <button onClick={handleResend} className="cursor-pointer text-sm text-rose-500 hover:text-rose-600 font-medium">
-                                Resend Code
+                                {t('verifyOtp.resendCode')}
                             </button>
                         )}
                     </div>

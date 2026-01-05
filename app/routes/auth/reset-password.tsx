@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { AlertCircle, Loader } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Loader } from "lucide-react"
 import { Form, Link, redirect, useActionData, useNavigate, useNavigation } from "react-router"
 import type { Route } from "./+types/reset-password"
 
@@ -27,12 +27,12 @@ export async function action({ request }: Route.ActionArgs) {
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (!otp || !password || !confirmPassword) {
-        return { success: false, error: true, message: "Invalid OTP or password!" }
+        return { success: false, error: true, messageKey: "resetPassword.errors.invalidOtpOrPassword" }
     }
 
     // Check if passwords match
     if (password !== confirmPassword) {
-        return { success: false, error: true, message: "Passwords do not match!" }
+        return { success: false, error: true, messageKey: "resetPassword.errors.passwordMismatch" }
     }
 
     try {
@@ -41,18 +41,19 @@ export async function action({ request }: Route.ActionArgs) {
         if (res.success) {
             return redirect("/login")
         }
-        return { success: res.success, error: res.error, message: res.message }
+        return { success: res.success, error: res.error, message: res.message, messageKey: "resetPassword.errors.somethingWentWrong" }
     } catch (error: any) {
         console.log("Error::", error)
         if (error instanceof FieldValidationError) {
             return {
                 success: false,
                 error: true,
-                message: error.payload.message || "Something went wrong. Try again later!",
+                message: error.payload.message,
+                messageKey: "resetPassword.errors.somethingWentWrong",
             };
         }
         const value = Object.values(error)[0];
-        return { success: false, error: true, message: value };
+        return { success: false, error: true, message: value as string, messageKey: "resetPassword.errors.somethingWentWrong" };
     }
 }
 
@@ -61,8 +62,18 @@ export default function ResetPasswordPage() {
     const navigate = useNavigate();
     const navigation = useNavigation();
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const actionData = useActionData<typeof action>();
     const isSubmitting = navigation.state !== 'idle' && navigation.formMethod === "POST";
+
+    const togglePasswordVisibility = useCallback(() => {
+        setShowPassword((prev) => !prev);
+    }, []);
+
+    const toggleConfirmPasswordVisibility = useCallback(() => {
+        setShowConfirmPassword((prev) => !prev);
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -116,35 +127,55 @@ export default function ResetPasswordPage() {
                             <Label htmlFor="password" className="text-gray-300">
                                 {t('resetPassword.newPassword')} <span className="text-rose-500">*</span>
                             </Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                name="password"
-                                placeholder="Pa$$w0rd!"
-                                className="mt-1 border-white text-white placeholder-gray-400 backdrop-blur-sm"
-                                required
-                            />
+                            <div className="relative mt-1">
+                                <Input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    name="password"
+                                    placeholder="Pa$$w0rd!"
+                                    className="border-white text-white placeholder-gray-400 backdrop-blur-sm pr-10"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={togglePasswordVisibility}
+                                    className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword" className="text-gray-300">
                                 {t('resetPassword.confirmPassword')} <span className="text-rose-500">*</span>
                             </Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                name="confirmPassword"
-                                placeholder="Pa$$w0rd!"
-                                className="mt-1 border-white text-white placeholder-gray-400 backdrop-blur-sm"
-                                required
-                            />
+                            <div className="relative mt-1">
+                                <Input
+                                    id="confirmPassword"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    name="confirmPassword"
+                                    placeholder="Pa$$w0rd!"
+                                    className="border-white text-white placeholder-gray-400 backdrop-blur-sm pr-10"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={toggleConfirmPasswordVisibility}
+                                    className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
                         </div>
 
                         {actionData?.error && (
                             <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                                 <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                                 <span className="text-red-200 text-sm">
-                                    {actionData?.message}
+                                    {actionData?.messageKey ? t(actionData.messageKey) : actionData?.message}
                                 </span>
                             </div>
                         )}

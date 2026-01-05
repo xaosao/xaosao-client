@@ -103,7 +103,14 @@
     "dontReceive": "Don't Receive OTP Code?",
     "resendCode": "Resend Code",
     "resending": "Resending...",
-    "resendCodeIn": "You can resend code in:"
+    "resendCodeIn": "You can resend code in:",
+    "errors": {
+      "invalidOtp": "Invalid OTP. Please request a new one!",
+      "somethingWentWrong": "Something went wrong. Please try again later.",
+      "phoneRequired": "Phone number is required!",
+      "otpSentSuccess": "OTP sent successfully to your phone number!",
+      "failedToSendOtp": "Failed to send OTP"
+    }
   },
   "resetPassword": {
     "title": "Reset Password?",
@@ -113,7 +120,19 @@
     "passwordMismatch": "Passwords do not match!",
     "reset": "Reset",
     "reseting": "Reseting...",
-    "rememberPassword": "Remember your password?"
+    "rememberPassword": "Remember your password?",
+    "errors": {
+      "invalidOtpOrPassword": "Invalid OTP or password!",
+      "passwordMismatch": "Passwords do not match!",
+      "somethingWentWrong": "Something went wrong. Try again later!"
+    }
+  },
+  "verifyOtp": {
+    "title": "Almost There!",
+    "subtitle": "Enter the 6-digit code sent to your phone number to verify your identity",
+    "verifyCode": "Verify Code",
+    "resendCodeIn": "Resend code in",
+    "resendCode": "Resend Code"
   },
   "register": {
     "title": "Create an Account!",

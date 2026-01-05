@@ -103,7 +103,14 @@
     "dontReceive": "ไม่ได้รับรหัส OTP?",
     "resendCode": "ส่งอีกครั้ง",
     "resending": "กำลังส่งอีกครั้ง...",
-    "resendCodeIn": "คุณสามารถส่งรหัสอีกครั้งใน:"
+    "resendCodeIn": "คุณสามารถส่งรหัสอีกครั้งใน:",
+    "errors": {
+      "invalidOtp": "รหัส OTP ไม่ถูกต้อง กรุณาขอรหัสใหม่!",
+      "somethingWentWrong": "เกิดข้อผิดพลาด กรุณาลองใหม่ภายหลัง",
+      "phoneRequired": "กรุณากรอกหมายเลขโทรศัพท์!",
+      "otpSentSuccess": "ส่งรหัส OTP ไปยังหมายเลขโทรศัพท์ของคุณสำเร็จแล้ว!",
+      "failedToSendOtp": "ไม่สามารถส่งรหัส OTP ได้"
+    }
   },
   "resetPassword": {
     "title": "รีเซ็ตรหัสผ่าน?",
@@ -113,7 +120,19 @@
     "passwordMismatch": "รหัสผ่านไม่ตรงกัน!",
     "reset": "รีเซ็ต",
     "reseting": "กำลังรีเซ็ต...",
-    "rememberPassword": "จำรหัสผ่านได้แล้ว?"
+    "rememberPassword": "จำรหัสผ่านได้แล้ว?",
+    "errors": {
+      "invalidOtpOrPassword": "รหัส OTP หรือรหัสผ่านไม่ถูกต้อง!",
+      "passwordMismatch": "รหัสผ่านไม่ตรงกัน!",
+      "somethingWentWrong": "เกิดข้อผิดพลาด กรุณาลองใหม่ภายหลัง!"
+    }
+  },
+  "verifyOtp": {
+    "title": "ใกล้จะเสร็จแล้ว!",
+    "subtitle": "กรอกรหัส 6 หลักที่ส่งไปยังหมายเลขโทรศัพท์ของคุณเพื่อยืนยันตัวตน",
+    "verifyCode": "ยืนยันรหัส",
+    "resendCodeIn": "ส่งรหัสอีกครั้งใน",
+    "resendCode": "ส่งรหัสอีกครั้ง"
   },
   "register": {
     "title": "สร้างบัญชี!",
