@@ -208,7 +208,23 @@
     "registerButton": "ลงทะเบียน",
     "registering": "กำลังลงทะเบียน....",
     "alreadyHaveAccount": "มีบัญชีอยู่แล้ว?",
-    "backLogin": "กลับไปเข้าสู่ระบบ"
+    "backLogin": "กลับไปเข้าสู่ระบบ",
+    "errors": {
+      "invalidGender": "กรุณาเลือกเพศที่ถูกต้อง!",
+      "profileRequired": "จำเป็นต้องมีรูปโปรไฟล์",
+      "profileTooLarge": "รูปโปรไฟล์ต้องมีขนาดน้อยกว่า 10MB",
+      "invalidImageFormat": "รูปโปรไฟล์ต้องเป็นรูปแบบ JPG, JPEG, PNG, WebP หรือ HEIC",
+      "uploadFailed": "การอัปโหลดรูปโปรไฟล์ล้มเหลว กรุณาลองใหม่อีกครั้ง",
+      "firstNameRequired": "จำเป็นต้องระบุชื่อ!",
+      "usernameRequired": "จำเป็นต้องระบุชื่อผู้ใช้!",
+      "invalidPhone": "รูปแบบหมายเลขโทรศัพท์ไม่ถูกต้อง!",
+      "invalidPassword": "รหัสผ่านไม่ถูกต้อง!",
+      "dobRequired": "จำเป็นต้องระบุวันเกิด!",
+      "underAge": "เราไม่อนุญาตให้ผู้ที่มีอายุต่ำกว่า 18 ปี!",
+      "passwordMismatch": "รหัสผ่านไม่ตรงกัน กรุณาลองใหม่อีกครั้ง!",
+      "somethingWentWrong": "เกิดข้อผิดพลาดบางอย่าง กรุณาลองใหม่อีกครั้ง",
+      "invalidRequest": "วิธีการร้องขอไม่ถูกต้อง"
+    }
   },
   "discover": {
     "onlineMatchers": "ผู้ใช้ออนไลน์:",

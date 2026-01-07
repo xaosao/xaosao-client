@@ -59,19 +59,19 @@ export async function action({ request }: Route.ActionArgs) {
     if (genderValue === "male" || genderValue === "female" || genderValue === "other") {
         gender = genderValue as Gender
     } else {
-        return { success: false, error: true, message: "Please select a valid gender!" }
+        return { success: false, error: true, messageKey: "register.errors.invalidGender" }
     }
 
     // Profile image validation (required)
     if (!newProfile || !(newProfile instanceof File) || newProfile.size === 0) {
-        return { success: false, error: true, message: "Profile image is required" };
+        return { success: false, error: true, messageKey: "register.errors.profileRequired" };
     }
 
     let profileUrl = "";
     if (newProfile && newProfile instanceof File && newProfile.size > 0) {
         // File size validation (max 10MB)
         if (newProfile.size > 10 * 1024 * 1024) {
-            return { success: false, error: true, message: "Profile image must be less than 10MB" };
+            return { success: false, error: true, messageKey: "register.errors.profileTooLarge" };
         }
 
         // File type validation (relaxed for iOS compatibility - iOS may report heic/heif or empty type)
@@ -79,7 +79,7 @@ export async function action({ request }: Route.ActionArgs) {
         const fileExtension = newProfile.name.toLowerCase().split('.').pop();
         const allowedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
         if (!allowedTypes.includes(newProfile.type) && !allowedExtensions.includes(fileExtension || "")) {
-            return { success: false, error: true, message: "Profile image must be JPG, JPEG, PNG, WebP, or HEIC format" };
+            return { success: false, error: true, messageKey: "register.errors.invalidImageFormat" };
         }
 
         try {
@@ -88,7 +88,7 @@ export async function action({ request }: Route.ActionArgs) {
             profileUrl = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
         } catch (uploadError: any) {
             console.error("Profile upload error:", uploadError);
-            return { success: false, error: true, message: "Failed to upload profile image. Please try again." };
+            return { success: false, error: true, messageKey: "register.errors.uploadFailed" };
         }
     }
 
@@ -104,34 +104,34 @@ export async function action({ request }: Route.ActionArgs) {
     };
 
     if (!signUpData.firstName) {
-        return { success: false, error: true, message: "First name is required!" }
+        return { success: false, error: true, messageKey: "register.errors.firstNameRequired" }
     }
 
     if (!signUpData.username) {
-        return { success: false, error: true, message: "Username is required!" }
+        return { success: false, error: true, messageKey: "register.errors.usernameRequired" }
     }
 
     if (!signUpData.whatsapp) {
-        return { success: false, error: true, message: "Invalid or incorrect phone number format!" }
+        return { success: false, error: true, messageKey: "register.errors.invalidPhone" }
     }
 
     if (!signUpData.password) {
-        return { success: false, error: true, message: "Invalid password!" }
+        return { success: false, error: true, messageKey: "register.errors.invalidPassword" }
     }
 
     if (!signUpData.dob) {
-        return { success: false, error: true, message: "Date of birth is required!" }
+        return { success: false, error: true, messageKey: "register.errors.dobRequired" }
     }
 
     if (signUpData.dob) {
         const isChild = isAdult(signUpData.dob);
         if (!isChild) {
-            return { success: false, error: true, message: "We're not allow under 18 year old!" }
+            return { success: false, error: true, messageKey: "register.errors.underAge" }
         }
     }
 
     if (signUpData.password !== confirmPassword) {
-        return { success: false, error: true, message: "Password missed match. Please try again!" }
+        return { success: false, error: true, messageKey: "register.errors.passwordMismatch" }
     }
 
     if (request.method === "POST") {
@@ -146,13 +146,13 @@ export async function action({ request }: Route.ActionArgs) {
         } catch (error: any) {
             console.log("Failed:", error)
             if (error instanceof FieldValidationError) {
-                return { success: error.payload.success, error: error.payload.error, message: error.payload.message }
+                return { success: error.payload.success, error: error.payload.error, messageKey: error.payload.messageKey || "register.errors.somethingWentWrong", message: error.payload.message }
             }
             const value = Object.values(error)[0];
-            return { success: false, error: true, message: value };
+            return { success: false, error: true, message: value as string, messageKey: "register.errors.somethingWentWrong" };
         }
     }
-    return { success: false, error: true, message: "Invalid request method." };
+    return { success: false, error: true, messageKey: "register.errors.invalidRequest" };
 }
 
 export default function SignUpPage() {
@@ -210,12 +210,12 @@ export default function SignUpPage() {
         setIsCompressing(true);
 
         try {
-            // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
+            // Compress image to max 1MB to avoid BunnyCDN upload limits
             const compressed = await compressImage(file, {
                 maxWidth: 1200,
                 maxHeight: 1200,
-                quality: 0.8,
-                maxSizeMB: 2,
+                quality: 0.7,
+                maxSizeMB: 1,
             });
 
             // Create preview from compressed file
@@ -474,7 +474,7 @@ export default function SignUpPage() {
                         <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                             <span className="text-red-200 text-sm">
-                                {actionData.message}
+                                {actionData.messageKey ? t(actionData.messageKey) : actionData.message}
                             </span>
                         </div>
                     )}
@@ -482,7 +482,7 @@ export default function SignUpPage() {
                         <div className="mb-4 p-3 bg-red-500/20 border border-green-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                             <AlertCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                             <span className="text-green-200 text-sm">
-                                {actionData.message}
+                                {actionData.messageKey ? t(actionData.messageKey) : actionData.message}
                             </span>
                         </div>
                     )}

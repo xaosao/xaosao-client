@@ -208,7 +208,23 @@
     "registerButton": "Register",
     "registering": "Registering....",
     "alreadyHaveAccount": "Already have an account?",
-    "backLogin": "Back Login"
+    "backLogin": "Back Login",
+    "errors": {
+      "invalidGender": "Please select a valid gender!",
+      "profileRequired": "Profile image is required",
+      "profileTooLarge": "Profile image must be less than 10MB",
+      "invalidImageFormat": "Profile image must be JPG, JPEG, PNG, WebP, or HEIC format",
+      "uploadFailed": "Failed to upload profile image. Please try again.",
+      "firstNameRequired": "First name is required!",
+      "usernameRequired": "Username is required!",
+      "invalidPhone": "Invalid or incorrect phone number format!",
+      "invalidPassword": "Invalid password!",
+      "dobRequired": "Date of birth is required!",
+      "underAge": "We do not allow users under 18 years old!",
+      "passwordMismatch": "Passwords do not match. Please try again!",
+      "somethingWentWrong": "Something went wrong. Please try again.",
+      "invalidRequest": "Invalid request method."
+    }
   },
   "discover": {
     "onlineMatchers": "Online matchers:",
