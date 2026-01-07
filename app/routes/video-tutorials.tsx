@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Play, X } from "lucide-react";
+import { Play, X } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";
@@ -11,7 +11,8 @@ interface VideoItem {
    id: string;
    titleKey: string;
    descriptionKey: string;
-   url: string;
+   url: string; // iframe embed URL for mobile
+   directUrl: string; // direct MP4 URL for desktop
    thumbnail?: string;
    duration: string;
 }
@@ -21,28 +22,32 @@ const modelVideos: VideoItem[] = [
       id: "model-1",
       titleKey: "videoTutorials.companionVideos.register.title",
       descriptionKey: "videoTutorials.companionVideos.register.description",
-      url: "https://xs-images.b-cdn.net/xaosao-model-video/register.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/2fd8c2bf-ac85-48b5-9db9-552ffcbe23ee",
+      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/register.mp4",
       duration: "9:01"
    },
    {
       id: "model-2",
       titleKey: "videoTutorials.companionVideos.referral.title",
       descriptionKey: "videoTutorials.companionVideos.referral.description",
-      url: "https://xs-images.b-cdn.net/xaosao-model-video/refferal.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/378e7288-9562-40c3-817f-549bf5eaa719",
+      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/refferal.mp4",
       duration: "1:29"
    },
    {
       id: "model-3",
       titleKey: "videoTutorials.companionVideos.serviceBank.title",
       descriptionKey: "videoTutorials.companionVideos.serviceBank.description",
-      url: "https://xs-images.b-cdn.net/xaosao-model-video/service_bank_images.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/bc260cc5-981f-44d1-abb8-106c866d12ea",
+      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/service_bank_images.mp4",
       duration: "4:37"
    },
    {
       id: "model-4",
       titleKey: "videoTutorials.companionVideos.booking.title",
       descriptionKey: "videoTutorials.companionVideos.booking.description",
-      url: "https://xs-images.b-cdn.net/xaosao-model-video/booking.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/5431ad85-94eb-4c6f-9106-25e4cf53ff00",
+      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/booking.mp4",
       duration: "8:34"
    }
 ];
@@ -52,28 +57,32 @@ const customerVideos: VideoItem[] = [
       id: "customer-1",
       titleKey: "videoTutorials.customerVideos.register.title",
       descriptionKey: "videoTutorials.customerVideos.register.description",
-      url: "https://xs-images.b-cdn.net/customer-video/Register.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/6dbd5d24-0f5e-426e-972a-d642b793059f",
+      directUrl: "https://xs-images.b-cdn.net/customer-video/Register.mp4",
       duration: "6:02"
    },
    {
       id: "customer-2",
       titleKey: "videoTutorials.customerVideos.forgotPassword.title",
       descriptionKey: "videoTutorials.customerVideos.forgotPassword.description",
-      url: "https://xs-images.b-cdn.net/customer-video/Customer-forgot-password-02.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/1f607b15-6876-49f3-8895-c44a7e7052cd",
+      directUrl: "https://xs-images.b-cdn.net/customer-video/Customer-forgot-password-02.mp4",
       duration: "2:39"
    },
    {
       id: "customer-3",
       titleKey: "videoTutorials.customerVideos.booking.title",
       descriptionKey: "videoTutorials.customerVideos.booking.description",
-      url: "https://xs-images.b-cdn.net/customer-video/booking.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/da8e13bb-ad53-451a-83fb-bb6543bb2f32",
+      directUrl: "https://xs-images.b-cdn.net/customer-video/booking.mp4",
       duration: "7:46"
    },
    {
       id: "customer-4",
       titleKey: "videoTutorials.customerVideos.overview.title",
       descriptionKey: "videoTutorials.customerVideos.overview.description",
-      url: "https://xs-images.b-cdn.net/customer-video/overview.mp4",
+      url: "https://iframe.mediadelivery.net/play/575603/81e99e33-e21e-4716-a305-558fde0439c1",
+      directUrl: "https://xs-images.b-cdn.net/customer-video/overview.mp4",
       duration: "4:22"
    }
 ];
@@ -85,52 +94,20 @@ interface VideoCardProps {
 }
 
 function VideoCard({ video, onClick, t }: VideoCardProps) {
-   const videoRef = useRef<HTMLVideoElement>(null);
-   const [isHovered, setIsHovered] = useState(false);
-   const [hasError, setHasError] = useState(false);
-   const [isLoaded, setIsLoaded] = useState(false);
-
-   const handleMouseEnter = () => {
-      setIsHovered(true);
-      if (videoRef.current && !hasError && isLoaded) {
-         videoRef.current.currentTime = 0;
-         videoRef.current.play().catch(() => setHasError(true));
-      }
-   };
-
-   const handleMouseLeave = () => {
-      setIsHovered(false);
-      if (videoRef.current) {
-         videoRef.current.pause();
-         videoRef.current.currentTime = 0;
-      }
-   };
-
    return (
       <div
          className="group cursor-pointer border rounded-xl hover:border-rose-500"
          onClick={onClick}
-         onMouseEnter={handleMouseEnter}
-         onMouseLeave={handleMouseLeave}
       >
-         <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden mb-3 shadow-lg">
-            <video
-               ref={videoRef}
-               src={video.url}
-               className="w-full h-full object-cover"
-               muted
-               playsInline
-               preload="none"
-               onLoadedData={() => setIsLoaded(true)}
-               onError={() => setHasError(true)}
-            />
-
-            <div className={`absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity duration-300 ${isHovered && isLoaded ? 'opacity-0' : 'opacity-100'}`}>
+         <div className="relative aspect-video bg-gradient-to-br from-rose-500/20 via-gray-800 to-gray-900 rounded-xl overflow-hidden mb-3 shadow-lg">
+            {/* Play button overlay */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-500/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform duration-300">
                   <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white ml-1" fill="white" />
                </div>
             </div>
 
+            {/* Duration badge */}
             <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium">
                {video.duration}
             </div>
@@ -151,29 +128,48 @@ function VideoCard({ video, onClick, t }: VideoCardProps) {
 interface VideoModalProps {
    video: VideoItem | null;
    onClose: () => void;
-   t: (key: string) => string;
 }
 
-function VideoModal({ video, onClose, t }: VideoModalProps) {
+function VideoModal({ video, onClose }: VideoModalProps) {
+   const containerRef = useRef<HTMLDivElement>(null);
    const videoRef = useRef<HTMLVideoElement>(null);
-   const [isLoading, setIsLoading] = useState(true);
-   const [hasError, setHasError] = useState(false);
+   const [isMobile, setIsMobile] = useState(false);
 
+   // Detect mobile on mount
+   useEffect(() => {
+      const checkMobile = () => {
+         setIsMobile(window.innerWidth < 768);
+      };
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+   }, []);
+
+   // Handle escape key to close modal
+   useEffect(() => {
+      const handleEscape = (e: KeyboardEvent) => {
+         if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', handleEscape);
+      return () => window.removeEventListener('keydown', handleEscape);
+   }, [onClose]);
+
+   // Prevent body scroll when modal is open
+   useEffect(() => {
+      if (video) {
+         document.body.style.overflow = 'hidden';
+      }
+      return () => {
+         document.body.style.overflow = '';
+      };
+   }, [video]);
+
+   // Auto-play video
    useEffect(() => {
       if (video && videoRef.current) {
-         setIsLoading(true);
-         setHasError(false);
-
-         const playVideo = async () => {
-            try {
-               await videoRef.current?.play();
-            } catch {
-               // Autoplay failed, user needs to tap play button
-               console.log("Autoplay blocked, user needs to interact");
-            }
-         };
-
-         playVideo();
+         videoRef.current.play().catch(() => {
+            // Autoplay may be blocked by browser
+         });
       }
    }, [video]);
 
@@ -181,73 +177,38 @@ function VideoModal({ video, onClose, t }: VideoModalProps) {
 
    return (
       <div
-         className="fixed inset-0 bg-black z-50 flex flex-col"
-         onClick={onClose}
+         ref={containerRef}
+         className="fixed inset-0 bg-black z-50"
       >
-         <div className="flex justify-between items-center p-4 bg-black/80">
-            <button
-               onClick={onClose}
-               className="text-white/70 hover:text-white text-sm flex items-center gap-2 transition-colors"
-            >
-               <ArrowLeft className="w-5 h-5" />
-               <span className="hidden sm:inline">{t("videoTutorials.backToTutorials")}</span>
-            </button>
-            <button
-               onClick={onClose}
-               className="text-white/70 hover:text-white transition-colors p-2"
-            >
-               <X className="w-6 h-6" />
-            </button>
-         </div>
-
-         <div
-            className="flex-1 flex items-center justify-center p-2 sm:p-4"
-            onClick={(e) => e.stopPropagation()}
+         {/* Close button */}
+         <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors"
          >
-            <div className="w-full max-w-5xl">
-               <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
-                  {isLoading && (
-                     <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                     </div>
-                  )}
+            <X className="w-6 h-6" />
+         </button>
 
-                  {hasError && (
-                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white">
-                        <p className="text-lg mb-4">Video failed to load</p>
-                        <a
-                           href={video.url}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="bg-rose-500 px-4 py-2 rounded-lg hover:bg-rose-600 transition-colors"
-                        >
-                           Open video directly
-                        </a>
-                     </div>
-                  )}
-
-                  <video
-                     ref={videoRef}
-                     src={video.url}
-                     className="w-full h-full"
-                     controls
-                     playsInline
-                     webkit-playsinline="true"
-                     onLoadedData={() => setIsLoading(false)}
-                     onError={() => {
-                        setIsLoading(false);
-                        setHasError(true);
-                     }}
-                     onCanPlay={() => setIsLoading(false)}
-                  />
-               </div>
-
-               <div className="mt-4 space-y-2 px-2">
-                  <h2 className="text-lg sm:text-2xl font-bold text-white">{t(video.titleKey)}</h2>
-                  <p className="text-gray-400 text-sm sm:text-base line-clamp-3 sm:line-clamp-none">{t(video.descriptionKey)}</p>
-               </div>
+         {isMobile ? (
+            /* Mobile: Use iframe filling entire screen */
+            <iframe
+               src={`${video.url}?autoplay=true&responsive=true&preload=true`}
+               className="w-full h-full"
+               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+               allowFullScreen
+            />
+         ) : (
+            /* Desktop: Use native video element with direct URL */
+            <div className="w-full h-full flex items-center justify-center">
+               <video
+                  ref={videoRef}
+                  src={video.directUrl}
+                  className="max-w-full max-h-full"
+                  controls
+                  autoPlay
+                  playsInline
+               />
             </div>
-         </div>
+         )}
       </div>
    );
 }
@@ -259,18 +220,6 @@ export default function VideoTutorialsPage() {
    const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
    const videos = activeTab === "customer" ? customerVideos : modelVideos;
-
-   // Prevent body scroll when modal is open
-   useEffect(() => {
-      if (selectedVideo) {
-         document.body.style.overflow = 'hidden';
-      } else {
-         document.body.style.overflow = '';
-      }
-      return () => {
-         document.body.style.overflow = '';
-      };
-   }, [selectedVideo]);
 
    return (
       <div className="min-h-screen">
@@ -356,7 +305,8 @@ export default function VideoTutorialsPage() {
                </div>
             </div>
          </div>
-         <VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} t={t} />
+
+         <VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />
       </div>
    );
 }

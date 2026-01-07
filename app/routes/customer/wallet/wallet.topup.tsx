@@ -112,12 +112,12 @@ export default function WalletTopUpPage() {
             icon: QrCode,
             description: t('wallet.topup.qrCodeDescription'),
         },
-        {
-            id: "bank",
-            name: t('wallet.topup.bankTransfer'),
-            icon: Building2,
-            description: t('wallet.topup.bankTransferDescription'),
-        },
+        // {
+        //     id: "bank",
+        //     name: t('wallet.topup.bankTransfer'),
+        //     icon: Building2,
+        //     description: t('wallet.topup.bankTransferDescription'),
+        // },
     ];
 
     function closeHandler() {
