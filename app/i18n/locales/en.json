@@ -28,6 +28,58 @@
     "areYouCompanion": "Are you a companion?",
     "companionLoginHere": "Login here"
   },
+  "videoTutorials": {
+    "title": "Video Tutorials",
+    "subtitle": "Learn how to use XaoSao with our step-by-step video guides. Choose your role below to get started.",
+    "backToHome": "Back to Home",
+    "backToTutorials": "Back to tutorials",
+    "customerTab": "Customer Tutorials",
+    "companionTab": "Companion Tutorials",
+    "customerDescription": "Learn how to discover companions, make bookings, and use all customer features.",
+    "companionDescription": "Complete guides for companions to set up profiles, manage bookings, and maximize earnings.",
+    "readyToStart": "Ready to Get Started?",
+    "customerCta": "Create your account now and start discovering amazing companions!",
+    "companionCta": "Join our platform as a companion and start earning today!",
+    "registerCustomer": "Register as Customer",
+    "registerCompanion": "Register as Companion",
+    "noTutorials": "No tutorials available yet.",
+    "customerVideos": {
+      "register": {
+        "title": "How to Create Your Account",
+        "description": "This comprehensive tutorial walks you through the entire registration process on XaoSao. Learn how to download the app, create your account with your phone number, verify your identity with OTP, set up your profile with photos and personal information, and configure your preferences to start discovering amazing companions in your area."
+      },
+      "forgotPassword": {
+        "title": "Forgot Password? No Problem!",
+        "description": "Lost access to your account? Don't worry! This step-by-step guide shows you exactly how to recover your account using our secure OTP verification system. Learn how to request a password reset, receive and enter your verification code, create a new secure password, and regain access to your account in just a few minutes."
+      },
+      "booking": {
+        "title": "How to Book a Companion",
+        "description": "Master the complete booking process from start to finish. This tutorial covers how to browse companion profiles, check availability and services, select your preferred date and time, choose the services you want, make secure payments, and confirm your appointment. We also explain the booking status system and what to expect after booking."
+      },
+      "overview": {
+        "title": "App Overview & Features",
+        "description": "Get a complete tour of everything XaoSao has to offer! This overview video covers all the main features including the discover page, matching system, real-time chat, booking management, payment options, profile customization, notification settings, and safety features. Perfect for new users who want to make the most of the platform."
+      }
+    },
+    "companionVideos": {
+      "register": {
+        "title": "How to Register as a Companion",
+        "description": "Start your journey as a XaoSao companion with this detailed registration guide. Learn how to create your professional profile, upload attractive photos, write an engaging bio, set your availability schedule, choose your service areas, and complete the verification process. We cover everything you need to know to get approved and start receiving bookings."
+      },
+      "referral": {
+        "title": "Referral Program - Earn More",
+        "description": "Discover how to boost your income with our lucrative referral program! This tutorial explains how the referral system works, how to generate and share your unique referral code, track your referrals in real-time, and earn rewards for every friend who joins and completes their first booking. Learn strategies to maximize your referral earnings."
+      },
+      "serviceBank": {
+        "title": "Setting Up Services & Bank Account",
+        "description": "This essential tutorial guides you through configuring your companion profile for success. Learn how to add and price your services, upload gallery images that attract customers, set up your bank account for secure withdrawals, manage your payment preferences, and ensure your profile stands out. A must-watch before you start accepting bookings."
+      },
+      "booking": {
+        "title": "Managing Bookings",
+        "description": "Become a pro at handling customer bookings with this comprehensive guide. Learn how to view and respond to booking requests, accept or decline appointments, communicate with customers, prepare for your dates, complete bookings successfully, handle special situations, and maintain high ratings. Includes tips for providing excellent service and building repeat customers."
+      }
+    }
+  },
   "location": {
     "enableTitle": "To enable location:",
     "mustEnableFirst": "⚠️ Enable location in settings first, then click Refresh",

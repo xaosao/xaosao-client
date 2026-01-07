@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";
@@ -99,9 +99,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <Button
                 size="lg"
                 className="cursor-pointer w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-                onClick={() => navigate("/register")}
+                onClick={() => navigate("/video-tutorials")}
               >
-                <User className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
                 {t('home.getStarted')}
               </Button>
               <Button

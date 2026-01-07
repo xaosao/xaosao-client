@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
+import type { Route } from "./+types/reset-password"
+import { useState, useEffect, useCallback } from "react"
 import { AlertCircle, Eye, EyeOff, Loader } from "lucide-react"
 import { Form, Link, redirect, useActionData, useNavigate, useNavigation } from "react-router"
-import type { Route } from "./+types/reset-password"
 
 // components
 import { Input } from "~/components/ui/input"

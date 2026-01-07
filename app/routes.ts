@@ -22,6 +22,7 @@ export default [
   route("api/push/unsubscribe", "./routes/api/push/unsubscribe.ts"),
 
   // authentication routes
+  route("video-tutorials", "./routes/video-tutorials.tsx"),
   route("login", "./routes/auth/login.tsx"),
   route("register", "./routes/auth/register.tsx"),
   route("forgot-password", "./routes/auth/forgot-password.tsx"),
