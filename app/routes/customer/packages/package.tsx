@@ -150,7 +150,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
          <nav className="relative z-10 p-6">
             <div className="container mx-auto flex items-center justify-between">
                <button
-                  onClick={() => navigate("/customer/discover")}
+                  onClick={() => navigate("/customer")}
                   className="flex items-center space-x-2 group"
                >
                   <ArrowLeft className="h-5 w-5 text-rose-500 group-hover:-translate-x-1 transition-transform" />

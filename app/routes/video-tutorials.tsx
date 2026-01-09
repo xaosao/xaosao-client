@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Play, X } from "lucide-react";
@@ -100,14 +100,12 @@ function VideoCard({ video, onClick, t }: VideoCardProps) {
          onClick={onClick}
       >
          <div className="relative aspect-video bg-gradient-to-br from-rose-500/20 via-gray-800 to-gray-900 rounded-xl overflow-hidden mb-3 shadow-lg">
-            {/* Play button overlay */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-500/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform duration-300">
                   <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white ml-1" fill="white" />
                </div>
             </div>
 
-            {/* Duration badge */}
             <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded font-medium">
                {video.duration}
             </div>
@@ -131,8 +129,6 @@ interface VideoModalProps {
 }
 
 function VideoModal({ video, onClose }: VideoModalProps) {
-   const containerRef = useRef<HTMLDivElement>(null);
-   const videoRef = useRef<HTMLVideoElement>(null);
    const [isMobile, setIsMobile] = useState(false);
 
    // Detect mobile on mount
@@ -164,23 +160,10 @@ function VideoModal({ video, onClose }: VideoModalProps) {
       };
    }, [video]);
 
-   // Auto-play video
-   useEffect(() => {
-      if (video && videoRef.current) {
-         videoRef.current.play().catch(() => {
-            // Autoplay may be blocked by browser
-         });
-      }
-   }, [video]);
-
    if (!video) return null;
 
    return (
-      <div
-         ref={containerRef}
-         className="fixed inset-0 bg-black z-50"
-      >
-         {/* Close button */}
+      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
          <button
             onClick={onClose}
             className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors"
@@ -189,25 +172,21 @@ function VideoModal({ video, onClose }: VideoModalProps) {
          </button>
 
          {isMobile ? (
-            /* Mobile: Use iframe filling entire screen */
+            // Use BunnyCDN Stream iframe for mobile (handles transcoding)
             <iframe
-               src={`${video.url}?autoplay=true&responsive=true&preload=true`}
+               src={`${video.url}?autoplay=true&muted=true&preload=true`}
                className="w-full h-full"
-               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                allowFullScreen
             />
          ) : (
-            /* Desktop: Use native video element with direct URL */
-            <div className="w-full h-full flex items-center justify-center">
-               <video
-                  ref={videoRef}
-                  src={video.directUrl}
-                  className="max-w-full max-h-full"
-                  controls
-                  autoPlay
-                  playsInline
-               />
-            </div>
+            // Use native video for desktop
+            <video
+               src={video.directUrl}
+               className="max-w-full max-h-full"
+               controls
+               autoPlay
+            />
          )}
       </div>
    );
