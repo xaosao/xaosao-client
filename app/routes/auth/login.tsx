@@ -437,7 +437,7 @@ export default function SignInPage() {
 
                     <div className="flex flex-col sm:flex-row text-center justify-center space-y-2">
                         <div className="space-x-2">
-                            <span className="text-white">{t('login.noAccount')}</span>
+                            <span className="text-sm text-white">{t('login.noAccount')}</span>
                             <Link
                                 to="/register"
                                 className="text-white text-sm font-bold transition-colors rounded uppercase hover:text-rose-500"

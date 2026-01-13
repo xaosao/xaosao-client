@@ -128,7 +128,7 @@ model customer {
   lastName           String?
   dob                DateTime // 1
   gender             String
-  username           String
+  username           String?
   password           String
   latitude           Float
   longitude          Float
@@ -187,7 +187,7 @@ model model {
   id                  String    @id @default(auto()) @map("_id") @db.ObjectId
   firstName           String
   lastName            String?
-  username            String
+  username            String?
   password            String
   dob                 DateTime
   gender              String

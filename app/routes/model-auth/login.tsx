@@ -1,4 +1,4 @@
-import { Loader } from "lucide-react";
+import { ArrowLeft, Loader } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
@@ -179,11 +179,14 @@ export default function ModelLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-4">
       <div className="max-w-md w-full space-y-8 bg-white p-4 sm:p-8 rounded-md shadow-xl">
         <div className="text-center">
-          <div
-            className="flex justify-center mb-4"
-            onClick={() => navigate("/")}
-          >
-            <img src="/images/logo-pink.png" className="w-30 h-10" />
+          <div className="flex items-center justify-center gap-1">
+            <ArrowLeft className="w-5 h-5 text-gray-600 cursor-pointer" onClick={() => navigate("/")} />
+            <div
+              className="flex justify-center mb-4"
+              onClick={() => navigate("/")}
+            >
+              <img src="/images/logo-pink.png" className="w-30 h-10" />
+            </div>
           </div>
           <p className="mt-2 text-sm text-gray-600">
             {t("modelAuth.login.title")}

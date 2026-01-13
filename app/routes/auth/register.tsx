@@ -1,7 +1,7 @@
 import type { Route } from "./+types/register"
 import { useTranslation } from "react-i18next"
 import React, { useState, useEffect, useRef } from "react"
-import { AlertCircle, Camera, Eye, EyeOff, Loader, User, UserPlus } from "lucide-react"
+import { AlertCircle, ArrowLeft, Camera, Eye, EyeOff, Loader, User, UserPlus } from "lucide-react"
 import { Form, Link, redirect, useActionData, useNavigate, useNavigation } from "react-router"
 
 // components
@@ -27,10 +27,6 @@ const backgroundImages = [
     "https://images.pexels.com/photos/16838518/pexels-photo-16838518.jpeg",
 ]
 
-/**
- * Loader to check if user is already logged in
- * Redirects to customer dashboard if session exists
- */
 export async function loader({ request }: Route.LoaderArgs) {
     const { getUserFromSession } = await import("~/services/auths.server");
     const { redirect } = await import("react-router");
@@ -51,7 +47,6 @@ export async function action({ request }: Route.ActionArgs) {
     const ip = await getCurrentIP();
     const accessKey = process.env.APIIP_API_KEY || "";
 
-    const confirmPassword = formData.get("confirmPassword") as string
     const genderValue = formData.get("gender") as string
     const newProfile = formData.get("newProfile") as File | null;
 
@@ -95,7 +90,6 @@ export async function action({ request }: Route.ActionArgs) {
     const signUpData: ICustomerSignupCredentials = {
         firstName: formData.get("firstName") as string,
         lastName: formData.get("lastName") as string,
-        username: formData.get("username") as string,
         whatsapp: Number(formData.get("whatsapp")),
         gender: gender,
         dob: formData.get("dob") as string,
@@ -105,10 +99,6 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (!signUpData.firstName) {
         return { success: false, error: true, messageKey: "register.errors.firstNameRequired" }
-    }
-
-    if (!signUpData.username) {
-        return { success: false, error: true, messageKey: "register.errors.usernameRequired" }
     }
 
     if (!signUpData.whatsapp) {
@@ -128,10 +118,6 @@ export async function action({ request }: Route.ActionArgs) {
         if (!isChild) {
             return { success: false, error: true, messageKey: "register.errors.underAge" }
         }
-    }
-
-    if (signUpData.password !== confirmPassword) {
-        return { success: false, error: true, messageKey: "register.errors.passwordMismatch" }
     }
 
     if (request.method === "POST") {
@@ -161,7 +147,6 @@ export default function SignUpPage() {
     const navigation = useNavigation()
     const [showPassword, setShowPassword] = useState(false)
     const [isAcceptTerms, setIsAcceptTerms] = useState(false)
-    const [showConPassword, setShowConPassword] = useState(false)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [profileImage, setProfileImage] = useState<string>("")
     const [profileError, setProfileError] = useState<string>("")
@@ -270,15 +255,16 @@ export default function SignUpPage() {
                         </h1>
                         <p className="text-white text-xs sm:text-sm">{t('register.subtitle')}</p>
                     </div>
-                    {/* <div className="rounded-full hidden sm:flex items-center justify-start mb-4 cursor-pointer" onClick={() => navigate("/")}>
-                        <img src="/images/logo-white.png" className="w-30 h-10" />
-                    </div> */}
                 </div>
                 <Form method="post" encType="multipart/form-data" className="space-y-1 sm:space-y-4">
                     <div className="flex flex-col items-center justify-center space-y-2">
-                        <Label className="text-gray-300 text-sm">
-                            {t('register.profileImage')}<span className="text-rose-500">*</span>
-                        </Label>
+
+                        <div className="flex items-center justify-center gap-2">
+                            <ArrowLeft className="w-5 h-5 text-white cursor-pointer" onClick={() => navigate("/login")} />
+                            <Label className="text-gray-300 text-sm">
+                                {t('register.profileImage')}<span className="text-rose-500">*</span>
+                            </Label>
+                        </div>
                         <div className="relative w-[100px] h-[100px] rounded-full flex items-center justify-center">
                             <img
                                 src={profileImage || "https://xaosao.b-cdn.net/default-image.png"}
@@ -313,7 +299,7 @@ export default function SignUpPage() {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <Label htmlFor="firstName" className="text-gray-300 text-sm">
                                 {t('register.firstName')}<span className="text-rose-500">*</span>
@@ -342,46 +328,11 @@ export default function SignUpPage() {
                         </div>
                     </div>
 
-                    <div>
-                        <Label htmlFor="username" className="text-gray-300 text-sm">
-                            {t('register.username')}<span className="text-rose-500">*</span>
-                        </Label>
-                        <div className="relative mt-1">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <Input
-                                required
-                                type="text"
-                                id="username"
-                                name="username"
-                                placeholder={t('register.username') + "..."}
-                                className="pl-9 mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <Label htmlFor="mobile" className="text-gray-300 text-sm">
-                            {t('register.mobileNumber')}<span className="text-rose-500">*</span>
-                        </Label>
-                        <div className="flex mt-1 space-x-2">
-                            <Select name="telCode" defaultValue="+856">
-                                <SelectTrigger className="mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm">
-                                    <SelectValue placeholder="🇱🇦" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="+856">🇱🇦 Laos +856</SelectItem>
-                                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                                    <SelectItem value="+66">🇹🇭 Thailand +66</SelectItem>
-                                    <SelectItem value="+84">🇻🇳 Vietnam +84</SelectItem>
-                                    <SelectItem value="+95">🇲🇲 Myanmar +95</SelectItem>
-                                    <SelectItem value="+65">🇸🇬 Singapore +65</SelectItem>
-                                    <SelectItem value="+60">🇲🇾 Malaysia +60</SelectItem>
-                                    <SelectItem value="+62">🇮🇩 Indonesia +62</SelectItem>
-                                    <SelectItem value="+855">🇰🇭 Cambodia +855</SelectItem>
-                                    <SelectItem value="+63">🇵🇭 Philippines +63</SelectItem>
-                                    <SelectItem value="+673">🇧🇳 Brunei +673</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <Label htmlFor="mobile" className="text-gray-300 text-sm">
+                                {t('register.mobileNumber')}<span className="text-rose-500">*</span>
+                            </Label>
                             <Input
                                 required
                                 id="tel"
@@ -391,14 +342,11 @@ export default function SignUpPage() {
                                 className="mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm"
                             />
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <Label htmlFor="gender" className="text-gray-300 text-sm">
                                 {t('register.gender')}<span className="text-rose-500">*</span>
                             </Label>
-                            <Select name="gender">
+                            <Select name="gender" required>
                                 <SelectTrigger className="w-full mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm">
                                     <SelectValue placeholder={t('register.selectGender')} />
                                 </SelectTrigger>
@@ -409,21 +357,9 @@ export default function SignUpPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <Label htmlFor="dateOfBirth" className="text-gray-300 text-sm">
-                                {t('register.dateOfBirth')}<span className="text-rose-500">*</span>
-                            </Label>
-                            <Input
-                                required
-                                name="dob"
-                                type="date"
-                                id="dateOfBirth"
-                                className="w-full mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm"
-                            />
-                        </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                         <div>
                             <Label htmlFor="password" className="text-gray-300 text-sm">
                                 {t('login.password')}<span className="text-rose-500">*</span>
@@ -446,28 +382,81 @@ export default function SignUpPage() {
                                 </button>
                             </div>
                         </div>
-                        <div>
-                            <Label htmlFor="confirmPassword" className="text-gray-300 text-sm">
-                                {t('register.confirmPassword')}<span className="text-rose-500">*</span>
-                            </Label>
-                            <div className="relative mt-1">
-                                <Input
-                                    required
-                                    type={showConPassword ? "text" : "password"}
-                                    id="confirmPassword"
-                                    name="confirmPassword"
-                                    placeholder="Pa$$w0rd!"
-                                    className="mt-1 border-white text-white placeholder-gray-400 focus:border-pink-500 backdrop-blur-sm"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConPassword(!showConPassword)}
-                                    className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                                >
-                                    {showConPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
+                    </div>
+
+                    <div className="col-span-1 sm:col-span-2 mt-3">
+                        <label className="block text-sm font-medium text-white mb-1">
+                            {t("modelAuth.register.dateOfBirth")} <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <select
+                                id="dobYear"
+                                name="dobYear"
+                                required
+                                onChange={(e) => {
+                                    const year = e.target.value;
+                                    const month = (document.getElementById('dobMonth') as HTMLSelectElement)?.value;
+                                    const day = (document.getElementById('dobDay') as HTMLSelectElement)?.value;
+                                    if (year && month && day) {
+                                        const dobInput = document.getElementById('dob') as HTMLInputElement;
+                                        if (dobInput) dobInput.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                    }
+                                }}
+                                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white bg-black/30"
+                            >
+                                <option value="">{t("modelAuth.register.year")}</option>
+                                {Array.from({ length: 44 }, (_, i) => 2008 - i).map((year) => (
+                                    <option key={year} value={year}>
+                                        {year}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                id="dobMonth"
+                                name="dobMonth"
+                                required
+                                onChange={(e) => {
+                                    const month = e.target.value;
+                                    const year = (document.getElementById('dobYear') as HTMLSelectElement)?.value;
+                                    const day = (document.getElementById('dobDay') as HTMLSelectElement)?.value;
+                                    if (year && month && day) {
+                                        const dobInput = document.getElementById('dob') as HTMLInputElement;
+                                        if (dobInput) dobInput.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                    }
+                                }}
+                                className="text-sm appearance-none block w-full px-3 py-2 border border-white rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white bg-black/30"
+                            >
+                                <option value="">{t("modelAuth.register.month")}</option>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                                    <option key={month} value={month}>
+                                        {month}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                id="dobDay"
+                                name="dobDay"
+                                required
+                                onChange={(e) => {
+                                    const day = e.target.value;
+                                    const year = (document.getElementById('dobYear') as HTMLSelectElement)?.value;
+                                    const month = (document.getElementById('dobMonth') as HTMLSelectElement)?.value;
+                                    if (year && month && day) {
+                                        const dobInput = document.getElementById('dob') as HTMLInputElement;
+                                        if (dobInput) dobInput.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                    }
+                                }}
+                                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-white bg-black/30"
+                            >
+                                <option value="">{t("modelAuth.register.day")}</option>
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                                    <option key={day} value={day}>
+                                        {day}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
+                        <input type="hidden" id="dob" name="dob" required />
                     </div>
 
                     {actionData?.error && (
@@ -478,6 +467,7 @@ export default function SignUpPage() {
                             </span>
                         </div>
                     )}
+
                     {actionData?.success && (
                         <div className="mb-4 p-3 bg-red-500/20 border border-green-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                             <AlertCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
@@ -487,7 +477,7 @@ export default function SignUpPage() {
                         </div>
                     )}
 
-                    <div className="flex items-center justify-start space-x-2 text-sm mt-8 sm:mt-0">
+                    <div className="flex items-center justify-start space-x-2 text-sm mt-8 sm:mt-4">
                         <input
                             id="terms"
                             type="checkbox"
@@ -508,17 +498,19 @@ export default function SignUpPage() {
                         </Label>
                     </div>
 
+
                     <Button
                         type="submit"
-                        disabled={isAcceptTerms === false || isSubmitting || isCompressing}
-                        className={`w-full border border-rose-500 bg-rose-500 hover:bg-rose-600 text-white py-3 font-medium my-4 uppercase ${isAcceptTerms === false || isCompressing ? "cursor-not-allowed" : "cursor-pointer"}`}
+                        disabled={isSubmitting || isCompressing || !isAcceptTerms}
+                        className={`w-full border border-rose-500 bg-rose-500 hover:bg-rose-600 text-white py-3 font-medium my-4 uppercase ${(isCompressing || !isAcceptTerms) ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                     >
                         {(isSubmitting || isCompressing) ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : ""}
                         {isCompressing ? t('profileEdit.compressing') : isSubmitting ? t('register.registering') : t('register.registerButton')}
                     </Button>
 
+
                     <div className="text-center space-x-2">
-                        <span className="text-white">{t('register.alreadyHaveAccount')} </span>
+                        <span className="text-sm text-white">{t('register.alreadyHaveAccount')} </span>
                         <Link to="/login" className="text-white text-sm font-bold hover:text-rose-600 font-xs uppercase">
                             {t('register.backLogin')}
                         </Link>

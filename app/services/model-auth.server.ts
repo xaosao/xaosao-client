@@ -26,7 +26,7 @@ export interface IModelSigninCredentials {
 export interface IModelSignupCredentials {
   firstName: string;
   lastName?: string;
-  username: string;
+  username?: string;
   password: string;
   dob: string;
   gender: "male" | "female" | "other";
@@ -465,7 +465,7 @@ export async function modelRegister(
       data: {
         firstName: modelData.firstName,
         lastName: modelData.lastName,
-        username: modelData.username,
+        username: modelData.username || undefined,
         dob: new Date(modelData.dob),
         gender: modelData.gender,
         password: passwordHash,
@@ -534,7 +534,7 @@ export async function modelRegister(
         country_full_name: locationDetails.countryName,
         first_name: modelData.firstName,
         last_name: modelData.lastName || "",
-        user_name: modelData.username,
+        user_name: modelData.username || String(modelData.whatsapp),
         gender: modelData.gender,
         profile_image: modelData.profile || "",
         user_type: "model",

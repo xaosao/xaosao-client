@@ -1,16 +1,16 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, Camera, X, Loader, Gift } from "lucide-react";
+import { Eye, EyeOff, Camera, Loader, Gift, ArrowLeft } from "lucide-react";
 import type { ActionFunctionArgs, MetaFunction, LoaderFunctionArgs } from "react-router";
 import { Form, Link, useActionData, useNavigation, useNavigate, useLoaderData } from "react-router";
 
 // services:
+import { compressImage } from "~/utils/imageCompression";
 import { modelRegister } from "~/services/model-auth.server";
+import { findReferrerByCode } from "~/services/referral.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { IModelSignupCredentials } from "~/services/model-auth.server";
 import { validateModelSignUpInputs } from "~/services/model-validation.server";
-import { compressImage } from "~/utils/imageCompression";
-import { findReferrerByCode } from "~/services/referral.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -70,22 +70,29 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const firstName = formData.get("firstName");
   const lastName = formData.get("lastName");
-  const username = formData.get("username");
   const password = formData.get("password");
-  const confirmPassword = formData.get("confirmPassword");
-  const dob = formData.get("dob");
+  const dobYear = formData.get("dobYear");
+  const dobMonth = formData.get("dobMonth");
+  const dobDay = formData.get("dobDay");
   const gender = formData.get("gender");
   const whatsapp = formData.get("whatsapp");
   const bio = formData.get("bio");
   const address = formData.get("address");
-  const career = formData.get("career");
-  const education = formData.get("education");
-  const interestsJson = formData.get("interests");
   const newProfile = formData.get("newProfile") as File | null;
   const referrerId = formData.get("referrerId") as string | null;
 
+  // Validate and construct DOB
+  if (!dobYear || !dobMonth || !dobDay) {
+    return {
+      error: "modelAuth.errors.dobRequired",
+    };
+  }
+
+  // Construct DOB string in YYYY-MM-DD format
+  const dob = `${dobYear}-${String(dobMonth).padStart(2, '0')}-${String(dobDay).padStart(2, '0')}`;
+
   // Basic required fields validation
-  if (!firstName || !username || !password || !dob || !gender || !whatsapp || !bio || !address) {
+  if (!firstName || !password || !gender || !whatsapp || !bio || !address) {
     return {
       error: "modelAuth.errors.requiredFieldsMissing",
     };
@@ -115,25 +122,7 @@ export async function action({ request }: ActionFunctionArgs) {
     };
   }
 
-  // Password confirmation validation
-  if (password !== confirmPassword) {
-    return {
-      error: "modelAuth.errors.passwordsDoNotMatch",
-    };
-  }
-
   try {
-    // Parse interests
-    let interests: string[] | undefined;
-    if (interestsJson) {
-      try {
-        const parsed = JSON.parse(String(interestsJson));
-        interests = Array.isArray(parsed) ? parsed : undefined;
-      } catch {
-        interests = undefined;
-      }
-    }
-
     // Upload profile image to Bunny CDN
     const buffer = Buffer.from(await newProfile.arrayBuffer());
     const profileUrl = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
@@ -142,7 +131,6 @@ export async function action({ request }: ActionFunctionArgs) {
     const modelData: IModelSignupCredentials = {
       firstName: String(firstName).trim(),
       lastName: lastName ? String(lastName).trim() : undefined,
-      username: String(username).trim(),
       password: String(password),
       dob: String(dob),
       gender: String(gender) as "male" | "female" | "other",
@@ -150,9 +138,6 @@ export async function action({ request }: ActionFunctionArgs) {
       bio: String(bio).trim(),
       profile: profileUrl,
       address: String(address).trim(),
-      career: career ? String(career).trim() : undefined,
-      education: education ? String(education).trim() : undefined,
-      interests,
       referrerId: referrerId || undefined,
     };
 
@@ -182,7 +167,6 @@ export async function action({ request }: ActionFunctionArgs) {
       const fieldNames: Record<string, string> = {
         firstName: "First Name",
         lastName: "Last Name",
-        username: "Username",
         password: "Password",
         dob: "Date of Birth",
         gender: "Gender",
@@ -190,9 +174,6 @@ export async function action({ request }: ActionFunctionArgs) {
         bio: "Bio",
         profile: "Profile Image",
         address: "Address",
-        career: "Career",
-        education: "Education",
-        interests: "Interests",
       };
 
       // Get first error with field name
@@ -221,12 +202,9 @@ export default function ModelRegister() {
   const isSubmitting = navigation.state === "submitting";
 
   const [image, setImage] = useState<string>("");
-  const [newInterest, setNewInterest] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [interests, setInterests] = useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [profileError, setProfileError] = useState<string>("");
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
@@ -306,17 +284,6 @@ export default function ModelRegister() {
     }
   };
 
-  const removeInterest = (index: number) => {
-    setInterests(interests.filter((_, i) => i !== index));
-  };
-
-  const addInterest = () => {
-    if (newInterest.trim()) {
-      setInterests([...interests, newInterest.trim()]);
-      setNewInterest("");
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (!image) {
       e.preventDefault();
@@ -327,9 +294,8 @@ export default function ModelRegister() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-4 py-2">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-2 sm:px-4 py-2">
       <div className="max-w-2xl w-full space-y-8 bg-white px-2 sm:px-8 py-4 rounded-lg shadow-xl">
-        {/* Referral Banner */}
         {loaderData.referrerName && (
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
@@ -349,9 +315,12 @@ export default function ModelRegister() {
           )}
 
           <div className="flex flex-col items-center justify-center space-y-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-center gap-2">
+              <ArrowLeft className="w-5 h-5 text-gray-500" onClick={() => navigate("/model-auth/login")} />
+              <label className="block text-sm font-medium text-gray-700">
+                {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>
+              </label>
+            </div>
             <div className="relative w-[120px] h-[120px] rounded-full flex items-center justify-center">
               <img
                 src={image || "https://xaosao.b-cdn.net/default-image.png"}
@@ -415,20 +384,6 @@ export default function ModelRegister() {
             </div>
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.username")} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                placeholder={t("modelAuth.register.usernamePlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
               <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">
                 {t("modelAuth.register.phoneNumber")} <span className="text-rose-500">*</span>
               </label>
@@ -444,16 +399,64 @@ export default function ModelRegister() {
             </div>
 
             <div>
-              <label htmlFor="dob" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.dateOfBirth")} <span className="text-rose-500">*</span>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                {t("modelAuth.register.address")} <span className="text-rose-500">*</span>
               </label>
               <input
-                id="dob"
-                name="dob"
-                type="date"
+                id="address"
+                name="address"
+                type="text"
                 required
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                placeholder={t("modelAuth.register.addressPlaceholder")}
+                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("modelAuth.register.dateOfBirth")} <span className="text-rose-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  id="dobYear"
+                  name="dobYear"
+                  required
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">{t("modelAuth.register.year")}</option>
+                  {Array.from({ length: 44 }, (_, i) => 2008 - i).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  id="dobMonth"
+                  name="dobMonth"
+                  required
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">{t("modelAuth.register.month")}</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  id="dobDay"
+                  name="dobDay"
+                  required
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">{t("modelAuth.register.day")}</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
@@ -497,132 +500,23 @@ export default function ModelRegister() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.confirmPassword")} <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+            <div className="mt-2 md:col-span-2">
+              <div>
+                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.bio")} <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  rows={2}
                   required
-                  minLength={8}
-                  placeholder={t("modelAuth.register.confirmPasswordPlaceholder")}
+                  placeholder={t("modelAuth.register.bioPlaceholder")}
                   className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showConfirmPassword ? <Eye className="h-4 w-4 cursor-pointer" /> : <EyeOff className="h-4 w-4 cursor-pointer" />}
-                </button>
               </div>
             </div>
 
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.address")} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="address"
-                name="address"
-                type="text"
-                required
-                placeholder={t("modelAuth.register.addressPlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.bio")} <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows={2}
-                required
-                placeholder={t("modelAuth.register.bioPlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="career" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.career")}
-              </label>
-              <input
-                id="career"
-                name="career"
-                type="text"
-                placeholder={t("modelAuth.register.careerPlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="education" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.education")}
-              </label>
-              <input
-                id="education"
-                name="education"
-                type="text"
-                placeholder={t("modelAuth.register.educationPlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {t("modelAuth.register.interests")}
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {interests.map((interest, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between px-3 py-1.5 rounded-md text-sm
-                    bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-500
-                    hover:text-rose-600 transition-colors cursor-pointer space-x-2"
-                  >
-                    <span>{interest}</span>
-                    <X
-                      size={16}
-                      className="cursor-pointer"
-                      onClick={() => removeInterest(index)}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder={t("modelAuth.register.interestsDescription")}
-                  value={newInterest}
-                  onChange={(e) => setNewInterest(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addInterest();
-                    }
-                  }}
-                  className="text-sm flex-1 appearance-none px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-                <button
-                  type="button"
-                  onClick={addInterest}
-                  className="px-4 py-2 bg-rose-100 border border-rose-200 text-rose-500 hover:bg-rose-200 rounded-lg text-sm font-medium"
-                >
-                  {t("modelAuth.register.addInterest")}
-                </button>
-              </div>
-              <input type="hidden" name="interests" value={JSON.stringify(interests)} />
-            </div>
-
-            <div className="mt-4 sm:mt-8">
+            <div className="mt-4 sm:mt-8 md:col-span-2">
               <button
                 type="submit"
                 disabled={isSubmitting || isCompressing}

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/forgot-password";
-import { AlertCircle, ArrowLeft, Loader, LockIcon } from "lucide-react";
+import { AlertCircle, Loader, LockIcon } from "lucide-react";
 import { Form, Link, redirect, useActionData, useNavigate, useNavigation } from "react-router";
 
 // components
@@ -227,7 +227,7 @@ export default function ForgotPasswordPage() {
                         </Form>
 
                         <div className="text-center">
-                            <p className="text-md text-gray-400">
+                            <p className="text-sm text-gray-300">
                                 {t('forgotPassword.rememberPassword')}{" "}
                                 <Link
                                     to="/login"

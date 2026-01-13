@@ -3,7 +3,7 @@ import Telbiz from "telbiz";
 
 // Admin email and phone for notifications
 const ADMIN_EMAIL = "xaosao95@gmail.com";
-const ADMIN_PHONE = "8562078856194";
+const ADMIN_PHONE = "2078856194"; // Lao phone number format (without country code 856)
 
 // Initialize Telbiz SMS client
 const tb = new Telbiz(

@@ -450,7 +450,6 @@ export async function customerRegister(
         firstName: customerData.firstName,
         lastName: customerData.lastName,
         dob: new Date(customerData.dob),
-        username: customerData.username,
         gender: customerData.gender,
         password: passwordHash,
         profile: customerData.profile || "",
@@ -494,6 +493,9 @@ export async function customerRegister(
         customer.id
       );
 
+      // Auto-generate username for chat system from whatsapp number
+      const generatedUsername = `customer_${customerData.whatsapp}`;
+
       const userData: UserRegistrationData = {
         user_id: customer.id,
         country_code: locationDetails.countryCode,
@@ -502,7 +504,7 @@ export async function customerRegister(
         country_full_name: locationDetails.countryName,
         first_name: customerData.firstName,
         last_name: customerData.lastName || "",
-        user_name: customerData.username,
+        user_name: generatedUsername,
         gender: customerData.gender,
         profile_image: customerData.profile || "",
         user_type: "customer",

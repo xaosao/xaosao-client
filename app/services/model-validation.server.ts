@@ -179,15 +179,6 @@ const modelSignUpSchema = z
       })
       .optional()
       .or(z.literal("")),
-    username: refineSafe(
-      z
-        .string()
-        .min(3, "modelAuth.validation.usernameMinLength")
-        .max(30, "modelAuth.validation.usernameMaxLength")
-        .regex(/^[a-zA-Z0-9_.\-\u0E00-\u0E7F\u0E80-\u0EFF]+$/, {
-          message: "modelAuth.validation.usernameInvalidChars",
-        })
-    ),
     password: refineSafe(
       z
         .string()

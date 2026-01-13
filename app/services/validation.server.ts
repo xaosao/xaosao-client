@@ -62,9 +62,6 @@ const customerSignUpSchema = z.object({
   lastName: refineSafe(
     z.string().max(20, "Invalid last name. Must be at most 20 characters long.")
   ),
-  username: refineSafe(
-    z.string().max(20, "Invalid username. Must be at most 20 characters long.")
-  ),
   password: refineSafe(
     z.string().min(8, "Invalid password. Must be at least 8 characters long.")
   ),
@@ -73,13 +70,17 @@ const customerSignUpSchema = z.object({
     .refine((val) => ["male", "female", "other"].includes(val), {
       message: "Invalid gender. Must be one of: male, female, other.",
     }),
-  dob: z.coerce.date().refine((date) => !isNaN(date.getTime()), {
+  dob: z.string().refine((date) => {
+    const parsedDate = new Date(date);
+    return !isNaN(parsedDate.getTime());
+  }, {
     message: "Invalid date format. Please enter a valid date.",
   }),
   whatsapp: z
     .number()
     .min(1000000000, "Whatsapp number must be exactly 10 digits.")
     .max(9999999999, "Whastapp number must be exactly 10 digits."),
+  profile: z.string().url("Invalid profile image URL."),
 });
 
 export function validateCustomerSignupInputs(

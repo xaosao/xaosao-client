@@ -9,7 +9,6 @@ export interface ICustomerSigninCredentials {
 export interface ICustomerSignupCredentials {
   firstName: string;
   lastName: string;
-  username: string;
   whatsapp: number;
   gender: Gender;
   dob: string;
