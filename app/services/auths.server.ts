@@ -417,7 +417,12 @@ export async function customerRegister(
     });
 
     if (existingCustomer) {
-      throw new Error("This phone number is already registered!");
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "This phone number is already registered!",
+        messageKey: "register.errors.phoneAlreadyRegistered",
+      });
     }
 
     const locationDetails = await getLocationDetails(ip, accessKey);
@@ -550,11 +555,31 @@ export async function customerRegister(
       console.error("NOTIFY_ADMIN_NEW_CUSTOMER_FAILED", notifyError);
     }
 
-    return {
-      success: true,
-      error: false,
-      message: "Customer created successfully!",
+    // Auto-login: Log the customer into the chat system
+    const userData: UserLogin = {
+      phone_number: String(customerData.whatsapp),
+      user_type: "customer",
     };
+
+    const chatLogin = await loginOnChat(userData);
+
+    if (chatLogin.success) {
+      // Create session and redirect to customer dashboard
+      return createUserSession(
+        chatLogin.token,
+        customer.id,
+        false, // rememberMe = false for auto-login after registration
+        "/customer"
+      );
+    } else {
+      // If chat login fails, still return success but without auto-login
+      console.error("AUTO_LOGIN_AFTER_REGISTRATION_FAILED", chatLogin.message);
+      return {
+        success: true,
+        error: false,
+        message: "Customer created successfully!",
+      };
+    }
   } catch (error: any) {
     console.log("INSERT_CUSTOMER_DATA_FAILED", error);
 

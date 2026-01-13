@@ -259,7 +259,7 @@ export default function SignInPage() {
 
             <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 h-auto
-                            bg-black/50 backdrop-blur-md shadow-2xl py-8 px-4 sm:p-8 flex flex-col justify-start rounded-sm z-20
+                            bg-black/50 backdrop-blur-md shadow-2xl py-8 px-2 sm:px-4 sm:p-8 flex flex-col justify-start rounded-sm z-20
                             lg:top-0 lg:right-0 lg:left-auto lg:translate-x-0 lg:translate-y-0 lg:w-2/5 lg:h-full lg:rounded-none">
 
                 <button

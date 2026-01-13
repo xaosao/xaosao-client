@@ -218,6 +218,7 @@
       "firstNameRequired": "First name is required!",
       "usernameRequired": "Username is required!",
       "invalidPhone": "Invalid or incorrect phone number format!",
+      "phoneAlreadyRegistered": "This phone number is already registered!",
       "invalidPassword": "Invalid password!",
       "dobRequired": "Date of birth is required!",
       "underAge": "We do not allow users under 18 years old!",

@@ -11,6 +11,7 @@ import { findReferrerByCode } from "~/services/referral.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { IModelSignupCredentials } from "~/services/model-auth.server";
 import { validateModelSignUpInputs } from "~/services/model-validation.server";
+import { FieldValidationError } from "~/services/base.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -162,6 +163,24 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return { error: result.message };
   } catch (error: any) {
+    console.log("Model registration failed:", error);
+    // Check if it's a FieldValidationError by checking multiple properties
+    if (error instanceof FieldValidationError || (error && (error.payload || error.name === "FieldValidationError"))) {
+      const payload = error.payload || error;
+      console.log("FieldValidationError payload:", payload);
+      console.log("messageKey:", payload.messageKey);
+      console.log("message:", payload.message);
+
+      // Ensure we use messageKey if it exists
+      const errorMessage = payload.messageKey || "modelAuth.errors.registrationFailed";
+      console.log("Returning error message:", errorMessage);
+
+      return {
+        error: errorMessage,
+        errorField: null,
+      };
+    }
+
     // Handle validation errors (thrown as object with field keys)
     if (error && typeof error === "object" && !error.message) {
       const fieldNames: Record<string, string> = {
@@ -207,13 +226,15 @@ export default function ModelRegister() {
   const [profileError, setProfileError] = useState<string>("");
   const [isCompressing, setIsCompressing] = useState(false);
 
+  // Redirect to login page after successful registration
+  // Models need admin approval before they can login
   useEffect(() => {
     if (actionData?.success) {
       const timer = setTimeout(() => {
         navigate(
-          "/model-auth/login?toastMessage=Registration successful! Please login with your credentials.&toastType=success&toastDuration=5000"
+          "/model-auth/login?toastMessage=Registration successful! Please wait for admin approval to login.&toastType=success&toastDuration=5000"
         );
-      }, 1500);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [actionData, navigate]);
@@ -294,7 +315,23 @@ export default function ModelRegister() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-2 sm:px-4 py-2">
+    <>
+      <style>{`
+        /* Compact mobile select dropdowns */
+        @media (max-width: 768px) {
+          select option {
+            padding: 8px 12px !important;
+            font-size: 14px !important;
+          }
+          /* iOS specific */
+          @supports (-webkit-touch-callout: none) {
+            select {
+              -webkit-appearance: menulist-button !important;
+            }
+          }
+        }
+      `}</style>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-2 sm:px-4 py-2">
       <div className="max-w-2xl w-full space-y-8 bg-white px-2 sm:px-8 py-4 rounded-lg shadow-xl">
         {loaderData.referrerName && (
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white flex items-center gap-3">
@@ -421,6 +458,8 @@ export default function ModelRegister() {
                   id="dobYear"
                   name="dobYear"
                   required
+                  size={1}
+                  style={{ maxHeight: '200px' }}
                   className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="">{t("modelAuth.register.year")}</option>
@@ -434,6 +473,8 @@ export default function ModelRegister() {
                   id="dobMonth"
                   name="dobMonth"
                   required
+                  size={1}
+                  style={{ maxHeight: '200px' }}
                   className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="">{t("modelAuth.register.month")}</option>
@@ -447,6 +488,8 @@ export default function ModelRegister() {
                   id="dobDay"
                   name="dobDay"
                   required
+                  size={1}
+                  style={{ maxHeight: '200px' }}
                   className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                 >
                   <option value="">{t("modelAuth.register.day")}</option>
@@ -537,6 +580,12 @@ export default function ModelRegister() {
             </div>
           )}
 
+          {actionData?.success && (
+            <div className="text-sm bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+              {t(actionData.message)} {t("modelAuth.register.redirectingToLogin")}
+            </div>
+          )}
+
           <div className="text-center text-sm">
             <p className="text-gray-600">
               {t("modelAuth.register.alreadyHaveAccount")}&nbsp;&nbsp;
@@ -548,5 +597,6 @@ export default function ModelRegister() {
         </Form>
       </div>
     </div>
+    </>
   );
 }

@@ -16,7 +16,7 @@ export async function getModelOwnProfile(modelId: string) {
     const model = await prisma.model.findFirst({
       where: {
         id: modelId,
-        status: "active",
+        // No status filter - logged-in models should see their own profile regardless of status
       },
       select: {
         id: true,

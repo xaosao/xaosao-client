@@ -437,7 +437,12 @@ export async function modelRegister(
     });
 
     if (existingModel) {
-      throw new Error("modelAuth.serverMessages.phoneAlreadyRegistered");
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "This phone number is already registered!",
+        messageKey: "modelAuth.serverMessages.phoneAlreadyRegistered",
+      });
     }
 
     const locationDetails = await getLocationDetails(ip, accessKey);
@@ -571,6 +576,8 @@ export async function modelRegister(
       }
     }
 
+    // No auto-login for models - they must wait for admin approval
+    // Only verified/active status models can login
     return {
       success: true,
       error: false,
