@@ -239,6 +239,7 @@ export async function getReferralStats(modelId: string) {
   // Calculate statistics
   const totalReferred = referredModels.length;
   const approvedReferred = referredModels.filter(m => m.status === "active").length;
+  const verifiedReferred = referredModels.filter(m => m.status === "verified").length;
   const pendingReferred = referredModels.filter(m => m.status === "pending").length;
   const totalEarnings = referredModels.filter(m => m.referralRewardPaid).length * REFERRAL_REWARD_AMOUNT;
 
@@ -250,6 +251,7 @@ export async function getReferralStats(modelId: string) {
     stats: {
       totalReferred,
       approvedReferred,
+      verifiedReferred,
       pendingReferred,
       totalEarnings,
     },

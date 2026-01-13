@@ -763,6 +763,7 @@ export async function getLikeMeModels(
         skip: (page - 1) * limit,
         take: limit,
         where: {
+          status: "active",
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -816,6 +817,7 @@ export async function getLikeMeModels(
       }),
       prisma.model.count({
         where: {
+          status: "active",
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -863,6 +865,7 @@ export async function getModelsByInteraction(
         skip: (page - 1) * limit,
         take: limit,
         where: {
+          status: "active",
           customer_interactions: {
             some: {
               customerId,
@@ -909,6 +912,7 @@ export async function getModelsByInteraction(
       }),
       prisma.model.count({
         where: {
+          status: "active",
           customer_interactions: {
             some: {
               customerId: customerId.toString(),

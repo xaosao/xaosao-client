@@ -17,6 +17,15 @@ enum InteractionAction {
   PASS
 }
 
+enum ModelStatus {
+  pending   // Awaiting admin approval - can login, hidden from customers
+  verified  // Approved but hidden - can login, hidden from customers
+  active    // Active and visible - can login, shown to customers
+  inactive  // Temporarily disabled - cannot login, hidden from customers
+  suspended // Suspended by admin - cannot login, hidden from customers
+  deleted   // Soft deleted - cannot login, hidden from customers
+}
+
 model user {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   number       String    @unique
@@ -224,9 +233,9 @@ model model {
   referredById       String?  @db.ObjectId // ID of the model who referred this model
   referralRewardPaid Boolean  @default(false) // Whether referral reward has been paid to referrer
 
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    ModelStatus @default(pending)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
   createdById String? @db.ObjectId

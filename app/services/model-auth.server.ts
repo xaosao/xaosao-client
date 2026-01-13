@@ -307,7 +307,10 @@ export async function modelLogin({
 
   // console.log("Existing::::", existingModel);
 
-  if (existingModel.status !== "active") {
+  // Allow login for: verified (approved but hidden), active (visible)
+  // Disallow: pending (awaiting approval), inactive, suspended, deleted
+  const allowedStatuses = ["verified", "active"];
+  if (!allowedStatuses.includes(existingModel.status)) {
     const error = new Error(
       "modelAuth.serverMessages.loginAccountUnavailable"
     ) as Error & {
@@ -317,7 +320,7 @@ export async function modelLogin({
 
     await createAuditLogs({
       ...auditBase,
-      description: `Model login failed, Model is not active!`,
+      description: `Model login failed, Model status is ${existingModel.status}!`,
       status: "failed",
       onError: error,
     });
