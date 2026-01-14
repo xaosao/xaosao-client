@@ -4,6 +4,12 @@ import type { BookingStatus } from "./base";
 export type BillingType = 'per_day' | 'per_hour' | 'per_session';
 export type SessionType = 'one_time' | 'one_night';
 
+export interface MassageVariant {
+  id: string;
+  name: string;
+  pricePerHour: number;
+}
+
 export interface IServiceBookingResponse {
   id: string;
   customRate: number;
@@ -21,6 +27,7 @@ export interface IServiceBookingResponse {
     oneTimePrice?: number;
     oneNightPrice?: number;
   };
+  model_service_variant?: MassageVariant[];
 }
 
 export interface IServiceBookingCredentials {
@@ -30,6 +37,7 @@ export interface IServiceBookingCredentials {
   dayAmount?: number;
   hours?: number;           // For per_hour services (drinkingFriend)
   sessionType?: SessionType; // For per_session services (sleepPartner)
+  modelServiceVariantId?: string; // For massage service variants
   location: string;
   preferred?: string;
 }

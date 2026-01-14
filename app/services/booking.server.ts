@@ -531,6 +531,7 @@ export async function createServiceBooking(
         dayAmount: data.dayAmount ?? null,
         hours: data.hours ?? null,
         sessionType: data.sessionType ?? null,
+        modelServiceVariantId: data.modelServiceVariantId ?? null,
         location: data.location,
         preferredAttire: data.preferred ?? "",
         startDate: data.startDate,

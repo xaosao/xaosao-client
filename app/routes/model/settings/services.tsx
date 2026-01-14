@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Briefcase, Check, Loader, SquarePen, Trash2 } from "lucide-react";
+import { Briefcase, Check, Loader, SquarePen, Trash2, Plus, X } from "lucide-react";
 import { Form, useLoaderData, useNavigation, redirect } from "react-router";
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 
@@ -34,6 +34,12 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+interface MassageVariant {
+  id?: string;
+  name: string;
+  pricePerHour: number;
+}
+
 interface Service {
   id: string;
   name: string;
@@ -52,6 +58,7 @@ interface Service {
   customOneTimePrice: number | null;
   customOneNightPrice: number | null;
   isAvailable: boolean;
+  massageVariants?: MassageVariant[];
 }
 
 interface LoaderData {
@@ -69,6 +76,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   const serviceId = formData.get("serviceId") as string;
+  const serviceName = formData.get("serviceName") as string;
   const actionType = formData.get("actionType") as string;
   const billingType = formData.get("billingType") as BillingType;
 
@@ -87,9 +95,23 @@ export async function action({ request }: ActionFunctionArgs) {
     };
   };
 
+  // Build massage variants array
+  const buildMassageVariants = () => {
+    const massageVariantsJson = formData.get("massageVariants") as string;
+    if (!massageVariantsJson) return undefined;
+
+    try {
+      return JSON.parse(massageVariantsJson);
+    } catch (error) {
+      console.error("Error parsing massage variants:", error);
+      return undefined;
+    }
+  };
+
   if (actionType === "apply") {
     const rates = buildRates();
-    const result = await applyForService(modelId, serviceId, rates);
+    const massageVariants = serviceName?.toLowerCase() === "massage" ? buildMassageVariants() : undefined;
+    const result = await applyForService(modelId, serviceId, rates, massageVariants);
     if (result?.success) {
       return redirect(
         `/model/settings/services?toastMessage=${encodeURIComponent("modelServices.success.applied")}&toastType=success`
@@ -101,12 +123,14 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   } else if (actionType === "edit") {
     const rates = buildRates();
+    const massageVariants = serviceName?.toLowerCase() === "massage" ? buildMassageVariants() : undefined;
     const modelServiceId = formData.get("modelServiceId") as string;
     const result = await updateServiceApplication(
       modelId,
       serviceId,
       modelServiceId,
-      rates
+      rates,
+      massageVariants
     );
     if (result?.success) {
       return redirect(
@@ -145,9 +169,31 @@ export default function ServicesSettings() {
   const [customOneTimePrice, setCustomOneTimePrice] = useState<string>("");
   const [customOneNightPrice, setCustomOneNightPrice] = useState<string>("");
 
+  // Massage variants state
+  const [massageVariants, setMassageVariants] = useState<MassageVariant[]>([
+    { name: "", pricePerHour: 0 }
+  ]);
+
   const [applyModal, setApplyModal] = useState<Service | null>(null);
   const [editModal, setEditModal] = useState<Service | null>(null);
   const [cancelModal, setCancelModal] = useState<Service | null>(null);
+
+  // Helper functions for massage variants
+  const addMassageVariant = () => {
+    setMassageVariants([...massageVariants, { name: "", pricePerHour: 0 }]);
+  };
+
+  const removeMassageVariant = (index: number) => {
+    if (massageVariants.length > 1) {
+      setMassageVariants(massageVariants.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateMassageVariant = (index: number, field: keyof MassageVariant, value: string | number) => {
+    const updated = [...massageVariants];
+    updated[index] = { ...updated[index], [field]: value };
+    setMassageVariants(updated);
+  };
 
   // Helper to initialize rates when opening modal
   const initializeRatesForService = (service: Service) => {
@@ -155,6 +201,15 @@ export default function ServicesSettings() {
     setCustomHourlyRate(service.customHourlyRate?.toString() || service.hourlyRate?.toString() || "");
     setCustomOneTimePrice(service.customOneTimePrice?.toString() || service.oneTimePrice?.toString() || "");
     setCustomOneNightPrice(service.customOneNightPrice?.toString() || service.oneNightPrice?.toString() || "");
+
+    // Initialize massage variants if applicable
+    if (service.name.toLowerCase() === "massage") {
+      if (service.massageVariants && service.massageVariants.length > 0) {
+        setMassageVariants(service.massageVariants);
+      } else {
+        setMassageVariants([{ name: "", pricePerHour: 0 }]);
+      }
+    }
   };
 
   // Helper to get billing type label
@@ -302,19 +357,38 @@ export default function ServicesSettings() {
                   {/* Per Hour - Show hourly rate */}
                   {service.billingType === "per_hour" && (
                     <>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
-                        <span className="font-semibold text-gray-900 flex items-center gap-1">
-                          {formatMoney(service.hourlyRate || 0)}/{t("modelServices.hour")}
-                        </span>
-                      </div>
-                      {service.isApplied && service.customHourlyRate && (
-                        <div className="flex items-center justify-between text-sm pt-2 border-t">
-                          <span className="text-gray-600">{t("modelServices.yourRate")}</span>
-                          <span className="font-bold text-rose-600 flex items-center gap-1">
-                            {formatMoney(service.customHourlyRate)}/{t("modelServices.hour")}
-                          </span>
+                      {/* For massage service, show variants */}
+                      {service.name.toLowerCase() === "massage" && service.isApplied && service.massageVariants && service.massageVariants.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            {t("modelServices.massageTypes")}
+                          </div>
+                          {service.massageVariants.map((variant, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm bg-white p-2 rounded border">
+                              <span className="text-gray-700">{variant.name}</span>
+                              <span className="font-semibold text-rose-600">
+                                {formatMoney(variant.pricePerHour)}/{t("modelServices.hour")}
+                              </span>
+                            </div>
+                          ))}
                         </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
+                            <span className="font-semibold text-gray-900 flex items-center gap-1">
+                              {formatMoney(service.hourlyRate || 0)}/{t("modelServices.hour")}
+                            </span>
+                          </div>
+                          {service.isApplied && service.customHourlyRate && (
+                            <div className="flex items-center justify-between text-sm pt-2 border-t">
+                              <span className="text-gray-600">{t("modelServices.yourRate")}</span>
+                              <span className="font-bold text-rose-600 flex items-center gap-1">
+                                {formatMoney(service.customHourlyRate)}/{t("modelServices.hour")}
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -434,7 +508,7 @@ export default function ServicesSettings() {
                   )}
                   {applyModal.billingType === "per_hour" && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">{t("modelServices.hourlyRate")}</span>
+                      <span className="text-gray-600">{t("modelServices.baseRate")}</span>
                       <span className="font-semibold flex items-center gap-1">
                         {formatMoney(applyModal.hourlyRate || 0)}/{t("modelServices.hour")}
                       </span>
@@ -467,6 +541,7 @@ export default function ServicesSettings() {
 
               <Form method="post" className="space-y-4">
                 <input type="hidden" name="serviceId" value={applyModal.id} />
+                <input type="hidden" name="serviceName" value={applyModal.name} />
                 <input type="hidden" name="actionType" value="apply" />
                 <input type="hidden" name="billingType" value={applyModal.billingType} />
 
@@ -494,31 +569,102 @@ export default function ServicesSettings() {
                   </div>
                 )}
 
-                {/* Per Hour - Custom hourly rate */}
+                {/* Per Hour - Custom hourly rate OR Massage variants */}
                 {applyModal.billingType === "per_hour" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="customHourlyRate">
-                      {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
-                      <Input
-                        id="customHourlyRate"
-                        type="number"
-                        name="customHourlyRate"
-                        value={customHourlyRate}
-                        onChange={(e) => setCustomHourlyRate(e.target.value)}
-                        step="1"
-                        min="0"
-                        required
-                        className="pl-10"
-                        placeholder={t("modelServices.enterYourHourlyRate")}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {t("modelServices.hourlyRateHint")}
-                    </p>
-                  </div>
+                  <>
+                    {applyModal.name.toLowerCase() === "massage" ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            {t("modelServices.massageTypes")} <span className="text-rose-500">*</span>
+                          </Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={addMassageVariant}
+                            className="h-7 text-xs border-rose-300 text-rose-600 hover:bg-rose-50"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {t("modelServices.addType")}
+                          </Button>
+                        </div>
+
+                        <input
+                          type="hidden"
+                          name="massageVariants"
+                          value={JSON.stringify(massageVariants)}
+                        />
+
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {massageVariants.map((variant, index) => (
+                            <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 rounded-sm border">
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  placeholder={t("modelServices.massageTypeName")}
+                                  value={variant.name}
+                                  onChange={(e) => updateMassageVariant(index, "name", e.target.value)}
+                                  required
+                                  className="text-sm"
+                                />
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Kip</span>
+                                  <Input
+                                    type="number"
+                                    placeholder={t("modelServices.pricePerHour")}
+                                    value={variant.pricePerHour || ""}
+                                    onChange={(e) => updateMassageVariant(index, "pricePerHour", parseFloat(e.target.value) || 0)}
+                                    step="1"
+                                    min="0"
+                                    required
+                                    className="pl-10 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              {massageVariants.length > 1 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeMassageVariant(index)}
+                                  className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-center text-xs text-orange-500">
+                          {t("modelServices.massageVariantsHint")}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="customHourlyRate">
+                          {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                          <Input
+                            id="customHourlyRate"
+                            type="number"
+                            name="customHourlyRate"
+                            value={customHourlyRate}
+                            onChange={(e) => setCustomHourlyRate(e.target.value)}
+                            step="1"
+                            min="0"
+                            required
+                            className="pl-10"
+                            placeholder={t("modelServices.enterYourHourlyRate")}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.hourlyRateHint")}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Per Session - Custom one time and one night prices */}
@@ -668,6 +814,7 @@ export default function ServicesSettings() {
 
               <Form method="post" className="space-y-4">
                 <input type="hidden" name="serviceId" value={editModal.id} />
+                <input type="hidden" name="serviceName" value={editModal.name} />
                 <input type="hidden" name="modelServiceId" value={editModal.modelServiceId || ""} />
                 <input type="hidden" name="actionType" value="edit" />
                 <input type="hidden" name="billingType" value={editModal.billingType} />
@@ -699,31 +846,102 @@ export default function ServicesSettings() {
                   </div>
                 )}
 
-                {/* Per Hour - Custom hourly rate */}
+                {/* Per Hour - Custom hourly rate OR Massage variants */}
                 {editModal.billingType === "per_hour" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="editCustomHourlyRate">
-                      {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
-                      <Input
-                        id="editCustomHourlyRate"
-                        type="number"
-                        name="customHourlyRate"
-                        value={customHourlyRate}
-                        onChange={(e) => setCustomHourlyRate(e.target.value)}
-                        step="1"
-                        min="0"
-                        required
-                        className="pl-10"
-                        placeholder={t("modelServices.enterYourHourlyRate")}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {t("modelServices.hourlyRateHint")}
-                    </p>
-                  </div>
+                  <>
+                    {editModal.name.toLowerCase() === "massage" ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            {t("modelServices.massageTypes")} <span className="text-rose-500">*</span>
+                          </Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={addMassageVariant}
+                            className="h-7 text-xs border-rose-300 text-rose-600 hover:bg-rose-50"
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            {t("modelServices.addType")}
+                          </Button>
+                        </div>
+
+                        <input
+                          type="hidden"
+                          name="massageVariants"
+                          value={JSON.stringify(massageVariants)}
+                        />
+
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {massageVariants.map((variant, index) => (
+                            <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 rounded-sm border">
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  placeholder={t("modelServices.massageTypeName")}
+                                  value={variant.name}
+                                  onChange={(e) => updateMassageVariant(index, "name", e.target.value)}
+                                  required
+                                  className="text-sm"
+                                />
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">Kip</span>
+                                  <Input
+                                    type="number"
+                                    placeholder={t("modelServices.pricePerHour")}
+                                    value={variant.pricePerHour || ""}
+                                    onChange={(e) => updateMassageVariant(index, "pricePerHour", parseFloat(e.target.value) || 0)}
+                                    step="1"
+                                    min="0"
+                                    required
+                                    className="pl-10 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              {massageVariants.length > 1 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeMassageVariant(index)}
+                                  className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.massageVariantsHint")}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="editCustomHourlyRate">
+                          {t("modelServices.customHourlyRateLabel")} <span className="text-rose-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                          <Input
+                            id="editCustomHourlyRate"
+                            type="number"
+                            name="customHourlyRate"
+                            value={customHourlyRate}
+                            onChange={(e) => setCustomHourlyRate(e.target.value)}
+                            step="1"
+                            min="0"
+                            required
+                            className="pl-10"
+                            placeholder={t("modelServices.enterYourHourlyRate")}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.hourlyRateHint")}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Per Session - Custom one time and one night prices */}

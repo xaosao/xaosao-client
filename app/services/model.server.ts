@@ -508,6 +508,14 @@ export async function getModelProfile(modelId: string, customerId: string) {
                 oneNightPrice: true,
               },
             },
+            model_service_variant: {
+              where: { status: "active" },
+              select: {
+                id: true,
+                name: true,
+                pricePerHour: true,
+              },
+            },
           },
         },
         customer_interactions: {
@@ -573,6 +581,16 @@ export async function getModelService(modelId: string, serviceId: string) {
             hourlyRate: true,
             oneTimePrice: true,
             oneNightPrice: true,
+          },
+        },
+        model_service_variant: {
+          where: {
+            status: "active",
+          },
+          select: {
+            id: true,
+            name: true,
+            pricePerHour: true,
           },
         },
       },

@@ -64,6 +64,11 @@ export interface IModelService {
   minSessionDuration: number;
   maxSessionDuration: number;
   service: IService;
+  model_service_variant?: Array<{
+    id: string;
+    name: string;
+    pricePerHour: number;
+  }>;
 }
 
 export interface ICustomerInteraction {

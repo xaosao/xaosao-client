@@ -456,12 +456,20 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                             </div>
                                                         )}
 
-                                                        {/* Per Hour - Show hourly rate */}
+                                                        {/* Per Hour - Show hourly rate OR lowest massage price */}
                                                         {billingType === "per_hour" && (
                                                             <div className="flex items-center justify-between text-sm">
                                                                 <span className="text-gray-500">{t("modelServices.hourlyRate")}</span>
                                                                 <span className="font-semibold text-rose-600">
-                                                                    {formatCurrency(Number(service.customHourlyRate || service.service.hourlyRate || 0))}/{t("modelServices.hour")}
+                                                                    {service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 ? (
+                                                                        <>
+                                                                            {t("modelServices.startingFrom")} {formatCurrency(Math.min(...service.model_service_variant.map(v => v.pricePerHour)))}/{t("modelServices.hour")}
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            {formatCurrency(Number(service.customHourlyRate || service.service.hourlyRate || 0))}/{t("modelServices.hour")}
+                                                                        </>
+                                                                    )}
                                                                 </span>
                                                             </div>
                                                         )}

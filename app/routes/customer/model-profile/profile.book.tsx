@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon } from "lucide-react"
+import { AlertCircle, Briefcase, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon } from "lucide-react"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
 
 // components:
@@ -53,6 +53,11 @@ export async function action({ params, request }: Route.ActionArgs) {
          bookingData.dayAmount = parseFormattedNumber(dayAmount)
       } else if (billingType === 'per_hour') {
          bookingData.hours = parseFormattedNumber(bookingData.hours)
+         // Handle massage variant ID
+         const variantId = formData.get('modelServiceVariantId') as string;
+         if (variantId) {
+            bookingData.modelServiceVariantId = variantId;
+         }
       } else if (billingType === 'per_session') {
          bookingData.sessionType = formData.get('sessionType') as 'one_time' | 'one_night'
       }
@@ -98,6 +103,7 @@ export default function ServiceBooking() {
    const [endDate, setEndDate] = useState<Date>()
    const [selectedHours, setSelectedHours] = useState<number>(1)
    const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
+   const [selectedMassageVariantId, setSelectedMassageVariantId] = useState<string>("")
 
    const actionData = useActionData<typeof action>()
    const loaderData = useLoaderData<{ service: IServiceBookingResponse; bookedSlots: Array<{ startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }> }>();
@@ -109,9 +115,25 @@ export default function ServiceBooking() {
    // Get billing type from service (default to per_day for backward compatibility)
    const billingType = service.service.billingType || 'per_day';
 
+   // Auto-select first massage variant when component loads
+   useEffect(() => {
+      if (service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 && !selectedMassageVariantId) {
+         setSelectedMassageVariantId(service.model_service_variant[0].id);
+      }
+   }, [service, selectedMassageVariantId]);
+
    // Calculate price based on billing type
    const calculateTotalPrice = () => {
       if (billingType === 'per_hour') {
+         // For massage service, use selected variant price
+         if (service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0) {
+            const selectedVariant = service.model_service_variant.find(v => v.id === selectedMassageVariantId);
+            if (selectedVariant) {
+               return selectedVariant.pricePerHour * selectedHours;
+            }
+            // Default to first variant if none selected
+            return service.model_service_variant[0].pricePerHour * selectedHours;
+         }
          const hourlyRate = service.customHourlyRate || service.service.hourlyRate || 0;
          return hourlyRate * selectedHours;
       } else if (billingType === 'per_session') {
@@ -235,6 +257,9 @@ export default function ServiceBooking() {
                )}
                {billingType === 'per_session' && (
                   <input type="hidden" name="sessionType" value={selectedSessionType} />
+               )}
+               {service.service.name.toLowerCase() === 'massage' && selectedMassageVariantId && (
+                  <input type="hidden" name="modelServiceVariantId" value={selectedMassageVariantId} />
                )}
 
                <div className="space-y-6">
@@ -437,20 +462,46 @@ export default function ServiceBooking() {
                   </div>
                </div>
 
-               <div className="space-y-4">
-                  <div className="space-y-2">
-                     <Label htmlFor="meeting-location" className="text-sm font-medium">
-                        {t('profileBook.location')} <span className="text-destructive">*</span>
-                     </Label>
-                     <Input
-                        name="location"
-                        id="meeting-location"
-                        placeholder={t('profileBook.locationPlaceholder')}
-                        className="h-11 text-sm"
-                     />
+               <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
+                  {/* For massage service: Show massage type selector first */}
+                  {billingType === 'per_hour' && service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 && (
+                     <div className="space-y-2">
+                        <Label htmlFor="massage-type-select" className="text-sm font-medium">
+                           {t('profileBook.massageType')} <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                           value={selectedMassageVariantId}
+                           onValueChange={setSelectedMassageVariantId}
+                        >
+                           <SelectTrigger id="massage-type-select" className="w-full h-11">
+                              <Briefcase className="mr-2 h-4 w-4" />
+                              <SelectValue placeholder={t('profileBook.selectMassageType')} />
+                           </SelectTrigger>
+                           <SelectContent>
+                              {service.model_service_variant.map((variant) => (
+                                 <SelectItem key={variant.id} value={variant.id}>
+                                    {variant.name} - {formatCurrency(variant.pricePerHour)}/{t('profileBook.hour')}
+                                 </SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
+                     </div>
+                  )}
+
+                  <div className="space-y-4">
+                     <div className="space-y-2">
+                        <Label htmlFor="meeting-location" className="text-sm font-medium">
+                           {t('profileBook.location')} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                           name="location"
+                           id="meeting-location"
+                           placeholder={t('profileBook.locationPlaceholder')}
+                           className="h-11 text-sm"
+                        />
+                     </div>
                   </div>
                </div>
-
                <div className="space-y-4">
                   <div className="space-y-2">
                      <Label htmlFor="dress-code" className="text-sm font-medium">
@@ -486,14 +537,40 @@ export default function ServiceBooking() {
                      {/* Per Hour Summary */}
                      {billingType === 'per_hour' && (
                         <>
-                           <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">{t('profileBook.pricePerHour')}</span>
-                              <span className="font-medium">{formatCurrency(service.customHourlyRate || service.service.hourlyRate || 0)}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">{t('profileBook.numberOfHours')}</span>
-                              <span className="font-medium">{selectedHours} {t('profileBook.hours')}</span>
-                           </div>
+                           {service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 ? (
+                              <>
+                                 {(() => {
+                                    const selectedVariant = service.model_service_variant.find(v => v.id === selectedMassageVariantId) || service.model_service_variant[0];
+                                    return (
+                                       <>
+                                          <div className="flex justify-between items-center text-sm">
+                                             <span className="text-muted-foreground">{t('profileBook.massageType')}</span>
+                                             <span className="font-medium">{selectedVariant.name}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center text-sm">
+                                             <span className="text-muted-foreground">{t('profileBook.pricePerHour')}</span>
+                                             <span className="font-medium">{formatCurrency(selectedVariant.pricePerHour)}</span>
+                                          </div>
+                                       </>
+                                    );
+                                 })()}
+                                 <div className="flex justify-between items-center text-sm">
+                                    <span className="text-muted-foreground">{t('profileBook.numberOfHours')}</span>
+                                    <span className="font-medium">{selectedHours} {selectedHours === 1 ? t('profileBook.hour') : t('profileBook.hours')}</span>
+                                 </div>
+                              </>
+                           ) : (
+                              <>
+                                 <div className="flex justify-between items-center text-sm">
+                                    <span className="text-muted-foreground">{t('profileBook.pricePerHour')}</span>
+                                    <span className="font-medium">{formatCurrency(service.customHourlyRate || service.service.hourlyRate || 0)}</span>
+                                 </div>
+                                 <div className="flex justify-between items-center text-sm">
+                                    <span className="text-muted-foreground">{t('profileBook.numberOfHours')}</span>
+                                    <span className="font-medium">{selectedHours} {selectedHours === 1 ? t('profileBook.hour') : t('profileBook.hours')}</span>
+                                 </div>
+                              </>
+                           )}
                         </>
                      )}
 

@@ -1023,7 +1023,10 @@
     "numberOfHours": "Number of hours",
     "days": "Days",
     "hours": "hours",
+    "hour": "hour",
     "selectHours": "Select hours",
+    "massageType": "Massage Type",
+    "selectMassageType": "Select massage type",
     "sessionType": "Session Type",
     "selectSessionType": "Select session type",
     "oneTime": "One Time",
@@ -1257,7 +1260,9 @@
       "maxInterests": "You can add up to 10 interests only.",
       "resetTokenLength": "Reset token must be exactly 6 characters.",
       "invalidTokenFormat": "Invalid token format. Must be 6 uppercase hexadecimal characters.",
-      "passwordsDoNotMatch": "Passwords do not match."
+      "passwordsDoNotMatch": "Passwords do not match.",
+      "hoursMinimum": "Hours must be at least 1 hour.",
+      "hoursMaximum": "Hours cannot exceed 10 hours."
     }
   },
   "modelDashboard": {
@@ -1321,6 +1326,12 @@
     "hourlyRateHint": "Price per hour (2-10 hours booking)",
     "oneTimePriceHint": "Price for 1-2 hours session",
     "oneNightPriceHint": "Price for overnight session",
+    "massageTypes": "Massage Types",
+    "massageTypeName": "Massage type name (e.g., Thai Massage, Swedish Massage)",
+    "pricePerHour": "Price per hour",
+    "addType": "Add Type",
+    "massageVariantsHint": "Add at least one massage type with name and price",
+    "startingFrom": "Starting from",
     "applying": "Applying...",
     "saveAndApply": "Save & Apply",
     "updating": "Updating...",
@@ -1371,6 +1382,10 @@
       "sleepPartner": {
         "name": "Sleep Partner",
         "description": "Find comfort with a calming sleep companion for peaceful rest and relaxation (non-romantic companionship)."
+      },
+      "massage": {
+        "name": "Massage Service",
+        "description": "Professional massage services with various massage types available. Choose from different massage styles tailored to your needs."
       }
     }
   },

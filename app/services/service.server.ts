@@ -56,6 +56,16 @@ export async function getServicesForModel(modelId: string) {
       },
       include: {
         service: true,
+        model_service_variant: {
+          where: {
+            status: "active",
+          },
+          select: {
+            id: true,
+            name: true,
+            pricePerHour: true,
+          },
+        },
       },
     });
 
@@ -75,6 +85,7 @@ export async function getServicesForModel(modelId: string) {
         customOneTimePrice: modelService?.customOneTimePrice || null,
         customOneNightPrice: modelService?.customOneNightPrice || null,
         isAvailable: modelService?.isAvailable || true,
+        massageVariants: modelService?.model_service_variant || [],
       };
     });
 
@@ -97,10 +108,16 @@ export interface ServiceRates {
   customOneNightPrice?: number;
 }
 
+export interface MassageVariant {
+  name: string;
+  pricePerHour: number;
+}
+
 export async function applyForService(
   modelId: string,
   serviceId: string,
-  rates: ServiceRates
+  rates: ServiceRates,
+  massageVariants?: MassageVariant[]
 ) {
   try {
     // Check if already applied
@@ -133,8 +150,17 @@ export async function applyForService(
       };
     }
 
+    // Check if massage service requires variants
+    if (service.name.toLowerCase() === "massage" && (!massageVariants || massageVariants.length === 0)) {
+      return {
+        success: false,
+        error: true,
+        message: "At least one massage type is required for massage service!",
+      };
+    }
+
     // Create application with custom rates based on billing type
-    await prisma.model_service.create({
+    const modelService = await prisma.model_service.create({
       data: {
         modelId,
         serviceId,
@@ -146,6 +172,18 @@ export async function applyForService(
         status: "active",
       },
     });
+
+    // If massage service, create variants
+    if (service.name.toLowerCase() === "massage" && massageVariants && massageVariants.length > 0) {
+      await prisma.model_service_variant.createMany({
+        data: massageVariants.map(variant => ({
+          modelServiceId: modelService.id,
+          name: variant.name,
+          pricePerHour: variant.pricePerHour,
+          status: "active",
+        })),
+      });
+    }
 
     return {
       success: true,
@@ -212,7 +250,8 @@ export async function updateServiceApplication(
   modelId: string,
   serviceId: string,
   modelServiceId: string,
-  rates: ServiceRates
+  rates: ServiceRates,
+  massageVariants?: MassageVariant[]
 ) {
   try {
     // Verify the model service exists and belongs to this model
@@ -223,6 +262,9 @@ export async function updateServiceApplication(
         serviceId,
         status: "active",
       },
+      include: {
+        service: true,
+      },
     });
 
     if (!modelService) {
@@ -230,6 +272,15 @@ export async function updateServiceApplication(
         success: false,
         error: true,
         message: "Service application not found!",
+      };
+    }
+
+    // Check if massage service requires variants
+    if (modelService.service?.name.toLowerCase() === "massage" && (!massageVariants || massageVariants.length === 0)) {
+      return {
+        success: false,
+        error: true,
+        message: "At least one massage type is required for massage service!",
       };
     }
 
@@ -245,6 +296,26 @@ export async function updateServiceApplication(
         customOneNightPrice: rates.customOneNightPrice ?? modelService.customOneNightPrice,
       },
     });
+
+    // If massage service, update variants
+    if (modelService.service?.name.toLowerCase() === "massage" && massageVariants && massageVariants.length > 0) {
+      // Delete existing variants
+      await prisma.model_service_variant.deleteMany({
+        where: {
+          modelServiceId: modelServiceId,
+        },
+      });
+
+      // Create new variants
+      await prisma.model_service_variant.createMany({
+        data: massageVariants.map(variant => ({
+          modelServiceId: modelServiceId,
+          name: variant.name,
+          pricePerHour: variant.pricePerHour,
+          status: "active",
+        })),
+      });
+    }
 
     return {
       success: true,
