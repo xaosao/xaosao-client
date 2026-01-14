@@ -305,12 +305,77 @@ export default function ModelWalletPage() {
                     key={transaction.id}
                     className="p-2 sm:p-4 hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="flex items-center justify-between">
+                    {/* Mobile Card Layout */}
+                    <div className="sm:hidden">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className={`p-2.5 rounded-lg ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}>
+                            <span className={`text-xs font-semibold ${statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}`}>
+                              LAK
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 text-sm truncate">
+                              {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {transaction.createdAt.toDateString()}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <p className={`font-bold text-base ${transaction.identifier === "withdrawal" ? "text-red-600" : "text-green-600"}`}>
+                                {transaction.identifier === "withdrawal" ? "-" : "+"}
+                                {formatCurrency(transaction.amount)}
+                              </p>
+                            </div>
+                            <div className="mt-2">
+                              <span className={`inline-block text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}>
+                                {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">More</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-48" align="end" forceMount>
+                            <DropdownMenuItem className="text-gray-500 text-sm">
+                              <Link to={`/model/settings/wallet/detail/${transaction.id}`} className="flex space-x-2 w-full">
+                                <EyeIcon className="mr-2 h-3 w-3" />
+                                <span>{t("modelWallet.menu.viewDetails")}</span>
+                              </Link>
+                            </DropdownMenuItem>
+                            {transaction.status === "pending" && (
+                              <DropdownMenuItem className="text-sm">
+                                <Link to={`/model/settings/wallet/edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                  <FilePenLine className="mr-2 h-3 w-3" />
+                                  <span>{t("modelWallet.menu.edit")}</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {transaction.status === "pending" && (
+                              <DropdownMenuItem className="text-sm">
+                                <Link to={`/model/settings/wallet/delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                  <Trash className="mr-2 h-3 w-3" />
+                                  <span>{t("modelWallet.menu.delete")}</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {/* Desktop Table Layout */}
+                    <div className="hidden sm:flex items-center justify-between">
                       <div className="flex items-center justify-start space-x-8">
                         <p className="text-gray-500">{index + 1}</p>
                         <div className="flex items-center gap-4">
                           <div
-                            className={`hidden sm:block p-3 rounded-md ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}
+                            className={`p-3 rounded-md ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}
                           >
                             <span
                               className={statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}
