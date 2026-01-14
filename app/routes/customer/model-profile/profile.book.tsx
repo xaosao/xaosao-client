@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon } from "lucide-react"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
-import { useTranslation } from 'react-i18next';
 
 // components:
 import Modal from "~/components/ui/model"
@@ -96,7 +96,7 @@ export default function ServiceBooking() {
    const { t } = useTranslation();
    const [startDate, setStartDate] = useState<Date>()
    const [endDate, setEndDate] = useState<Date>()
-   const [selectedHours, setSelectedHours] = useState<number>(2)
+   const [selectedHours, setSelectedHours] = useState<number>(1)
    const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
 
    const actionData = useActionData<typeof action>()
@@ -397,9 +397,9 @@ export default function ServiceBooking() {
                                     <SelectValue placeholder={t('profileBook.selectHours')} />
                                  </SelectTrigger>
                                  <SelectContent>
-                                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((hour) => (
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((hour) => (
                                        <SelectItem key={hour} value={String(hour)}>
-                                          {hour} {t('profileBook.hours')}
+                                          {hour} {hour === 1 ? t('profileBook.hour') : t('profileBook.hours')}
                                        </SelectItem>
                                     ))}
                                  </SelectContent>
