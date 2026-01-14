@@ -16,6 +16,7 @@ import Toast from "./components/toast";
 import { useLanguageInit } from "./hooks/use-language-init";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import { DebugConsole } from "./components/debug/DebugConsole";
+import DevToolsRedirect from "./components/DevToolsRedirect";
 
 // Check if device is mobile
 function isMobileDevice(): boolean {
@@ -192,6 +193,7 @@ export default function App() {
 
   return (
     <>
+      <DevToolsRedirect />
       <GlobalLoadingIndicator />
       <Outlet />
       <InstallPrompt />

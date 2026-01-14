@@ -126,6 +126,9 @@
     font-family: "Noto Sans Lao Looped" !important;
     line-height: 1.4;
     transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE/Edge */
+    user-select: none;
   }
 
   h1,
