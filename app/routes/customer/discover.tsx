@@ -101,31 +101,34 @@ export async function action({
     const addFriend = formData.get("isFriend") === "true";
     const modelId = formData.get("modelId") as string;
 
+    // Preserve the profileId to keep selection after action
+    const profileIdParam = modelId ? `&profileId=${modelId}` : "";
+
     if (addFriend === true) {
         try {
             const res = await customerAddFriend(customerId, modelId, token);
             if (res?.success) {
-                return redirect(`/customer/?toastMessage=Add+friend+successfully!&toastType=success`);
+                return redirect(`/customer/?toastMessage=Add+friend+successfully!&toastType=success${profileIdParam}`);
             }
-            return redirect(`/customer/?toastMessage=${res?.message || 'Failed to add friend'}&toastType=error`);
+            return redirect(`/customer/?toastMessage=${res?.message || 'Failed to add friend'}&toastType=error${profileIdParam}`);
         } catch (error: any) {
-            return redirect(`/customer/?toastMessage=${error.message}&toastType=error`);
+            return redirect(`/customer/?toastMessage=${error.message}&toastType=error${profileIdParam}`);
         }
     }
 
     if (like === false && pass === false) {
-        return redirect(`/customer/?toastMessage=Invalid+request+action&toastType=warning`);
+        return redirect(`/customer/?toastMessage=Invalid+request+action&toastType=warning${profileIdParam}`);
     }
 
     const actionType = like === true ? "LIKE" : "PASS"
     try {
         const res = await createCustomerInteraction(customerId, modelId, actionType);
         if (res?.success) {
-            return redirect(`/customer/?toastMessage=Interaction+successfully!&toastType=success`);
+            return redirect(`/customer/?toastMessage=Interaction+successfully!&toastType=success${profileIdParam}`);
         }
-        return redirect(`/customer/?toastMessage=${res?.message || 'Interaction failed'}&toastType=error`);
+        return redirect(`/customer/?toastMessage=${res?.message || 'Interaction failed'}&toastType=error${profileIdParam}`);
     } catch (error: any) {
-        return redirect(`/customer/?toastMessage=${error.message}&toastType=error`);
+        return redirect(`/customer/?toastMessage=${error.message}&toastType=error${profileIdParam}`);
     }
 }
 
