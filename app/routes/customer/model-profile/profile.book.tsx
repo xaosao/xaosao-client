@@ -503,11 +503,11 @@ export default function ServiceBooking() {
                            <>
                               <Input
                                  id="meeting-location"
-                                 value={service.model?.address || t('profileBook.noAddressAvailable')}
+                                 value={service.serviceLocation || t('profileBook.noAddressAvailable')}
                                  className="h-11 text-sm bg-gray-100"
                                  readOnly
                               />
-                              <input type="hidden" name="location" value={service.model?.address || ''} />
+                              <input type="hidden" name="location" value={service.serviceLocation || ''} />
                            </>
                         ) : (
                            <Input

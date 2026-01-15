@@ -59,6 +59,7 @@ interface Service {
   customOneNightPrice: number | null;
   isAvailable: boolean;
   massageVariants?: MassageVariant[];
+  serviceLocation?: string | null;
 }
 
 interface LoaderData {
@@ -111,7 +112,8 @@ export async function action({ request }: ActionFunctionArgs) {
   if (actionType === "apply") {
     const rates = buildRates();
     const massageVariants = serviceName?.toLowerCase() === "massage" ? buildMassageVariants() : undefined;
-    const result = await applyForService(modelId, serviceId, rates, massageVariants);
+    const serviceLocation = serviceName?.toLowerCase() === "massage" ? (formData.get("serviceLocation") as string) : undefined;
+    const result = await applyForService(modelId, serviceId, rates, massageVariants, serviceLocation);
     if (result?.success) {
       return redirect(
         `/model/settings/services?toastMessage=${encodeURIComponent("modelServices.success.applied")}&toastType=success`
@@ -124,13 +126,15 @@ export async function action({ request }: ActionFunctionArgs) {
   } else if (actionType === "edit") {
     const rates = buildRates();
     const massageVariants = serviceName?.toLowerCase() === "massage" ? buildMassageVariants() : undefined;
+    const serviceLocation = serviceName?.toLowerCase() === "massage" ? (formData.get("serviceLocation") as string) : undefined;
     const modelServiceId = formData.get("modelServiceId") as string;
     const result = await updateServiceApplication(
       modelId,
       serviceId,
       modelServiceId,
       rates,
-      massageVariants
+      massageVariants,
+      serviceLocation
     );
     if (result?.success) {
       return redirect(
@@ -174,6 +178,9 @@ export default function ServicesSettings() {
     { name: "", pricePerHour: 0 }
   ]);
 
+  // Service location state (for massage service)
+  const [serviceLocation, setServiceLocation] = useState<string>("");
+
   const [applyModal, setApplyModal] = useState<Service | null>(null);
   const [editModal, setEditModal] = useState<Service | null>(null);
   const [cancelModal, setCancelModal] = useState<Service | null>(null);
@@ -202,13 +209,15 @@ export default function ServicesSettings() {
     setCustomOneTimePrice(service.customOneTimePrice?.toString() || service.oneTimePrice?.toString() || "");
     setCustomOneNightPrice(service.customOneNightPrice?.toString() || service.oneNightPrice?.toString() || "");
 
-    // Initialize massage variants if applicable
+    // Initialize massage variants and service location if applicable
     if (service.name.toLowerCase() === "massage") {
       if (service.massageVariants && service.massageVariants.length > 0) {
         setMassageVariants(service.massageVariants);
       } else {
         setMassageVariants([{ name: "", pricePerHour: 0 }]);
       }
+      // Initialize service location for massage
+      setServiceLocation(service.serviceLocation || "");
     }
   };
 
@@ -638,6 +647,24 @@ export default function ServicesSettings() {
                         <p className="text-center text-xs text-orange-500">
                           {t("modelServices.massageVariantsHint")}
                         </p>
+
+                        {/* Service Location for Massage */}
+                        <div className="space-y-2 mt-4 pt-4 border-t">
+                          <Label htmlFor="serviceLocation">
+                            {t("modelServices.serviceLocation")} <span className="text-rose-500">*</span>
+                          </Label>
+                          <Input
+                            id="serviceLocation"
+                            name="serviceLocation"
+                            value={serviceLocation}
+                            onChange={(e) => setServiceLocation(e.target.value)}
+                            required
+                            placeholder={t("modelServices.serviceLocationPlaceholder")}
+                          />
+                          <p className="text-xs text-gray-500">
+                            {t("modelServices.serviceLocationHint")}
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -915,6 +942,24 @@ export default function ServicesSettings() {
                         <p className="text-xs text-gray-500">
                           {t("modelServices.massageVariantsHint")}
                         </p>
+
+                        {/* Service Location for Massage */}
+                        <div className="space-y-2 mt-4 pt-4 border-t">
+                          <Label htmlFor="editServiceLocation">
+                            {t("modelServices.serviceLocation")} <span className="text-rose-500">*</span>
+                          </Label>
+                          <Input
+                            id="editServiceLocation"
+                            name="serviceLocation"
+                            value={serviceLocation}
+                            onChange={(e) => setServiceLocation(e.target.value)}
+                            required
+                            placeholder={t("modelServices.serviceLocationPlaceholder")}
+                          />
+                          <p className="text-xs text-gray-500">
+                            {t("modelServices.serviceLocationHint")}
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">

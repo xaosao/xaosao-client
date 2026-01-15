@@ -30,6 +30,7 @@ export interface IServiceBookingResponse {
   model?: {
     address?: string;
   };
+  serviceLocation?: string | null;
   model_service_variant?: MassageVariant[];
 }
 

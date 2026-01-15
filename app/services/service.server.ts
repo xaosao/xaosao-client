@@ -86,6 +86,7 @@ export async function getServicesForModel(modelId: string) {
         customOneNightPrice: modelService?.customOneNightPrice || null,
         isAvailable: modelService?.isAvailable || true,
         massageVariants: modelService?.model_service_variant || [],
+        serviceLocation: modelService?.serviceLocation || null,
       };
     });
 
@@ -117,7 +118,8 @@ export async function applyForService(
   modelId: string,
   serviceId: string,
   rates: ServiceRates,
-  massageVariants?: MassageVariant[]
+  massageVariants?: MassageVariant[],
+  serviceLocation?: string
 ) {
   try {
     // Check if already applied
@@ -150,13 +152,22 @@ export async function applyForService(
       };
     }
 
-    // Check if massage service requires variants
-    if (service.name.toLowerCase() === "massage" && (!massageVariants || massageVariants.length === 0)) {
-      return {
-        success: false,
-        error: true,
-        message: "At least one massage type is required for massage service!",
-      };
+    // Check if massage service requires variants and location
+    if (service.name.toLowerCase() === "massage") {
+      if (!massageVariants || massageVariants.length === 0) {
+        return {
+          success: false,
+          error: true,
+          message: "At least one massage type is required for massage service!",
+        };
+      }
+      if (!serviceLocation || serviceLocation.trim() === "") {
+        return {
+          success: false,
+          error: true,
+          message: "Service location is required for massage service!",
+        };
+      }
     }
 
     // Create application with custom rates based on billing type
@@ -168,6 +179,7 @@ export async function applyForService(
         customHourlyRate: rates.customHourlyRate ?? null,
         customOneTimePrice: rates.customOneTimePrice ?? null,
         customOneNightPrice: rates.customOneNightPrice ?? null,
+        serviceLocation: serviceLocation ?? null,
         isAvailable: true,
         status: "active",
       },
@@ -251,7 +263,8 @@ export async function updateServiceApplication(
   serviceId: string,
   modelServiceId: string,
   rates: ServiceRates,
-  massageVariants?: MassageVariant[]
+  massageVariants?: MassageVariant[],
+  serviceLocation?: string
 ) {
   try {
     // Verify the model service exists and belongs to this model
@@ -275,16 +288,25 @@ export async function updateServiceApplication(
       };
     }
 
-    // Check if massage service requires variants
-    if (modelService.service?.name.toLowerCase() === "massage" && (!massageVariants || massageVariants.length === 0)) {
-      return {
-        success: false,
-        error: true,
-        message: "At least one massage type is required for massage service!",
-      };
+    // Check if massage service requires variants and location
+    if (modelService.service?.name.toLowerCase() === "massage") {
+      if (!massageVariants || massageVariants.length === 0) {
+        return {
+          success: false,
+          error: true,
+          message: "At least one massage type is required for massage service!",
+        };
+      }
+      if (!serviceLocation || serviceLocation.trim() === "") {
+        return {
+          success: false,
+          error: true,
+          message: "Service location is required for massage service!",
+        };
+      }
     }
 
-    // Update the custom rates
+    // Update the custom rates and service location
     await prisma.model_service.update({
       where: {
         id: modelServiceId,
@@ -294,6 +316,7 @@ export async function updateServiceApplication(
         customHourlyRate: rates.customHourlyRate ?? modelService.customHourlyRate,
         customOneTimePrice: rates.customOneTimePrice ?? modelService.customOneTimePrice,
         customOneNightPrice: rates.customOneNightPrice ?? modelService.customOneNightPrice,
+        serviceLocation: serviceLocation ?? modelService.serviceLocation,
       },
     });
 
