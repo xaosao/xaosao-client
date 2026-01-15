@@ -164,28 +164,31 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         // Only run when navigation is idle (not during submission/loading)
         if (navigation.state !== 'idle') return;
 
-        // Small delay to ensure DOM is ready
+        // Longer delay for mobile devices to ensure DOM is fully ready
         const timeoutId = setTimeout(() => {
             if (selectedId && scrollContainerRef.current) {
                 const container = scrollContainerRef.current;
                 const selectedElement = modelItemRefs.current.get(selectedId);
                 if (selectedElement) {
-                    // Use getBoundingClientRect for accurate positioning in flex containers
-                    const containerRect = container.getBoundingClientRect();
-                    const elementRect = selectedElement.getBoundingClientRect();
+                    // Calculate scroll position to center the element
+                    const containerWidth = container.clientWidth;
+                    const elementOffsetLeft = selectedElement.offsetLeft;
+                    const elementWidth = selectedElement.offsetWidth;
+                    const scrollPosition = elementOffsetLeft - (containerWidth / 2) + (elementWidth / 2);
 
-                    // Calculate how much to scroll to center the element
-                    const elementCenter = elementRect.left + (elementRect.width / 2);
-                    const containerCenter = containerRect.left + (containerRect.width / 2);
-                    const scrollOffset = elementCenter - containerCenter;
-
-                    container.scrollBy({
-                        left: scrollOffset,
-                        behavior: 'smooth'
-                    });
+                    // Use scrollLeft for better mobile compatibility
+                    try {
+                        container.scrollTo({
+                            left: Math.max(0, scrollPosition),
+                            behavior: 'smooth'
+                        });
+                    } catch {
+                        // Fallback for older browsers
+                        container.scrollLeft = Math.max(0, scrollPosition);
+                    }
                 }
             }
-        }, 150);
+        }, 300);
 
         return () => clearTimeout(timeoutId);
     }, [selectedId, navigation.state]);
