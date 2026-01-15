@@ -12,7 +12,7 @@ import {
     Loader,
     MessageSquareText,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
 import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
@@ -155,6 +155,41 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const selectedProfile = models.find((p) => p.id === selectedId);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Refs for auto-scroll to selected model in header
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const modelItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    // Auto-scroll to selected model when selectedId changes or after form submission
+    useEffect(() => {
+        // Only run when navigation is idle (not during submission/loading)
+        if (navigation.state !== 'idle') return;
+
+        // Small delay to ensure DOM is ready
+        const timeoutId = setTimeout(() => {
+            if (selectedId && scrollContainerRef.current) {
+                const container = scrollContainerRef.current;
+                const selectedElement = modelItemRefs.current.get(selectedId);
+                if (selectedElement) {
+                    // Use getBoundingClientRect for accurate positioning in flex containers
+                    const containerRect = container.getBoundingClientRect();
+                    const elementRect = selectedElement.getBoundingClientRect();
+
+                    // Calculate how much to scroll to center the element
+                    const elementCenter = elementRect.left + (elementRect.width / 2);
+                    const containerCenter = containerRect.left + (containerRect.width / 2);
+                    const scrollOffset = elementCenter - containerCenter;
+
+                    container.scrollBy({
+                        left: scrollOffset,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }, 150);
+
+        return () => clearTimeout(timeoutId);
+    }, [selectedId, navigation.state]);
+
     const [images, setImages] = React.useState<IUserImages[]>(models?.[0]?.Images ?? []);
     const [touchEndX, setTouchEndX] = React.useState<number | null>(null)
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null)
@@ -287,6 +322,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     </div>
                 </div>
                 <div
+                    ref={scrollContainerRef}
                     className="px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6"
                     style={{
                         msOverflowStyle: 'none',
@@ -296,6 +332,9 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     {models.map((data) => (
                         <div
                             key={data.id}
+                            ref={(el) => {
+                                if (el) modelItemRefs.current.set(data.id, el);
+                            }}
                             className="flex-shrink-0 cursor-pointer"
                             onClick={() => handleProfileClick(data.id)}
                         >
