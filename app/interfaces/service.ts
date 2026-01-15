@@ -27,6 +27,9 @@ export interface IServiceBookingResponse {
     oneTimePrice?: number;
     oneNightPrice?: number;
   };
+  model?: {
+    address?: string;
+  };
   model_service_variant?: MassageVariant[];
 }
 

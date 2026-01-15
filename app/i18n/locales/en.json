@@ -1043,6 +1043,8 @@
     "insufficientBalance": "Insufficient balance! You need {{required}} LAK but have {{current}} LAK.",
     "insufficientBalanceGeneric": "Insufficient balance! Please recharge your wallet.",
     "minTimeToday": "Minimum time for today: {{time}}",
+    "selectTime": "Select Time",
+    "noAddressAvailable": "No address available",
     "unavailableTimes": "Unavailable times:",
     "andMoreSlots": "...and {{count}} more",
     "success": {

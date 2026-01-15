@@ -571,6 +571,11 @@ export async function getModelService(modelId: string, serviceId: string) {
         customOneTimePrice: true,
         customOneNightPrice: true,
         isAvailable: true,
+        model: {
+          select: {
+            address: true,
+          },
+        },
         service: {
           select: {
             id: true,

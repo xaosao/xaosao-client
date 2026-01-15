@@ -1043,6 +1043,8 @@
     "insufficientBalance": "ຍອດເງິນບໍ່ພຽງພໍ! ທ່ານຕ້ອງການ {{required}} ກີບ ແຕ່ມີພຽງ {{current}} ກີບ.",
     "insufficientBalanceGeneric": "ຍອດເງິນບໍ່ພຽງພໍ! ກະລຸນາເຕີມເງິນກະເປົາຂອງທ່ານ.",
     "minTimeToday": "ເວລາຕ່ຳສຸດສຳລັບມື້ນີ້: {{time}}",
+    "selectTime": "ເລືອກເວລາ",
+    "noAddressAvailable": "ບໍ່ມີທີ່ຢູ່",
     "unavailableTimes": "ເວລາທີ່ບໍ່ວ່າງ:",
     "andMoreSlots": "...ແລະ ອີກ {{count}}",
     "success": {

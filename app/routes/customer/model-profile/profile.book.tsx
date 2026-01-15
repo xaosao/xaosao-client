@@ -291,7 +291,10 @@ export default function ServiceBooking() {
                                     disabled={isDateDisabled}
                                     initialFocus
                                  />
-                                 <div className="p-2">
+                                 <div className="p-2 space-y-1">
+                                    <Label className="text-sm font-medium text-gray-700">
+                                       {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                    </Label>
                                     <Input
                                        required
                                        type="time"
@@ -380,7 +383,10 @@ export default function ServiceBooking() {
                                        }}
                                        initialFocus
                                     />
-                                    <div className="p-2">
+                                    <div className="p-2 space-y-1">
+                                       <Label className="text-sm font-medium text-gray-700">
+                                          {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                       </Label>
                                        <Input
                                           type="time"
                                           name="endDate"
@@ -493,28 +499,43 @@ export default function ServiceBooking() {
                         <Label htmlFor="meeting-location" className="text-sm font-medium">
                            {t('profileBook.location')} <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                           name="location"
-                           id="meeting-location"
-                           placeholder={t('profileBook.locationPlaceholder')}
-                           className="h-11 text-sm"
-                        />
+                        {service.service.name.toLowerCase() === 'massage' ? (
+                           <>
+                              <Input
+                                 id="meeting-location"
+                                 value={service.model?.address || t('profileBook.noAddressAvailable')}
+                                 className="h-11 text-sm bg-gray-100"
+                                 readOnly
+                              />
+                              <input type="hidden" name="location" value={service.model?.address || ''} />
+                           </>
+                        ) : (
+                           <Input
+                              name="location"
+                              id="meeting-location"
+                              placeholder={t('profileBook.locationPlaceholder')}
+                              className="h-11 text-sm"
+                           />
+                        )}
                      </div>
                   </div>
                </div>
-               <div className="space-y-4">
-                  <div className="space-y-2">
-                     <Label htmlFor="dress-code" className="text-sm font-medium">
-                        {t('profileBook.preferredAttire')}
-                     </Label>
-                     <Textarea
-                        name="preferred"
-                        id="dress-code"
-                        placeholder={t('profileBook.attirePlaceholder')}
-                        className="min-h-[100px] resize-none text-sm"
-                     />
+               {/* Hide Preferred Attire for massage service */}
+               {service.service.name.toLowerCase() !== 'massage' && (
+                  <div className="space-y-4">
+                     <div className="space-y-2">
+                        <Label htmlFor="dress-code" className="text-sm font-medium">
+                           {t('profileBook.preferredAttire')}
+                        </Label>
+                        <Textarea
+                           name="preferred"
+                           id="dress-code"
+                           placeholder={t('profileBook.attirePlaceholder')}
+                           className="min-h-[100px] resize-none text-sm"
+                        />
+                     </div>
                   </div>
-               </div>
+               )}
 
                <div className="space-y-2 ">
                   <h3 className="text-sm font-bold">{t('profileBook.summary')}</h3>

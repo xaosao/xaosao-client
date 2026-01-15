@@ -1043,6 +1043,8 @@
     "insufficientBalance": "ยอดเงินไม่เพียงพอ! คุณต้องการ {{required}} บาท แต่มีเพียง {{current}} บาท",
     "insufficientBalanceGeneric": "ยอดเงินไม่เพียงพอ! กรุณาเติมเงินกระเป๋าของคุณ",
     "minTimeToday": "เวลาขั้นต่ำสำหรับวันนี้: {{time}}",
+    "selectTime": "เลือกเวลา",
+    "noAddressAvailable": "ไม่มีที่อยู่",
     "unavailableTimes": "เวลาที่ไม่ว่าง:",
     "andMoreSlots": "...และอีก {{count}}",
     "success": {
