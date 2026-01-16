@@ -242,6 +242,17 @@ export async function createModelSession(
 // Login model to chat system
 async function loginModelOnChat(modelData: ModelLogin): Promise<LoginResponse> {
   const url = `${process.env.VITE_API_URL}login-with-phone`;
+  const bypassChatServer = process.env.BYPASS_CHAT_SERVER === "true";
+
+  // If chat server is bypassed via env variable, return fallback token
+  if (bypassChatServer) {
+    console.warn("Chat server bypassed via BYPASS_CHAT_SERVER env variable.");
+    return {
+      token: `bypass-model-token-${modelData.phone_number}-${Date.now()}`,
+      success: true,
+      message: "Chat server bypassed",
+    };
+  }
 
   try {
     const response = await fetch(url, {
@@ -251,6 +262,22 @@ async function loginModelOnChat(modelData: ModelLogin): Promise<LoginResponse> {
       },
       body: JSON.stringify(modelData),
     });
+
+    // Check if response is JSON (chat server running) or HTML (chat server not running)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // Chat server is not running or returning HTML error page
+      console.warn(`Chat server at ${url} returned non-JSON response. Content-Type: ${contentType}`);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Chat server not running. Using development fallback token.");
+        return {
+          token: `dev-model-token-${modelData.phone_number}-${Date.now()}`,
+          success: true,
+          message: "Development mode: Chat server bypassed",
+        };
+      }
+      throw new Error(`Chat server returned non-JSON response. Please check if the chat API is running at ${url}`);
+    }
 
     const data = await response.json();
 
@@ -265,6 +292,17 @@ async function loginModelOnChat(modelData: ModelLogin): Promise<LoginResponse> {
     };
   } catch (error) {
     console.error("Model login to chat failed:", error);
+
+    // Development fallback when chat server is unavailable
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Chat server error. Using development fallback token.");
+      return {
+        token: `dev-model-token-${modelData.phone_number}-${Date.now()}`,
+        success: true,
+        message: "Development mode: Chat server bypassed",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -391,6 +429,17 @@ async function registerModelWithoutOTP(
   modelData: ModelRegistrationData
 ): Promise<RegistrationResponse> {
   const url = `${process.env.VITE_API_URL}register-without-otp`;
+  const bypassChatServer = process.env.BYPASS_CHAT_SERVER === "true";
+
+  // If chat server is bypassed via env variable, return success
+  if (bypassChatServer) {
+    console.warn("Chat server registration bypassed via BYPASS_CHAT_SERVER env variable.");
+    return {
+      success: true,
+      data: { user_id: modelData.user_id },
+      message: "Chat server bypassed",
+    };
+  }
 
   try {
     const response = await fetch(url, {
@@ -400,6 +449,21 @@ async function registerModelWithoutOTP(
       },
       body: JSON.stringify(modelData),
     });
+
+    // Check if response is JSON (chat server running) or HTML (chat server not running)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // Chat server is not running, use development fallback
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Chat server not running. Using development fallback for model registration.");
+        return {
+          success: true,
+          data: { user_id: modelData.user_id },
+          message: "Development mode: Chat server bypassed",
+        };
+      }
+      throw new Error("Chat server is not available");
+    }
 
     const data: RegistrationResponse = await response.json();
 
@@ -414,6 +478,17 @@ async function registerModelWithoutOTP(
     };
   } catch (error) {
     console.error("Model registration to chat failed:", error);
+
+    // Development fallback when chat server is unavailable
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Chat server error. Using development fallback for model registration.");
+      return {
+        success: true,
+        data: { user_id: modelData.user_id },
+        message: "Development mode: Chat server bypassed",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

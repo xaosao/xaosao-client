@@ -220,6 +220,17 @@ export async function createUserSession(
 // This for register new user to chat DB:
 async function loginOnChat(userData: UserLogin): Promise<LoginResponse> {
   const url = `${process.env.VITE_API_URL}login-with-phone`;
+  const bypassChatServer = process.env.BYPASS_CHAT_SERVER === "true";
+
+  // If chat server is bypassed via env variable, return fallback token
+  if (bypassChatServer) {
+    console.warn("Chat server bypassed via BYPASS_CHAT_SERVER env variable.");
+    return {
+      token: `bypass-token-${userData.phone_number}-${Date.now()}`,
+      success: true,
+      message: "Chat server bypassed",
+    };
+  }
 
   try {
     const response = await fetch(url, {
@@ -397,6 +408,17 @@ async function registerUserWithoutOTP(
   userData: UserRegistrationData
 ): Promise<RegistrationResponse> {
   const url = `${process.env.VITE_API_URL}register-without-otp`;
+  const bypassChatServer = process.env.BYPASS_CHAT_SERVER === "true";
+
+  // If chat server is bypassed via env variable, return success
+  if (bypassChatServer) {
+    console.warn("Chat server registration bypassed via BYPASS_CHAT_SERVER env variable.");
+    return {
+      success: true,
+      data: { user_id: userData.user_id },
+      message: "Chat server bypassed",
+    };
+  }
 
   try {
     const response = await fetch(url, {
@@ -406,6 +428,21 @@ async function registerUserWithoutOTP(
       },
       body: JSON.stringify(userData),
     });
+
+    // Check if response is JSON (chat server running) or HTML (chat server not running)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // Chat server is not running, use development fallback
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Chat server not running. Using development fallback for registration.");
+        return {
+          success: true,
+          data: { user_id: userData.user_id },
+          message: "Development mode: Chat server bypassed",
+        };
+      }
+      throw new Error("Chat server is not available");
+    }
 
     const data: RegistrationResponse = await response.json();
 
@@ -421,6 +458,17 @@ async function registerUserWithoutOTP(
     };
   } catch (error) {
     console.error("Registration from RRV7 to React failed11:", error);
+
+    // Development fallback when chat server is unavailable
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Chat server error. Using development fallback for registration.");
+      return {
+        success: true,
+        data: { user_id: userData.user_id },
+        message: "Development mode: Chat server bypassed",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
