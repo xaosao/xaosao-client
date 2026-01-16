@@ -232,6 +232,21 @@ async function loginOnChat(userData: UserLogin): Promise<LoginResponse> {
     // Log status and URL for debugging
     console.log("loginOnChat URL:", url, "Status:", response.status);
 
+    // Check if response is JSON (chat server running) or HTML (chat server not running)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // Chat server is not running, use development fallback
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Chat server not running. Using development fallback token.");
+        return {
+          token: `dev-token-${userData.phone_number}-${Date.now()}`,
+          success: true,
+          message: "Development mode: Chat server bypassed",
+        };
+      }
+      throw new Error("Chat server is not available");
+    }
+
     const data = await response.json();
 
     if (!data.success) {
@@ -245,6 +260,17 @@ async function loginOnChat(userData: UserLogin): Promise<LoginResponse> {
     };
   } catch (error) {
     console.error("Registration from RRV7 to React failed 11:", error);
+
+    // Development fallback when chat server is unavailable
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Chat server error. Using development fallback token.");
+      return {
+        token: `dev-token-${userData.phone_number}-${Date.now()}`,
+        success: true,
+        message: "Development mode: Chat server bypassed",
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
