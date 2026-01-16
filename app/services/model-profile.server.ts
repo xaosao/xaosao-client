@@ -469,6 +469,13 @@ export async function updateModelChatProfile(
   }
 ) {
   const url = `${process.env.VITE_API_URL}update-profile`;
+  const bypassChatServer = process.env.BYPASS_CHAT_SERVER === "true";
+
+  // If chat server is bypassed via env variable, return success
+  if (bypassChatServer) {
+    console.warn("Chat server model profile update bypassed via BYPASS_CHAT_SERVER env variable.");
+    return { success: true, data: null, message: "Chat server bypassed" };
+  }
 
   try {
     const response = await fetch(url, {
@@ -485,6 +492,17 @@ export async function updateModelChatProfile(
       }),
     });
 
+    // Check if response is JSON (chat server running) or HTML (chat server not running)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // Chat server is not running, use development fallback
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Chat server not running. Using development fallback for model profile update.");
+        return { success: true, data: null, message: "Development mode: Chat server bypassed" };
+      }
+      return { success: false, message: "Chat server is not available" };
+    }
+
     const result = await response.json();
 
     if (!result.success) {
@@ -496,6 +514,13 @@ export async function updateModelChatProfile(
     return { success: true, data: result.data };
   } catch (error) {
     console.error("Error updating model chat profile:", error);
+
+    // Development fallback when chat server is unavailable
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Chat server error. Using development fallback for model profile update.");
+      return { success: true, data: null, message: "Development mode: Chat server bypassed" };
+    }
+
     return {
       success: false,
       message:
