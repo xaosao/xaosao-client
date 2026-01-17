@@ -323,7 +323,11 @@ export default function WalletTopUpPage() {
                                         type="button"
                                         key={quickAmount}
                                         onClick={() => setAmount(quickAmount)}
-                                        className="cursor-pointer py-2 px-1 sm:px-3 border border-gray-200 rounded-lg text-xs font-medium hover:border-rose-500 hover:text-rose-500 transition-colors"
+                                        className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${
+                                            amount === quickAmount
+                                                ? "border-rose-500 bg-rose-500 text-white"
+                                                : "border-gray-200 hover:border-rose-500 hover:text-rose-500"
+                                        }`}
                                     >
                                         {formatCurrency1(quickAmount)}
                                     </button>
