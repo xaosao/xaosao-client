@@ -59,7 +59,7 @@ const customerVideos: VideoItem[] = [
       descriptionKey: "videoTutorials.customerVideos.register.description",
       url: "https://iframe.mediadelivery.net/play/575603/6dbd5d24-0f5e-426e-972a-d642b793059f",
       directUrl: "https://xs-images.b-cdn.net/customer-video/Register.mp4",
-      duration: "6:02"
+      duration: "6:06"
    },
    {
       id: "customer-2",
