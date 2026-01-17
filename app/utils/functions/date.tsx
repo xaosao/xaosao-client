@@ -23,6 +23,11 @@ export function formatCurrency(amount: number | undefined | null) {
     return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " Kip";
 }
 
+export function formatCurrency1(amount: number | undefined | null) {
+    if (amount === undefined || amount === null) return "0 Kip";
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 
 // Days calculate from dates:
 export function calculateDayAmount(startDate?: string, endDate?: string | null): number {

@@ -11,7 +11,7 @@ import { uploadFileToBunnyServer } from "~/services/upload.server";
 import { requireUserSession } from "~/services/auths.server";
 import { validateTopUpInputs } from "~/services/validation.server";
 import type { ITransactionCredentials } from "~/interfaces/transaction";
-import { formatCurrency } from "~/utils";
+import { formatCurrency, formatCurrency1 } from "~/utils";
 import { compressImage } from "~/utils/imageCompression";
 
 // Constants for file upload limits
@@ -126,8 +126,8 @@ export default function WalletTopUpPage() {
 
     const downloadQR = () => {
         const link = document.createElement("a");
-        link.href = "/images/qr-code.jpg";
-        link.download = "payment-qr-code.jpg";
+        link.href = "/images/qr-code.jpeg";
+        link.download = "payment-qr-code.jpeg";
         link.click();
     };
 
@@ -315,7 +315,7 @@ export default function WalletTopUpPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                {t('wallet.topup.quickAmount')}
+                                {t('wallet.topup.quickAmount')} (Kip)
                             </label>
                             <div className="grid grid-cols-5 gap-1 sm:gap-2">
                                 {quickAmounts.map((quickAmount) => (
@@ -323,9 +323,9 @@ export default function WalletTopUpPage() {
                                         type="button"
                                         key={quickAmount}
                                         onClick={() => setAmount(quickAmount)}
-                                        className="cursor-pointer py-2 px-1 sm:px-3 border border-gray-200 rounded-lg text-sm font-medium hover:border-rose-500 hover:text-rose-500 transition-colors"
+                                        className="cursor-pointer py-2 px-1 sm:px-3 border border-gray-200 rounded-lg text-xs font-medium hover:border-rose-500 hover:text-rose-500 transition-colors"
                                     >
-                                        {formatCurrency(quickAmount)}
+                                        {formatCurrency1(quickAmount)}
                                     </button>
                                 ))}
                             </div>
@@ -363,8 +363,8 @@ export default function WalletTopUpPage() {
 
                         {paymentMethod === "qr" && (
                             <div className="bg-white border border-dashed border-gray-200 rounded-xl p-6 text-center">
-                                <div className="w-52 h-52 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <img src="/images/qr-code.jpg" alt="QR-code" />
+                                <div className="w-full max-w-xs mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                    <img src="/images/qr-code.jpeg" alt="QR-code" className="w-full h-auto object-contain" />
                                 </div>
                                 <button
                                     type="button"
@@ -540,7 +540,7 @@ export default function WalletTopUpPage() {
     };
 
     return (
-        <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-4 sm:px-4 sm:p-0 border">
+        <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-2 sm:px-4 sm:p-0 border">
             <Form method="post" encType="multipart/form-data" className="space-y-4 mt-10 sm:mt-0">
                 <div className="space-y-1">
                     <h1 className="text-lg text-gray-800">
@@ -564,7 +564,7 @@ export default function WalletTopUpPage() {
                     )}
                 </div>
 
-                <div className="px-6 flex items-center justify-between mt-8">
+                <div className="px-6 flex items-center justify-between mt-8 pb-20 sm:pb-4">
                     <div className="flex space-x-1">
                         {[1, 2, 3, 4].map((stepNum) => (
                             <div
