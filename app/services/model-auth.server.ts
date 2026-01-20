@@ -196,7 +196,7 @@ export async function destroyModelSession(request: Request) {
   headers.append("Set-Cookie", modelCookieParts.join("; "));
   headers.append("Set-Cookie", customerCookieParts.join("; "));
 
-  return redirect("/model-auth/login", { headers });
+  return redirect("/", { headers });
 }
 
 export async function createModelSession(

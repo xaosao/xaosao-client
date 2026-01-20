@@ -176,7 +176,7 @@ export async function destroyUserSession(request: Request) {
   headers.append("Set-Cookie", customerCookieParts.join("; "));
   headers.append("Set-Cookie", modelCookieParts.join("; "));
 
-  return redirect("/login", { headers });
+  return redirect("/", { headers });
 }
 
 export async function createUserSession(

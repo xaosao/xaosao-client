@@ -32,15 +32,14 @@ import { calculateAgeFromDOB, calculateDistance, formatDistance } from "~/utils"
 import { getUserTokenFromSession, requireUserSession } from "~/services/auths.server";
 import type { Gender, IAvailableStatus, IUserImages } from "~/interfaces/base";
 import { createCustomerInteraction, customerAddFriend } from "~/services/interaction.server";
-import type { IHotmodelsResponse, ImodelsResponse, INearbyModelResponse } from "~/interfaces";
-import { getHotModels, getModelsForCustomer, getNearbyModels } from "~/services/model.server";
+import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
+import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
 
 interface LoaderReturn {
     latitude: number;
     longitude: number;
     models: ImodelsResponse[];
     hasActiveSubscription: boolean;
-    hotModels: IHotmodelsResponse[];
     nearbyModels: INearbyModelResponse[];
 }
 
@@ -69,16 +68,10 @@ export const loader: LoaderFunction = async ({ request }) => {
         available_status: model.available_status as IAvailableStatus,
     }));
 
-    const res = await getHotModels(customerId);
-    const hotModels: IHotmodelsResponse[] = res.map((model) => ({
-        ...model,
-    }));
-
     const nearbyModels = await getNearbyModels(customerId as string)
 
     return {
         models,
-        hotModels,
         nearbyModels,
         latitude,
         longitude,
@@ -137,7 +130,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, hotModels, nearbyModels, latitude, longitude, hasActiveSubscription } = loaderData;
+    const { models, nearbyModels, latitude, longitude, hasActiveSubscription } = loaderData;
 
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
@@ -324,6 +317,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         </p>
                     </div>
                 </div>
+
                 <div
                     ref={scrollContainerRef}
                     className="px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6"
@@ -453,7 +447,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     </button>
                                                 </div>
 
-                                                {/* large screen  */}
                                                 <div className="absolute bottom-4 right-4 hidden sm:flex space-x-3">
                                                     {selectedProfile.isContact ?
                                                         <>
@@ -580,7 +573,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 </button>
                                             </div>
 
-                                            {/* large screen  */}
                                             <div className="absolute bottom-4 right-4 hidden sm:flex space-x-3">
                                                 {selectedProfile.isContact ?
                                                     <>
@@ -693,144 +685,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         <p className="text-gray-400 text-lg">{t('discover.clickProfile')}</p>
                     </div>
                 )}
-            </div>
-
-            <div className="flex flex-col items-start justify-start p-3 w-full space-y-4">
-                <div className="flex items-start justify-between w-full mb-2 sm:mb-4">
-                    <div className="space-y-2 sm:space-y-1">
-                        <h1 className="text-sm sm:text-md sm:font-bold text-gray-800 uppercase text-shadow-md">
-                            {t('discover.dailyPicks')}
-                        </h1>
-                        <p className="text-xs sm:text-sm font-normal text-gray-600">
-                            {t('discover.dailyPicksDescription')}
-                        </p>
-                    </div>
-                </div>
-
-                <Swiper
-                    modules={[Navigation, Pagination]}
-                    navigation={{
-                        prevEl: ".custom-prev",
-                        nextEl: ".custom-next",
-                    }}
-                    pagination={{ clickable: true }}
-                    spaceBetween={20}
-                    breakpoints={{
-                        0: { slidesPerView: 1 },
-                        768: { slidesPerView: 2 },
-                        1024: { slidesPerView: 3 },
-                    }}
-                    className="w-full custom-swiper"
-                >
-                    {hotModels.map((model) => (
-                        <SwiperSlide key={model.id}>
-                            <div className="relative shadow-md bg-white rounded-2xl overflow-hidden cursor-pointer hover:scale-105 transition-transform h-60">
-                                <Form method="post">
-                                    <input type="hidden" name="modelId" value={model.id} />
-                                    <input type="hidden" name="isFriend" value="true" id="isFriend" />
-                                    <div className="relative h-full overflow-hidden">
-                                        {model.Images?.[0]?.name ? (
-                                            <img
-                                                src={model.Images[0].name}
-                                                alt={model.firstName + model.lastName}
-                                                className="w-full h-full object-cover transition-transform duration-300"
-                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                            />
-                                        ) : model.profile ? (
-                                            <img
-                                                src={model.profile}
-                                                alt={model.firstName + model.lastName}
-                                                className="w-full h-full object-cover transition-transform duration-300 cursor-pointer"
-                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                            />
-                                        ) : (
-                                            <div
-                                                className="w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
-                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                            >
-                                                <User className="w-16 h-16 text-white" />
-                                            </div>
-                                        )}
-                                        {model?.isContact ?
-                                            <>
-                                                {model?.whatsapp && (
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-4 right-4 rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                                    >
-                                                        <MessageSquareText className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </>
-                                            :
-                                            <button
-                                                type="submit"
-                                                className="absolute top-4 right-4 rounded-lg py-1.5 px-2 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                                onClick={() => {
-                                                    (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                }}
-                                            >
-                                                <UserPlus className="w-4 h-4" />
-                                            </button>
-                                        }
-
-                                        <div className="absolute top-0 left-4 right-4 text-white transition-all duration-300">
-                                            <div className="flex items-start space-x-3 mt-2">
-                                                <div className="w-12 h-12">
-                                                    {model.profile ? (
-                                                        <img
-                                                            src={model.profile}
-                                                            alt="Profile"
-                                                            className="w-full h-full rounded-full object-cover border-2 border-gray-700"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center">
-                                                            <User className="w-6 h-6 text-gray-400" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h2
-                                                        className="flex items-center justify-start text-sm gap-1"
-                                                        style={{
-                                                            textShadow: "1px 1px 2px rgba(35, 35, 35, 0.8)",
-                                                        }}
-                                                    >
-                                                        <User size={16} />{model.firstName + " " + model.lastName}
-                                                    </h2>
-                                                    <p
-                                                        className="flex items-center justify-start text-xs text-white gap-1"
-                                                        style={{
-                                                            textShadow: "1px 1px 2px rgba(35, 35, 35, 0.8)",
-                                                        }}
-                                                    >
-                                                        <Calendar size={16} />{calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
-                                                    </p>
-                                                    <p
-                                                        className="flex items-center justify-start text-xs text-white gap-1"
-                                                        style={{
-                                                            textShadow: "1px 1px 2px rgba(35, 35, 35, 0.8)",
-                                                        }}
-                                                    >
-                                                        <MapPin size={16} />&nbsp;{formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Form>
-                            </div>
-                        </SwiperSlide>
-                    ))}
-
-                    <button className="custom-prev hidden sm:block cursor-pointer absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white shadow-lg border text-gray-600 hover:bg-gray-50">
-                        <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button className="custom-next hidden sm:block cursor-pointer absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white shadow-lg border text-gray-600 hover:bg-gray-50">
-                        <ChevronRight className="h-5 w-5" />
-                    </button>
-                </Swiper>
             </div>
 
             <div className="flex flex-col items-start justify-start p-4 w-full space-y-4">

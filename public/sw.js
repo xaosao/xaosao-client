@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v4';
-const STATIC_CACHE = 'xaosao-static-v4';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v4';
+const CACHE_NAME = 'xaosao-v5';
+const STATIC_CACHE = 'xaosao-static-v5';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v5';
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
@@ -102,10 +102,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (JS, CSS, images) - cache first
-  if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/)
-  ) {
+  // For static assets (JS, CSS) - NETWORK FIRST to ensure fresh code
+  // This prevents iOS Safari caching issues where old JS causes hydration errors
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Cache successful responses for offline fallback
+          if (shouldCacheResponse(response)) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache only when offline
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // For images and fonts - cache first (these don't cause hydration issues)
+  if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/)) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
@@ -116,7 +137,7 @@ self.addEventListener('fetch', (event) => {
                 cache.put(request, response);
               });
             }
-          });
+          }).catch(() => {}); // Ignore network errors for background update
           return cachedResponse;
         }
 

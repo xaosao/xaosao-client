@@ -358,14 +358,11 @@ model images {
 }
 
 model banks {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
-  bank_name           String
-  bank_account_name   String   @unique
-  bank_account_number String   @unique
-  qr_code             String?
-  status              String   @default("active")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  qr_code   String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   model   model?  @relation(fields: [modelId], references: [id])
   modelId String? @db.ObjectId
@@ -486,10 +483,11 @@ model service {
   updatedAt   DateTime @updatedAt
 
   // Billing type configuration
-  billingType   String  @default("per_day") // per_day, per_hour, per_session
+  billingType   String  @default("per_day") // per_day, per_hour, per_session, per_minute
   hourlyRate    Float?  // For per_hour services (e.g., drinkingFriend)
   oneTimePrice  Float?  // For per_session services (e.g., sleepPartner - 1-2 hours)
   oneNightPrice Float?  // For per_session services (e.g., sleepPartner - overnight)
+  minuteRate    Float?  // For per_minute services (e.g., call service)
 
   createdBy   user?   @relation("CreatedBy", fields: [createdById], references: [id])
   createdById String? @db.ObjectId
@@ -518,6 +516,7 @@ model model_service {
   customHourlyRate    Float? // For per_hour services (e.g., drinkingFriend)
   customOneTimePrice  Float? // For per_session services (e.g., sleepPartner - 1-2 hours)
   customOneNightPrice Float? // For per_session services (e.g., sleepPartner - overnight)
+  customMinuteRate    Float? // For per_minute services (e.g., call service)
 
   // Service-specific location (e.g., massage shop/spa address)
   serviceLocation String? // Location where the service is provided (required for massage)
@@ -585,6 +584,18 @@ model service_booking {
   disputedAt          DateTime? // When customer disputed
   disputeResolvedAt   DateTime? // When admin resolved dispute
   disputeResolution   String?   // Admin's resolution: "released" or "refunded"
+
+  // Call service fields (for per_minute billing)
+  minutes           Int?        // Actual call duration in minutes
+  callStartedAt     DateTime?   // When call connected
+  callEndedAt       DateTime?   // When call ended
+  callStatus        String?     // "ready_to_call", "ringing", "in_call", "completed", "missed", "cancelled"
+  callType          String?     // "audio" or "video"
+  callRoomId        String?     // Unique room ID for WebRTC connection
+  scheduledCallTime DateTime?   // Scheduled time for the call (null = immediate)
+  callLastHeartbeat DateTime?   // Last heartbeat timestamp for duration tracking
+  customerPeerId    String?     // Customer's PeerJS peer ID
+  modelPeerId       String?     // Model's PeerJS peer ID
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

@@ -545,9 +545,6 @@ export async function getModelBanks(modelId: string) {
       },
       select: {
         id: true,
-        bank_name: true,
-        bank_account_name: true,
-        bank_account_number: true,
         qr_code: true,
         status: true,
         createdAt: true,
@@ -572,10 +569,7 @@ export async function getModelBanks(modelId: string) {
 export async function createModelBank(
   modelId: string,
   data: {
-    bank_name: string;
-    bank_account_name: string;
-    bank_account_number: string;
-    qr_code?: string;
+    qr_code: string;
   }
 ) {
   if (!modelId)
@@ -593,9 +587,6 @@ export async function createModelBank(
   try {
     const createBank = await prisma.banks.create({
       data: {
-        bank_name: data.bank_name,
-        bank_account_name: data.bank_account_name,
-        bank_account_number: data.bank_account_number,
         qr_code: data.qr_code,
         status: "active",
         modelId,
@@ -636,10 +627,7 @@ export async function updateModelBank(
   id: string,
   modelId: string,
   data: {
-    bank_name: string;
-    bank_account_name: string;
-    bank_account_number: string;
-    qr_code?: string;
+    qr_code: string;
   }
 ) {
   if (!modelId || !id)
@@ -673,9 +661,6 @@ export async function updateModelBank(
     const updateBank = await prisma.banks.update({
       where: { id },
       data: {
-        bank_name: data.bank_name,
-        bank_account_name: data.bank_account_name,
-        bank_account_number: data.bank_account_number,
         qr_code: data.qr_code,
       },
     });
@@ -739,8 +724,7 @@ export async function deleteModelBank(id: string, modelId: string) {
       });
     }
 
-    // Hard delete to free up unique constraints (bank_account_name, bank_account_number)
-    // This allows the model to re-add the same bank account later if needed
+    // Hard delete the bank record
     const deletedBank = await prisma.banks.delete({
       where: { id },
     });

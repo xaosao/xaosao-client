@@ -1,8 +1,8 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Route } from "./+types/wallet.topup";
 import { Form, redirect, useActionData, useNavigate, useNavigation } from "react-router";
-import { AlertCircle, ArrowLeft, Building2, Check, CheckCircle, Clock, Copy, Download, Loader, QrCode, Upload } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { AlertCircle, Check, CheckCircle, Clock, Copy, Download, Loader, QrCode, Upload } from "lucide-react";
 
 // components
 import Modal from "~/components/ui/model";

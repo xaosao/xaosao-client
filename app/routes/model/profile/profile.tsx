@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, useNavigation, useSearchParams, redirect, useFetcher } from 'react-router';
-import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Building2, Plus, CreditCard, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight } from 'lucide-react';
+import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Plus, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight } from 'lucide-react';
 
 // components
 import {
@@ -25,7 +25,6 @@ import Rating from '~/components/ui/rating';
 import { Badge } from '~/components/ui/badge';
 import EmptyPage from '~/components/ui/empty';
 import { Button } from '~/components/ui/button';
-import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Separator } from '~/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -70,28 +69,19 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Handle bank create action
     if (actionType === "createBank") {
-        const bankName = formData.get("bank_name") as string;
-        const bankAccountName = formData.get("bank_account_name") as string;
-        const bankAccountNumber = formData.get("bank_account_number") as string;
         const qrCodeFile = formData.get("qr_code_file") as File;
 
-        if (!bankName || !bankAccountName || !bankAccountNumber) {
-            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.allFieldsRequired")}&tab=banks`);
+        // QR code is required
+        if (!qrCodeFile || !(qrCodeFile instanceof File) || qrCodeFile.size === 0) {
+            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.qrCodeRequired")}&tab=banks`);
         }
 
         try {
-            let qrCodeUrl: string | undefined;
-
-            // Upload QR code image if provided
-            if (qrCodeFile && qrCodeFile instanceof File && qrCodeFile.size > 0) {
-                const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-                qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
-            }
+            // Upload QR code image
+            const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
+            const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
 
             await createModelBank(modelId, {
-                bank_name: bankName,
-                bank_account_name: bankAccountName,
-                bank_account_number: bankAccountNumber,
                 qr_code: qrCodeUrl,
             });
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankCreated")}&tab=banks`);
@@ -103,21 +93,24 @@ export async function action({ request }: ActionFunctionArgs) {
     // Handle bank update action
     if (actionType === "updateBank") {
         const bankId = formData.get("bankId") as string;
-        const bankName = formData.get("bank_name") as string;
-        const bankAccountName = formData.get("bank_account_name") as string;
-        const bankAccountNumber = formData.get("bank_account_number") as string;
         const qrCodeFile = formData.get("qr_code_file") as File;
         const existingQrCode = formData.get("existing_qr_code") as string;
 
-        if (!bankId || !bankName || !bankAccountName || !bankAccountNumber) {
-            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.allFieldsRequired")}&tab=banks`);
+        if (!bankId) {
+            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.bankIdRequired")}&tab=banks`);
+        }
+
+        // Must have QR code (either existing or new)
+        const hasNewQrCode = qrCodeFile && qrCodeFile instanceof File && qrCodeFile.size > 0;
+        if (!existingQrCode && !hasNewQrCode) {
+            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.qrCodeRequired")}&tab=banks`);
         }
 
         try {
-            let qrCodeUrl: string | undefined = existingQrCode || undefined;
+            let qrCodeUrl: string = existingQrCode;
 
             // Upload new QR code image if provided
-            if (qrCodeFile && qrCodeFile instanceof File && qrCodeFile.size > 0) {
+            if (hasNewQrCode) {
                 // Delete old QR code from BunnyCDN if exists
                 if (existingQrCode) {
                     await deleteFileFromBunny(extractFilenameFromCDNSafe(existingQrCode));
@@ -127,9 +120,6 @@ export async function action({ request }: ActionFunctionArgs) {
             }
 
             await updateModelBank(bankId, modelId, {
-                bank_name: bankName,
-                bank_account_name: bankAccountName,
-                bank_account_number: bankAccountNumber,
                 qr_code: qrCodeUrl,
             });
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankUpdated")}&tab=banks`);
@@ -243,11 +233,6 @@ export default function ModelProfilePage() {
     const [editingBank, setEditingBank] = React.useState<IModelBank | null>(null);
     const [qrCodeFile, setQrCodeFile] = React.useState<File | null>(null);
     const [qrCodePreview, setQrCodePreview] = React.useState<string | null>(null);
-    const [bankFormData, setBankFormData] = React.useState({
-        bank_name: "",
-        bank_account_name: "",
-        bank_account_number: "",
-    });
 
     // States for delete confirmation modal
     const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
@@ -404,11 +389,6 @@ export default function ModelProfilePage() {
     // Handle open bank modal for create
     const handleOpenCreateBankModal = () => {
         setEditingBank(null);
-        setBankFormData({
-            bank_name: "",
-            bank_account_name: "",
-            bank_account_number: "",
-        });
         setQrCodeFile(null);
         setQrCodePreview(null);
         setIsBankModalOpen(true);
@@ -417,13 +397,8 @@ export default function ModelProfilePage() {
     // Handle open bank modal for edit
     const handleOpenEditBankModal = (bank: IModelBank) => {
         setEditingBank(bank);
-        setBankFormData({
-            bank_name: bank.bank_name,
-            bank_account_name: bank.bank_account_name,
-            bank_account_number: bank.bank_account_number,
-        });
         setQrCodeFile(null);
-        setQrCodePreview(bank.qr_code || null);
+        setQrCodePreview(bank.qr_code);
         setIsBankModalOpen(true);
     };
 
@@ -431,11 +406,6 @@ export default function ModelProfilePage() {
     const handleCloseBankModal = () => {
         setIsBankModalOpen(false);
         setEditingBank(null);
-        setBankFormData({
-            bank_name: "",
-            bank_account_name: "",
-            bank_account_number: "",
-        });
         setQrCodeFile(null);
         setQrCodePreview(null);
     };
@@ -464,9 +434,6 @@ export default function ModelProfilePage() {
     const handleBankFormSubmit = () => {
         setIsBankSubmitting(true);
         const formData = new FormData();
-        formData.append("bank_name", bankFormData.bank_name);
-        formData.append("bank_account_name", bankFormData.bank_account_name);
-        formData.append("bank_account_number", bankFormData.bank_account_number);
 
         if (qrCodeFile) {
             formData.append("qr_code_file", qrCodeFile);
@@ -803,29 +770,14 @@ export default function ModelProfilePage() {
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
-                                                <CardContent className="space-y-2 pt-2 flex gap-4">
+                                                <CardContent className="space-y-2 pt-2">
                                                     <div className='flex items-center justify-center flex-col space-y-1'>
-                                                        {bank.qr_code && (
-                                                            <div className="">
-                                                                <img
-                                                                    src={bank.qr_code}
-                                                                    alt="QR Code"
-                                                                    className="w-20 h-20 object-contain border rounded"
-                                                                />
-                                                            </div>
-                                                        )}
+                                                        <img
+                                                            src={bank.qr_code}
+                                                            alt="QR Code"
+                                                            className="w-24 h-24 object-contain border rounded"
+                                                        />
                                                         <span className='text-gray-500 text-sm'>{t("modelProfile.banks.qrCode")}</span>
-                                                    </div>
-                                                    <div className='space-y-2'>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <span className="text-sm">{t("modelProfile.banks.bankName")}:&nbsp; {bank.bank_name}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <span className="text-sm">{t("modelProfile.banks.accountName")}:&nbsp; {bank.bank_account_name}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <span className="text-sm">{t("modelProfile.banks.accountNumber")}:&nbsp;{bank.bank_account_number}</span>
-                                                        </div>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -1165,38 +1117,7 @@ export default function ModelProfilePage() {
                         </DialogHeader>
                         <div className="grid gap-4 pb-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="bank_name">{t("modelProfile.bankModal.bankNameLabel")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    id="bank_name"
-                                    placeholder={t("modelProfile.bankModal.bankNamePlaceholder")}
-                                    value={bankFormData.bank_name}
-                                    className="text-sm"
-                                    onChange={(e) => setBankFormData({ ...bankFormData, bank_name: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="bank_account_name">{t("modelProfile.bankModal.accountNameLabel")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    id="bank_account_name"
-                                    className="text-sm"
-                                    placeholder={t("modelProfile.bankModal.accountNamePlaceholder")}
-                                    value={bankFormData.bank_account_name}
-                                    onChange={(e) => setBankFormData({ ...bankFormData, bank_account_name: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="bank_account_number">{t("modelProfile.bankModal.accountNumberLabel")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="text"
-                                    className="text-sm"
-                                    id="bank_account_number"
-                                    placeholder={t("modelProfile.bankModal.accountNumberPlaceholder")}
-                                    value={bankFormData.bank_account_number}
-                                    onChange={(e) => setBankFormData({ ...bankFormData, bank_account_number: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>{t("modelProfile.bankModal.qrCodeLabel")}</Label>
+                                <Label>{t("modelProfile.bankModal.qrCodeLabel")} <span className="text-red-500">*</span></Label>
                                 <input
                                     type="file"
                                     ref={qrCodeInputRef}
@@ -1273,7 +1194,7 @@ export default function ModelProfilePage() {
                                 type="button"
                                 className="bg-rose-500 hover:bg-rose-600 text-white"
                                 onClick={handleBankFormSubmit}
-                                disabled={!bankFormData.bank_name || !bankFormData.bank_account_name || !bankFormData.bank_account_number || isBankSubmitting}
+                                disabled={(!qrCodeFile && !qrCodePreview) || isBankSubmitting}
                             >
                                 {isBankSubmitting ? (
                                     <>
@@ -1298,18 +1219,12 @@ export default function ModelProfilePage() {
                         </DialogHeader>
                         {bankToDelete && (
                             <div className="py-4">
-                                <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-gray-500" />
-                                        <span className="font-medium text-sm">{bankToDelete.bank_name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <CreditCard className="w-4 h-4" />
-                                        <span>{bankToDelete.bank_account_name}</span>
-                                    </div>
-                                    <div className="text-sm text-gray-500 font-mono">
-                                        {bankToDelete.bank_account_number}
-                                    </div>
+                                <div className="p-4 bg-gray-50 rounded-lg flex justify-center">
+                                    <img
+                                        src={bankToDelete.qr_code}
+                                        alt="QR Code"
+                                        className="w-32 h-32 object-contain border rounded"
+                                    />
                                 </div>
                             </div>
                         )}
