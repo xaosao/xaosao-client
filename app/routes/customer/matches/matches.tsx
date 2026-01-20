@@ -418,8 +418,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
                 <div className="flex items-center justify-center gap-2">
-                    <Loader className="w-4 h-4 text-rose-500 animate-spin" />
-                    <p className="text-rose-600">{t('matches.processing')}</p>
+                    <Loader className="w-8 h-8 text-rose-500 animate-spin" />
+                    {/* <p className="text-rose-600">{t('matches.processing')}</p> */}
                 </div>
             </div>
         );
@@ -704,8 +704,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
 
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
+                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : foryouModels.length > 0 ? (
                             <div className="space-y-4">
@@ -744,8 +744,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="likeme">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
+                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : likeMeModels.length > 0 ? (
                             <div className="space-y-4">
@@ -785,8 +785,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="favourite">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
+                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : myFavouriteModels.length > 0 ? (
                             <div className="space-y-4">
@@ -826,8 +826,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="passed">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
+                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : myPassModels.length > 0 ? (
                             <div className="space-y-4">

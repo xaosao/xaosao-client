@@ -230,6 +230,7 @@
   "discover": {
     "onlineMatchers": "Online matchers:",
     "processing": "Processing....",
+    "loadingResults": "Loading results...",
     "noMoreProfiles": "No more profiles",
     "checkBackLater": "Check back later for new matches!",
     "clickProfile": "Click on a profile above to see details",
@@ -246,7 +247,30 @@
     "dailyPicks": "Daily Picks For Today:",
     "dailyPicksDescription": "Anyone your type here? Don't hesitate to praise! You might not have another chance to meet them again if you miss this opportunity.",
     "nearbyYou": "Nearby you:",
-    "nearbyDescription": "Discover people in your area who share similar interests and values. These profiles are from users near your location."
+    "nearbyDescription": "Discover people in your area who share similar interests and values. These profiles are from users near your location.",
+    "filterOptions": "Filter Options",
+    "searchByName": "Search by Name",
+    "searchPlaceholder": "Enter name...",
+    "filterByServices": "Filter by Services",
+    "services": {
+      "massage": "Massage",
+      "drinkingFriend": "Drinking Friend",
+      "travelingPartner": "Traveling Partner",
+      "talkingPartner": "Talking Partner"
+    },
+    "maxDistance": "Max Distance (km)",
+    "ageRange": "Age Range",
+    "minAge": "Min Age",
+    "maxAge": "Max Age",
+    "minRating": "Min Rating",
+    "selectRating": "Select Rating",
+    "gender": "Gender",
+    "allGenders": "All Genders",
+    "female": "Female",
+    "male": "Male",
+    "other": "Other",
+    "resetFilters": "Reset",
+    "applyFilters": "Apply"
   },
   "matches": {
     "processing": "Processing....",

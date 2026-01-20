@@ -230,8 +230,9 @@
   "discover": {
     "onlineMatchers": "ຜູ້ທີ່ກຳລັງອອນໄລນ໌ຢູ່:",
     "processing": "ກຳລັງປະມວນຜົນ....",
-    "noMoreProfiles": "ບໍ່ມີໂປຣໄຟລ່ເພີ່ມເຕີມ",
-    "checkBackLater": "ກະລຸນາກັບມາກວດເບິ່ງອີກຄັ້ງໃນພາຍຫຼັງ!",
+    "loadingResults": "ກຳລັງໂຫຼດຜົນລັບ...",
+    "noMoreProfiles": "ບໍ່ພົບຄູ່",
+    "checkBackLater": "ກະລຸນາປັບປ່ຽນການຄົ້ນຫາອີກຄັ້ງ ຂອບໃຈ!",
     "clickProfile": "ຄລິກໂປຣໄຟລ່ຂ້າງເທິງເພື່ອເບິ່ງລາຍລະອຽດ",
     "about": "ກ່ຽວກັບ",
     "fullName": "ຊື່ເຕັມ:",
@@ -246,7 +247,30 @@
     "dailyPicks": "ແນະນຳວັນນີ້:",
     "dailyPicksDescription": "ມີຄົນທີ່ທ່ານມັກບໍ່? ຢ່າລັງເລທີ່ຈະຕິດຕໍ່ຫາ! ທ່ານອາດຈະບໍ່ມີໂອກາດໄດ້ພົບເຂົາເຈົ້າອີກຖ້າພາດໂອກາດນີ້ໄປ.",
     "nearbyYou": "ຄົນທີ່ຢູ່ໃກ້ຄຽງກັບທ່ານ:",
-    "nearbyDescription": "ພົບຄົນທີ່ຢູ່ໃນພື້ນທີ່ໃກ້ຄຽງທ່ານທີ່ມີຄວາມສົນໃຈ ແລະ ຄຸນຄ່າທີ່ຄ້າຍຄືກັນກັບທ່ານ."
+    "nearbyDescription": "ພົບຄົນທີ່ຢູ່ໃນພື້ນທີ່ໃກ້ຄຽງທ່ານທີ່ມີຄວາມສົນໃຈ ແລະ ຄຸນຄ່າທີ່ຄ້າຍຄືກັນກັບທ່ານ.",
+    "filterOptions": "ຕົວເລືອກການກັ່ນຕອງ",
+    "searchByName": "ຄົ້ນຫາຕາມຊື່",
+    "searchPlaceholder": "ປ້ອນຊື່...",
+    "filterByServices": "ກັ່ນຕອງຕາມບໍລິການ",
+    "services": {
+      "massage": "ນວດ",
+      "drinkingFriend": "ເພື່ອນດື່ມ",
+      "travelingPartner": "ເພື່ອນທ່ອງທ່ຽວ",
+      "talkingPartner": "ເພື່ອນລົມ"
+    },
+    "maxDistance": "ໄລຍະທາງສູງສຸດ (ກມ)",
+    "ageRange": "ຊ່ວງອາຍຸ",
+    "minAge": "ອາຍຸຕ່ຳສຸດ",
+    "maxAge": "ອາຍຸສູງສຸດ",
+    "minRating": "ຄະແນນ",
+    "selectRating": "ເລືອກຄະແນນ",
+    "gender": "ເພດ",
+    "allGenders": "ທຸກເພດ",
+    "female": "ຍິງ",
+    "male": "ຊາຍ",
+    "other": "ອື່ນໆ",
+    "resetFilters": "ຣີເຊັດການກັ່ນຕອງ",
+    "applyFilters": "ຄົ້ນຫາ"
   },
   "matches": {
     "processing": "ກຳລັງປະມວນຜົນ....",

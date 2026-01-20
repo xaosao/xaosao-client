@@ -230,6 +230,7 @@
   "discover": {
     "onlineMatchers": "ผู้ใช้ออนไลน์:",
     "processing": "กำลังดำเนินการ....",
+    "loadingResults": "กำลังโหลดผลลัพธ์...",
     "noMoreProfiles": "ไม่มีโปรไฟล์เพิ่มเติม",
     "checkBackLater": "กลับมาตรวจสอบอีกครั้งในภายหลัง!",
     "clickProfile": "คลิกโปรไฟล์ด้านบนเพื่อดูรายละเอียด",
@@ -246,7 +247,30 @@
     "dailyPicks": "แนะนำวันนี้:",
     "dailyPicksDescription": "มีคนที่คุณชอบไหม? อย่าลังเลที่จะให้ทักหา! คุณอาจไม่มีโอกาสได้พบพวกเขาอีกถ้าพลาดโอกาสนี้",
     "nearbyYou": "ใกล้คุณ:",
-    "nearbyDescription": "พบผู้คนในพื้นที่ของคุณที่มีความสนใจ และ คุณค่าที่คล้ายคลึงกัน โปรไฟล์เหล่านี้มาจากผู้ใช้ที่อยู่ใกล้คุณ"
+    "nearbyDescription": "พบผู้คนในพื้นที่ของคุณที่มีความสนใจ และ คุณค่าที่คล้ายคลึงกัน โปรไฟล์เหล่านี้มาจากผู้ใช้ที่อยู่ใกล้คุณ",
+    "filterOptions": "ตัวเลือกการกรอง",
+    "searchByName": "ค้นหาตามชื่อ",
+    "searchPlaceholder": "กรอกชื่อ...",
+    "filterByServices": "กรองตามบริการ",
+    "services": {
+      "massage": "นวด",
+      "drinkingFriend": "เพื่อนดื่ม",
+      "travelingPartner": "เพื่อนเที่ยว",
+      "talkingPartner": "เพื่อนคุย"
+    },
+    "maxDistance": "ระยะทางสูงสุด (กม.)",
+    "ageRange": "ช่วงอายุ",
+    "minAge": "อายุต่ำสุด",
+    "maxAge": "อายุสูงสุด",
+    "minRating": "คะแนนต่ำสุด",
+    "selectRating": "เลือกคะแนน",
+    "gender": "เพศ",
+    "allGenders": "ทุกเพศ",
+    "female": "หญิง",
+    "male": "ชาย",
+    "other": "อื่นๆ",
+    "resetFilters": "รีเซ็ต",
+    "applyFilters": "ใช้งาน"
   },
   "matches": {
     "processing": "กำลังดำเนินการ....",

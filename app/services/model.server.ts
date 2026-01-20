@@ -20,24 +20,71 @@ interface ForYouFilters {
   perPage?: number;
 }
 
+interface DiscoverFilters {
+  search?: string;
+  services?: string[]; // Service names: massage, drinkingFriend, travelingPartner, talkingPartner
+  maxDistance?: number;
+  ageRange?: [number, number];
+  gender?: string;
+  minRating?: number;
+}
+
 // Discover page - Get online/active models that customer hasn't passed
-export async function getModelsForCustomer(customerId: string) {
+export async function getModelsForCustomer(
+  customerId: string,
+  filters: DiscoverFilters = {}
+) {
   try {
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       select: { latitude: true, longitude: true },
     });
 
-    const models = await prisma.model.findMany({
-      where: {
-        status: "active",
-        customer_interactions: {
-          none: {
-            customerId,
-            action: "PASS",
-          },
+    // Build where clause with filters
+    const whereClause: any = {
+      status: "active",
+      customer_interactions: {
+        none: {
+          customerId,
+          action: "PASS",
         },
       },
+    };
+
+    // Search filter (firstName or lastName)
+    if (filters.search) {
+      whereClause.OR = [
+        { firstName: { contains: filters.search, mode: "insensitive" } },
+        { lastName: { contains: filters.search, mode: "insensitive" } },
+      ];
+    }
+
+    // Gender filter
+    if (filters.gender) {
+      whereClause.gender = filters.gender;
+    }
+
+    // Rating filter
+    if (filters.minRating) {
+      whereClause.rating = { gte: filters.minRating };
+    }
+
+    // Services filter - models who have these services available
+    if (filters.services && filters.services.length > 0) {
+      whereClause.ModelService = {
+        some: {
+          status: "active",
+          isAvailable: true,
+          service: {
+            name: { in: filters.services },
+            status: "active",
+          },
+        },
+      };
+    }
+
+    const models = await prisma.model.findMany({
+      where: whereClause,
       take: 20,
       orderBy: [
         // Prioritize models with higher ratings
@@ -84,6 +131,14 @@ export async function getModelsForCustomer(customerId: string) {
             contactType: true,
           },
         },
+        ModelService: {
+          where: { status: "active", isAvailable: true },
+          select: {
+            service: {
+              select: { name: true },
+            },
+          },
+        },
         // Count total likes received
         _count: {
           select: {
@@ -98,8 +153,33 @@ export async function getModelsForCustomer(customerId: string) {
       },
     });
 
+    // Filter by age and distance (need to be done in memory)
+    let filteredModels = models;
+
+    // Age filter
+    if (filters.ageRange) {
+      filteredModels = filteredModels.filter((model) => {
+        const age = differenceInYears(new Date(), new Date(model.dob));
+        return age >= filters.ageRange![0] && age <= filters.ageRange![1];
+      });
+    }
+
+    // Distance filter
+    if (filters.maxDistance && customer?.latitude && customer?.longitude) {
+      filteredModels = filteredModels.filter((model) => {
+        if (!model.latitude || !model.longitude) return true;
+        const distance = calculateDistance(
+          customer.latitude!,
+          customer.longitude!,
+          model.latitude,
+          model.longitude
+        );
+        return distance <= filters.maxDistance!;
+      });
+    }
+
     // Calculate distance and enhance models
-    return models.map((model) => {
+    return filteredModels.map((model) => {
       let distance = null;
       if (
         customer?.latitude &&
@@ -126,6 +206,7 @@ export async function getModelsForCustomer(customerId: string) {
         totalLikes: model._count.customer_interactions,
         popularity:
           model._count.customer_interactions + model._count.model_interactions,
+        services: model.ModelService.filter((ms) => ms.service).map((ms) => ms.service!.name),
       };
     });
   } catch (error: any) {
@@ -157,6 +238,7 @@ function calculateDistance(
 // Get nearby models based on geolocation distance
 export async function getNearbyModels(
   customerId: string,
+  filters: DiscoverFilters = {},
   maxDistanceKm: number = 50
 ) {
   const customer = await prisma.customer.findUnique({
@@ -171,19 +253,54 @@ export async function getNearbyModels(
   if (!customer?.latitude || !customer?.longitude)
     throw new Error("Customer location missing");
 
-  const models = await prisma.model.findMany({
-    where: {
-      latitude: { not: null },
-      longitude: { not: null },
-      status: "active",
-      // Exclude models the customer has passed
-      customer_interactions: {
-        none: {
-          customerId,
-          action: "PASS",
-        },
+  // Build where clause with filters
+  const whereClause: any = {
+    latitude: { not: null },
+    longitude: { not: null },
+    status: "active",
+    // Exclude models the customer has passed
+    customer_interactions: {
+      none: {
+        customerId,
+        action: "PASS",
       },
     },
+  };
+
+  // Search filter (firstName or lastName)
+  if (filters.search) {
+    whereClause.OR = [
+      { firstName: { contains: filters.search, mode: "insensitive" } },
+      { lastName: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  // Gender filter
+  if (filters.gender) {
+    whereClause.gender = filters.gender;
+  }
+
+  // Rating filter
+  if (filters.minRating) {
+    whereClause.rating = { gte: filters.minRating };
+  }
+
+  // Services filter - models who have these services available
+  if (filters.services && filters.services.length > 0) {
+    whereClause.ModelService = {
+      some: {
+        status: "active",
+        isAvailable: true,
+        service: {
+          name: { in: filters.services },
+          status: "active",
+        },
+      },
+    };
+  }
+
+  const models = await prisma.model.findMany({
+    where: whereClause,
     select: {
       id: true,
       firstName: true,
@@ -223,6 +340,14 @@ export async function getNearbyModels(
           contactType: true,
         },
       },
+      ModelService: {
+        where: { status: "active", isAvailable: true },
+        select: {
+          service: {
+            select: { name: true },
+          },
+        },
+      },
       _count: {
         select: {
           customer_interactions: {
@@ -233,8 +358,20 @@ export async function getNearbyModels(
     },
   });
 
+  // Use custom maxDistance if provided in filters, otherwise use parameter
+  const effectiveMaxDistance = filters.maxDistance || maxDistanceKm;
+
+  // Filter by age if specified
+  let filteredModels = models;
+  if (filters.ageRange) {
+    filteredModels = filteredModels.filter((model) => {
+      const age = differenceInYears(new Date(), new Date(model.dob));
+      return age >= filters.ageRange![0] && age <= filters.ageRange![1];
+    });
+  }
+
   // Calculate distance and filter by maxDistance
-  const modelsWithDistance = models
+  const modelsWithDistance = filteredModels
     .map((m) => {
       const distance = calculateDistance(
         customer.latitude!,
@@ -252,9 +389,10 @@ export async function getNearbyModels(
             ? m.customer_interactions[0].action
             : null,
         totalLikes: m._count.customer_interactions,
+        services: m.ModelService.filter((ms) => ms.service).map((ms) => ms.service!.name),
       };
     })
-    .filter((m) => m.distance <= maxDistanceKm) // Filter by max distance
+    .filter((m) => m.distance <= effectiveMaxDistance) // Filter by max distance
     .sort((a, b) => {
       // Sort by distance first, then by rating
       if (a.distance !== b.distance) {
