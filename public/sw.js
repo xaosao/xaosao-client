@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v6';
-const STATIC_CACHE = 'xaosao-static-v6';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v6';
+const CACHE_NAME = 'xaosao-v8';
+const STATIC_CACHE = 'xaosao-static-v8';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v8';
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
@@ -27,10 +27,12 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches (aggressive cleanup for Safari)
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating new service worker version');
   event.waitUntil(
     caches.keys().then((keys) => {
+      console.log('[SW] Found caches:', keys);
       return Promise.all(
         keys
           .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
@@ -39,9 +41,18 @@ self.addEventListener('activate', (event) => {
             return caches.delete(key);
           })
       );
+    }).then(() => {
+      console.log('[SW] Old caches cleared, claiming clients');
+      return self.clients.claim();
+    }).then(() => {
+      // Notify all clients that the service worker has been updated
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+      });
     })
   );
-  self.clients.claim();
 });
 
 // Helper function to check if response should be cached

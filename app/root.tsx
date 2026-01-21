@@ -18,12 +18,22 @@ import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
 
+// App version - increment this when deploying new versions to force cache refresh
+const APP_VERSION = "1.0.8";
+
 // Check if device is mobile
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
   );
+}
+
+// Check if Safari browser
+function isSafari(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(ua);
 }
 
 // Check if running as iOS PWA
@@ -33,6 +43,66 @@ function isIOSPWA(): boolean {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
                       (window.navigator as any).standalone === true;
   return isIOS && isStandalone;
+}
+
+// Check if running as PWA (standalone mode)
+function isPWAMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         (window.navigator as any).standalone === true;
+}
+
+// Force cache clear when version changes (for Safari and PWA mode)
+function useCacheClear() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedVersion = localStorage.getItem("app_version");
+    const isPWA = isPWAMode();
+    const isSafariBrowser = isSafari();
+
+    console.log(`[Cache] Version check - stored: ${storedVersion}, current: ${APP_VERSION}, isPWA: ${isPWA}, isSafari: ${isSafariBrowser}`);
+
+    // If version changed, clear caches and reload
+    if (storedVersion && storedVersion !== APP_VERSION) {
+      console.log(`[Cache] Version changed from ${storedVersion} to ${APP_VERSION}, clearing caches...`);
+
+      // Clear service worker caches
+      if ("caches" in window) {
+        caches.keys().then((names) => {
+          console.log("[Cache] Found caches to clear:", names);
+          return Promise.all(names.map((name) => caches.delete(name)));
+        }).then(() => {
+          console.log("[Cache] All caches cleared");
+          // Update stored version
+          localStorage.setItem("app_version", APP_VERSION);
+
+          // Force hard reload for Safari or PWA mode
+          if (isSafariBrowser || isPWA) {
+            console.log("[Cache] Force reloading for Safari/PWA...");
+            // Use location.href to force a full page reload without cache
+            window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
+          }
+        });
+      } else {
+        localStorage.setItem("app_version", APP_VERSION);
+      }
+    } else if (!storedVersion) {
+      // First time visit, just store the version
+      console.log("[Cache] First visit, storing version");
+      localStorage.setItem("app_version", APP_VERSION);
+    }
+
+    // For PWA mode, always check service worker for updates on launch
+    if (isPWA && "serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistration().then((registration) => {
+        if (registration) {
+          console.log("[PWA] Checking for service worker updates...");
+          registration.update();
+        }
+      });
+    }
+  }, []);
 }
 
 // Register service worker for all devices (needed for push notifications)
@@ -58,8 +128,9 @@ function usePWA() {
         }
       });
 
+      // Register service worker with updateViaCache: 'none' to always check for updates
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { updateViaCache: 'none' })
         .then((registration) => {
           console.log("[PWA] Service Worker registered:", registration.scope);
 
@@ -93,7 +164,17 @@ function usePWA() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
           refreshing = true;
+          console.log('[PWA] Service worker controller changed, reloading...');
           window.location.reload();
+        }
+      });
+
+      // Listen for messages from service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED') {
+          console.log('[PWA] Service worker updated to version:', event.data.version);
+          // Clear localStorage cache version to trigger refresh on next load
+          localStorage.removeItem('app_version');
         }
       });
     };
@@ -160,6 +241,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 
+        {/* Cache Control - Prevent Safari aggressive caching */}
+        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
+
         {/* PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -187,6 +273,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   // Initialize language from localStorage after hydration
   useLanguageInit();
+
+  // Clear cache when version changes (Safari + PWA mode)
+  useCacheClear();
 
   // Register PWA service worker on mobile devices
   usePWA();
