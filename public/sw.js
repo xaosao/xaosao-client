@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v5';
-const STATIC_CACHE = 'xaosao-static-v5';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v5';
+const CACHE_NAME = 'xaosao-v6';
+const STATIC_CACHE = 'xaosao-static-v6';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v6';
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
@@ -9,6 +9,8 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.png',
   '/images/logo-pink.png',
+  '/images/logo-white.png',
+  '/images/icon.png',
   '/icons/icon-72x72.png',
   '/icons/icon-96x96.png',
   '/icons/icon-192x192.png',
@@ -125,7 +127,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For images and fonts - cache first (these don't cause hydration issues)
+  // For local images (/images/) - network first to prevent stale content
+  if (url.pathname.startsWith('/images/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (shouldCacheResponse(response)) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // For external images and fonts - cache first (these don't cause hydration issues)
   if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/)) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
