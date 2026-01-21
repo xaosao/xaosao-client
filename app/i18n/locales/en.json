@@ -1,4 +1,12 @@
 {
+  "footer": {
+    "tagline": "Treat Me Beautiful",
+    "description": "Discover meaningful connections with personalized matches, a safe platform, and a global community. Your journey to love starts here.",
+    "socialLinks": "Social Links",
+    "whatsapp": "WhatsApp",
+    "phoneCall": "Phone Call",
+    "copyright": "Copyright © Xaosao 2025"
+  },
   "header": {
     "login": "Login",
     "companionLogin": "Companion Login",
@@ -26,7 +34,31 @@
     "noDescription": "Experience our premium companion service",
     "customerLoginHint": "For customers looking for companions 👆",
     "areYouCompanion": "Are you a companion?",
-    "companionLoginHere": "Login here"
+    "companionLoginHere": "Login here",
+    "benefits": {
+      "badge": "Referral Program",
+      "title": "Earn Rewards by Referring Friends",
+      "subtitle": "Invite your friends to join XaoSao and earn amazing rewards for every successful referral!",
+      "popular": "MOST POPULAR",
+      "tier1": {
+        "label": "Per Referral",
+        "description": "Earn 50,000 KIP instantly for every friend you successfully refer to XaoSao. No limits!",
+        "hint": "Instant reward"
+      },
+      "tier2": {
+        "label": "20 Referrals Milestone",
+        "description": "Reach 20 successful referrals and receive a bonus of 1,000,000 KIP as a thank you!",
+        "hint": "20 friends = Big bonus"
+      },
+      "tier3": {
+        "label": "Grand Prize",
+        "prize": "Luang Prabang Trip",
+        "description": "Earn 50,000,000 KIP in total rewards and win an all-expenses-paid trip to Luang Prabang - 3 days & 4 nights!",
+        "hint": "3 Days & 4 Nights"
+      },
+      "cta": "Start Referring Now",
+      "ctaHint": "Join today and start earning with every referral"
+    }
   },
   "videoTutorials": {
     "title": "Video Tutorials",

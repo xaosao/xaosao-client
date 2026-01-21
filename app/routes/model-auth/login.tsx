@@ -26,19 +26,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { getModelFromSession } = await import("~/services/model-auth.server");
   const { redirect } = await import("react-router");
 
+  const url = new URL(request.url);
+  const redirectTo = url.searchParams.get("redirect") || "/model";
+
   // Check if model is already logged in
   const modelId = await getModelFromSession(request);
 
   if (modelId) {
-    // Model already logged in, redirect to dashboard
-    throw redirect("/model");
+    // Model already logged in, redirect to intended destination
+    throw redirect(redirectTo);
   }
 
-  const url = new URL(request.url);
   const reset = url.searchParams.get("reset");
 
   return {
-    showResetSuccess: reset === "success"
+    showResetSuccess: reset === "success",
+    redirectTo,
   };
 }
 
@@ -56,6 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const whatsappRaw = formData.get("whatsapp");
   const passwordRaw = formData.get("password");
   const rememberMeRaw = formData.get("rememberMe");
+  const redirectTo = formData.get("redirectTo") as string | null;
 
   // Get GPS coordinates from client (if provided)
   const latitudeRaw = formData.get("latitude");
@@ -79,6 +83,7 @@ export async function action({ request }: ActionFunctionArgs) {
       whatsapp,
       password: String(passwordRaw),
       rememberMe: rememberMeRaw === "on",
+      redirectTo: redirectTo || undefined,
     };
 
     validateModelSignInInputs(credentials);
@@ -147,7 +152,7 @@ export default function ModelLogin() {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
-  const { showResetSuccess } = useLoaderData<typeof loader>();
+  const { showResetSuccess, redirectTo } = useLoaderData<typeof loader>();
   const isSubmitting = navigation.state === "submitting";
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(showResetSuccess);
@@ -262,6 +267,9 @@ export default function ModelLogin() {
         )}
 
         <Form method="post" className="mt-8 space-y-6">
+          {redirectTo && redirectTo !== "/model" && (
+            <input type="hidden" name="redirectTo" value={redirectTo} />
+          )}
           {hasLocation && (
             <>
               <input type="hidden" name="latitude" value={latitude!} />
@@ -356,7 +364,7 @@ export default function ModelLogin() {
           <div className="flex items-center justify-center text-sm">
             {t("modelAuth.login.noAccount")}&nbsp;&nbsp;
             <Link
-              to="/model-auth/register"
+              to={redirectTo && redirectTo !== "/model" ? `/model-auth/register?redirect=${encodeURIComponent(redirectTo)}` : "/model-auth/register"}
               className="font-medium text-rose-600 hover:text-rose-500"
             >
               {t("modelAuth.login.createAccount")}

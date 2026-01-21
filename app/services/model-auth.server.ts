@@ -21,6 +21,7 @@ export interface IModelSigninCredentials {
   whatsapp: number;
   password: string;
   rememberMe: boolean;
+  redirectTo?: string;
 }
 
 export interface IModelSignupCredentials {
@@ -315,6 +316,7 @@ export async function modelLogin({
   whatsapp,
   rememberMe,
   password,
+  redirectTo,
 }: IModelSigninCredentials) {
   const existingModel = await prisma.model.findFirst({
     where: { whatsapp },
@@ -403,7 +405,7 @@ export async function modelLogin({
       chatLogin.token,
       existingModel.id,
       rememberMe,
-      "/model"
+      redirectTo || "/model"
     );
   } else {
     const error = new Error(

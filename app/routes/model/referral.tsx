@@ -90,29 +90,7 @@ export default function ModelReferralPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 mt-4 sm:mt-8">
-                            <div className="w-full sm:w-2/5 mb-1 sm:mb-4">
-                                <p className="text-xs text-white mb-2 uppercase tracking-wide font-medium">ລະຫັດແນະນໍາ</p>
-                                <div className="bg-white/10 backdrop-blur-sm p-2 rounded-md flex items-center justify-between">
-                                    <span className="text-sm sm:text-md font-bold tracking-[0.2em] font-mono">
-                                        {referralStats.referralCode}
-                                    </span>
-                                    <button
-                                        onClick={() => copyToClipboard(referralStats.referralCode, 'code')}
-                                        className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-all cursor-pointer"
-                                    >
-                                        {copied === 'code' ? (
-                                            <CheckCircle className="h-4 w-4" />
-                                        ) : (
-                                            <Copy className="h-4 w-4" />
-                                        )}
-                                    </button>
-                                </div>
-                                {copied === 'code' && (
-                                    <p className="text-sm text-white/80 mt-2 text-center">{t('modelReferral.copied')}</p>
-                                )}
-                            </div>
-
-                            <div className="w-full sm:w-3/5 gap-3">
+                            <div className="w-full gap-3">
                                 <p className="text-xs text-white mb-2 uppercase tracking-wide font-medium">{t('modelReferral.yourLink')}</p>
                                 <div className="bg-white/20 flex items-center gap-2 bg-gray-50 rounded-md p-3">
                                     <input

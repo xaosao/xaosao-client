@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin } from "lucide-react";
 
 // components
 import { Header } from "~/components/header";
@@ -12,6 +12,7 @@ import { HeroBackground } from "~/components/hero-background";
 
 // services
 import { getPublicServices } from "~/services/service.server";
+import { Footer } from "~/components/footer";
 
 // Service icon mapping based on service name
 const getServiceIcon = (serviceName: string) => {
@@ -170,6 +171,143 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+
+      {/* Referral Benefits Section */}
+      <section className="relative py-16 sm:py-24 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/5 rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 bg-rose-500/20 border border-rose-500/30 rounded-full px-4 py-2 mb-4">
+              <Sparkles className="w-4 h-4 text-rose-400" />
+              <span className="text-rose-300 text-sm font-medium">{t('home.benefits.badge')}</span>
+            </div>
+            <h2 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+              {t('home.benefits.title')}
+            </h2>
+            <p className="text-gray-400 text-md max-w-2xl mx-auto">
+              {t('home.benefits.subtitle')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-4">
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-rose-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1">
+              <div className="border border-red-500 absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:bg-rose-500/20 transition-all duration-500" />
+              <div className="relative">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-600 rounded-sm flex items-center justify-center mb-6 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform duration-300">
+                    <Gift className="w-5 h-5 text-white" />
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier1.label')}</span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white">
+                      50,000 <span className="text-rose-400 text-lg">KIP</span>
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="text-gray-400 leading-relaxed">
+                  {t('home.benefits.tier1.description')}
+                </p>
+
+                <div className="mt-6 pt-6 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-rose-400">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">{t('home.benefits.tier1.hint')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-amber-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all duration-500" />
+
+              <div className="relative">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-md flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier2.label')}</span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white">
+                      1,000,000 <span className="text-amber-400 text-lg">KIP</span>
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="text-gray-400 leading-relaxed">
+                  {t('home.benefits.tier2.description')}
+                </p>
+
+                <div className="mt-6 pt-6 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <div className="flex -space-x-1">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="w-5 h-5 bg-amber-500/30 rounded-full border-2 border-gray-800 flex items-center justify-center">
+                          <User className="w-3 h-3 text-amber-400" />
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium">{t('home.benefits.tier2.hint')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-emerald-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500" />
+
+              <div className="relative">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-md flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
+                    <Trophy className="w-5 h-5 text-white" />
+                  </div>
+
+                  <div className="mb-4">
+                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier3.label')}</span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mt-1">
+                      {t('home.benefits.tier3.prize')}
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="text-gray-400 leading-relaxed">
+                  {t('home.benefits.tier3.description')}
+                </p>
+
+                <div className="mt-6 pt-6 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm font-medium">{t('home.benefits.tier3.hint')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-12 sm:mt-16">
+            <Button
+              size="lg"
+              className="cursor-pointer bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white px-8 py-4 text-sm shadow-xl shadow-rose-500/25 hover:shadow-rose-500/40 transition-all duration-300 transform hover:scale-105 border-0 rounded-xl"
+              onClick={() => navigate("/model-auth/login?redirect=/model/referral")}
+            >
+              <Gift className="w-4 h-4" />
+              {t('home.benefits.cta')}
+            </Button>
+            <p className="text-gray-500 text-sm mt-4">
+              {t('home.benefits.ctaHint')}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   )
 }
