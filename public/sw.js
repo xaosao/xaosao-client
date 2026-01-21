@@ -1,6 +1,9 @@
-const CACHE_NAME = 'xaosao-v9';
-const STATIC_CACHE = 'xaosao-static-v9';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v9';
+const CACHE_NAME = 'xaosao-v11';
+const STATIC_CACHE = 'xaosao-static-v11';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v11';
+
+// Log version on load for debugging
+console.log('[SW] Service Worker Version:', CACHE_NAME);
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state

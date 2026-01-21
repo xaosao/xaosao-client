@@ -19,7 +19,7 @@ import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
 
 // App version - increment this when deploying new versions to force cache refresh
-const APP_VERSION = "1.0.9";
+const APP_VERSION = "1.0.11";
 
 // Check if device is mobile
 function isMobileDevice(): boolean {
@@ -333,6 +333,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // Log version on startup for debugging
+  useEffect(() => {
+    console.log(`[App] XaoSao Version: ${APP_VERSION}`);
+    // Also expose to window for easy checking
+    if (typeof window !== "undefined") {
+      (window as any).__XAOSAO_VERSION__ = APP_VERSION;
+    }
+  }, []);
+
   // Initialize language from localStorage after hydration
   useLanguageInit();
 
