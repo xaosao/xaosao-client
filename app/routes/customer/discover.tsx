@@ -1,23 +1,23 @@
 import {
     X,
+    Star,
     User,
     Heart,
     MapPin,
+    Loader,
+    Search,
     Calendar,
     Minimize,
     Maximize,
     UserPlus,
     ChevronLeft,
     ChevronRight,
-    Loader,
     MessageSquareText,
     SlidersHorizontal,
-    Search,
-    Star,
 } from "lucide-react";
-import React, { useState, useRef, useEffect } from "react";
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
+import React, { useState, useRef, useEffect } from "react";
 import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
 
 // swiper
@@ -569,8 +569,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             {t("modelDashboard.subtitle")}
                         </p>
                     </div>
-
-                    {/* Filter Button */}
+                   
                     <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                         <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
                             <SlidersHorizontal className="w-4 h-4" />

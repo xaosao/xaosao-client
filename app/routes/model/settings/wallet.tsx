@@ -540,7 +540,7 @@ export default function ModelWalletPage() {
                   {banks.length > 0 ? (
                     banks.map((bank) => (
                       <SelectItem key={bank.id} value={bank.id}>
-                        {bank.bank_name} - {bank.bank_account_name} (****{bank.bank_account_number.slice(-4)})
+                        {bank.bank_name} - {bank.bank_account_name} (****{bank.bank_account_number?.slice(-4) || '****'})
                       </SelectItem>
                     ))
                   ) : (

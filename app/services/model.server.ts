@@ -583,6 +583,83 @@ export async function getHotModels(customerId: string, limit: number = 10) {
   }
 }
 
+// Get hot/trending models for public view (no authentication required)
+export async function getPublicHotModels(limit: number = 12) {
+  try {
+    const hotModels = await prisma.model.findMany({
+      where: {
+        status: "active",
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dob: true,
+        gender: true,
+        bio: true,
+        profile: true,
+        rating: true,
+        total_review: true,
+        address: true,
+        available_status: true,
+        updatedAt: true,
+        Images: {
+          take: 3,
+          where: {
+            status: "active",
+          },
+          select: {
+            id: true,
+            name: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: {
+          select: {
+            customer_interactions: {
+              where: { action: "LIKE" },
+            },
+            Review: true,
+          },
+        },
+      },
+      orderBy: [
+        { rating: "desc" },
+        { updatedAt: "desc" },
+      ],
+      take: limit,
+    });
+
+    // Calculate hot score and sort
+    const modelsWithScore = hotModels.map((model) => {
+      const likesCount = model._count.customer_interactions || 0;
+      const reviewsCount = model._count.Review || 0;
+      const ratingScore = (model.rating || 0) * 20;
+
+      // Calculate recency score (models updated recently get higher score)
+      const daysSinceUpdate = Math.floor(
+        (Date.now() - new Date(model.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const recencyScore = Math.max(0, 100 - daysSinceUpdate * 2);
+
+      const hotScore = likesCount * 10 + reviewsCount * 5 + ratingScore + recencyScore;
+
+      return {
+        ...model,
+        hotScore,
+      };
+    });
+
+    // Sort by hot score descending
+    const sortedModels = modelsWithScore.sort((a, b) => b.hotScore - a.hotScore);
+
+    return sortedModels;
+  } catch (error: any) {
+    console.log("GET_PUBLIC_HOT_MODELS_ERROR:", error);
+    return [];
+  }
+}
+
 export async function getModelProfile(modelId: string, customerId: string) {
   try {
     const model = await prisma.model.findFirst({

@@ -1,8 +1,8 @@
 {
   "footer": {
-    "tagline": "Treat Me Beautiful",
-    "description": "Discover meaningful connections with personalized matches, a safe platform, and a global community. Your journey to love starts here.",
-    "socialLinks": "Social Links",
+    "tagline": "Purpose of the System",
+    "description": "Allow customers to search for shops or companions conveniently and quickly to access services more easily and increase the number of customers for you in your career field. Gain business advantages and choose to serve according to your own satisfaction. The system is easy to use, safe and risk-free.",
+    "socialLinks": "Contact Us",
     "whatsapp": "WhatsApp",
     "phoneCall": "Phone Call",
     "copyright": "Copyright © Xaosao 2025"
@@ -38,26 +38,33 @@
     "benefits": {
       "badge": "Referral Program",
       "title": "Earn Rewards by Referring Friends",
-      "subtitle": "Invite your friends to join XaoSao and earn amazing rewards for every successful referral!",
+      "subtitle": "Invite your friends to join XaoSao (as companions) and you will receive rewards such as:",
       "popular": "MOST POPULAR",
       "tier1": {
         "label": "Per Referral",
-        "description": "Earn 50,000 KIP instantly for every friend you successfully refer to XaoSao. No limits!",
+        "description": "Receive 50,000 KIP instantly for referring friends through your referral link to become companions. From today until 30/4/2026 only!",
         "hint": "Instant reward"
       },
       "tier2": {
-        "label": "20 Referrals Milestone",
-        "description": "Reach 20 successful referrals and receive a bonus of 1,000,000 KIP as a thank you!",
+        "label": "If you refer 20 friends",
+        "description": "Refer 20 friends to become companions successfully, and receive a special bonus of 1,000,000 KIP extra!",
         "hint": "20 friends = Big bonus"
       },
       "tier3": {
         "label": "Grand Prize",
         "prize": "Luang Prabang Trip",
-        "description": "Earn 50,000,000 KIP in total rewards and win an all-expenses-paid trip to Luang Prabang - 3 days & 4 nights!",
-        "hint": "3 Days & 4 Nights"
+        "description": "Companions who accumulate earnings from their own services totaling 50,000,000 KIP will receive a Luang Prabang travel package for 2 days 3 nights!",
+        "hint": "2 Days & 3 Nights"
       },
-      "cta": "Start Referring Now",
-      "ctaHint": "Join today and start earning with every referral"
+      "cta": "Start Referring Now...!",
+      "ctaHint": "Opportunity and income are in your own referrals."
+    },
+    "hotModels": {
+      "title": "Hot Companions",
+      "subtitle": "Discover our most popular companions",
+      "viewAll": "View All",
+      "viewProfile": "View Profile",
+      "loginPrompt": "Login to view full profile and connect"
     }
   },
   "videoTutorials": {
