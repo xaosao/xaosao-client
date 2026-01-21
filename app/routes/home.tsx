@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Star, Calendar, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Star, Calendar, ChevronLeft, ChevronRight, Flame, Mouse, MouseIcon } from "lucide-react";
 
 // Swiper
 import "swiper/css";
@@ -229,11 +229,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </p>
             <button
               onClick={() => navigate("/model-auth/login")}
-              className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50"
+              className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50 underline"
             >
               {t('home.companionLoginHere', { defaultValue: 'Login here' })}
-              <ArrowRight className="w-4 h-4 animate-bounce" />
+              <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+
+          <div className="w-full flex items-center justify-center mt-6">
+            <Mouse className="animate-bounce text-white" />
           </div>
         </div>
       </section>

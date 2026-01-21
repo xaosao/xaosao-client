@@ -148,6 +148,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
     const [touchEndX, setTouchEndX] = React.useState<number | null>(null);
+    const [showProfileFullscreen, setShowProfileFullscreen] = React.useState(false);
 
     const DEFAULT_IMAGE = "https://coffective.com/wp-content/uploads/2018/06/default-featured-image.png.jpg";
     const isLoading = navigation.state === "loading";
@@ -390,11 +391,14 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         </div>
                     </div> */}
                     <div className="rounded-md flex items-center justify-center flex-col space-y-2 sm:space-y-4 px-2 sm:px-4">
-                        <div className="w-[100px] sm:w-[130px] h-[100px] sm:h-[130px] border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600">
+                        <div
+                            className="w-[100px] sm:w-[130px] h-[100px] sm:h-[130px] border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600 cursor-pointer"
+                            onClick={() => setShowProfileFullscreen(true)}
+                        >
                             <img
                                 src={customerData.profile}
                                 alt="Profile"
-                                className="w-full h-full rounded-full object-cover cursor-pointer"
+                                className="w-full h-full rounded-full object-cover"
                             />
                         </div>
 
@@ -624,6 +628,27 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         >
                             <ChevronRight size={40} />
                         </button>
+                    </div>
+                )}
+
+                {/* Profile Image Fullscreen */}
+                {showProfileFullscreen && customerData.profile && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer"
+                        onClick={() => setShowProfileFullscreen(false)}
+                    >
+                        <button
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+                            onClick={() => setShowProfileFullscreen(false)}
+                        >
+                            <X size={32} />
+                        </button>
+                        <img
+                            src={customerData.profile}
+                            alt="Profile"
+                            className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"
+                        />
+                        <p className="absolute bottom-4 text-white/70 text-sm">{t('profile.clickToClose')}</p>
                     </div>
                 )}
             </div >

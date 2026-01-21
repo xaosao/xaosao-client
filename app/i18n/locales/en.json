@@ -1012,7 +1012,8 @@
     "noServices": "No Services Available for This Model",
     "noServicesDesc": "It looks like this model does not have any active services at the moment.",
     "noPhotos": "No Photos Yet",
-    "noPhotosDesc": "This model has not shared any images so far. Come back soon to see their latest gallery!"
+    "noPhotosDesc": "This model has not shared any images so far. Come back soon to see their latest gallery!",
+    "clickToClose": "Click anywhere to close"
   },
   "profileEdit": {
     "loading": "Loading...",
@@ -1775,7 +1776,8 @@
       "imageDeleteFailed": "Failed to delete image!",
       "imageUploadFailed": "Failed to upload image!"
     },
-    "referral": "Referral"
+    "referral": "Referral",
+    "clickToClose": "Click anywhere to close"
   },
   "modelReferral": {
     "title": "Referral Program",
@@ -1900,7 +1902,8 @@
       "addFriendFailed": "Failed to add friend",
       "actionFailed": "Action failed",
       "invalidRequest": "Invalid request"
-    }
+    },
+    "clickToClose": "Click anywhere to close"
   },
   "modelCustomerProfileShare": {
     "back": "Back",

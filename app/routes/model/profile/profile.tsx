@@ -242,6 +242,7 @@ export default function ModelProfilePage() {
     const [touchEndX, setTouchEndX] = React.useState<number | null>(null);
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
+    const [showProfileFullscreen, setShowProfileFullscreen] = React.useState(false);
 
     const errorMessage = searchParams.get("error");
     const successMessage = searchParams.get("success");
@@ -543,11 +544,14 @@ export default function ModelProfilePage() {
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center sm:justify-start gap-6">
-                        <div className="flex-shrink-0">
+                        <div
+                            className="flex-shrink-0 cursor-pointer"
+                            onClick={() => setShowProfileFullscreen(true)}
+                        >
                             <img
                                 src={model?.profile || undefined}
                                 alt={`${model.firstName}-${model.lastName}`}
-                                className="w-32 h-32 rounded-full object-cover border-2 border-rose-500"
+                                className="w-32 h-32 rounded-full object-cover border-2 border-rose-500 hover:opacity-90 transition-opacity"
                             />
                         </div>
                         <div className="flex sm:hidden items-center justify-center gap-2 text-center">
@@ -1247,6 +1251,27 @@ export default function ModelProfilePage() {
                         </div>
                     </DialogContent>
                 </Dialog>
+
+                {/* Profile Image Fullscreen */}
+                {showProfileFullscreen && model?.profile && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer"
+                        onClick={() => setShowProfileFullscreen(false)}
+                    >
+                        <button
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+                            onClick={() => setShowProfileFullscreen(false)}
+                        >
+                            <X size={32} />
+                        </button>
+                        <img
+                            src={model.profile}
+                            alt={`${model.firstName} ${model.lastName || ''}`}
+                            className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"
+                        />
+                        <p className="absolute bottom-4 text-white/70 text-sm">{t("modelProfile.clickToClose")}</p>
+                    </div>
+                )}
             </div>
         </div >
     );
