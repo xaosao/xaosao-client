@@ -31,7 +31,7 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-12 lg:gap-16">
           <div className="flex items-start justify-center space-x-2 cursor-pointer">
             <img src="/images/icon.png" className="w-10 h-10 rounded-md" />
-            <img src="/images/logo-white.png" className="w-20 h-ຄ mr-2 rounded-md" />
+            <img src="/images/logo-white.png" className="w-20 h-7 mr-2 rounded-md" />
           </div>
 
           <div className="sm:col-span-2 lg:col-span-1">
