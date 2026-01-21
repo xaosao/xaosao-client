@@ -22,9 +22,18 @@ export function Header() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/")}>
-                        <img src="/images/icon.png" className="w-10 h-10 mr-2 rounded-md" />
-                        {/* <p className={`text-2xl mt-1 ${isScrolled ? "text-white" : "text-rose-500"}`}>Xaosao</p> */}
-                        {isScrolled ? <img src="/images/logo-white.png" className="w-20 h-7 mr-2 rounded-md" /> : <img src="/images/logo-white.png" className="w-20 h-7 mr-2 rounded-md" />}
+                        <img
+                            src="/images/icon.png"
+                            alt="XaoSao Icon"
+                            className="w-10 h-10 mr-2 rounded-md"
+                            style={{ width: '40px', height: '40px', maxWidth: '40px', maxHeight: '40px' }}
+                        />
+                        <img
+                            src="/images/logo-white.png"
+                            alt="XaoSao Logo"
+                            className="w-20 h-7 mr-2 rounded-md"
+                            style={{ width: '80px', height: '28px', maxWidth: '80px', maxHeight: '28px' }}
+                        />
                     </div>
                     <div className="flex items-center space-x-3">
                         <LanguageSwitcher />

@@ -267,3 +267,17 @@
 .animate-loading-bar {
   animation: loading-bar 1s ease-in-out infinite;
 }
+
+/* Safari mobile fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific fixes */
+  img {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  .object-cover {
+    -webkit-object-fit: cover;
+    object-fit: cover;
+  }
+}

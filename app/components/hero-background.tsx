@@ -40,11 +40,11 @@ export function HeroBackground() {
 
   // Always render with index 0 initially for SSR consistency
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 overflow-hidden">
       {backgroundImages.map((image, index) => (
         <div
           key={index}
-          className={`absolute inset-0 transition-opacity duration-1000 ${index === currentImageIndex ? "opacity-100" : "opacity-0"
+          className={`absolute inset-0 overflow-hidden transition-opacity duration-1000 ${index === currentImageIndex ? "opacity-100" : "opacity-0"
             }`}
         >
           <img
@@ -53,7 +53,15 @@ export function HeroBackground() {
               "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=1920&h=1080&fit=crop&crop=center"
             }
             alt={image.alt}
-            className="object-cover w-full h-full absolute inset-0"
+            className="w-full h-full object-cover"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
             loading="lazy"
           />
         </div>

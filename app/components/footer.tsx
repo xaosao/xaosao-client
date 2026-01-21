@@ -30,8 +30,18 @@ export function Footer() {
       <div className="relative z-10 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-12 lg:gap-16">
           <div className="flex items-start justify-center space-x-2 cursor-pointer">
-            <img src="/images/icon.png" className="w-10 h-10 rounded-md" />
-            <img src="/images/logo-white.png" className="w-20 h-7 mr-2 rounded-md" />
+            <img
+              src="/images/icon.png"
+              alt="XaoSao Icon"
+              className="w-10 h-10 rounded-md"
+              style={{ width: '40px', height: '40px', maxWidth: '40px', maxHeight: '40px' }}
+            />
+            <img
+              src="/images/logo-white.png"
+              alt="XaoSao Logo"
+              className="w-20 h-7 mr-2 rounded-md"
+              style={{ width: '80px', height: '28px', maxWidth: '80px', maxHeight: '28px' }}
+            />
           </div>
 
           <div className="sm:col-span-2 lg:col-span-1">
