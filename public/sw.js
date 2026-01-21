@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v11';
-const STATIC_CACHE = 'xaosao-static-v11';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v11';
+const CACHE_NAME = 'xaosao-v13';
+const STATIC_CACHE = 'xaosao-static-v13';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v13';
 
 // Log version on load for debugging
 console.log('[SW] Service Worker Version:', CACHE_NAME);
@@ -118,44 +118,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (JS, CSS) - NETWORK FIRST to ensure fresh code
-  // This prevents iOS Safari caching issues where old JS causes hydration errors
+  // For static assets (JS, CSS) - ALWAYS fetch from network, no caching
+  // This prevents iOS Safari caching issues where old JS/CSS causes UI breaks
   if (url.pathname.match(/\.(js|css)$/)) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful responses for offline fallback
-          if (shouldCacheResponse(response)) {
-            const responseClone = response.clone();
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache only when offline
-          return caches.match(request);
-        })
-    );
+    event.respondWith(fetch(request));
     return;
   }
 
-  // For local images (/images/) - network first to prevent stale content
+  // For local images (/images/) - ALWAYS fetch from network, no caching
+  // This prevents iOS Safari from serving stale images
   if (url.pathname.startsWith('/images/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (shouldCacheResponse(response)) {
-            const responseClone = response.clone();
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+    event.respondWith(fetch(request));
     return;
   }
 

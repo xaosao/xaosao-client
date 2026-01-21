@@ -19,7 +19,7 @@ import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
 
 // App version - increment this when deploying new versions to force cache refresh
-const APP_VERSION = "1.0.11";
+const APP_VERSION = "1.0.13";
 
 // Check if device is mobile
 function isMobileDevice(): boolean {
@@ -52,117 +52,53 @@ function isPWAMode(): boolean {
          (window.navigator as any).standalone === true;
 }
 
-// Check if iOS device
-function isIOS(): boolean {
-  if (typeof window === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
-}
-
-// Clear all caches and optionally reload
-async function clearAllCachesAndReload(shouldReload: boolean = true) {
-  console.log("[Cache] Clearing all caches...");
-
-  // Clear service worker caches
-  if ("caches" in window) {
-    const names = await caches.keys();
-    console.log("[Cache] Found caches to clear:", names);
-    await Promise.all(names.map((name) => caches.delete(name)));
-    console.log("[Cache] All caches cleared");
-  }
-
-  // Unregister service worker to force fresh install
-  if ("serviceWorker" in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (const registration of registrations) {
-      await registration.unregister();
-      console.log("[Cache] Service worker unregistered");
-    }
-  }
-
-  // Update stored version
-  localStorage.setItem("app_version", APP_VERSION);
-
-  if (shouldReload) {
-    console.log("[Cache] Force reloading...");
-    // Force reload bypassing cache
-    window.location.href = window.location.href.split('?')[0] + '?v=' + Date.now();
-  }
-}
-
-// Force cache clear when version changes (for Safari and PWA mode)
+// Force cache clear when version changes
 function useCacheClear() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const storedVersion = localStorage.getItem("app_version");
-    const isPWA = isPWAMode();
-    const isSafariBrowser = isSafari();
-    const isIOSDevice = isIOS();
 
-    console.log(`[Cache] Version check - stored: ${storedVersion}, current: ${APP_VERSION}, isPWA: ${isPWA}, isSafari: ${isSafariBrowser}, isIOS: ${isIOSDevice}`);
+    console.log(`[Cache] Version check - stored: ${storedVersion}, current: ${APP_VERSION}`);
 
-    // If version changed, clear caches and reload
+    // If version changed, clear caches (but don't auto-reload to avoid loops)
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log(`[Cache] Version changed from ${storedVersion} to ${APP_VERSION}, clearing caches...`);
-      clearAllCachesAndReload(isSafariBrowser || isPWA || isIOSDevice);
-      return;
+
+      // Clear caches without reload
+      if ("caches" in window) {
+        caches.keys().then((names) => {
+          console.log("[Cache] Clearing caches:", names);
+          Promise.all(names.map((name) => caches.delete(name)));
+        });
+      }
+
+      // Update stored version
+      localStorage.setItem("app_version", APP_VERSION);
+
+      // Unregister old service workers
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+            console.log("[Cache] Service worker unregistered");
+          }
+        });
+      }
     } else if (!storedVersion) {
       // First time visit, just store the version
       console.log("[Cache] First visit, storing version");
       localStorage.setItem("app_version", APP_VERSION);
     }
 
-    // For PWA mode or iOS, always check service worker for updates on launch
-    if ((isPWA || isIOSDevice) && "serviceWorker" in navigator) {
+    // Check for service worker updates on launch
+    if ("serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistration().then((registration) => {
         if (registration) {
           console.log("[PWA] Checking for service worker updates...");
           registration.update();
         }
       });
-    }
-
-    // For iOS, handle visibility change (when app resumes from background)
-    if (isIOSDevice) {
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          console.log("[iOS] App became visible, checking for updates...");
-
-          // Check if version still matches
-          const currentStoredVersion = localStorage.getItem("app_version");
-          if (currentStoredVersion !== APP_VERSION) {
-            console.log("[iOS] Version mismatch on resume, clearing cache...");
-            clearAllCachesAndReload(true);
-            return;
-          }
-
-          // Force service worker update check
-          if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.getRegistration().then((registration) => {
-              if (registration) {
-                registration.update();
-              }
-            });
-          }
-        }
-      };
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-
-      // Also handle pageshow event for iOS back-forward cache
-      const handlePageShow = (event: PageTransitionEvent) => {
-        if (event.persisted) {
-          console.log("[iOS] Page restored from bfcache, reloading...");
-          window.location.reload();
-        }
-      };
-
-      window.addEventListener('pageshow', handlePageShow);
-
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('pageshow', handlePageShow);
-      };
     }
   }, []);
 }
