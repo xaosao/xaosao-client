@@ -69,13 +69,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -165,6 +158,17 @@ export default function ModelWalletPage() {
   const [withdrawModal, setWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [selectedBank, setSelectedBank] = useState<string>("");
+
+  // Format number with commas (e.g., 1000000 -> 1,000,000)
+  const formatNumberWithCommas = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, "");
+    return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Get raw numeric value (remove commas)
+  const getRawAmount = (value: string) => {
+    return value.replace(/,/g, "");
+  };
 
   // Safety reset: ensure body styles are clean when wallet page renders
   // This handles cases where modal cleanup didn't run properly during navigation
@@ -524,32 +528,42 @@ export default function ModelWalletPage() {
             <input type="hidden" name="actionType" value="withdraw" />
 
             <div className="space-y-2">
-              <Label htmlFor="bankAccount">
+              <Label>
                 {t("modelWallet.modal.bankAccount")} <span className="text-rose-500">*</span>
               </Label>
-              <Select
-                name="bankAccount"
-                value={selectedBank}
-                onValueChange={setSelectedBank}
-                required
-              >
-                <SelectTrigger id="bankAccount" className="w-full">
-                  <SelectValue placeholder={t("modelWallet.modal.selectBank")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {banks.length > 0 ? (
-                    banks.map((bank) => (
-                      <SelectItem key={bank.id} value={bank.id}>
-                        {bank.bank_name} - {bank.bank_account_name} (****{bank.bank_account_number?.slice(-4) || '****'})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-4 text-sm text-gray-500 text-center">
-                      {t("modelWallet.modal.noBanks")}
+              <input type="hidden" name="bankAccount" value={selectedBank} />
+              {banks.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-1">
+                  {banks.map((bank) => (
+                    <div
+                      key={bank.id}
+                      onClick={() => setSelectedBank(bank.id)}
+                      className={`relative cursor-pointer rounded-lg border-2 p-2 transition-all ${
+                        selectedBank === bank.id
+                          ? "border-rose-500 bg-rose-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <img
+                        src={bank.qr_code}
+                        alt="QR Code"
+                        className="w-full h-20 object-contain rounded"
+                      />
+                      {selectedBank === bank.id && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </SelectContent>
-              </Select>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-sm text-gray-500 text-center border border-dashed border-gray-300 rounded-lg">
+                  {t("modelWallet.modal.noBanks")}
+                </div>
+              )}
               {banks.length === 0 && (
                 <p className="text-xs text-orange-500">
                   {t("modelWallet.modal.addBankHint")}
@@ -566,15 +580,13 @@ export default function ModelWalletPage() {
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />
                 <Input
                   id="amount"
-                  type="number"
-                  name="amount"
+                  type="text"
+                  inputMode="numeric"
                   value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  step="0.01"
-                  min="0.01"
-                  max={wallet.totalBalance}
+                  onChange={(e) => setWithdrawAmount(formatNumberWithCommas(e.target.value))}
                   required
                   className="pl-10 text-sm"
                   placeholder={t("modelWallet.modal.enterAmount")}
