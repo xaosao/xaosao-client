@@ -1,6 +1,6 @@
-const CACHE_NAME = 'xaosao-v8';
-const STATIC_CACHE = 'xaosao-static-v8';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v8';
+const CACHE_NAME = 'xaosao-v9';
+const STATIC_CACHE = 'xaosao-static-v9';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v9';
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
