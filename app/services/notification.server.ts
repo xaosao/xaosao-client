@@ -184,7 +184,11 @@ export type NotificationType =
   | "withdraw_approved"
   | "withdraw_rejected"
   // System notifications
-  | "welcome";
+  | "welcome"
+  // Call notifications
+  | "incoming_call"
+  | "call_missed"
+  | "call_ended";
 
 interface NotificationPayload {
   type: NotificationType;

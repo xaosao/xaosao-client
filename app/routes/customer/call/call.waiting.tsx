@@ -73,7 +73,7 @@ export default function CallWaiting() {
 
                if (callStatus === 'connecting' || callStatus === 'in_call') {
                   // Model accepted, redirect to active call
-                  navigate(`/customer/call/${params.bookingId}/active`);
+                  navigate(`/customer/call/active/${params.bookingId}`);
                } else if (callStatus === 'cancelled') {
                   setStatus('declined');
                } else if (callStatus === 'missed') {

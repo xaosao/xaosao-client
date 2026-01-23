@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone, MessageCircleMore, Eye, MapPinCheck } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, QrCode, Phone, MessageCircleMore, Eye, MapPinCheck, Video } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -80,7 +80,7 @@ interface BookingData {
          name: string;
          description: string;
          baseRate: number;
-         billingType: 'per_day' | 'per_hour' | 'per_session';
+         billingType: 'per_day' | 'per_hour' | 'per_session' | 'per_minute';
       };
    } | null;
 }
@@ -136,6 +136,11 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
       const serviceName = booking.modelService?.service?.name;
       if (!serviceName) return t("modelDating.serviceUnavailable");
       return t(`modelServices.serviceItems.${serviceName}.name`, { defaultValue: serviceName });
+   };
+
+   // Check if booking is a call service (per_minute billing type)
+   const isCallService = (booking: BookingData): boolean => {
+      return booking.modelService?.service?.billingType === 'per_minute';
    };
 
    const getStatusLabel = (status: string): string => {
@@ -237,6 +242,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                  </DropdownMenuTrigger>
 
                                  <DropdownMenuContent align="end">
+                                    {/* View details - always available */}
                                     <DropdownMenuItem
                                        onClick={() => navigate(`/model/dating/detail/${booking.id}`)}
                                        className="cursor-pointer"
@@ -245,96 +251,147 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        {t("modelDating.actions.viewDetails")}
                                     </DropdownMenuItem>
 
-                                    {booking.status === "pending" && (
+                                    {/* Call Service specific actions */}
+                                    {isCallService(booking) ? (
                                        <>
-                                          <DropdownMenuItem
-                                             onClick={() => navigate(`/model/dating/accept/${booking.id}`)}
-                                             className="cursor-pointer text-emerald-600"
-                                          >
-                                             <Check className="h-4 w-4" />
-                                             {t("modelDating.actions.accept")}
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                             onClick={() => navigate(`/model/dating/reject/${booking.id}`)}
-                                             className="cursor-pointer text-red-600"
-                                          >
-                                             <X className="h-4 w-4" />
-                                             {t("modelDating.actions.reject")}
-                                          </DropdownMenuItem>
-                                       </>
-                                    )}
+                                          {/* For pending call service - Accept and Reject */}
+                                          {booking.status === "pending" && (
+                                             <>
+                                                <DropdownMenuItem
+                                                   onClick={() => navigate(`/model/dating/accept/${booking.id}`)}
+                                                   className="cursor-pointer text-emerald-600"
+                                                >
+                                                   <Check className="h-4 w-4" />
+                                                   {t("modelDating.actions.accept")}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                   onClick={() => navigate(`/model/dating/reject/${booking.id}`)}
+                                                   className="cursor-pointer text-red-600"
+                                                >
+                                                   <X className="h-4 w-4" />
+                                                   {t("modelDating.actions.reject")}
+                                                </DropdownMenuItem>
+                                             </>
+                                          )}
 
-                                    {booking.status === "confirmed" && (
-                                       <>
-                                          {!booking.modelCheckedInAt && (
+                                          {/* For confirmed call service - only Join Call */}
+                                          {booking.status === "confirmed" && (
                                              <DropdownMenuItem
-                                                onClick={() => navigate(`/model/dating/checkin/${booking.id}`)}
-                                                className="cursor-pointer"
+                                                onClick={() => navigate(`/model/call/join/${booking.id}`)}
+                                                className="cursor-pointer text-emerald-600"
                                              >
-                                                <MapPinCheck className="h-4 w-4" />
-                                                {t("modelDating.actions.checkIn")}
+                                                <Video className="h-4 w-4" />
+                                                {t("modelDating.actions.joinCall")}
                                              </DropdownMenuItem>
                                           )}
-                                          {booking.customer.whatsapp && (
+
+                                          {/* For completed/cancelled call service - Delete only */}
+                                          {["cancelled", "completed"].includes(booking.status) && (
                                              <DropdownMenuItem
-                                                onClick={() => window.open(`tel:${booking.customer.whatsapp}`, "_self")}
-                                                className="cursor-pointer text-blue-600"
+                                                className="text-destructive cursor-pointer"
+                                                onClick={() => navigate(`/model/dating/delete/${booking.id}`)}
                                              >
-                                                <Phone className="h-4 w-4" />
-                                                {t("modelDating.actions.callCustomer")}
+                                                <Trash2 className="h-4 w-4" />
+                                                {t("modelDating.actions.delete")}
+                                             </DropdownMenuItem>
+                                          )}
+                                          {/* For rejected call service - no extra actions, only view details above */}
+                                       </>
+                                    ) : (
+                                       <>
+                                          {/* Regular service actions */}
+                                          {booking.status === "pending" && (
+                                             <>
+                                                <DropdownMenuItem
+                                                   onClick={() => navigate(`/model/dating/accept/${booking.id}`)}
+                                                   className="cursor-pointer text-emerald-600"
+                                                >
+                                                   <Check className="h-4 w-4" />
+                                                   {t("modelDating.actions.accept")}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                   onClick={() => navigate(`/model/dating/reject/${booking.id}`)}
+                                                   className="cursor-pointer text-red-600"
+                                                >
+                                                   <X className="h-4 w-4" />
+                                                   {t("modelDating.actions.reject")}
+                                                </DropdownMenuItem>
+                                             </>
+                                          )}
+
+                                          {booking.status === "confirmed" && (
+                                             <>
+                                                {!booking.modelCheckedInAt && (
+                                                   <DropdownMenuItem
+                                                      onClick={() => navigate(`/model/dating/checkin/${booking.id}`)}
+                                                      className="cursor-pointer"
+                                                   >
+                                                      <MapPinCheck className="h-4 w-4" />
+                                                      {t("modelDating.actions.checkIn")}
+                                                   </DropdownMenuItem>
+                                                )}
+                                                {booking.customer.whatsapp && (
+                                                   <DropdownMenuItem
+                                                      onClick={() => window.open(`tel:${booking.customer.whatsapp}`, "_self")}
+                                                      className="cursor-pointer text-blue-600"
+                                                   >
+                                                      <Phone className="h-4 w-4" />
+                                                      {t("modelDating.actions.callCustomer")}
+                                                   </DropdownMenuItem>
+                                                )}
+                                             </>
+                                          )}
+
+                                          {(booking.modelCheckedInAt || booking.status === "in_progress") &&
+                                             !["completed", "awaiting_confirmation", "cancelled", "rejected", "disputed"].includes(booking.status) && (
+                                                <DropdownMenuItem
+                                                   onClick={() => navigate(`/model/dating/complete/${booking.id}`)}
+                                                   className="cursor-pointer text-green-600"
+                                                >
+                                                   <Check className="h-4 w-4" />
+                                                   {t("modelDating.actions.completeGetPaid")}
+                                                </DropdownMenuItem>
+                                             )}
+
+                                          {booking.status === "awaiting_confirmation" && (
+                                             <DropdownMenuItem
+                                                onClick={() => navigate(`/model/dating/complete/${booking.id}`)}
+                                                className="cursor-pointer text-emerald-600"
+                                             >
+                                                <QrCode className="h-4 w-4" />
+                                                {t("modelDating.actions.viewQRCode")}
+                                             </DropdownMenuItem>
+                                          )}
+
+                                          {booking.status === "confirmed" && booking.isContact && booking.customer.whatsapp && (
+                                             <DropdownMenuItem
+                                                onClick={() => {
+                                                   const bookingUrl = `${window.location.origin}/customer/book-service/detail/${booking.id}`;
+                                                   const message = t("modelDating.whatsappMessage", {
+                                                      customerName: booking.customer.firstName,
+                                                      serviceName: getServiceName(booking),
+                                                      date: formatDate(String(booking.startDate)),
+                                                      bookingUrl
+                                                   });
+                                                   window.open(`https://wa.me/${booking.customer.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                                }}
+                                                className="cursor-pointer text-green-600"
+                                             >
+                                                <MessageCircleMore className="h-4 w-4" />
+                                                {t("modelDating.actions.messageCustomer")}
+                                             </DropdownMenuItem>
+                                          )}
+
+                                          {["cancelled", "rejected", "completed"].includes(booking.status) && (
+                                             <DropdownMenuItem
+                                                className="text-destructive cursor-pointer"
+                                                onClick={() => navigate(`/model/dating/delete/${booking.id}`)}
+                                             >
+                                                <Trash2 className="h-4 w-4" />
+                                                {t("modelDating.actions.delete")}
                                              </DropdownMenuItem>
                                           )}
                                        </>
-                                    )}
-
-                                    {(booking.modelCheckedInAt || booking.status === "in_progress") &&
-                                       !["completed", "awaiting_confirmation", "cancelled", "rejected", "disputed"].includes(booking.status) && (
-                                          <DropdownMenuItem
-                                             onClick={() => navigate(`/model/dating/complete/${booking.id}`)}
-                                             className="cursor-pointer text-green-600"
-                                          >
-                                             <Check className="h-4 w-4" />
-                                             {t("modelDating.actions.completeGetPaid")}
-                                          </DropdownMenuItem>
-                                       )}
-
-                                    {booking.status === "awaiting_confirmation" && (
-                                       <DropdownMenuItem
-                                          onClick={() => navigate(`/model/dating/complete/${booking.id}`)}
-                                          className="cursor-pointer text-emerald-600"
-                                       >
-                                          <QrCode className="h-4 w-4" />
-                                          {t("modelDating.actions.viewQRCode")}
-                                       </DropdownMenuItem>
-                                    )}
-
-                                    {booking.status === "confirmed" && booking.isContact && booking.customer.whatsapp && (
-                                       <DropdownMenuItem
-                                          onClick={() => {
-                                             const bookingUrl = `${window.location.origin}/customer/book-service/detail/${booking.id}`;
-                                             const message = t("modelDating.whatsappMessage", {
-                                                customerName: booking.customer.firstName,
-                                                serviceName: getServiceName(booking),
-                                                date: formatDate(String(booking.startDate)),
-                                                bookingUrl
-                                             });
-                                             window.open(`https://wa.me/${booking.customer.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
-                                          }}
-                                          className="cursor-pointer text-green-600"
-                                       >
-                                          <MessageCircleMore className="h-4 w-4" />
-                                          {t("modelDating.actions.messageCustomer")}
-                                       </DropdownMenuItem>
-                                    )}
-
-                                    {["cancelled", "rejected", "completed"].includes(booking.status) && (
-                                       <DropdownMenuItem
-                                          className="text-destructive cursor-pointer"
-                                          onClick={() => navigate(`/model/dating/delete/${booking.id}`)}
-                                       >
-                                          <Trash2 className="h-4 w-4" />
-                                          {t("modelDating.actions.delete")}
-                                       </DropdownMenuItem>
                                     )}
                                  </DropdownMenuContent>
                               </DropdownMenu>

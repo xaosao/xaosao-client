@@ -1,6 +1,7 @@
 import { prisma } from "./database.server";
 import { createAuditLogs } from "./log.server";
 import { FieldValidationError } from "./base.server";
+import { createModelNotification } from "./notification.server";
 import crypto from "crypto";
 
 // ========================================
@@ -430,11 +431,31 @@ export async function initiateCall(
       });
     }
 
-    if (!["ready_to_call", "scheduled"].includes(booking.callStatus || "")) {
+    // If call is already in progress (ringing, connecting, or in_call), return current state
+    // This makes the function idempotent and handles page re-renders
+    const inProgressStatuses = ["ringing", "connecting", "in_call"];
+    if (inProgressStatuses.includes(booking.callStatus || "")) {
+      console.log(`[initiateCall] Call already in progress with status: ${booking.callStatus}`);
+      return {
+        success: true,
+        booking: {
+          ...booking,
+          modelPeerId: booking.modelPeerId,
+        },
+      };
+    }
+
+    // Allow call initiation for:
+    // 1. Call bookings created via createCallBooking (callStatus = "ready_to_call" or "scheduled")
+    // 2. Call bookings created via regular booking flow and approved by model (status = "confirmed", callStatus = null)
+    const validCallStatuses = ["ready_to_call", "scheduled"];
+    const isConfirmedBookingWithoutCallStatus = booking.status === "confirmed" && !booking.callStatus;
+
+    if (!validCallStatuses.includes(booking.callStatus || "") && !isConfirmedBookingWithoutCallStatus) {
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: `Cannot initiate call with status: ${booking.callStatus}`,
+        message: `Cannot initiate call with status: ${booking.callStatus || booking.status}`,
       });
     }
 
@@ -459,8 +480,27 @@ export async function initiateCall(
       onSuccess: updatedBooking,
     });
 
-    // TODO: Send push notification to model here
-    // await notifyIncomingCall(booking.modelId, bookingId, customerId);
+    // Send notification to model about incoming call
+    if (booking.modelId) {
+      // Get customer info for notification
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { firstName: true, lastName: true, profile: true },
+      });
+
+      await createModelNotification(booking.modelId, {
+        type: "incoming_call",
+        title: "Incoming Call",
+        message: `${customer?.firstName || "A customer"} is calling you`,
+        data: {
+          bookingId,
+          customerId,
+          customerName: customer?.firstName || "Customer",
+          customerProfile: customer?.profile || null,
+          callType: booking.callType || "audio",
+        },
+      });
+    }
 
     return {
       success: true,
@@ -737,6 +777,16 @@ export async function endCall(
         error: true,
         message: "Booking not found!",
       });
+    }
+
+    // If call is already completed or cancelled, return success (idempotent)
+    if (["completed", "cancelled", "missed"].includes(booking.callStatus || "")) {
+      console.log(`[endCall] Call already ended with status: ${booking.callStatus}, returning success`);
+      return {
+        success: true,
+        booking,
+        message: "Call already ended",
+      };
     }
 
     if (!["in_call", "ringing", "connecting"].includes(booking.callStatus || "")) {

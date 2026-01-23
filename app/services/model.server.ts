@@ -708,6 +708,7 @@ export async function getModelProfile(modelId: string, customerId: string) {
             customHourlyRate: true,
             customOneTimePrice: true,
             customOneNightPrice: true,
+            customMinuteRate: true,
             isAvailable: true,
             minSessionDuration: true,
             maxSessionDuration: true,
@@ -721,6 +722,7 @@ export async function getModelProfile(modelId: string, customerId: string) {
                 hourlyRate: true,
                 oneTimePrice: true,
                 oneNightPrice: true,
+                minuteRate: true,
               },
             },
             model_service_variant: {
@@ -785,6 +787,7 @@ export async function getModelService(modelId: string, serviceId: string) {
         customHourlyRate: true,
         customOneTimePrice: true,
         customOneNightPrice: true,
+        customMinuteRate: true,
         isAvailable: true,
         serviceLocation: true,
         model: {
@@ -802,6 +805,7 @@ export async function getModelService(modelId: string, serviceId: string) {
             hourlyRate: true,
             oneTimePrice: true,
             oneNightPrice: true,
+            minuteRate: true,
           },
         },
         model_service_variant: {

@@ -81,13 +81,24 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         "booking_disputed",
     ];
 
-    // Handle new notifications - refresh layout when booking-related
+    // Handle new notifications - refresh layout when booking-related, redirect for calls
     const handleNewNotification = useCallback((notification: Notification) => {
+        // Handle incoming call - redirect to incoming call page
+        if (notification.type === "incoming_call") {
+            console.log("[ModelLayout] Incoming call notification received!", notification);
+            const bookingId = notification.data?.bookingId;
+            if (bookingId) {
+                navigate(`/model/call/join/${bookingId}`);
+            }
+            return;
+        }
+
+        // Handle booking notifications - refresh pending count
         if (bookingNotificationTypes.includes(notification.type)) {
             console.log("[ModelLayout] Booking notification received, refreshing pending count...", notification.type);
             revalidator.revalidate();
         }
-    }, [revalidator]);
+    }, [revalidator, navigate]);
 
     // Connect to real-time notifications for layout updates
     useNotifications({

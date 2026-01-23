@@ -41,6 +41,7 @@ export default function ModelActiveCall() {
    const remoteVideoRef = useRef<HTMLVideoElement>(null);
    const [currentEarnings, setCurrentEarnings] = useState(0);
    const [showEndConfirm, setShowEndConfirm] = useState(false);
+   const [waitingTimer, setWaitingTimer] = useState(90); // 90 second timeout for customer to connect
 
    // Get commission rate from service
    const commissionRate = booking.modelService?.service?.commission || 0;
@@ -66,9 +67,14 @@ export default function ModelActiveCall() {
       userName: 'Model',
       isModel: true,
       onCallStateChange: (state) => {
-         console.log('Call state changed:', state);
-         if (state === 'ended' || state === 'failed') {
-            navigate(`/model/call/${params.bookingId}/summary`);
+         console.log('[Model] Call state changed:', state);
+         // Only navigate to summary when call actually ended (after being connected)
+         if (state === 'ended') {
+            navigate(`/model/call/summary/${params.bookingId}`);
+         }
+         // Reset waiting timer when call progresses
+         if (state === 'ringing' || state === 'connecting' || state === 'connected') {
+            setWaitingTimer(90);
          }
       },
       onDurationUpdate: (seconds) => {
@@ -77,17 +83,47 @@ export default function ModelActiveCall() {
          setCurrentEarnings(Math.floor(netEarnings));
       },
       onCallEnded: (reason) => {
-         console.log('Call ended:', reason);
+         console.log('[Model] Call ended:', reason);
       },
       onError: (error) => {
-         console.error('Call error:', error);
+         console.error('[Model] Call error:', error);
+         // Don't navigate away on error - customer might still be connecting
       },
    });
+
+   // Waiting timer - if customer doesn't call within timeout, navigate to summary
+   useEffect(() => {
+      if (callState === 'connected') return; // Don't count down when connected
+
+      const countdown = setInterval(() => {
+         setWaitingTimer(prev => {
+            if (prev <= 1) {
+               console.log('[Model] Waiting timeout - navigating to summary');
+               navigate(`/model/call/summary/${params.bookingId}`);
+               return 0;
+            }
+            return prev - 1;
+         });
+      }, 1000);
+
+      return () => clearInterval(countdown);
+   }, [callState, navigate, params.bookingId]);
+
+   // Debug: Log call state changes
+   useEffect(() => {
+      console.log('[Model] 📊 Call state:', callState, '| Peer ID:', peerId);
+      if (callState === 'ready' && peerId) {
+         console.log('[Model] ✅ PeerJS ready and waiting for calls. My peer ID:', peerId);
+      }
+   }, [callState, peerId]);
 
    // Accept incoming call when ready (model side)
    useEffect(() => {
       if (callState === 'ringing') {
-         acceptCall();
+         console.log('[Model] Incoming call detected, accepting...');
+         acceptCall().catch(err => {
+            console.error('[Model] Failed to accept call:', err);
+         });
       }
    }, [callState, acceptCall]);
 
@@ -105,12 +141,13 @@ export default function ModelActiveCall() {
       }
    }, [remoteStream]);
 
-   // Cleanup on unmount
+   // Cleanup on unmount - empty dependency array ensures this only runs on unmount
    useEffect(() => {
       return () => {
          cleanup();
       };
-   }, [cleanup]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
    // Handle end call
    const handleEndCall = useCallback(async () => {
@@ -126,10 +163,10 @@ export default function ModelActiveCall() {
          endCall();
 
          // Navigate to summary
-         navigate(`/model/call/${params.bookingId}/summary`);
+         navigate(`/model/call/summary/${params.bookingId}`);
       } catch (error) {
          console.error('Error ending call:', error);
-         navigate(`/model/call/${params.bookingId}/summary`);
+         navigate(`/model/call/summary/${params.bookingId}`);
       }
    }, [params.bookingId, endCall, navigate]);
 
@@ -218,7 +255,12 @@ export default function ModelActiveCall() {
                      <p className="text-white text-lg">
                         {callState === 'connecting'
                            ? t('callService.connecting', { defaultValue: 'Connecting...' })
-                           : t('callService.initializing', { defaultValue: 'Initializing...' })}
+                           : callState === 'ringing'
+                           ? t('callService.answeringCall', { defaultValue: 'Answering call...' })
+                           : t('callService.waitingForCustomer', { defaultValue: 'Waiting for customer to connect...' })}
+                     </p>
+                     <p className="text-gray-400 text-sm mt-2">
+                        {t('callService.timeout', { seconds: waitingTimer, defaultValue: `Timeout in ${waitingTimer}s` })}
                      </p>
                   </div>
                </div>

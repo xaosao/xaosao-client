@@ -39,9 +39,12 @@ export default function ActiveCall() {
 
    const localVideoRef = useRef<HTMLVideoElement>(null);
    const remoteVideoRef = useRef<HTMLVideoElement>(null);
+   const hasInitiatedCallRef = useRef(false); // Prevent double-calling
    const [currentCost, setCurrentCost] = useState(0);
    const [remainingMinutes, setRemainingMinutes] = useState(booking.maxMinutes || 0);
    const [showEndConfirm, setShowEndConfirm] = useState(false);
+   const [connectionError, setConnectionError] = useState<string | null>(null);
+   const [retryCount, setRetryCount] = useState(0);
 
    // Initialize peer call
    const {
@@ -64,9 +67,22 @@ export default function ActiveCall() {
       userName: 'Customer',
       isModel: false,
       onCallStateChange: (state) => {
-         console.log('Call state changed:', state);
-         if (state === 'ended' || state === 'failed') {
-            navigate(`/customer/call/${params.bookingId}/summary`);
+         console.log('[Customer] Call state changed:', state);
+         // Only navigate to summary when call actually ended (after being connected)
+         if (state === 'ended') {
+            navigate(`/customer/call/summary/${params.bookingId}`);
+         }
+         // On failed, retry a few times before giving up
+         if (state === 'failed' && retryCount < 3) {
+            setRetryCount(prev => prev + 1);
+            setConnectionError('Connection failed, retrying...');
+         } else if (state === 'failed') {
+            // After 3 retries, navigate to summary
+            navigate(`/customer/call/summary/${params.bookingId}`);
+         }
+         // Clear error when successfully connected
+         if (state === 'connected') {
+            setConnectionError(null);
          }
       },
       onDurationUpdate: (seconds) => {
@@ -77,19 +93,87 @@ export default function ActiveCall() {
          setRemainingMinutes(Math.max(0, (booking.maxMinutes || 0) - usedMinutes));
       },
       onCallEnded: (reason) => {
-         console.log('Call ended:', reason);
+         console.log('[Customer] Call ended:', reason);
       },
       onError: (error) => {
-         console.error('Call error:', error);
+         console.error('[Customer] Call error:', error);
+         setConnectionError(error.message);
       },
    });
 
-   // Connect to model's peer when ready
+   // State for model's peer ID from database
+   const [modelPeerId, setModelPeerId] = useState<string | null>(null);
+   const peerPollingRef = useRef<NodeJS.Timeout | null>(null);
+
+   // Debug: Log call state changes
    useEffect(() => {
-      if (callState === 'ready' && booking.modelPeerId) {
-         initiateCall(booking.modelPeerId);
+      console.log('[Customer] 📊 Call state:', callState, '| Peer ID:', peerId, '| Model Peer ID:', modelPeerId);
+   }, [callState, peerId, modelPeerId]);
+
+   // Poll for model's peer ID from database
+   // Wait until model has ACCEPTED the call (callStatus === "connecting") before calling
+   useEffect(() => {
+      if (callState !== 'ready' || modelPeerId || hasInitiatedCallRef.current) return;
+
+      console.log('[Customer] ⏳ Polling for model peer ID and acceptance...');
+
+      const pollForModelPeer = async () => {
+         try {
+            const response = await fetch(`/api/call/booking?id=${params.bookingId}`);
+            const result = await response.json();
+
+            // Wait for BOTH: model's peer ID AND model has accepted (callStatus is "connecting" or "in_call")
+            const status = result.booking?.callStatus;
+            const isAccepted = status === 'connecting' || status === 'in_call';
+
+            if (result.success && result.booking?.modelPeerId && isAccepted) {
+               console.log('[Customer] ✅ Model accepted! Peer ID:', result.booking.modelPeerId, 'Status:', status);
+               setModelPeerId(result.booking.modelPeerId);
+               if (peerPollingRef.current) {
+                  clearInterval(peerPollingRef.current);
+                  peerPollingRef.current = null;
+               }
+            } else if (result.booking?.modelPeerId && !isAccepted) {
+               console.log('[Customer] Model peer registered but not yet accepted, waiting... Status:', status);
+            } else {
+               console.log('[Customer] Model peer ID not yet registered, retrying...');
+            }
+         } catch (error) {
+            console.error('[Customer] Error polling for model peer:', error);
+         }
+      };
+
+      // Poll every 1 second for faster discovery
+      pollForModelPeer(); // First attempt
+      peerPollingRef.current = setInterval(pollForModelPeer, 1000);
+
+      return () => {
+         if (peerPollingRef.current) {
+            clearInterval(peerPollingRef.current);
+            peerPollingRef.current = null;
+         }
+      };
+   }, [callState, modelPeerId, params.bookingId]);
+
+   // Connect to model's peer when we have their peer ID
+   useEffect(() => {
+      if (callState === 'ready' && modelPeerId && !hasInitiatedCallRef.current) {
+         hasInitiatedCallRef.current = true;
+         console.log('[Customer] ✅ PeerJS ready, my ID:', peerId);
+         console.log('[Customer] 📞 Model accepted! Waiting 1s for peer to stabilize...');
+
+         // Small delay to ensure model's active page peer is fully ready
+         const callDelay = setTimeout(() => {
+            console.log('[Customer] 📞 Now calling model peer ID:', modelPeerId);
+            initiateCall(modelPeerId).catch(err => {
+               console.error('[Customer] ❌ initiateCall error:', err);
+               setConnectionError(err.message || 'Failed to initiate call');
+            });
+         }, 1000);
+
+         return () => clearTimeout(callDelay);
       }
-   }, [callState, booking.modelPeerId, initiateCall]);
+   }, [callState, modelPeerId, initiateCall, peerId]);
 
    // Attach local stream to video element
    useEffect(() => {
@@ -112,12 +196,13 @@ export default function ActiveCall() {
       }
    }, [remainingMinutes, callState]);
 
-   // Cleanup on unmount
+   // Cleanup on unmount - empty dependency array ensures this only runs on unmount
    useEffect(() => {
       return () => {
          cleanup();
       };
-   }, [cleanup]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
    // Handle end call
    const handleEndCall = useCallback(async () => {
@@ -133,10 +218,10 @@ export default function ActiveCall() {
          endCall();
 
          // Navigate to summary
-         navigate(`/customer/call/${params.bookingId}/summary`);
+         navigate(`/customer/call/summary/${params.bookingId}`);
       } catch (error) {
          console.error('Error ending call:', error);
-         navigate(`/customer/call/${params.bookingId}/summary`);
+         navigate(`/customer/call/summary/${params.bookingId}`);
       }
    }, [params.bookingId, endCall, navigate]);
 
@@ -220,13 +305,67 @@ export default function ActiveCall() {
             {/* Connection Status */}
             {callState !== 'connected' && (
                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                  <div className="text-center">
-                     <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <div className="text-center px-4">
+                     {/* Show error icon for security/permission errors */}
+                     {connectionError && connectionError.includes('HTTPS') ? (
+                        <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                           <span className="text-2xl">🔒</span>
+                        </div>
+                     ) : callState === 'failed' ? (
+                        <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                           <span className="text-2xl">❌</span>
+                        </div>
+                     ) : (
+                        <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                     )}
                      <p className="text-white text-lg">
-                        {callState === 'connecting'
+                        {connectionError && connectionError.includes('HTTPS')
+                           ? t('callService.securityError', { defaultValue: 'Security Error' })
+                           : callState === 'failed'
+                           ? t('callService.connectionFailed', { defaultValue: 'Connection Failed' })
+                           : callState === 'calling'
+                           ? t('callService.callingModel', { defaultValue: 'Calling model...' })
+                           : callState === 'connecting'
                            ? t('callService.connecting', { defaultValue: 'Connecting...' })
-                           : t('callService.initializing', { defaultValue: 'Initializing...' })}
+                           : callState === 'ready'
+                           ? t('callService.preparingCall', { defaultValue: 'Preparing call...' })
+                           : t('callService.connectingToServer', { defaultValue: 'Connecting to server...' })}
                      </p>
+                     {(callState === 'idle' || callState === 'initializing') && !connectionError && (
+                        <p className="text-gray-400 text-sm mt-2">
+                           {t('callService.establishingConnection', { defaultValue: 'Establishing secure connection...' })}
+                        </p>
+                     )}
+                     {callState === 'ready' && !connectionError && !modelPeerId && (
+                        <p className="text-gray-400 text-sm mt-2">
+                           {t('callService.waitingForModelReady', { defaultValue: 'Waiting for model to be ready...' })}
+                        </p>
+                     )}
+                     {callState === 'ready' && !connectionError && modelPeerId && (
+                        <p className="text-gray-400 text-sm mt-2">
+                           {t('callService.requestingPermission', { defaultValue: 'Requesting camera/microphone access...' })}
+                        </p>
+                     )}
+                     {callState === 'calling' && !connectionError && (
+                        <p className="text-gray-400 text-sm mt-2">
+                           {t('callService.waitingForModelToAnswer', { defaultValue: 'Waiting for model to answer...' })}
+                        </p>
+                     )}
+                     {connectionError && (
+                        <p className={`text-sm mt-2 max-w-sm ${connectionError.includes('HTTPS') ? 'text-red-400' : 'text-amber-400'}`}>
+                           {connectionError}
+                        </p>
+                     )}
+                     {callState === 'failed' && !connectionError && (
+                        <p className="text-gray-400 text-sm mt-2">
+                           {t('callService.checkConnection', { defaultValue: 'Please check your internet connection and try again.' })}
+                        </p>
+                     )}
+                     {retryCount > 0 && callState === 'failed' && (
+                        <p className="text-gray-400 text-xs mt-1">
+                           {t('callService.retryAttempt', { count: retryCount, defaultValue: `Attempt ${retryCount + 1}/4` })}
+                        </p>
+                     )}
                   </div>
                </div>
             )}

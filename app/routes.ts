@@ -21,6 +21,17 @@ export default [
   route("api/push/subscribe", "./routes/api/push/subscribe.ts"),
   route("api/push/unsubscribe", "./routes/api/push/unsubscribe.ts"),
 
+  // API routes for Call service
+  route("api/call/initiate", "./routes/api/call/initiate.ts"),
+  route("api/call/accept", "./routes/api/call/accept.ts"),
+  route("api/call/decline", "./routes/api/call/decline.ts"),
+  route("api/call/start", "./routes/api/call/start.ts"),
+  route("api/call/end", "./routes/api/call/end.ts"),
+  route("api/call/missed", "./routes/api/call/missed.ts"),
+  route("api/call/heartbeat", "./routes/api/call/heartbeat.ts"),
+  route("api/call/booking", "./routes/api/call/booking.ts"),
+  route("api/call/register-peer", "./routes/api/call/register-peer.ts"),
+
   // authentication routes
   route("video-tutorials", "./routes/video-tutorials.tsx"),
   route("login", "./routes/auth/login.tsx"),
@@ -192,5 +203,15 @@ export default [
 
     // Notifications
     route("notifications", "./routes/customer/notifications/notifications.tsx"),
+
+    // Call service routes
+    route("call/start/:bookingId", "./routes/customer/call/call.waiting.tsx"),
+    route("call/active/:bookingId", "./routes/customer/call/call.active.tsx"),
+    route("call/summary/:bookingId", "./routes/customer/call/call.summary.tsx"),
   ]),
+
+  // Model call routes (outside nested routes for simplicity)
+  route("model/call/join/:bookingId", "./routes/model/call/call.incoming.tsx"),
+  route("model/call/active/:bookingId", "./routes/model/call/call.active.tsx"),
+  route("model/call/summary/:bookingId", "./routes/model/call/call.summary.tsx"),
 ] satisfies RouteConfig;

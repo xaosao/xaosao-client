@@ -100,7 +100,7 @@ export function isWithinCheckInTimeWindow(
     );
     return {
       canCheckIn: false,
-      message: `Check-in opens ${minutesUntil} minutes before the booking starts.`,
+      message: `Check-in will be available in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}. (Opens 30 minutes before booking)`,
     };
   }
 
@@ -530,6 +530,7 @@ export async function createServiceBooking(
         price: data.price,
         dayAmount: data.dayAmount ?? null,
         hours: data.hours ?? null,
+        minutes: data.minutes ?? null,
         sessionType: data.sessionType ?? null,
         modelServiceVariantId: data.modelServiceVariantId ?? null,
         location: data.location,

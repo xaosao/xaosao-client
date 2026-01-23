@@ -51,12 +51,14 @@ interface Service {
   hourlyRate: number | null;
   oneTimePrice: number | null;
   oneNightPrice: number | null;
+  minuteRate: number | null;
   isApplied: boolean;
   modelServiceId: string | null;
   customRate: number | null;
   customHourlyRate: number | null;
   customOneTimePrice: number | null;
   customOneNightPrice: number | null;
+  customMinuteRate: number | null;
   isAvailable: boolean;
   massageVariants?: MassageVariant[];
   serviceLocation?: string | null;
@@ -87,12 +89,14 @@ export async function action({ request }: ActionFunctionArgs) {
     const customHourlyRateStr = formData.get("customHourlyRate") as string;
     const customOneTimePriceStr = formData.get("customOneTimePrice") as string;
     const customOneNightPriceStr = formData.get("customOneNightPrice") as string;
+    const customMinuteRateStr = formData.get("customMinuteRate") as string;
 
     return {
       customRate: customRateStr ? parseFloat(customRateStr) : undefined,
       customHourlyRate: customHourlyRateStr ? parseFloat(customHourlyRateStr) : undefined,
       customOneTimePrice: customOneTimePriceStr ? parseFloat(customOneTimePriceStr) : undefined,
       customOneNightPrice: customOneNightPriceStr ? parseFloat(customOneNightPriceStr) : undefined,
+      customMinuteRate: customMinuteRateStr ? parseFloat(customMinuteRateStr) : undefined,
     };
   };
 
@@ -172,6 +176,7 @@ export default function ServicesSettings() {
   const [customHourlyRate, setCustomHourlyRate] = useState<string>("");
   const [customOneTimePrice, setCustomOneTimePrice] = useState<string>("");
   const [customOneNightPrice, setCustomOneNightPrice] = useState<string>("");
+  const [customMinuteRate, setCustomMinuteRate] = useState<string>("");
 
   // Massage variants state
   const [massageVariants, setMassageVariants] = useState<MassageVariant[]>([
@@ -208,6 +213,7 @@ export default function ServicesSettings() {
     setCustomHourlyRate(service.customHourlyRate?.toString() || service.hourlyRate?.toString() || "");
     setCustomOneTimePrice(service.customOneTimePrice?.toString() || service.oneTimePrice?.toString() || "");
     setCustomOneNightPrice(service.customOneNightPrice?.toString() || service.oneNightPrice?.toString() || "");
+    setCustomMinuteRate(service.customMinuteRate?.toString() || service.minuteRate?.toString() || "");
 
     // Initialize massage variants and service location if applicable
     if (service.name.toLowerCase() === "massage") {
@@ -228,10 +234,18 @@ export default function ServicesSettings() {
         return t("modelServices.billingTypes.perHour");
       case "per_session":
         return t("modelServices.billingTypes.perSession");
+      case "per_minute":
+        return t("modelServices.billingTypes.perMinute", { defaultValue: "Per Minute" });
       case "per_day":
       default:
         return t("modelServices.billingTypes.perDay");
     }
+  };
+
+  // Helper to calculate model earnings after commission
+  const calculateEarnings = (rate: number, commission: number) => {
+    const commissionAmount = (rate * commission) / 100;
+    return rate - commissionAmount;
   };
 
   // Helper function to get translated service name
@@ -440,6 +454,34 @@ export default function ServicesSettings() {
                     </>
                   )}
 
+                  {/* Per Minute - Show minute rate (Call Service) */}
+                  {service.billingType === "per_minute" && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{t("modelServices.minuteRate", { defaultValue: "Rate per minute" })}</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1">
+                          {formatMoney(service.minuteRate || 0)}/{t("modelServices.minute", { defaultValue: "min" })}
+                        </span>
+                      </div>
+                      {service.isApplied && service.customMinuteRate && (
+                        <div className="pt-2 border-t space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">{t("modelServices.yourRate")}</span>
+                            <span className="font-bold text-rose-600 flex items-center gap-1">
+                              {formatMoney(service.customMinuteRate)}/{t("modelServices.minute", { defaultValue: "min" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">{t("modelServices.youEarn", { defaultValue: "You earn" })}</span>
+                            <span className="font-bold text-emerald-600 flex items-center gap-1">
+                              {formatMoney(calculateEarnings(service.customMinuteRate, service.commission))}/{t("modelServices.minute", { defaultValue: "min" })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
                     <span className="font-semibold text-rose-600">
@@ -538,6 +580,14 @@ export default function ServicesSettings() {
                         </span>
                       </div>
                     </>
+                  )}
+                  {applyModal.billingType === "per_minute" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.minuteRate", { defaultValue: "Rate per minute" })}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(applyModal.minuteRate || 0)}/{t("modelServices.minute", { defaultValue: "min" })}
+                      </span>
+                    </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
@@ -746,6 +796,62 @@ export default function ServicesSettings() {
                   </>
                 )}
 
+                {/* Per Minute - Custom minute rate (Call Service) */}
+                {applyModal.billingType === "per_minute" && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customMinuteRate">
+                        {t("modelServices.customMinuteRateLabel", { defaultValue: "Your rate per minute" })} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="customMinuteRate"
+                          type="number"
+                          name="customMinuteRate"
+                          value={customMinuteRate}
+                          onChange={(e) => setCustomMinuteRate(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                      </p>
+                    </div>
+
+                    {/* Earnings Breakdown */}
+                    {customMinuteRate && parseFloat(customMinuteRate) > 0 && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
+                        <h4 className="text-sm font-medium text-emerald-800">
+                          {t("modelServices.earningsBreakdown", { defaultValue: "Your Earnings" })}
+                        </h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-gray-600">
+                            <span>{t("modelServices.customerPays", { defaultValue: "Customer pays" })}</span>
+                            <span className="font-medium">{formatMoney(parseFloat(customMinuteRate))}/{t("modelServices.minute", { defaultValue: "min" })}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>{t("modelServices.platformCommission", { defaultValue: "Platform commission" })} ({applyModal.commission}%)</span>
+                            <span className="font-medium text-rose-600">
+                              -{formatMoney((parseFloat(customMinuteRate) * applyModal.commission) / 100)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-emerald-200">
+                            <span className="font-medium text-emerald-800">{t("modelServices.youReceive", { defaultValue: "You receive" })}</span>
+                            <span className="font-bold text-emerald-600">
+                              {formatMoney(calculateEarnings(parseFloat(customMinuteRate), applyModal.commission))}/{t("modelServices.minute", { defaultValue: "min" })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <DialogFooter className="flex flex-row gap-2">
                   <Button
                     type="button"
@@ -829,6 +935,14 @@ export default function ServicesSettings() {
                         </span>
                       </div>
                     </>
+                  )}
+                  {editModal.billingType === "per_minute" && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t("modelServices.minuteRate", { defaultValue: "Rate per minute" })}</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        {formatMoney(editModal.minuteRate || 0)}/{t("modelServices.minute", { defaultValue: "min" })}
+                      </span>
+                    </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">{t("modelServices.commission")}</span>
@@ -1039,6 +1153,62 @@ export default function ServicesSettings() {
                       </p>
                     </div>
                   </>
+                )}
+
+                {/* Per Minute - Custom minute rate (Call Service) */}
+                {editModal.billingType === "per_minute" && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editCustomMinuteRate">
+                        {t("modelServices.customMinuteRateLabel", { defaultValue: "Your rate per minute" })} <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                        <Input
+                          id="editCustomMinuteRate"
+                          type="number"
+                          name="customMinuteRate"
+                          value={customMinuteRate}
+                          onChange={(e) => setCustomMinuteRate(e.target.value)}
+                          step="1"
+                          min="0"
+                          required
+                          className="pl-10"
+                          placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                      </p>
+                    </div>
+
+                    {/* Earnings Breakdown */}
+                    {customMinuteRate && parseFloat(customMinuteRate) > 0 && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
+                        <h4 className="text-sm font-medium text-emerald-800">
+                          {t("modelServices.earningsBreakdown", { defaultValue: "Your Earnings" })}
+                        </h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-gray-600">
+                            <span>{t("modelServices.customerPays", { defaultValue: "Customer pays" })}</span>
+                            <span className="font-medium">{formatMoney(parseFloat(customMinuteRate))}/{t("modelServices.minute", { defaultValue: "min" })}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>{t("modelServices.platformCommission", { defaultValue: "Platform commission" })} ({editModal.commission}%)</span>
+                            <span className="font-medium text-rose-600">
+                              -{formatMoney((parseFloat(customMinuteRate) * editModal.commission) / 100)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-emerald-200">
+                            <span className="font-medium text-emerald-800">{t("modelServices.youReceive", { defaultValue: "You receive" })}</span>
+                            <span className="font-bold text-emerald-600">
+                              {formatMoney(calculateEarnings(parseFloat(customMinuteRate), editModal.commission))}/{t("modelServices.minute", { defaultValue: "min" })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <DialogFooter className="flex flex-row gap-2">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useTranslation } from 'react-i18next';
 import { Phone, PhoneOff, Video, User, Clock, Wallet } from "lucide-react"
 import { useLoaderData, useNavigate, useParams, type LoaderFunctionArgs } from "react-router"
+import Peer from "peerjs";
 
 // components:
 import { Button } from "~/components/ui/button"
@@ -14,6 +15,15 @@ import { getCallBooking } from "~/services/call-booking.server";
 import { formatCurrency } from "~/utils"
 
 const RING_TIMEOUT = 60000; // 60 seconds
+
+// PeerJS config for early registration
+const PEER_CONFIG = {
+   host: '0.peerjs.com',
+   port: 443,
+   secure: true,
+   path: '/',
+   debug: 2, // Less verbose for incoming page
+};
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
    const modelId = await requireModelSession(request);
@@ -39,14 +49,94 @@ export default function IncomingCall() {
    const [ringTimer, setRingTimer] = useState(60);
    const [isAccepting, setIsAccepting] = useState(false);
    const [isDeclining, setIsDeclining] = useState(false);
+   const [peerReady, setPeerReady] = useState(false);
    const ringAudioRef = useRef<HTMLAudioElement | null>(null);
+   const peerRef = useRef<Peer | null>(null);
 
-   // Play ringtone
+   // Initialize PeerJS early to register peer ID in database
+   // This allows the customer to find our peer ID before we even accept
    useEffect(() => {
-      // Create and play ringtone
-      ringAudioRef.current = new Audio('/sounds/ringtone.mp3');
+      if (!params.bookingId) return;
+
+      const initPeer = async (retryCount = 0) => {
+         const basePeerId = `call_${params.bookingId}_model`;
+         const peerId = retryCount > 0 ? `${basePeerId}_r${retryCount}` : basePeerId;
+
+         console.log(`[Incoming] Initializing early peer with ID: ${peerId}`);
+
+         try {
+            const peer = new Peer(peerId, PEER_CONFIG);
+            peerRef.current = peer;
+
+            peer.on("open", async (id) => {
+               console.log(`[Incoming] ✅ PeerJS connected with ID: ${id}`);
+
+               // Register peer ID in database so customer can find us
+               try {
+                  const response = await fetch("/api/call/register-peer", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify({
+                        bookingId: params.bookingId,
+                        peerId: id,
+                        participantType: "model",
+                     }),
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                     console.log(`[Incoming] ✅ Peer ID registered in database: ${id}`);
+                     setPeerReady(true);
+                  } else {
+                     console.warn("[Incoming] ⚠️ Failed to register peer ID:", result.error);
+                  }
+               } catch (err) {
+                  console.warn("[Incoming] ⚠️ Failed to register peer ID:", err);
+               }
+            });
+
+            peer.on("error", (error: any) => {
+               console.error("[Incoming] PeerJS error:", error.type, error.message);
+
+               // Retry with different ID if unavailable
+               if (error.type === "unavailable-id" && retryCount < 3) {
+                  console.log(`[Incoming] Peer ID taken, retrying with suffix...`);
+                  peer.destroy();
+                  setTimeout(() => initPeer(retryCount + 1), 500);
+               }
+            });
+
+            peer.on("disconnected", () => {
+               console.log("[Incoming] PeerJS disconnected, attempting reconnect...");
+               if (!peer.destroyed) {
+                  peer.reconnect();
+               }
+            });
+
+         } catch (err) {
+            console.error("[Incoming] Failed to create peer:", err);
+         }
+      };
+
+      initPeer();
+
+      // Cleanup on unmount
+      return () => {
+         if (peerRef.current) {
+            console.log("[Incoming] Cleaning up early peer connection");
+            peerRef.current.destroy();
+            peerRef.current = null;
+         }
+      };
+   }, [params.bookingId]);
+
+   // Play ringtone on mount
+   useEffect(() => {
+      // Create and play ringtone (note: path is /sound/ not /sounds/)
+      ringAudioRef.current = new Audio('/sound/ringtone.mp3');
       ringAudioRef.current.loop = true;
-      ringAudioRef.current.play().catch(console.error);
+      ringAudioRef.current.play().catch(err => {
+         console.log('Could not play ringtone:', err);
+      });
 
       return () => {
          if (ringAudioRef.current) {
@@ -91,7 +181,7 @@ export default function IncomingCall() {
          const result = await response.json();
 
          if (result.success) {
-            navigate(`/model/call/${params.bookingId}/active`);
+            navigate(`/model/call/active/${params.bookingId}`);
          } else {
             console.error('Failed to accept call:', result.error);
             setIsAccepting(false);
@@ -176,6 +266,13 @@ export default function IncomingCall() {
                   <Clock className="w-4 h-4" />
                   <span>{ringTimer}s</span>
                </div>
+            </div>
+            {/* Connection status indicator */}
+            <div className="mt-2 text-xs flex items-center justify-center gap-1">
+               <span className={`w-2 h-2 rounded-full ${peerReady ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+               <span className={peerReady ? 'text-green-400' : 'text-yellow-400'}>
+                  {peerReady ? t('callService.ready', { defaultValue: 'Ready' }) : t('callService.connecting', { defaultValue: 'Connecting...' })}
+               </span>
             </div>
          </div>
 

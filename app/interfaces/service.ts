@@ -1,7 +1,7 @@
 import type { BookingStatus } from "./base";
 
 // Billing types for services
-export type BillingType = 'per_day' | 'per_hour' | 'per_session';
+export type BillingType = 'per_day' | 'per_hour' | 'per_session' | 'per_minute';
 export type SessionType = 'one_time' | 'one_night';
 
 export interface MassageVariant {
@@ -16,6 +16,7 @@ export interface IServiceBookingResponse {
   customHourlyRate?: number;
   customOneTimePrice?: number;
   customOneNightPrice?: number;
+  customMinuteRate?: number;
   isAvailable: false;
   service: {
     id: string;
@@ -26,6 +27,7 @@ export interface IServiceBookingResponse {
     hourlyRate?: number;
     oneTimePrice?: number;
     oneNightPrice?: number;
+    minuteRate?: number;
   };
   model?: {
     address?: string;
@@ -40,6 +42,7 @@ export interface IServiceBookingCredentials {
   price: number;
   dayAmount?: number;
   hours?: number;           // For per_hour services (drinkingFriend)
+  minutes?: number;         // For per_minute services (call service)
   sessionType?: SessionType; // For per_session services (sleepPartner)
   modelServiceVariantId?: string; // For massage service variants
   location: string;
@@ -74,6 +77,7 @@ export type IServiceBooking = {
     customHourlyRate: number | null;
     customOneTimePrice: number | null;
     customOneNightPrice: number | null;
+    customMinuteRate: number | null;
     service: {
       id: string;
       name: string;
@@ -83,6 +87,7 @@ export type IServiceBooking = {
       hourlyRate: number | null;
       oneTimePrice: number | null;
       oneNightPrice: number | null;
+      minuteRate: number | null;
     };
   };
   isContact: boolean;

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Briefcase, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon } from "lucide-react"
+import { AlertCircle, Briefcase, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon, Video } from "lucide-react"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
 
 // components:
@@ -60,6 +60,11 @@ export async function action({ params, request }: Route.ActionArgs) {
          }
       } else if (billingType === 'per_session') {
          bookingData.sessionType = formData.get('sessionType') as 'one_time' | 'one_night'
+      } else if (billingType === 'per_minute') {
+         bookingData.minutes = parseFormattedNumber(bookingData.minutes)
+         // For call service, location is not required - set a default value
+         // Note: "Online" instead of "Online Call" to avoid SQL injection filter (blocks word "call")
+         bookingData.location = 'Online'
       }
 
       await validateServiceBookingInputs(bookingData as IServiceBookingCredentials);
@@ -102,8 +107,22 @@ export default function ServiceBooking() {
    const [startDate, setStartDate] = useState<Date>()
    const [endDate, setEndDate] = useState<Date>()
    const [selectedHours, setSelectedHours] = useState<number>(1)
+   const [selectedMinutes, setSelectedMinutes] = useState<number>(30) // Default 30 minutes for call service
    const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
    const [selectedMassageVariantId, setSelectedMassageVariantId] = useState<string>("")
+
+   // Duration options for call service (in minutes)
+   const callDurationOptions = [
+      { value: 5, label: '5', unit: 'minutes' },
+      { value: 10, label: '10', unit: 'minutes' },
+      { value: 20, label: '20', unit: 'minutes' },
+      { value: 30, label: '30', unit: 'minutes' },
+      { value: 60, label: '1', unit: 'hour' },
+      { value: 120, label: '2', unit: 'hours' },
+      { value: 180, label: '3', unit: 'hours' },
+      { value: 300, label: '5', unit: 'hours' },
+      { value: 600, label: '10', unit: 'hours' },
+   ]
 
    const actionData = useActionData<typeof action>()
    const loaderData = useLoaderData<{ service: IServiceBookingResponse; bookedSlots: Array<{ startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }> }>();
@@ -142,6 +161,10 @@ export default function ServiceBooking() {
          } else {
             return service.customOneNightPrice || service.service.oneNightPrice || 0;
          }
+      } else if (billingType === 'per_minute') {
+         // For call service, calculate price based on minutes
+         const minuteRate = service.customMinuteRate || service.service.minuteRate || 0;
+         return minuteRate * selectedMinutes;
       } else {
          // per_day
          const dailyRate = service.customRate || service.service.baseRate;
@@ -257,6 +280,9 @@ export default function ServiceBooking() {
                )}
                {billingType === 'per_session' && (
                   <input type="hidden" name="sessionType" value={selectedSessionType} />
+               )}
+               {billingType === 'per_minute' && (
+                  <input type="hidden" name="minutes" value={selectedMinutes} />
                )}
                {service.service.name.toLowerCase() === 'massage' && selectedMassageVariantId && (
                   <input type="hidden" name="modelServiceVariantId" value={selectedMassageVariantId} />
@@ -464,77 +490,111 @@ export default function ServiceBooking() {
                            </div>
                         )}
 
-                     </div>
-                  </div>
-               </div>
-
-               <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
-                  {/* For massage service: Show massage type selector first */}
-                  {billingType === 'per_hour' && service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 && (
-                     <div className="space-y-2">
-                        <Label htmlFor="massage-type-select" className="text-sm font-medium">
-                           {t('profileBook.massageType')} <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                           value={selectedMassageVariantId}
-                           onValueChange={setSelectedMassageVariantId}
-                        >
-                           <SelectTrigger id="massage-type-select" className="w-full h-11">
-                              <Briefcase className="mr-2 h-4 w-4" />
-                              <SelectValue placeholder={t('profileBook.selectMassageType')} />
-                           </SelectTrigger>
-                           <SelectContent>
-                              {service.model_service_variant.map((variant) => (
-                                 <SelectItem key={variant.id} value={variant.id}>
-                                    {variant.name} - {formatCurrency(variant.pricePerHour)}/{t('profileBook.hour')}
-                                 </SelectItem>
-                              ))}
-                           </SelectContent>
-                        </Select>
-                     </div>
-                  )}
-
-                  <div className="space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor="meeting-location" className="text-sm font-medium">
-                           {t('profileBook.location')} <span className="text-destructive">*</span>
-                        </Label>
-                        {service.service.name.toLowerCase() === 'massage' ? (
-                           <>
-                              <Input
-                                 id="meeting-location"
-                                 value={service.serviceLocation || t('profileBook.noAddressAvailable')}
-                                 className="h-11 text-sm bg-gray-100"
-                                 readOnly
-                              />
-                              <input type="hidden" name="location" value={service.serviceLocation || ''} />
-                           </>
-                        ) : (
-                           <Input
-                              name="location"
-                              id="meeting-location"
-                              placeholder={t('profileBook.locationPlaceholder')}
-                              className="h-11 text-sm"
-                           />
+                        {/* For per_minute (Call Service): Show Duration selector */}
+                        {billingType === 'per_minute' && (
+                           <div className="space-y-2">
+                              <Label htmlFor="call-duration-select" className="text-sm font-medium">
+                                 {t('profileBook.callDuration', { defaultValue: 'Call Duration' })} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={String(selectedMinutes)}
+                                 onValueChange={(value) => setSelectedMinutes(Number(value))}
+                              >
+                                 <SelectTrigger id="call-duration-select" className="w-full h-11">
+                                    <Video className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.selectDuration', { defaultValue: 'Select duration' })} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                    {callDurationOptions.map((option) => (
+                                       <SelectItem key={option.value} value={String(option.value)}>
+                                          {option.label} {option.unit === 'minutes'
+                                             ? t('profileBook.minutes', { defaultValue: 'minutes' })
+                                             : option.unit === 'hour'
+                                                ? t('profileBook.hour')
+                                                : t('profileBook.hours')}
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
                         )}
+
                      </div>
                   </div>
                </div>
-               {/* Hide Preferred Attire for massage service */}
-               {service.service.name.toLowerCase() !== 'massage' && (
-                  <div className="space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor="dress-code" className="text-sm font-medium">
-                           {t('profileBook.preferredAttire')}
-                        </Label>
-                        <Textarea
-                           name="preferred"
-                           id="dress-code"
-                           placeholder={t('profileBook.attirePlaceholder')}
-                           className="min-h-[100px] resize-none text-sm"
-                        />
+
+               {/* Hide location and attire for call service (per_minute) */}
+               {billingType !== 'per_minute' && (
+                  <>
+                     <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
+                        {/* For massage service: Show massage type selector first */}
+                        {billingType === 'per_hour' && service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 && (
+                           <div className="space-y-2">
+                              <Label htmlFor="massage-type-select" className="text-sm font-medium">
+                                 {t('profileBook.massageType')} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={selectedMassageVariantId}
+                                 onValueChange={setSelectedMassageVariantId}
+                              >
+                                 <SelectTrigger id="massage-type-select" className="w-full h-11">
+                                    <Briefcase className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.selectMassageType')} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                    {service.model_service_variant.map((variant) => (
+                                       <SelectItem key={variant.id} value={variant.id}>
+                                          {variant.name} - {formatCurrency(variant.pricePerHour)}/{t('profileBook.hour')}
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+                        )}
+
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <Label htmlFor="meeting-location" className="text-sm font-medium">
+                                 {t('profileBook.location')} <span className="text-destructive">*</span>
+                              </Label>
+                              {service.service.name.toLowerCase() === 'massage' ? (
+                                 <>
+                                    <Input
+                                       id="meeting-location"
+                                       value={service.serviceLocation || t('profileBook.noAddressAvailable')}
+                                       className="h-11 text-sm bg-gray-100"
+                                       readOnly
+                                    />
+                                    <input type="hidden" name="location" value={service.serviceLocation || ''} />
+                                 </>
+                              ) : (
+                                 <Input
+                                    name="location"
+                                    id="meeting-location"
+                                    placeholder={t('profileBook.locationPlaceholder')}
+                                    className="h-11 text-sm"
+                                 />
+                              )}
+                           </div>
+                        </div>
                      </div>
-                  </div>
+                     {/* Hide Preferred Attire for massage service */}
+                     {service.service.name.toLowerCase() !== 'massage' && (
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <Label htmlFor="dress-code" className="text-sm font-medium">
+                                 {t('profileBook.preferredAttire')}
+                              </Label>
+                              <Textarea
+                                 name="preferred"
+                                 id="dress-code"
+                                 placeholder={t('profileBook.attirePlaceholder')}
+                                 className="min-h-[100px] resize-none text-sm"
+                              />
+                           </div>
+                        </div>
+                     )}
+                  </>
                )}
 
                <div className="space-y-2 ">
@@ -614,6 +674,25 @@ export default function ServiceBooking() {
                                        ? (service.customOneTimePrice || service.service.oneTimePrice || 0)
                                        : (service.customOneNightPrice || service.service.oneNightPrice || 0)
                                  )}
+                              </span>
+                           </div>
+                        </>
+                     )}
+
+                     {/* Per Minute Summary (Call Service) */}
+                     {billingType === 'per_minute' && (
+                        <>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.pricePerMinute', { defaultValue: 'Price per minute' })}</span>
+                              <span className="font-medium">{formatCurrency(service.customMinuteRate || service.service.minuteRate || 0)}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">{t('profileBook.callDuration', { defaultValue: 'Call Duration' })}</span>
+                              <span className="font-medium">
+                                 {selectedMinutes >= 60
+                                    ? `${Math.floor(selectedMinutes / 60)} ${Math.floor(selectedMinutes / 60) === 1 ? t('profileBook.hour') : t('profileBook.hours')}`
+                                    : `${selectedMinutes} ${t('profileBook.minutes', { defaultValue: 'minutes' })}`
+                                 }
                               </span>
                            </div>
                         </>

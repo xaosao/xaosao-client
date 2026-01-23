@@ -46,6 +46,7 @@ export async function getServicesForModel(modelId: string) {
         hourlyRate: true,
         oneTimePrice: true,
         oneNightPrice: true,
+        minuteRate: true,
       },
     });
 
@@ -84,6 +85,7 @@ export async function getServicesForModel(modelId: string) {
         customHourlyRate: modelService?.customHourlyRate || null,
         customOneTimePrice: modelService?.customOneTimePrice || null,
         customOneNightPrice: modelService?.customOneNightPrice || null,
+        customMinuteRate: modelService?.customMinuteRate || null,
         isAvailable: modelService?.isAvailable || true,
         massageVariants: modelService?.model_service_variant || [],
         serviceLocation: modelService?.serviceLocation || null,
@@ -107,6 +109,7 @@ export interface ServiceRates {
   customHourlyRate?: number;
   customOneTimePrice?: number;
   customOneNightPrice?: number;
+  customMinuteRate?: number;
 }
 
 export interface MassageVariant {
@@ -179,6 +182,7 @@ export async function applyForService(
         customHourlyRate: rates.customHourlyRate ?? null,
         customOneTimePrice: rates.customOneTimePrice ?? null,
         customOneNightPrice: rates.customOneNightPrice ?? null,
+        customMinuteRate: rates.customMinuteRate ?? null,
         serviceLocation: serviceLocation ?? null,
         isAvailable: true,
         status: "active",
@@ -316,6 +320,7 @@ export async function updateServiceApplication(
         customHourlyRate: rates.customHourlyRate ?? modelService.customHourlyRate,
         customOneTimePrice: rates.customOneTimePrice ?? modelService.customOneTimePrice,
         customOneNightPrice: rates.customOneNightPrice ?? modelService.customOneNightPrice,
+        customMinuteRate: rates.customMinuteRate ?? modelService.customMinuteRate,
         serviceLocation: serviceLocation ?? modelService.serviceLocation,
       },
     });
