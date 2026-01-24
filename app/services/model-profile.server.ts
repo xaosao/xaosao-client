@@ -546,12 +546,14 @@ export async function getModelBanks(modelId: string) {
       select: {
         id: true,
         qr_code: true,
+        isDefault: true,
         status: true,
         createdAt: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [
+        { isDefault: "desc" }, // Default bank first
+        { createdAt: "desc" },
+      ],
     });
 
     return banks;
@@ -570,6 +572,7 @@ export async function createModelBank(
   modelId: string,
   data: {
     qr_code: string;
+    isDefault?: boolean;
   }
 ) {
   if (!modelId)
@@ -585,9 +588,34 @@ export async function createModelBank(
   };
 
   try {
+    // Check if this is the first bank for the model
+    const existingBanks = await prisma.banks.count({
+      where: {
+        modelId,
+        status: "active",
+      },
+    });
+
+    // If this is the first bank or explicitly set as default, make it the default
+    const shouldBeDefault = existingBanks === 0 || data.isDefault === true;
+
+    // If setting as default, unset other defaults first
+    if (shouldBeDefault && existingBanks > 0) {
+      await prisma.banks.updateMany({
+        where: {
+          modelId,
+          isDefault: true,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+    }
+
     const createBank = await prisma.banks.create({
       data: {
         qr_code: data.qr_code,
+        isDefault: shouldBeDefault,
         status: "active",
         modelId,
       },
@@ -729,6 +757,26 @@ export async function deleteModelBank(id: string, modelId: string) {
       where: { id },
     });
 
+    // If the deleted bank was the default, set the next available bank as default
+    if (bank.isDefault) {
+      const nextBank = await prisma.banks.findFirst({
+        where: {
+          modelId,
+          status: "active",
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      if (nextBank) {
+        await prisma.banks.update({
+          where: { id: nextBank.id },
+          data: { isDefault: true },
+        });
+      }
+    }
+
     await createAuditLogs({
       ...auditBase,
       description: `Delete model bank: ${deletedBank.id} successfully.`,
@@ -749,6 +797,79 @@ export async function deleteModelBank(id: string, modelId: string) {
       success: false,
       error: true,
       message: "Failed to delete model bank!",
+    });
+  }
+}
+
+// Set bank as default
+export async function setDefaultBank(id: string, modelId: string) {
+  if (!modelId || !id)
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Missing model id or bank id!",
+    });
+
+  const auditBase = {
+    action: "SET_DEFAULT_BANK",
+    model: modelId,
+  };
+
+  try {
+    const bank = await prisma.banks.findUnique({
+      where: {
+        id,
+        modelId,
+        status: "active",
+      },
+    });
+
+    if (!bank) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The bank does not exist!",
+      });
+    }
+
+    // Unset all other defaults for this model
+    await prisma.banks.updateMany({
+      where: {
+        modelId,
+        isDefault: true,
+        id: { not: id },
+      },
+      data: {
+        isDefault: false,
+      },
+    });
+
+    // Set this bank as default
+    const updatedBank = await prisma.banks.update({
+      where: { id },
+      data: { isDefault: true },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Set bank ${id} as default for model ${modelId} successfully.`,
+      status: "success",
+      onSuccess: updatedBank,
+    });
+
+    return updatedBank;
+  } catch (error: any) {
+    console.error("SET_DEFAULT_BANK_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Set default bank failed!`,
+      status: "failed",
+      onError: error,
+    });
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to set default bank!",
     });
   }
 }

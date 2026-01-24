@@ -360,6 +360,7 @@ model images {
 model banks {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   qr_code   String
+  isDefault Boolean  @default(false)
   status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

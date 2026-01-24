@@ -32,14 +32,31 @@ import { requireModelSession } from "~/services/model-auth.server";
 import {
   getModelTransaction,
   updateModelTransaction,
+  getModelWalletSummary,
 } from "~/services/wallet.server";
 import { validateTopUpInputs } from "~/services/validation.server";
 import { formatCurrency, parseFormattedNumber } from "~/utils";
 
-export async function loader({ params, request }: LoaderFunctionArgs) {
+interface LoaderData {
+  transaction: ITransactionResponse;
+  availableBalance: number;
+}
+
+export async function loader({ params, request }: LoaderFunctionArgs): Promise<LoaderData> {
   const modelId = await requireModelSession(request);
-  const transaction = await getModelTransaction(params.transactionId!, modelId);
-  return transaction;
+  const [transaction, walletSummary] = await Promise.all([
+    getModelTransaction(params.transactionId!, modelId),
+    getModelWalletSummary(modelId),
+  ]);
+
+  if (!transaction) {
+    throw new Response("Transaction not found", { status: 404 });
+  }
+
+  return {
+    transaction: transaction as unknown as ITransactionResponse,
+    availableBalance: walletSummary.totalAvailable,
+  };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -119,14 +136,48 @@ export default function ModelTransactionEdit() {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
-  const transaction = useLoaderData<ITransactionResponse>();
+  const { transaction, availableBalance } = useLoaderData<LoaderData>();
   const [amount, setAmount] = React.useState<number>(transaction.amount || 0);
+  const [amountError, setAmountError] = useState<string | null>(null);
   const isSubmitting =
     navigation.state !== "idle" && navigation.formMethod === "PATCH";
 
   const [previewSlip, setPreviewSlip] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Validate amount against available balance (for withdrawal transactions)
+  const validateAmount = (newAmount: number) => {
+    if (transaction.identifier === "withdrawal" && newAmount > availableBalance) {
+      setAmountError(t("modelWallet.errors.insufficientBalance", {
+        defaultValue: "Withdrawal amount exceeds available balance"
+      }));
+      return false;
+    }
+    if (newAmount <= 0) {
+      setAmountError(t("modelWallet.errors.invalidAmount", {
+        defaultValue: "Please enter a valid amount"
+      }));
+      return false;
+    }
+    setAmountError(null);
+    return true;
+  };
+
+  // Handle amount change with validation
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/,/g, "");
+    if (rawValue === "") {
+      setAmount(0);
+      setAmountError(null);
+    } else {
+      const numValue = Number(rawValue);
+      if (!isNaN(numValue)) {
+        setAmount(numValue);
+        validateAmount(numValue);
+      }
+    }
+  };
 
   // Check if file is WebP format
   const isWebpFile = (file: File): boolean => {
@@ -243,6 +294,18 @@ export default function ModelTransactionEdit() {
             </div>
             <hr />
 
+            {/* Available Balance Display (for withdrawal transactions) */}
+            {transaction.identifier === "withdrawal" && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{t("modelWallet.availableBalance")}</span>
+                  <span className="text-lg font-bold text-rose-600">
+                    {formatCurrency(availableBalance)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -253,38 +316,16 @@ export default function ModelTransactionEdit() {
                     type="text"
                     name="amount"
                     value={amount != null ? amount.toLocaleString() : ""}
-                    onChange={(e) => {
-                      const rawValue = e.target.value.replace(/,/g, "");
-                      if (rawValue === "") {
-                        setAmount(0);
-                      } else {
-                        const numValue = Number(rawValue);
-                        if (!isNaN(numValue)) {
-                          setAmount(numValue);
-                        }
-                      }
-                    }}
+                    onChange={handleAmountChange}
                     placeholder="0.00"
-                    className="block w-full p-4 py-2 border border-gray-300 rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors"
+                    className={`block w-full p-4 py-2 border rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors ${
+                      amountError ? "border-red-500" : "border-gray-300"
+                    }`}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  {t("modelWallet.edit.quickAmount")}
-                </label>
-                <div className="grid grid-cols-5 gap-2">
-                  {quickAmounts.map((quickAmount) => (
-                    <button
-                      type="button"
-                      key={quickAmount}
-                      onClick={() => setAmount(quickAmount)}
-                      className="cursor-pointer py-2 px-3 border border-gray-200 rounded-lg text-sm font-medium hover:border-rose-500 hover:text-rose-500 transition-colors"
-                    >
-                      {formatCurrency(quickAmount)}
-                    </button>
-                  ))}
-                </div>
+                {amountError && (
+                  <p className="mt-1 text-xs text-red-500">{amountError}</p>
+                )}
               </div>
             </div>
 
@@ -334,7 +375,7 @@ export default function ModelTransactionEdit() {
           <Button
             type="submit"
             variant="outline"
-            disabled={isSubmitting || !!uploadError}
+            disabled={isSubmitting || !!uploadError || !!amountError || amount <= 0}
             className="flex gap-2 bg-rose-500 text-white hover:bg-rose-600 hover:text-white disabled:opacity-50"
           >
             {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}

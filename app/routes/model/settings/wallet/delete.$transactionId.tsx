@@ -62,7 +62,7 @@ export default function ModelTransactionDelete() {
   }
 
   return (
-    <Modal onClose={closeHandler} className="w-11/12 sm:w-2/5 rounded-xl border">
+    <Modal onClose={closeHandler} className="w-11/12 sm:w-2/5 rounded-md border py-6 px-4">
       <h1 className="text-xl font-bold">{t("modelWallet.delete.title")}</h1>
       <p className="hidden sm:block text-sm text-gray-500 my-2">
         {t("modelWallet.delete.confirmMessage")}&nbsp;{" "}

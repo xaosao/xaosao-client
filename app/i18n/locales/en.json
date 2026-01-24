@@ -351,7 +351,7 @@
     "serviceUnavailable": "Service Unavailable",
     "title": "Your Love Plans Ahead:",
     "subtitle": "Got some dates lined up? Don not let the moment slip away — great connections start with one meeting.",
-    "viewDetails": "View Details",
+    "viewDetails": "Details",
     "startChatting": "Start Chatting",
     "editBooking": "Edit Booking",
     "cancelBooking": "Cancel Booking",
@@ -634,7 +634,7 @@
       "failed": "Failed"
     },
     "menu": {
-      "viewDetails": "View details",
+      "viewDetails": "Details",
       "edit": "Edit",
       "delete": "Delete"
     },
@@ -1484,6 +1484,12 @@
     "totalBalance": "Total Balance",
     "availableBalance": "Available Balance",
     "totalEarnings": "Total Earnings",
+    "totalIncome": "Total Balance",
+    "totalIncomeDesc": "From services & referrals",
+    "totalAvailable": "Available",
+    "totalAvailableDesc": "Ready for withdrawal",
+    "pendingBalance": "Pending",
+    "pendingBalanceDesc": "From active bookings",
     "withdrawFunds": "Withdraw Funds",
     "withdraw": "Withdraw",
     "withdrawalHistory": "Withdrawal History",
@@ -1496,7 +1502,7 @@
       "failed": "Failed"
     },
     "menu": {
-      "viewDetails": "View Details",
+      "viewDetails": "Details",
       "edit": "Edit",
       "delete": "Delete"
     },
@@ -1511,7 +1517,17 @@
       "note": "Note:",
       "withdrawNote": "Your withdrawal request will be reviewed by the admin. Funds will be transferred to your selected account once approved.",
       "close": "Close",
-      "addBankAccount": "Add Bank Account"
+      "addBankAccount": "Add Bank Account",
+      "default": "Default",
+      "noBanksMessage": "Please upload your bank QR code and enter withdrawal amount below.",
+      "uploadQrCode": "Upload QR Code",
+      "clickToUpload": "Click to upload your QR code",
+      "supportedFormats": "JPG, PNG, GIF",
+      "qrCodeHint": "This QR code will be saved for this withdrawal.",
+      "uploading": "Uploading...",
+      "saveQrCode": "Save QR Code",
+      "processing": "Processing...",
+      "withdrawAndUpload": "Withdraw"
     },
     "detail": {
       "title": "Transaction Details",
@@ -1566,7 +1582,11 @@
       "withdrawalFailed": "Failed to process withdrawal",
       "updateFailed": "Failed to edit withdrawal information!",
       "deleteFailed": "Failed to delete transaction!",
-      "invalidRequest": "Invalid request method!"
+      "invalidRequest": "Invalid request method!",
+      "insufficientBalance": "Withdrawal amount exceeds available balance",
+      "invalidAmount": "Please enter a valid amount",
+      "qrCodeRequired": "QR code image is required",
+      "bankCreateFailed": "Failed to create bank account"
     }
   },
   "modelPassword": {
@@ -1729,7 +1749,9 @@
       "accountNumber": "Account Number",
       "noBankAccounts": "No Bank Accounts",
       "noBankAccountsDesc": "You have not added any bank accounts yet. Add one to receive payments.",
-      "addFirstBank": "Add Your First Bank"
+      "addFirstBank": "Add Your First Bank",
+      "setAsDefault": "Set as Default",
+      "default": "Default"
     },
     "services": {
       "myServices": "My Services",
@@ -1782,6 +1804,7 @@
       "bankCreated": "Bank account created successfully!",
       "bankUpdated": "Bank account updated successfully!",
       "bankDeleted": "Bank account deleted successfully!",
+      "bankSetAsDefault": "Bank set as default successfully!",
       "imageUploaded": "Image uploaded successfully!",
       "imageUpdated": "Image updated successfully!",
       "imageDeleted": "Image deleted successfully!"
@@ -1965,7 +1988,7 @@
       "years": "years"
     },
     "actions": {
-      "viewDetails": "View Details",
+      "viewDetails": "Details",
       "accept": "Accept",
       "reject": "Reject",
       "checkIn": "Check In",

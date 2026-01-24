@@ -1517,6 +1517,12 @@
     "totalBalance": "ยอดคงเหลือทั้งหมด",
     "availableBalance": "ยอดเงินที่ใช้ได้",
     "totalEarnings": "รายได้ทั้งหมด",
+    "totalIncome": "ยอดคงเหลือทั้งหมด",
+    "totalIncomeDesc": "จากบริการและการแนะนำ",
+    "totalAvailable": "ยอดที่ใช้ได้",
+    "totalAvailableDesc": "พร้อมสำหรับการถอน",
+    "pendingBalance": "รอดำเนินการ",
+    "pendingBalanceDesc": "จากการจองที่กำลังดำเนินการ",
     "withdrawFunds": "ถอนเงิน",
     "withdraw": "ถอน",
     "withdrawalHistory": "ประวัติการถอนเงิน",
@@ -1544,7 +1550,17 @@
       "note": "หมายเหตุ:",
       "withdrawNote": "คำขอถอนเงินของคุณจะได้รับการตรวจสอบโดยผู้ดูแลระบบ เงินจะถูกโอนไปยังบัญชีที่เลือกเมื่อได้รับการอนุมัติ",
       "close": "ปิด",
-      "addBankAccount": "เพิ่มบัญชีธนาคาร"
+      "addBankAccount": "เพิ่มบัญชีธนาคาร",
+      "default": "บัญชีหลัก",
+      "noBanksMessage": "กรุณาอัปโหลด QR Code ธนาคารและกรอกจำนวนเงินที่ต้องการถอนด้านล่าง",
+      "uploadQrCode": "อัปโหลด QR Code",
+      "clickToUpload": "คลิกเพื่ออัปโหลด QR Code ของคุณ",
+      "supportedFormats": "JPG, PNG, GIF",
+      "qrCodeHint": "QR Code นี้จะถูกบันทึกสำหรับการถอนเงินครั้งนี้",
+      "uploading": "กำลังอัปโหลด...",
+      "saveQrCode": "บันทึก QR Code",
+      "processing": "กำลังดำเนินการ...",
+      "withdrawAndUpload": "ถอนเงิน"
     },
     "detail": {
       "title": "รายละเอียดธุรกรรม",
@@ -1599,7 +1615,11 @@
       "withdrawalFailed": "ไม่สามารถดำเนินการถอนเงินได้",
       "updateFailed": "ไม่สามารถแก้ไขข้อมูลการถอนเงินได้!",
       "deleteFailed": "ไม่สามารถลบธุรกรรมได้!",
-      "invalidRequest": "วิธีการร้องขอไม่ถูกต้อง!"
+      "invalidRequest": "วิธีการร้องขอไม่ถูกต้อง!",
+      "insufficientBalance": "จำนวนเงินที่ถอนเกินยอดเงินที่ใช้ได้",
+      "invalidAmount": "กรุณากรอกจำนวนเงินที่ถูกต้อง",
+      "qrCodeRequired": "กรุณาอัปโหลดรูป QR Code",
+      "bankCreateFailed": "ไม่สามารถสร้างบัญชีธนาคารได้"
     }
   },
   "modelPassword": {
@@ -1762,7 +1782,9 @@
       "accountNumber": "เลขบัญชี",
       "noBankAccounts": "ไม่มีบัญชีธนาคาร",
       "noBankAccountsDesc": "คุณยังไม่ได้เพิ่มบัญชีธนาคาร เพิ่มเพื่อรับการชำระเงิน",
-      "addFirstBank": "เพิ่มบัญชีธนาคารแรก"
+      "addFirstBank": "เพิ่มบัญชีธนาคารแรก",
+      "setAsDefault": "ตั้งเป็นบัญชีหลัก",
+      "default": "บัญชีหลัก"
     },
     "services": {
       "myServices": "บริการของฉัน",
@@ -1815,6 +1837,7 @@
       "bankCreated": "สร้างบัญชีธนาคารสำเร็จ!",
       "bankUpdated": "อัปเดตบัญชีธนาคารสำเร็จ!",
       "bankDeleted": "ลบบัญชีธนาคารสำเร็จ!",
+      "bankSetAsDefault": "ตั้งเป็นบัญชีหลักสำเร็จ!",
       "imageUploaded": "อัปโหลดรูปสำเร็จ!",
       "imageUpdated": "อัปเดตรูปสำเร็จ!",
       "imageDeleted": "ลบรูปสำเร็จ!"

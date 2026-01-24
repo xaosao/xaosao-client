@@ -351,7 +351,7 @@
     "serviceUnavailable": "ບໍລິການບໍ່ສາມາດໃຊ້ໄດ້",
     "title": "ປະຫວັດການນັດພົບຂອງທ່ານ:",
     "subtitle": "ມີນັດພົບແລ້ວບໍ? ຢ່າປ່ອຍໃຫ້ໂອກາດດີໆຜ່ານໄປ — ການເຊື່ອມຕໍ່ທີ່ດີເລີ່ມຕົ້ນຈາກການພົບກັນຄັ້ງທຳອິດ.",
-    "viewDetails": "ເບິ່ງລາຍລະອຽດ",
+    "viewDetails": "ລາຍລະອຽດ",
     "startChatting": "ເລີ່ມສົນທະນາ",
     "editBooking": "ແກ້ໄຂການຈອງ",
     "cancelBooking": "ຍົກເລີກການຈອງ",
@@ -634,7 +634,7 @@
       "failed": "ບໍ່ສໍາເລັດ"
     },
     "menu": {
-      "viewDetails": "ເບິ່ງລາຍລະອຽດ",
+      "viewDetails": "ລາຍລະອຽດ",
       "edit": "ແກ້ໄຂ",
       "delete": "ລຶບ"
     },
@@ -1515,8 +1515,14 @@
   "modelWallet": {
     "loading": "ກຳລັງໂຫຼດ...",
     "totalBalance": "ຍອດເງິນທັງໝົດ",
-    "availableBalance": "ຍອດເງິນທີ່ໃຊ້ໄດ້",
+    "availableBalance": "ຍອດເງີນຍັງເຫຼືອ",
     "totalEarnings": "ລາຍໄດ້ທັງໝົດ",
+    "totalIncome": "ຍອດເງິນທັງໝົດ",
+    "totalIncomeDesc": "ຈາກບໍລິການ ແລະ ແນະນຳ",
+    "totalAvailable": "ຍອດເງີນຍັງເຫຼືອ",
+    "totalAvailableDesc": "ພ້ອມສຳລັບການຖອນ",
+    "pendingBalance": "ເງີນໄດ້ຈາກການນັດໝາຍທີ່ລໍຖ້າດຳເນີນການຢູ່.",
+    "pendingBalanceDesc": "ຈາກການຈອງທີ່ກຳລັງດຳເນີນ",
     "withdrawFunds": "ຖອນເງິນ",
     "withdraw": "ຖອນເງິນ",
     "withdrawalHistory": "ປະຫວັດການຖອນເງິນ",
@@ -1529,22 +1535,32 @@
       "failed": "ລົ້ມເຫຼວ"
     },
     "menu": {
-      "viewDetails": "ເບິ່ງລາຍລະອຽດ",
+      "viewDetails": "ລາຍລະອຽດ",
       "edit": "ແກ້ໄຂ",
       "delete": "ລຶບ"
     },
     "modal": {
-      "bankAccount": "ບັນຊີທະນາຄານ",
+      "bankAccount": "ເລືອກ QR code ສໍາລັບຖອນເງີນ",
       "selectBank": "ເລືອກບັນຊີທະນາຄານ",
       "noBanks": "ບໍ່ພົບບັນຊີທະນາຄານ",
       "addBankHint": "ກະລຸນາເພີ່ມບັນຊີທະນາຄານໃນການຕັ້ງຄ່າໂປຣໄຟລ໌ກ່ອນ",
-      "selectBankHint": "ເລືອກບັນຊີທະນາຄານສຳລັບການໂອນ",
-      "withdrawalAmount": "ຈຳນວນເງິນທີ່ຖອນ",
+      "selectBankHint": "ເລືອກ QR ບັນຊີທະນາຄານສຳລັບການຖອນເງິນ",
+      "withdrawalAmount": "ຈຳນວນເງິນ",
       "enterAmount": "ປ້ອນຈຳນວນເງິນ",
       "note": "ໝາຍເຫດ:",
       "withdrawNote": "ຄຳຂໍຖອນເງິນຂອງທ່ານຈະຖືກກວດສອບໂດຍຜູ້ດູແລລະບົບ ເງິນຈະຖືກໂອນໄປຍັງບັນຊີທີ່ເລືອກເມື່ອໄດ້ຮັບການອະນຸມັດ",
       "close": "ປິດ",
-      "addBankAccount": "ເພີ່ມບັນຊີທະນາຄານ"
+      "addBankAccount": "ເພີ່ມບັນຊີທະນາຄານ",
+      "default": "ບັນຊີຫຼັກ",
+      "noBanksMessage": "ກະລຸນາອັບໂຫຼດ QR Code ທະນາຄານ ແລະ ປ້ອນຈຳນວນເງິນທີ່ຕ້ອງການຖອນຂ້າງລຸ່ມນີ້",
+      "uploadQrCode": "ອັບໂຫຼດ QR Code",
+      "clickToUpload": "ຄລິກເພື່ອອັບໂຫຼດ QR Code ຂອງທ່ານ",
+      "supportedFormats": "JPG, PNG, GIF",
+      "qrCodeHint": "QR Code ນີ້ຈະຖືກບັນທຶກສຳລັບການຖອນເງິນຄັ້ງນີ້",
+      "uploading": "ກຳລັງອັບໂຫຼດ...",
+      "saveQrCode": "ບັນທຶກ QR Code",
+      "processing": "ກຳລັງດຳເນີນການ...",
+      "withdrawAndUpload": "ຖອນເງິນ"
     },
     "detail": {
       "title": "ລາຍລະອຽດທຸລະກຳ",
@@ -1599,7 +1615,11 @@
       "withdrawalFailed": "ບໍ່ສາມາດດຳເນີນການຖອນເງິນໄດ້",
       "updateFailed": "ບໍ່ສາມາດແກ້ໄຂຂໍ້ມູນການຖອນເງິນໄດ້!",
       "deleteFailed": "ບໍ່ສາມາດລຶບທຸລະກຳໄດ້!",
-      "invalidRequest": "ວິທີການຮ້ອງຂໍບໍ່ຖືກຕ້ອງ!"
+      "invalidRequest": "ວິທີການຮ້ອງຂໍບໍ່ຖືກຕ້ອງ!",
+      "insufficientBalance": "ຈຳນວນເງິນທີ່ຖອນເກີນຍອດເງີນຍັງເຫຼືອ",
+      "invalidAmount": "ກະລຸນາປ້ອນຈຳນວນເງິນທີ່ຖືກຕ້ອງ",
+      "qrCodeRequired": "ກະລຸນາອັບໂຫຼດຮູບ QR Code",
+      "bankCreateFailed": "ບໍ່ສາມາດສ້າງບັນຊີທະນາຄານໄດ້"
     }
   },
   "modelPassword": {
@@ -1762,7 +1782,9 @@
       "accountNumber": "ເລກບັນຊີ",
       "noBankAccounts": "ບໍ່ມີບັນຊີທະນາຄານ",
       "noBankAccountsDesc": "ທ່ານຍັງບໍ່ໄດ້ເພີ່ມບັນຊີທະນາຄານເທື່ອ. ເພີ່ມເພື່ອຮັບການຊຳລະເງິນ.",
-      "addFirstBank": "ເພີ່ມບັນຊີທະນາຄານທຳອິດ"
+      "addFirstBank": "ເພີ່ມບັນຊີທະນາຄານທຳອິດ",
+      "setAsDefault": "ຕັ້ງເປັນບັນຊີຫຼັກ",
+      "default": "ບັນຊີຫຼັກ"
     },
     "services": {
       "myServices": "ບໍລິການຂອງຂ້ອຍ",
@@ -1814,6 +1836,7 @@
       "bankCreated": "ສ້າງບັນຊີທະນາຄານສຳເລັດ!",
       "bankUpdated": "ອັບເດດບັນຊີທະນາຄານສຳເລັດ!",
       "bankDeleted": "ລຶບບັນຊີທະນາຄານສຳເລັດ!",
+      "bankSetAsDefault": "ຕັ້ງເປັນບັນຊີຫຼັກສຳເລັດ!",
       "imageUploaded": "ອັບໂຫຼດຮູບສຳເລັດ!",
       "imageUpdated": "ອັບເດດຮູບສຳເລັດ!",
       "imageDeleted": "ລຶບຮູບສຳເລັດ!"
@@ -1996,7 +2019,7 @@
       "years": "ປີ"
     },
     "actions": {
-      "viewDetails": "ເບິ່ງລາຍລະອຽດ",
+      "viewDetails": "ລາຍລະອຽດ",
       "accept": "ຍອມຮັບ",
       "reject": "ປະຕິເສດ",
       "checkIn": "ເຊັກອິນ",

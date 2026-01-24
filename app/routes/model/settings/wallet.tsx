@@ -6,26 +6,26 @@ import {
   Search,
   Loader,
   EyeIcon,
+  Upload,
   FilePenLine,
-  MoreVertical,
   ArrowDownToLine,
+  Star,
 } from "lucide-react";
 import {
   Link,
   Form,
   Outlet,
-  redirect,
-  useNavigate,
   useNavigation,
   useSearchParams,
   useLoaderData,
+  useActionData,
 } from "react-router";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 
 // Services and Utils
-import { formatCurrency } from "~/utils";
+import { formatCurrency, formatCurrency1 } from "~/utils";
 import type { IWalletResponse } from "~/interfaces";
 import { capitalize } from "~/utils/functions/textFormat";
 
@@ -48,23 +48,18 @@ const statusConfig: Record<string, { className: string }> = {
 };
 import type { IModelBank } from "~/interfaces/model-profile";
 import type { PaginationProps } from "~/interfaces/pagination";
-import { getModelBanks } from "~/services/model-profile.server";
+import { getModelBanks, createModelBank } from "~/services/model-profile.server";
 import { requireModelSession } from "~/services/model-auth.server";
+import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { ITransactionResponse } from "~/interfaces/transaction";
 
 import {
   withdrawFunds,
-  getWalletByModelId,
+  getModelWalletSummary,
   getModelTransactions,
 } from "~/services/wallet.server";
 
 // components
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -73,13 +68,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "~/components/ui/dialog";
 import Pagination from "~/components/ui/pagination";
 import { Separator } from "~/components/ui/separator";
 
+interface WalletSummary extends IWalletResponse {
+  totalIncome: number;
+  totalAvailable: number;
+  pendingBalance: number;
+}
+
 interface LoaderReturn {
-  wallet: IWalletResponse;
+  wallet: WalletSummary;
   transactions: ITransactionResponse[];
   pagination: PaginationProps;
   banks: IModelBank[];
@@ -92,7 +92,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const take = 10;
 
   const [wallet, { transactions, pagination }, banks] = await Promise.all([
-    getWalletByModelId(modelId),
+    getModelWalletSummary(modelId),
     getModelTransactions(modelId, page, take),
     getModelBanks(modelId),
   ]);
@@ -100,11 +100,118 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { wallet, transactions, pagination, banks };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+interface ActionResponse {
+  success: boolean;
+  message: string;
+  type: "success" | "error";
+  actionType: string;
+}
+
+export async function action({ request }: ActionFunctionArgs): Promise<ActionResponse> {
   const modelId = await requireModelSession(request);
   const formData = await request.formData();
 
   const actionType = formData.get("actionType") as string;
+
+  // Handle creating a bank from wallet page (inline upload)
+  if (actionType === "createBank") {
+    const qrCodeFile = formData.get("qr_code_file") as File;
+
+    if (!qrCodeFile || !(qrCodeFile instanceof File) || qrCodeFile.size === 0) {
+      return {
+        success: false,
+        message: "modelWallet.errors.qrCodeRequired",
+        type: "error",
+        actionType,
+      };
+    }
+
+    try {
+      const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
+      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+
+      await createModelBank(modelId, {
+        qr_code: qrCodeUrl,
+        isDefault: true, // First bank is always default
+      });
+
+      return {
+        success: true,
+        message: "modelWallet.success.bankCreated",
+        type: "success",
+        actionType,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "modelWallet.errors.bankCreateFailed",
+        type: "error",
+        actionType,
+      };
+    }
+  }
+
+  // Handle withdrawal with bank creation (when no banks exist)
+  if (actionType === "withdrawAndCreateBank") {
+    const qrCodeFile = formData.get("qr_code_file") as File;
+    const amount = parseFloat(formData.get("amount") as string);
+
+    if (!qrCodeFile || !(qrCodeFile instanceof File) || qrCodeFile.size === 0) {
+      return {
+        success: false,
+        message: "modelWallet.errors.qrCodeRequired",
+        type: "error",
+        actionType,
+      };
+    }
+
+    if (!amount || amount <= 0) {
+      return {
+        success: false,
+        message: "modelWallet.errors.invalidAmount",
+        type: "error",
+        actionType,
+      };
+    }
+
+    try {
+      // Step 1: Upload QR code to CDN
+      const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
+      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+
+      // Step 2: Create bank with uploaded QR code
+      const newBank = await createModelBank(modelId, {
+        qr_code: qrCodeUrl,
+        isDefault: true, // First bank is always default
+      });
+
+      // Step 3: Create withdrawal with the new bank
+      const result = await withdrawFunds(modelId, amount, newBank.id);
+
+      if (result?.success) {
+        return {
+          success: true,
+          message: "modelWallet.success.withdrawalSubmitted",
+          type: "success",
+          actionType,
+        };
+      } else {
+        return {
+          success: false,
+          message: result?.message || "modelWallet.errors.withdrawalFailed",
+          type: "error",
+          actionType,
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message || "modelWallet.errors.withdrawalFailed",
+        type: "error",
+        actionType,
+      };
+    }
+  }
 
   if (actionType === "withdraw") {
     const amount = parseFloat(formData.get("amount") as string);
@@ -113,51 +220,147 @@ export async function action({ request }: ActionFunctionArgs) {
     const result = await withdrawFunds(modelId, amount, bankAccount);
 
     if (result?.success) {
-      return redirect(
-        `/model/settings/wallet?toastMessage=${encodeURIComponent("modelWallet.success.withdrawalSubmitted")}&toastType=success`
-      );
+      return {
+        success: true,
+        message: "modelWallet.success.withdrawalSubmitted",
+        type: "success",
+        actionType,
+      };
     } else {
-      return redirect(
-        `/model/settings/wallet?toastMessage=${encodeURIComponent(result?.message || "modelWallet.errors.withdrawalFailed")}&toastType=error`
-      );
+      return {
+        success: false,
+        message: result?.message || "modelWallet.errors.withdrawalFailed",
+        type: "error",
+        actionType,
+      };
     }
   }
 
-  return null;
+  return {
+    success: false,
+    message: "Invalid action",
+    type: "error",
+    actionType: "",
+  };
 }
 
 export default function ModelWalletPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const navigation = useNavigation();
   const [searchParams] = useSearchParams();
+  const actionData = useActionData<ActionResponse>();
+
+  // Track form submission state (submitting = when form is being submitted)
+  const isSubmitting = navigation.state === "submitting";
   const isLoading = navigation.state === "loading";
   const { wallet, transactions, pagination, banks } = useLoaderData<LoaderReturn>();
 
-  // For toast messages
-  const toastType = searchParams.get("toastType");
-  const toastMessage = searchParams.get("toastMessage");
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "warning" = "success",
-    duration = 3000
-  ) => {
-    searchParams.set("toastMessage", message);
-    searchParams.set("toastType", type);
-    searchParams.set("toastDuration", String(duration));
-    navigate({ search: searchParams.toString() }, { replace: true });
-  };
-  React.useEffect(() => {
-    if (toastMessage) {
-      showToast(toastMessage, toastType as any);
-    }
-  }, [toastMessage, toastType]);
+  // Toast state - managed locally instead of URL params
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [isBalanceVisible, setIsBalanceVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
   const [withdrawModal, setWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
   const [selectedBank, setSelectedBank] = useState<string>("");
+  const [withdrawError, setWithdrawError] = useState<string>("");
+
+  // QR Code upload states (for inline upload when no banks exist)
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
+  const qrCodeInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Handle action response - show toast and close modal on success
+  React.useEffect(() => {
+    if (actionData) {
+      // Show toast message
+      setToast({ message: actionData.message, type: actionData.type });
+
+      // Close modal on success
+      if (actionData.success) {
+        setWithdrawModal(false);
+      }
+
+      // Auto-hide toast after 3 seconds
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [actionData]);
+
+  // Auto-select default bank when modal opens
+  React.useEffect(() => {
+    if (withdrawModal && banks.length > 0 && !selectedBank) {
+      // Find the default bank or select the first one
+      const defaultBank = banks.find(bank => bank.isDefault);
+      setSelectedBank(defaultBank?.id || banks[0].id);
+    }
+  }, [withdrawModal, banks, selectedBank]);
+
+  // Reset states when modal closes
+  React.useEffect(() => {
+    if (!withdrawModal) {
+      setQrCodeFile(null);
+      setQrCodePreview(null);
+      setWithdrawAmount("");
+      setWithdrawError("");
+      // Don't reset selectedBank - keep the selection for next time
+    }
+  }, [withdrawModal]);
+
+  // Validate withdrawal amount against available balance
+  const validateWithdrawAmount = (formattedAmount: string) => {
+    const rawAmount = parseFloat(formattedAmount.replace(/,/g, "")) || 0;
+    if (rawAmount > wallet.totalBalance) {
+      setWithdrawError(t("modelWallet.errors.insufficientBalance", {
+        defaultValue: "Withdrawal amount exceeds available balance"
+      }));
+      return false;
+    }
+    if (rawAmount <= 0) {
+      setWithdrawError(t("modelWallet.errors.invalidAmount", {
+        defaultValue: "Please enter a valid amount"
+      }));
+      return false;
+    }
+    setWithdrawError("");
+    return true;
+  };
+
+  // Handle withdraw amount change with validation
+  const handleWithdrawAmountChange = (value: string) => {
+    const formatted = formatNumberWithCommas(value);
+    setWithdrawAmount(formatted);
+    if (formatted) {
+      validateWithdrawAmount(formatted);
+    } else {
+      setWithdrawError("");
+    }
+  };
+
+  // Handle QR code file selection
+  const handleQrCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrCodePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected QR code
+  const handleRemoveQrCode = () => {
+    setQrCodeFile(null);
+    setQrCodePreview(null);
+    if (qrCodeInputRef.current) {
+      qrCodeInputRef.current.value = "";
+    }
+  };
 
   // Format number with commas (e.g., 1000000 -> 1,000,000)
   const formatNumberWithCommas = (value: string) => {
@@ -191,12 +394,6 @@ export default function ModelWalletPage() {
     { key: "Failed", label: t("modelWallet.tabs.failed") },
   ];
 
-  // Close withdraw modal when form submission starts
-  React.useEffect(() => {
-    if (isLoading) {
-      setWithdrawModal(false);
-    }
-  }, [isLoading]);
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesTab =
@@ -207,7 +404,13 @@ export default function ModelWalletPage() {
     return matchesTab;
   });
 
-  if (isLoading) {
+  // Check if navigating to a child modal route (edit/delete/detail)
+  const isNavigatingToModal = navigation.location?.pathname?.includes('/wallet/edit/') ||
+    navigation.location?.pathname?.includes('/wallet/delete/') ||
+    navigation.location?.pathname?.includes('/wallet/detail/');
+
+  // Only show full-page loading when not navigating to modals
+  if (isLoading && !isNavigatingToModal) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
         <div className="flex items-center justify-center gap-2">
@@ -222,55 +425,66 @@ export default function ModelWalletPage() {
     <>
       <div className="w-full p-0 sm:p-4 lg:p-0">
         <div className="w-full space-y-2">
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-            <div className="bg-gradient-to-r from-rose-600 to-rose-400 rounded-md py-4 px-6 text-white relative overflow-hidden">
+          <div className="flex gap-2">
+
+            <div className="w-full sm:w-3/5 bg-gradient-to-r from-rose-600 to-rose-400 rounded-md py-3 sm:py-4 px-3 sm:px-6 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
               <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/10 rounded-full -translate-x-10 translate-y-10"></div>
-              <div className="relative z-10 space-y-3">
+              <div className="relative z-10 space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Wallet size={24} />
-                    <span className="font-medium">{t("modelWallet.totalBalance")}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Wallet size={18} className="sm:w-6 sm:h-6" />
+                    <span className="font-medium text-sm sm:text-base">{t("modelWallet.totalBalance")} (Kip)</span>
                   </div>
                   <button
                     onClick={() => setIsBalanceVisible(!isBalanceVisible)}
                     className="p-1 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
                   >
                     {isBalanceVisible ? (
-                      <Eye size={20} />
+                      <Eye size={16} className="sm:w-5 sm:h-5" />
                     ) : (
-                      <EyeOff size={20} />
+                      <EyeOff size={16} className="sm:w-5 sm:h-5" />
                     )}
                   </button>
                 </div>
 
-                <div className="flex items-start justify-start gap-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   <div>
-                    <h2 className="text-lg">
+                    <h2 className="text-sm sm:text-lg font-semibold">
                       {isBalanceVisible
-                        ? formatCurrency(wallet.totalBalance)
+                        ? formatCurrency1(wallet.totalIncome)
                         : "******"}
                     </h2>
-                    <p className="text-white/80 text-sm">{t("modelWallet.availableBalance")}</p>
+                    <p className="text-white/80 text-xs sm:text-lg">{t("modelWallet.totalEarnings")}</p>
                   </div>
 
-                  <div className="">
-                    <p className="text-lg">
+                  <div>
+                    <p className="text-sm sm:text-lg font-semibold text-green-400">
                       {isBalanceVisible
-                        ? formatCurrency(wallet.totalRecharge)
+                        ? formatCurrency1(wallet.totalAvailable)
                         : "******"}
                     </p>
-                    <p className="text-white/80 text-sm">{t("modelWallet.totalEarnings")}</p>
+                    <p className="text-white/80 text-[10px] sm:text-xs">{t("modelWallet.availableBalance")}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm sm:text-lg font-semibold text-amber-200">
+                      {isBalanceVisible
+                        ? formatCurrency1(wallet.pendingBalance)
+                        : "******"}
+                    </p>
+                    <p className="text-white/80 text-[10px] sm:text-xs">{t("modelWallet.pendingBalance", { defaultValue: "Pending" })}</p>
                   </div>
                 </div>
               </div>
             </div>
+
             <button
               onClick={() => setWithdrawModal(true)}
-              className="hidden cursor-pointer sm:flex items-center justify-center border border-rose-500 rounded-md gap-2 hover:bg-rose-50"
+              className="hidden cursor-pointer sm:flex w-full sm:w-2/5 items-center justify-center border border-rose-500 rounded-md gap-2 hover:bg-rose-50 py-3"
             >
-              <ArrowDownToLine className="text-gray-500" size={18} />
-              <span className="text-gray-500">{t("modelWallet.withdrawFunds")}</span>
+              <ArrowDownToLine className="text-gray-500" size={14} />
+              <span className="text-sm text-gray-500">{t("modelWallet.withdrawFunds")}</span>
             </button>
           </div>
 
@@ -283,14 +497,14 @@ export default function ModelWalletPage() {
               </div>
 
               <div className="space-y-4 flex flex-col sm:flex-row items-start justify-between">
-                <div className="flex gap-2 overflow-x-auto">
+                <div className="flex gap-0 sm:gap-2 overflow-x-auto">
                   {tabs.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
-                      className={`cursor-pointer px-4 py-1 rounded-sm whitespace-nowrap font-medium text-sm transition-colors ${activeTab === tab.key
-                        ? "bg-rose-100 text-rose-600 border border-rose-300"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      className={`cursor-pointer py-1 rounded-sm whitespace-nowrap font-medium text-sm transition-colors ${activeTab === tab.key
+                        ? "px-4 bg-rose-100 text-rose-600 border border-rose-300"
+                        : "px-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                         }`}
                     >
                       {tab.label}
@@ -302,7 +516,7 @@ export default function ModelWalletPage() {
 
             <Separator />
 
-            <div className="divide-y divide-gray-100 cursor-pointer">
+            <div className="divide-y divide-gray-100">
               {filteredTransactions && filteredTransactions.length > 0 ? (
                 filteredTransactions.map((transaction, index: number) => (
                   <div
@@ -311,165 +525,143 @@ export default function ModelWalletPage() {
                   >
                     {/* Mobile Card Layout */}
                     <div className="sm:hidden">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className={`p-2.5 rounded-lg ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}>
-                            <span className={`text-xs font-semibold ${statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}`}>
-                              LAK
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-gray-900 text-sm truncate">
-                              {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
-                            </h4>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {transaction.createdAt.toDateString()}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <p className={`font-bold text-base ${transaction.identifier === "withdrawal" ? "text-red-600" : "text-green-600"}`}>
-                                {transaction.identifier === "withdrawal" ? "-" : "+"}
-                                {formatCurrency(transaction.amount)}
-                              </p>
-                            </div>
-                            <div className="mt-2">
-                              <span className={`inline-block text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}>
-                                {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
+                      <div className="flex flex-col gap-3">
+                        {/* Top row: Icon, Info, Status */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`p-2.5 rounded-lg ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}>
+                              <span className={`text-xs font-semibold ${statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}`}>
+                                LAK
                               </span>
                             </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-gray-900 text-sm truncate">
+                                {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
+                              </h4>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {transaction.createdAt.toDateString()}
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <p className={`font-bold text-base ${transaction.identifier === "withdrawal" ? "text-red-600" : "text-green-600"}`}>
+                                  {transaction.identifier === "withdrawal" ? "-" : "+"}
+                                  {formatCurrency(transaction.amount)}
+                                </p>
+                              </div>
+                            </div>
                           </div>
+                          {/* Status at top right */}
+                          <span className={`inline-block text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}>
+                            {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
+                          </span>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">More</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-48" align="end" forceMount>
-                            <DropdownMenuItem className="text-gray-500 text-sm">
-                              <Link to={`/model/settings/wallet/detail/${transaction.id}`} className="flex space-x-2 w-full">
-                                <EyeIcon className="mr-2 h-3 w-3" />
-                                <span>{t("modelWallet.menu.viewDetails")}</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            {transaction.status === "pending" && (
-                              <DropdownMenuItem className="text-sm">
-                                <Link to={`/model/settings/wallet/edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                  <FilePenLine className="mr-2 h-3 w-3" />
-                                  <span>{t("modelWallet.menu.edit")}</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                            {transaction.status === "pending" && (
-                              <DropdownMenuItem className="text-sm">
-                                <Link to={`/model/settings/wallet/delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                  <Trash className="mr-2 h-3 w-3" />
-                                  <span>{t("modelWallet.menu.delete")}</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* Bottom row: Action buttons */}
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            to={`/model/settings/wallet/detail/${transaction.id}`}
+                            className="border bg-gray-100 flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            <EyeIcon className="h-3 w-3" />
+                            <span>{t("modelWallet.menu.viewDetails")}</span>
+                          </Link>
+                          {transaction.status === "pending" && (
+                            <Link
+                              to={`/model/settings/wallet/edit/${transaction.id}`}
+                              className="border border-blue-300 bg-blue-50 flex items-center gap-1 px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              <FilePenLine className="h-3 w-3" />
+                              <span>{t("modelWallet.menu.edit")}</span>
+                            </Link>
+                          )}
+                          {transaction.status === "pending" && (
+                            <Link
+                              to={`/model/settings/wallet/delete/${transaction.id}`}
+                              className="border border-rose-300 bg-rose-50 flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                            >
+                              <Trash className="h-3 w-3" />
+                              <span>{t("modelWallet.menu.delete")}</span>
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Desktop Table Layout */}
-                    <div className="hidden sm:flex items-center justify-between">
-                      <div className="flex items-center justify-start space-x-8">
-                        <p className="text-gray-500">{index + 1}</p>
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`p-3 rounded-md ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}
-                          >
-                            <span
-                              className={statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}
+                    <div className="hidden sm:flex flex-col gap-3">
+                      {/* Top row: Info and Status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-start space-x-8">
+                          <p className="text-gray-500">{index + 1}</p>
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`p-3 rounded-md ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}
                             >
-                              LAK
-                            </span>
-                          </div>
-
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-500">
-                                {transaction.createdAt.toDateString()}
+                              <span
+                                className={statusConfig[transaction.status]?.className.split(' ')[1] || 'text-gray-600'}
+                              >
+                                LAK
                               </span>
                             </div>
+
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                {t(`transactionTypes.${transaction.identifier}`, { defaultValue: capitalize(transaction.identifier) })}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-500">
+                                  {transaction.createdAt.toDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-center">
+                            <p
+                              className={`font-semibold ${transaction.identifier === "withdrawal"
+                                ? "text-red-600"
+                                : "text-green-600"
+                                }`}
+                            >
+                              {transaction.identifier === "withdrawal"
+                                ? "-"
+                                : "+"}
+                              {formatCurrency(transaction.amount)}
+                            </p>
                           </div>
                         </div>
-
-                        <div className="flex items-center justify-center space-y-1 space-x-4 mt-2">
-                          <p
-                            className={`font-semibold ${transaction.identifier === "withdrawal"
-                              ? "text-red-600"
-                              : "text-green-600"
-                              }`}
-                          >
-                            {transaction.identifier === "withdrawal"
-                              ? "-"
-                              : "+"}
-                            {formatCurrency(transaction.amount)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                        {/* Status at top right */}
                         <p
                           className={`text-center text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}
                         >
                           {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
                         </p>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-gray-500 h-8 w-8 p-0"
-                            >
-                              <MoreVertical className="h-3 w-3" />
-                              <span className="sr-only">More</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            className="w-48"
-                            align="end"
-                            forceMount
+                      </div>
+                      {/* Bottom row: Action buttons at right */}
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/model/settings/wallet/detail/${transaction.id}`}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
+                        >
+                          <EyeIcon className="h-3 w-3" />
+                          <span>{t("modelWallet.menu.viewDetails")}</span>
+                        </Link>
+                        {transaction.status === "pending" && (
+                          <Link
+                            to={`/model/settings/wallet/edit/${transaction.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded border border-blue-200 transition-colors"
                           >
-                            <DropdownMenuItem className="text-gray-500 text-sm">
-                              <Link
-                                to={`/model/settings/wallet/detail/${transaction.id}`}
-                                className="flex space-x-2 w-full"
-                              >
-                                <EyeIcon className="mr-2 h-3 w-3" />
-                                <span>{t("modelWallet.menu.viewDetails")}</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            {transaction.status === "pending" && (
-                              <DropdownMenuItem className="text-sm">
-                                <Link
-                                  to={`/model/settings/wallet/edit/${transaction.id}`}
-                                  className="text-gray-500 flex space-x-2 w-full"
-                                >
-                                  <FilePenLine className="mr-2 h-3 w-3" />
-                                  <span>{t("modelWallet.menu.edit")}</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                            {transaction.status === "pending" && (
-                              <DropdownMenuItem className="text-sm">
-                                <Link
-                                  to={`/model/settings/wallet/delete/${transaction.id}`}
-                                  className="text-gray-500 flex space-x-2 w-full"
-                                >
-                                  <Trash className="mr-2 h-3 w-3" />
-                                  <span>{t("modelWallet.menu.delete")}</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            <FilePenLine className="h-3 w-3" />
+                            <span>{t("modelWallet.menu.edit")}</span>
+                          </Link>
+                        )}
+                        {transaction.status === "pending" && (
+                          <Link
+                            to={`/model/settings/wallet/delete/${transaction.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
+                          >
+                            <Trash className="h-3 w-3" />
+                            <span>{t("modelWallet.menu.delete")}</span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -504,15 +696,15 @@ export default function ModelWalletPage() {
 
           <button
             onClick={() => setWithdrawModal(true)}
-            className="sm:hidden fixed bottom-18 right-4 bg-rose-500 hover:bg-rose-600 text-white rounded-lg py-2 px-4 shadow-lg flex items-center justify-center z-9"
+            className="text-sm sm:hidden fixed bottom-18 right-4 bg-rose-500 hover:bg-rose-600 text-white rounded-lg py-2 px-4 shadow-lg flex items-center justify-center z-9"
           >
-            <ArrowDownToLine className="h-4 w-4" /> {t("modelWallet.withdraw")}
+            <ArrowDownToLine className="h-3 w-3" /> {t("modelWallet.withdraw")}
           </button>
         </div>
       </div>
 
       <Dialog open={withdrawModal} onOpenChange={setWithdrawModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg px-3 sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-md font-normal">{t("modelWallet.withdrawFunds")}</DialogTitle>
           </DialogHeader>
@@ -524,31 +716,39 @@ export default function ModelWalletPage() {
             </h3>
           </div>
 
-          <Form method="post" className="space-y-6">
-            <input type="hidden" name="actionType" value="withdraw" />
+          {banks.length > 0 ? (
+            /* Withdraw Form - when banks exist */
+            <Form method="post" className="space-y-6">
+              <input type="hidden" name="actionType" value="withdraw" />
 
-            <div className="space-y-2">
-              <Label>
-                {t("modelWallet.modal.bankAccount")} <span className="text-rose-500">*</span>
-              </Label>
-              <input type="hidden" name="bankAccount" value={selectedBank} />
-              {banks.length > 0 ? (
+              <div className="space-y-2">
+                <Label>
+                  {t("modelWallet.modal.bankAccount")} <span className="text-rose-500">*</span>
+                </Label>
+                <input type="hidden" name="bankAccount" value={selectedBank} />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-1">
                   {banks.map((bank) => (
                     <div
                       key={bank.id}
                       onClick={() => setSelectedBank(bank.id)}
-                      className={`relative cursor-pointer rounded-lg border-2 p-2 transition-all ${
-                        selectedBank === bank.id
-                          ? "border-rose-500 bg-rose-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`relative cursor-pointer rounded-lg border-2 p-2 transition-all ${selectedBank === bank.id
+                        ? "border-rose-500 bg-rose-50"
+                        : "border-gray-200 hover:border-gray-300"
+                        }`}
                     >
                       <img
                         src={bank.qr_code}
                         alt="QR Code"
                         className="w-full h-20 object-contain rounded"
                       />
+                      {/* Default badge */}
+                      {bank.isDefault && (
+                        <div className="absolute top-1 left-1 bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Star className="w-2 h-2" fill="currentColor" />
+                          <span>{t("modelWallet.modal.default", { defaultValue: "Default" })}</span>
+                        </div>
+                      )}
+                      {/* Selected checkmark */}
                       {selectedBank === bank.id && (
                         <div className="absolute top-1 right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -559,79 +759,208 @@ export default function ModelWalletPage() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="p-4 text-sm text-gray-500 text-center border border-dashed border-gray-300 rounded-lg">
-                  {t("modelWallet.modal.noBanks")}
-                </div>
-              )}
-              {banks.length === 0 && (
-                <p className="text-xs text-orange-500">
-                  {t("modelWallet.modal.addBankHint")}
+                <p className="text-xs text-gray-500">
+                  {t("modelWallet.modal.selectBankHint")}
                 </p>
-              )}
-              <p className="text-xs text-gray-500">
-                {t("modelWallet.modal.selectBankHint")}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount">
-                {t("modelWallet.modal.withdrawalAmount")} <span className="text-rose-500">*</span>
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
-                <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />
-                <Input
-                  id="amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(formatNumberWithCommas(e.target.value))}
-                  required
-                  className="pl-10 text-sm"
-                  placeholder={t("modelWallet.modal.enterAmount")}
-                />
               </div>
-            </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-sm">
-              <p className="text-xs text-blue-800">
-                <strong>{t("modelWallet.modal.note")}</strong> {t("modelWallet.modal.withdrawNote")}
-              </p>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">
+                  {t("modelWallet.modal.withdrawalAmount")} <span className="text-rose-500">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                  <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />
+                  <Input
+                    id="amount"
+                    type="text"
+                    inputMode="numeric"
+                    value={withdrawAmount}
+                    onChange={(e) => handleWithdrawAmountChange(e.target.value)}
+                    required
+                    className={`pl-10 text-sm ${withdrawError ? "border-red-500 focus:border-red-500" : ""}`}
+                    placeholder={t("modelWallet.modal.enterAmount")}
+                  />
+                </div>
+                {withdrawError && (
+                  <p className="text-xs text-red-500">{withdrawError}</p>
+                )}
+              </div>
 
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setWithdrawModal(false)}
-              >
-                {t("modelWallet.modal.close")}
-              </Button>
-              {banks.length > 0 ? (
-                <Button
-                  type="submit"
-                  disabled={!selectedBank}
-                  className="bg-rose-500 text-white cursor-pointer hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t("modelWallet.withdraw")}
-                </Button>
-              ) : (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-sm">
+                <p className="text-xs text-blue-800">
+                  <strong>{t("modelWallet.modal.note")}</strong> {t("modelWallet.modal.withdrawNote")}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
                 <Button
                   type="button"
-                  className="bg-rose-500 text-white cursor-pointer hover:bg-rose-600"
-                  onClick={() => {
-                    setWithdrawModal(false);
-                    navigate("/model/profile?tab=banks");
-                  }}
+                  variant="outline"
+                  onClick={() => setWithdrawModal(false)}
+                  disabled={isSubmitting}
+                  className="w-1/2"
                 >
-                  {t("modelWallet.modal.addBankAccount")}
+                  {t("modelWallet.modal.close")}
                 </Button>
-              )}
-            </DialogFooter>
-          </Form>
+                <Button
+                  type="submit"
+                  disabled={!selectedBank || isSubmitting || !!withdrawError || !withdrawAmount}
+                  className="w-1/2 bg-rose-500 text-white cursor-pointer hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <><Loader className="w-4 h-4 animate-spin mr-1" /> {t("modelWallet.modal.processing", { defaultValue: "Processing..." })}</>
+                  ) : (
+                    t("modelWallet.withdraw")
+                  )}
+                </Button>
+              </div>
+            </Form>
+          ) : (
+            /* Upload QR Code + Withdrawal Form - when no banks exist */
+            <Form method="post" className="space-y-6" encType="multipart/form-data">
+              <input type="hidden" name="actionType" value="withdrawAndCreateBank" />
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-sm mb-4">
+                <p className="text-xs text-amber-800">
+                  {t("modelWallet.modal.noBanksMessage", { defaultValue: "Please upload your bank QR code and enter withdrawal amount below." })}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {t("modelWallet.modal.uploadQrCode", { defaultValue: "Upload QR Code" })} <span className="text-rose-500">*</span>
+                </Label>
+
+                <input
+                  ref={qrCodeInputRef}
+                  type="file"
+                  name="qr_code_file"
+                  accept="image/*"
+                  onChange={handleQrCodeChange}
+                  className="hidden"
+                />
+
+                {qrCodePreview ? (
+                  <div className="relative w-full max-w-[200px] mx-auto">
+                    <img
+                      src={qrCodePreview}
+                      alt="QR Preview"
+                      className="w-full h-40 object-contain border border-gray-200 rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveQrCode}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 cursor-pointer"
+                    >
+                      <span className="text-xs">×</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => qrCodeInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-rose-400 hover:bg-rose-50/50 transition-colors"
+                  >
+                    <Upload className="w-5 h-5 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">
+                      {t("modelWallet.modal.clickToUpload", { defaultValue: "Click to upload your QR code" })}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {t("modelWallet.modal.supportedFormats", { defaultValue: "JPG, PNG, GIF" })}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-500">
+                  {t("modelWallet.modal.qrCodeHint", { defaultValue: "This QR code will be saved for this withdrawal." })}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">
+                  {t("modelWallet.modal.withdrawalAmount")} <span className="text-rose-500">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
+                  <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />
+                  <Input
+                    id="amount"
+                    type="text"
+                    inputMode="numeric"
+                    value={withdrawAmount}
+                    onChange={(e) => handleWithdrawAmountChange(e.target.value)}
+                    required
+                    className={`pl-10 text-sm ${withdrawError ? "border-red-500 focus:border-red-500" : ""}`}
+                    placeholder={t("modelWallet.modal.enterAmount")}
+                  />
+                </div>
+                {withdrawError && (
+                  <p className="text-xs text-red-500">{withdrawError}</p>
+                )}
+              </div>
+
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-sm">
+                <p className="text-xs text-blue-800">
+                  <strong>{t("modelWallet.modal.note")}</strong> {t("modelWallet.modal.withdrawNote")}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setWithdrawModal(false)}
+                  disabled={isSubmitting}
+                  className="w-1/2"
+                >
+                  {t("modelWallet.modal.close")}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!qrCodeFile || isSubmitting || !!withdrawError || !withdrawAmount}
+                  className="w-1/2 bg-rose-500 text-white cursor-pointer hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <><Loader className="w-4 h-4 animate-spin mr-1" /> {t("modelWallet.modal.processing", { defaultValue: "Processing..." })}</>
+                  ) : (
+                    t("modelWallet.modal.withdrawAndUpload", { defaultValue: "Withdraw" })
+                  )}
+                </Button>
+              </div>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
+
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${toast.type === "success"
+            ? "bg-green-500 text-white"
+            : "bg-red-500 text-white"
+            }`}
+        >
+          <div className="flex items-center gap-2">
+            {toast.type === "success" ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className="text-sm">{t(toast.message)}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 hover:opacity-80"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <Outlet />
     </>

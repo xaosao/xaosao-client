@@ -42,7 +42,7 @@ import { calculateAgeFromDOB, formatCurrency, formatNumber } from '~/utils';
 import type { IModelOwnProfileResponse, IModelBank } from '~/interfaces/model-profile';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
 import { capitalize, getFirstWord, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
-import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank } from '~/services/model-profile.server';
+import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank, setDefaultBank } from '~/services/model-profile.server';
 
 const MAX_IMAGES = 6;
 
@@ -139,6 +139,20 @@ export async function action({ request }: ActionFunctionArgs) {
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankDeleted")}&tab=banks`);
         } catch (error: any) {
             return redirect(`/model/profile?error=${encodeURIComponent(error.message || "modelProfile.errors.bankDeleteFailed")}&tab=banks`);
+        }
+    }
+
+    // Handle set default bank action
+    if (actionType === "setDefaultBank") {
+        const bankId = formData.get("bankId") as string;
+        if (!bankId) {
+            return redirect(`/model/profile?error=${encodeURIComponent("modelProfile.errors.bankIdRequired")}&tab=banks`);
+        }
+        try {
+            await setDefaultBank(bankId, modelId);
+            return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankSetAsDefault")}&tab=banks`);
+        } catch (error: any) {
+            return redirect(`/model/profile?error=${encodeURIComponent(error.message || "modelProfile.errors.setDefaultFailed")}&tab=banks`);
         }
     }
 
@@ -637,10 +651,10 @@ export default function ModelProfilePage() {
 
                 <div className="pb-4">
                     <Tabs value={activeTab} onValueChange={(value) => {
-                            const newSearchParams = new URLSearchParams(searchParams);
-                            newSearchParams.set("tab", value);
-                            navigate({ search: newSearchParams.toString() }, { replace: true });
-                        }} className="w-full">
+                        const newSearchParams = new URLSearchParams(searchParams);
+                        newSearchParams.set("tab", value);
+                        navigate({ search: newSearchParams.toString() }, { replace: true });
+                    }} className="w-full">
                         <TabsList className='w-full mb-2'>
                             <TabsTrigger value="account">{t("modelProfile.tabs.accountInfo")}</TabsTrigger>
                             <TabsTrigger value="banks">{t("modelProfile.tabs.bankAccounts")}</TabsTrigger>
@@ -730,17 +744,25 @@ export default function ModelProfilePage() {
                             )}
 
                             {banks.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     {banks.map((bank) => {
                                         const isDeleting = deletingBankId === bank.id;
                                         return (
-                                            <Card key={bank.id} className={`py-4 relative border-gray-200 rounded-sm hover:border-rose-500 hover:bg-rose-50 cursor-pointer ${isDeleting ? 'opacity-50' : ''}`}>
+                                            <Card key={bank.id} className={`py-4 relative border-gray-200 rounded-sm hover:border-rose-500 hover:bg-rose-50 cursor-pointer ${isDeleting ? 'opacity-50' : ''} ${bank.isDefault ? 'border-amber-400 bg-amber-50/30' : ''}`}>
                                                 {isDeleting && (
                                                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 rounded-lg">
                                                         <div className="flex flex-col items-center gap-2">
                                                             <Loader className="w-6 h-6 text-rose-500 animate-spin" />
                                                             <span className="text-xs text-rose-500">{t("modelProfile.banks.deleting")}</span>
                                                         </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Default badge */}
+                                                {bank.isDefault && (
+                                                    <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Star size={10} fill="currentColor" />
+                                                        <span>{t("modelProfile.banks.default", { defaultValue: "Default" })}</span>
                                                     </div>
                                                 )}
 
@@ -756,6 +778,21 @@ export default function ModelProfilePage() {
                                                             </button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
+                                                            {!bank.isDefault && (
+                                                                <DropdownMenuItem
+                                                                    className="cursor-pointer text-amber-600 focus:text-amber-600"
+                                                                    onClick={() => {
+                                                                        fetcher.submit(
+                                                                            { actionType: "setDefaultBank", bankId: bank.id },
+                                                                            { method: "POST" }
+                                                                        );
+                                                                    }}
+                                                                    disabled={isSubmitting}
+                                                                >
+                                                                    <Star size={14} />
+                                                                    {t("modelProfile.banks.setAsDefault", { defaultValue: "Set as Default" })}
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             <DropdownMenuItem
                                                                 className="cursor-pointer"
                                                                 onClick={() => handleOpenEditBankModal(bank)}

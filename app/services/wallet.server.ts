@@ -756,6 +756,85 @@ export async function withdrawFunds(
   }
 }
 
+// Get model wallet summary with 3 balance statuses
+export async function getModelWalletSummary(modelId: string) {
+  if (!modelId) throw new Error("Missing model id!");
+
+  try {
+    // Get wallet for available balance
+    const wallet = await prisma.wallet.findFirst({
+      where: {
+        modelId,
+        status: "active",
+      },
+    });
+
+    if (!wallet) {
+      const error = new Error("The wallet does not exist!") as any;
+      error.status = 404;
+      throw error;
+    }
+
+    // Calculate total balance from all earnings (booking_earning + referral)
+    const totalEarningsResult = await prisma.transaction_history.aggregate({
+      where: {
+        modelId,
+        identifier: { in: ["booking_earning", "referral"] },
+        status: "approved",
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    // Calculate pending balance from bookings that are not yet completed
+    // Pending bookings: confirmed, in_progress, awaiting_confirmation
+    const pendingBookings = await prisma.service_booking.findMany({
+      where: {
+        modelId,
+        status: { in: ["confirmed", "in_progress", "awaiting_confirmation"] },
+        paymentStatus: { in: ["held", "pending_release"] },
+      },
+      select: {
+        price: true,
+        modelService: {
+          select: {
+            service: {
+              select: {
+                commission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Calculate pending earnings (price - commission for each booking)
+    const pendingBalance = pendingBookings.reduce((sum, booking) => {
+      const commission = booking.modelService?.service?.commission || 0;
+      const netEarnings = booking.price - (booking.price * commission / 100);
+      return sum + netEarnings;
+    }, 0);
+
+    return {
+      ...wallet,
+      // Total balance: sum of all income from services and referrals
+      totalIncome: totalEarningsResult._sum.amount || 0,
+      // Total available: remaining balance for withdrawal
+      totalAvailable: wallet.totalBalance,
+      // Pending: from pending bookings (moves to available when completed)
+      pendingBalance: Math.round(pendingBalance),
+    };
+  } catch (error) {
+    console.error("GET_MODEL_WALLET_SUMMARY_FAILED", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to get wallet summary!",
+    });
+  }
+}
+
 // deduct balance from wallet for subscription payment
 export async function deductFromWallet(
   customerId: string,
