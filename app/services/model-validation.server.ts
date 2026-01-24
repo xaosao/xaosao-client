@@ -208,12 +208,16 @@ const modelSignUpSchema = z
       message: "modelAuth.validation.genderRequired",
     }),
     whatsapp: phoneNumberSchema,
-    bio: refineSafe(
-      z
-        .string()
-        .min(10, "modelAuth.validation.bioMinLength")
-        .max(500, "modelAuth.validation.bioMaxLength")
-    ),
+    bio: z
+      .string()
+      .trim()
+      .min(10, "modelAuth.validation.bioMinLength")
+      .max(500, "modelAuth.validation.bioMaxLength")
+      .refine(blockInjection, {
+        message: "modelAuth.validation.invalidBioInput",
+      })
+      .optional()
+      .or(z.literal("")),
     profile: z.string().url("modelAuth.validation.invalidProfileImageUrl"),
     address: refineSafe(
       z

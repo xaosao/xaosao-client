@@ -294,7 +294,7 @@ export async function customerLogin({
   whatsapp,
   rememberMe,
   password,
-}: ICustomerSigninCredentials) {
+}: ICustomerSigninCredentials, redirectPath: string = "/customer") {
   const existingUser = await prisma.customer.findFirst({
     where: { whatsapp },
   });
@@ -381,7 +381,7 @@ export async function customerLogin({
       chatLogin.token,
       existingUser.id,
       rememberMe,
-      "/customer"
+      redirectPath
     );
   } else {
     // If MySQL login fails, log the error

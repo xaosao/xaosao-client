@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Star, Calendar, ChevronLeft, ChevronRight, Flame, Mouse, MouseIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Calendar, ChevronLeft, ChevronRight, Flame, Mouse } from "lucide-react";
 
 // Swiper
 import "swiper/css";
@@ -12,10 +12,10 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Navigation } from "swiper/modules";
 
 // components
-import { Header } from "~/components/header";
-import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
 import Rating from "~/components/ui/rating";
+import { Header } from "~/components/header";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { DynamicSlogan } from "~/components/dynamic-slogan";
 import { HeroBackground } from "~/components/hero-background";
 
@@ -316,7 +316,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             {/* Selected Profile Preview */}
             {selectedProfile && (
               <div className="flex flex-col sm:flex-row gap-6 mt-6">
-                {/* Image Swiper */}
                 <div className="bg-gray-800 rounded-lg overflow-hidden w-full sm:w-1/2">
                   <Swiper
                     modules={[Pagination, Navigation]}
@@ -337,7 +336,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                               alt={selectedProfile.firstName}
                               className="w-full h-80 sm:h-96 object-cover"
                             />
-                            {/* Overlay info on mobile */}
                             <div className="absolute bottom-4 left-4 text-white">
                               <h3 className="flex items-center text-lg font-semibold text-shadow-lg">
                                 <User size={16} className="mr-1" />
@@ -354,7 +352,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                                 </p>
                               )}
                             </div>
-                            {/* View Profile Badge */}
+                            
                             <div className="absolute top-4 right-4">
                               <Badge className="bg-rose-500 text-white hover:bg-rose-600 cursor-pointer">
                                 {t('home.hotModels.viewProfile', { defaultValue: 'View Profile' })}
@@ -377,7 +375,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                               <User className="w-24 h-24 text-white" />
                             </div>
                           )}
-                          {/* Overlay info */}
                           <div className="absolute bottom-4 left-4 text-white">
                             <h3 className="flex items-center text-lg font-semibold text-shadow-lg">
                               <User size={16} className="mr-1" />
@@ -388,7 +385,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                               {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld', { defaultValue: 'years old' })}
                             </p>
                           </div>
-                          {/* View Profile Badge */}
+                         
                           <div className="absolute top-4 right-4">
                             <Badge className="bg-rose-500 text-white hover:bg-rose-600 cursor-pointer">
                               {t('home.hotModels.viewProfile', { defaultValue: 'View Profile' })}
@@ -401,8 +398,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     <button className="home-next hidden"><ChevronRight className="h-5 w-5" /></button>
                   </Swiper>
                 </div>
-
-                {/* Profile Info (Desktop) */}
+               
                 <div className="hidden sm:block w-1/2 rounded-lg p-6 bg-rose-50 space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-gray-800">
@@ -457,19 +453,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     </div>
                   )}
 
-                  {/* Login to see more prompt */}
-                  <div className="mt-4 p-4 bg-rose-100 rounded-lg text-center">
-                    <p className="text-sm text-gray-700 mb-2">
-                      {t('home.hotModels.loginPrompt', { defaultValue: 'Login to view full profile and connect' })}
-                    </p>
-                    <Button
-                      className="bg-rose-500 hover:bg-rose-600 text-white"
-                      onClick={() => handleViewProfile(selectedProfile.id)}
-                    >
-                      <LogIn className="w-4 h-4 mr-2" />
-                      {t('home.login', { defaultValue: 'Login' })}
-                    </Button>
-                  </div>
                 </div>
               </div>
             )}

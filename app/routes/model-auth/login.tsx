@@ -371,14 +371,14 @@ export default function ModelLogin() {
             </Link>
           </div>
 
-          <div className="text-center pt-4 border-t border-gray-200">
+          {/* <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               {t("modelAuth.login.areYouCustomer")}{" "}
               <Link to="/login" className="font-medium text-black hover:text-rose-500 uppercase text-xs ml-2">
                 {t("modelAuth.login.loginHere")}
               </Link>
             </p>
-          </div>
+          </div> */}
         </Form>
       </div>
     </div>

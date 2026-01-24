@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, Camera, Loader, Gift, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Camera, Loader, Gift, ArrowLeft, Check, X } from "lucide-react";
 import type { ActionFunctionArgs, MetaFunction, LoaderFunctionArgs } from "react-router";
 import { Form, Link, useActionData, useNavigation, useNavigate, useLoaderData } from "react-router";
 
@@ -96,8 +96,8 @@ export async function action({ request }: ActionFunctionArgs) {
   // Construct DOB string in YYYY-MM-DD format
   const dob = `${dobYear}-${String(dobMonth).padStart(2, '0')}-${String(dobDay).padStart(2, '0')}`;
 
-  // Basic required fields validation
-  if (!firstName || !password || !gender || !whatsapp || !bio || !address) {
+  // Basic required fields validation (bio is now optional for registration)
+  if (!firstName || !password || !gender || !whatsapp || !address) {
     return {
       error: "modelAuth.errors.requiredFieldsMissing",
     };
@@ -140,7 +140,7 @@ export async function action({ request }: ActionFunctionArgs) {
       dob: String(dob),
       gender: String(gender) as "male" | "female" | "other",
       whatsapp: Number(whatsapp),
-      bio: String(bio).trim(),
+      bio: bio ? String(bio).trim() : undefined,
       profile: profileUrl,
       address: String(address).trim(),
       referrerId: referrerId || undefined,
@@ -226,9 +226,17 @@ export default function ModelRegister() {
 
   const [image, setImage] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [profileError, setProfileError] = useState<string>("");
   const [isCompressing, setIsCompressing] = useState(false);
+
+  // Password validation checks
+  const passwordChecks = {
+    hasUpperAndLower: /[a-z]/.test(password) && /[A-Z]/.test(password),
+    hasNumber: /\d/.test(password),
+    isLongEnough: password.length >= 8,
+  };
 
   // Redirect to login page after successful registration
   // Models need admin approval before they can login
@@ -337,271 +345,262 @@ export default function ModelRegister() {
         }
       `}</style>
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50 px-2 sm:px-4 py-2">
-      <div className="max-w-2xl w-full space-y-8 bg-white px-2 sm:px-8 py-4 rounded-lg shadow-xl">
-        {loaderData.referrerName && (
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Gift className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-medium text-sm">{t("modelAuth.register.referredBy")}</p>
-              <p className="text-white/90 text-xs">{loaderData.referrerName} {t("modelAuth.register.invitedYou")}</p>
-            </div>
-          </div>
-        )}
-
-        <Form method="post" encType="multipart/form-data" className="mt-4 sm:mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* Hidden input for referrer ID */}
-          {loaderData.referrerId && (
-            <input type="hidden" name="referrerId" value={loaderData.referrerId} />
-          )}
-
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <ArrowLeft className="w-5 h-5 text-gray-500" onClick={() => navigate(loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login")} />
-              <label className="block text-sm font-medium text-gray-700">
-                {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>
-              </label>
-            </div>
-            <div className="relative w-[120px] h-[120px] rounded-full flex items-center justify-center">
-              <img
-                src={image || "https://xaosao.b-cdn.net/default-image.png"}
-                alt="Profile Preview"
-                className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError ? "border-red-500" : "border-rose-200"} ${isCompressing ? "opacity-50" : ""}`}
-              />
-              {isCompressing && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isCompressing}
-                className="absolute bottom-1 right-1 bg-rose-500 p-2 rounded-full cursor-pointer shadow-md hover:bg-rose-600 disabled:opacity-50"
-              >
-                <Camera className="w-5 h-5 text-white" />
-              </button>
-              <input
-                type="file"
-                name="newProfile"
-                accept="image/*"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={onFileChange}
-                disabled={isCompressing}
-              />
-            </div>
-            {profileError && (
-              <p className="text-sm text-red-600 mt-1 text-center">{profileError}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.firstName")} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="firstName"
-                name="firstName"
-                type="text"
-                required
-                placeholder={t("modelAuth.register.firstNamePlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.lastName")}
-              </label>
-              <input
-                id="lastName"
-                name="lastName"
-                type="text"
-                placeholder={t("modelAuth.register.lastNamePlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.phoneNumber")} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="whatsapp"
-                name="whatsapp"
-                type="tel"
-                required
-                maxLength={10}
-                placeholder="2012345678"
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.address")} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="address"
-                name="address"
-                type="text"
-                required
-                placeholder={t("modelAuth.register.addressPlaceholder")}
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.dateOfBirth")} <span className="text-rose-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <select
-                  id="dobYear"
-                  name="dobYear"
-                  required
-                  size={1}
-                  style={{ maxHeight: '200px' }}
-                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="">{t("modelAuth.register.year")}</option>
-                  {Array.from({ length: 44 }, (_, i) => 2008 - i).map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  id="dobMonth"
-                  name="dobMonth"
-                  required
-                  size={1}
-                  style={{ maxHeight: '200px' }}
-                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="">{t("modelAuth.register.month")}</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                    <option key={month} value={month}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  id="dobDay"
-                  name="dobDay"
-                  required
-                  size={1}
-                  style={{ maxHeight: '200px' }}
-                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  <option value="">{t("modelAuth.register.day")}</option>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
+        <div className="max-w-2xl w-full space-y-8 bg-white px-2 sm:px-8 py-4 rounded-lg shadow-xl">
+          {loaderData.referrerName && (
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg p-4 text-white flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{t("modelAuth.register.referredBy")}</p>
+                <p className="text-white/90 text-xs">{loaderData.referrerName} {t("modelAuth.register.invitedYou")}</p>
               </div>
             </div>
+          )}
 
-            <div>
-              <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.gender")} <span className="text-rose-500">*</span>
-              </label>
-              <select
-                id="gender"
-                name="gender"
-                required
-                className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                <option value="">{t("modelAuth.register.selectGender")}</option>
-                <option value="male">{t("modelAuth.register.male")}</option>
-                <option value="female">{t("modelAuth.register.female")}</option>
-                <option value="other">{t("modelAuth.register.other")}</option>
-              </select>
-            </div>
+          <Form method="post" encType="multipart/form-data" className="mt-4 sm:mt-8 space-y-6" onSubmit={handleSubmit}>
+            {/* Hidden input for referrer ID */}
+            {loaderData.referrerId && (
+              <input type="hidden" name="referrerId" value={loaderData.referrerId} />
+            )}
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                {t("modelAuth.register.password")} <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  placeholder={t("modelAuth.register.passwordPlaceholder")}
-                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <ArrowLeft className="w-5 h-5 text-gray-500" onClick={() => navigate(loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login")} />
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>
+                </label>
+              </div>
+              <div className="relative w-[120px] h-[120px] rounded-full flex items-center justify-center">
+                <img
+                  src={image || "https://xaosao.b-cdn.net/default-image.png"}
+                  alt="Profile Preview"
+                  className={`w-full h-full rounded-full object-cover shadow-md border-2 ${profileError ? "border-red-500" : "border-rose-200"} ${isCompressing ? "opacity-50" : ""}`}
                 />
+                {isCompressing && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="absolute bottom-1 right-1 bg-rose-500 p-2 rounded-full cursor-pointer shadow-md hover:bg-rose-600 disabled:opacity-50"
                 >
-                  {showPassword ? <Eye className="h-4 w-4 cursor-pointer" /> : <EyeOff className="h-4 w-4 cursor-pointer" />}
+                  <Camera className="w-5 h-5 text-white" />
+                </button>
+                <input
+                  type="file"
+                  name="newProfile"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={onFileChange}
+                  disabled={isCompressing}
+                />
+              </div>
+              {profileError && (
+                <p className="text-sm text-red-600 mt-1 text-center">{profileError}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.firstName")} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  placeholder={t("modelAuth.register.firstNamePlaceholder")}
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.phoneNumber")} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="whatsapp"
+                  name="whatsapp"
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="2012345678"
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.address")} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  required
+                  placeholder={t("modelAuth.register.addressPlaceholder")}
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.gender")} <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  required
+                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">{t("modelAuth.register.selectGender")}</option>
+                  <option value="male">{t("modelAuth.register.male")}</option>
+                  <option value="female">{t("modelAuth.register.female")}</option>
+                  <option value="other">{t("modelAuth.register.other")}</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.dateOfBirth")} <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    id="dobYear"
+                    name="dobYear"
+                    required
+                    size={1}
+                    style={{ maxHeight: '200px' }}
+                    className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    <option value="">{t("modelAuth.register.year")}</option>
+                    {Array.from({ length: 44 }, (_, i) => 2008 - i).map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    id="dobMonth"
+                    name="dobMonth"
+                    required
+                    size={1}
+                    style={{ maxHeight: '200px' }}
+                    className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    <option value="">{t("modelAuth.register.month")}</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <option key={month} value={month}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    id="dobDay"
+                    name="dobDay"
+                    required
+                    size={1}
+                    style={{ maxHeight: '200px' }}
+                    className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    <option value="">{t("modelAuth.register.day")}</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("modelAuth.register.password")} <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("modelAuth.register.passwordPlaceholder")}
+                    className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? <Eye className="h-4 w-4 cursor-pointer" /> : <EyeOff className="h-4 w-4 cursor-pointer" />}
+                  </button>
+                </div>
+                {/* Password validation checklist */}
+                <div className="mt-2 space-y-1">
+                  <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.hasUpperAndLower ? 'text-green-600' : 'text-red-500'}`}>
+                    {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.hasUpperAndLower ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span>{t("modelAuth.register.passwordUpperLower")}</span>
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
+                    {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.hasNumber ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span>{t("modelAuth.register.passwordNumber")}</span>
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.isLongEnough ? 'text-green-600' : 'text-red-500'}`}>
+                    {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.isLongEnough ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span>{t("modelAuth.register.passwordLength")}</span>
+                  </div>
+                  <p className="text-sm text-yellow-500 mt-2">
+                    ({t("modelAuth.register.passwordRequirementsNote")})
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 sm:mt-8 md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isCompressing || !passwordChecks.hasUpperAndLower || !passwordChecks.hasNumber || !passwordChecks.isLongEnough}
+                  className="cursor-pointer w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}
+                  {isCompressing ? t("profileEdit.compressing") : isSubmitting ? t("modelAuth.register.registering") : t("modelAuth.register.register")}
                 </button>
               </div>
             </div>
 
-            <div className="mt-2 md:col-span-2">
-              <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-                  {t("modelAuth.register.bio")} <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  rows={2}
-                  required
-                  placeholder={t("modelAuth.register.bioPlaceholder")}
-                  className="text-sm appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
+            {actionData?.error && (
+              <div className="text-sm bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {(actionData as any).errorField && (
+                  <span className="font-semibold">{(actionData as any).errorField}: </span>
+                )}
+                {t(actionData.error)}
               </div>
-            </div>
+            )}
 
-            <div className="mt-4 sm:mt-8 md:col-span-2">
-              <button
-                type="submit"
-                disabled={isSubmitting || isCompressing}
-                className="cursor-pointer w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}
-                {isCompressing ? t("profileEdit.compressing") : isSubmitting ? t("modelAuth.register.registering") : t("modelAuth.register.register")}
-              </button>
-            </div>
-          </div>
+            {actionData?.success && (
+              <div className="text-sm bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {t(actionData.message)} {t("modelAuth.register.redirectingToLogin")}
+              </div>
+            )}
 
-          {actionData?.error && (
-            <div className="text-sm bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {(actionData as any).errorField && (
-                <span className="font-semibold">{(actionData as any).errorField}: </span>
-              )}
-              {t(actionData.error)}
+            <div className="text-center text-sm">
+              <p className="text-gray-600">
+                {t("modelAuth.register.alreadyHaveAccount")}&nbsp;&nbsp;
+                <Link to={loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login"} className="font-medium text-rose-600 hover:text-rose-500 text-xs uppercase">
+                  {t("modelAuth.register.loginHere")}
+                </Link>
+              </p>
             </div>
-          )}
-
-          {actionData?.success && (
-            <div className="text-sm bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              {t(actionData.message)} {t("modelAuth.register.redirectingToLogin")}
-            </div>
-          )}
-
-          <div className="text-center text-sm">
-            <p className="text-gray-600">
-              {t("modelAuth.register.alreadyHaveAccount")}&nbsp;&nbsp;
-              <Link to={loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login"} className="font-medium text-rose-600 hover:text-rose-500 text-xs uppercase">
-                {t("modelAuth.register.loginHere")}
-              </Link>
-            </p>
-          </div>
-        </Form>
+          </Form>
+        </div>
       </div>
-    </div>
     </>
   );
 }

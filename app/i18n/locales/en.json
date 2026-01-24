@@ -1197,7 +1197,11 @@
       "passwordsMismatch": "Passwords do not match",
       "registrationFailed": "Registration failed. Please try again.",
       "referredBy": "Referred by a friend",
-      "invitedYou": "invited you to join!"
+      "invitedYou": "invited you to join!",
+      "passwordUpperLower": "Contains uppercase and lowercase letters",
+      "passwordNumber": "Contains a number",
+      "passwordLength": "At least 8 characters",
+      "passwordRequirementsNote": "Your password must meet all the above requirements to register."
     },
     "forgotPassword": {
       "title": "Forgot password?",
@@ -1386,6 +1390,7 @@
     "applyNow": "Apply Now",
     "cancel": "Cancel",
     "edit": "Edit",
+    "delete": "Delete",
     "close": "Close",
     "customRateLabel": "Your Custom Rate",
     "customDailyRateLabel": "Your Custom Daily Rate",
@@ -1418,7 +1423,7 @@
     "serviceLocationHint": "This address will be shown to customers when they book your massage service",
     "startingFrom": "Starting from",
     "applying": "Applying...",
-    "saveAndApply": "Save & Apply",
+    "saveAndApply": "Save",
     "updating": "Updating...",
     "updateRate": "Update Rate",
     "canceling": "Canceling...",

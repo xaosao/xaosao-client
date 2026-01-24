@@ -200,7 +200,7 @@ model model {
   password            String
   dob                 DateTime
   gender              String
-  bio                 String
+  bio                 String?
   whatsapp            Int       @unique
   address             String?
   available_status    String

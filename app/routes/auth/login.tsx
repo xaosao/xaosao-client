@@ -74,6 +74,10 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         const { customerLogin } = await import("~/services/auths.server");
         const { prisma } = await import("~/services/database.server");
 
+        // Get redirect parameter from URL
+        const url = new URL(request.url);
+        const redirectPath = url.searchParams.get("redirect") || "/customer";
+
         const formData = await request.formData();
 
         // Extract and sanitize form data
@@ -113,7 +117,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
 
         // Validate and attempt login
         validateSignInInputs(signInData);
-        const result = await customerLogin(signInData);
+        const result = await customerLogin(signInData, redirectPath);
 
         // Update user GPS location if provided (non-blocking - don't fail login if this fails)
         if (latitudeRaw && longitudeRaw) {

@@ -32,7 +32,7 @@ export interface IModelSignupCredentials {
   dob: string;
   gender: "male" | "female" | "other";
   whatsapp: number;
-  bio: string;
+  bio?: string; // Optional for registration, can be added later in profile edit
   profile: string;
   address: string;
   career?: string;
