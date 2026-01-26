@@ -195,7 +195,6 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
-        {/* Header */}
         <div className="relative p-4 border-b">
           <button
             onClick={handleDismiss}
@@ -204,11 +203,11 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
             <X className="w-5 h-5 text-gray-500" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl shadow-md bg-rose-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-sm shadow-md bg-rose-500 flex items-center justify-center">
               {showSuccess ? (
-                <Check className="w-8 h-8 text-white" />
+                <Check className="w-5 h-5 text-white" />
               ) : (
-                <Bell className="w-8 h-8 text-white" />
+                <Bell className="w-5 h-5 text-white" />
               )}
             </div>
             <div>
@@ -347,7 +346,7 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
                     </span>
                   ) : (
                     <>
-                      <Bell className="w-4 h-4 mr-2" />
+                      <Bell className="w-4 h-4" />
                       {t("push.enable", { defaultValue: "Enable Notifications" })}
                     </>
                   )}
@@ -365,7 +364,6 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
           )}
         </div>
 
-        {/* Safe area padding for iOS */}
         <div className="h-safe-area-inset-bottom" />
       </div>
     </div>

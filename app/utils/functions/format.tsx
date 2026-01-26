@@ -36,35 +36,19 @@ export function formatDateMultiple(dateInput: Date | string): string {
     return inputDate.toLocaleDateString("en-GB"); // → 01/09/2025
 }
 
-// "Fri 11 Jul 2025 - 00:20"
+// "11/02/2026 18:30"
 export function formatDate(input: string): string {
     if (!input) return "";
     const date = new Date(input);
-    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-    ];
 
-    const day = weekdays[date.getDay()];
     const dateNum = String(date.getDate()).padStart(2, "0");
-    const month = months[date.getMonth()];
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
 
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
 
-    return `${day} ${dateNum} ${month} ${year} - ${hours}:${minutes}`;
+    return `${dateNum}/${month}/${year} ${hours}:${minutes}`;
 }
 
 // Format Interests for insert to DB

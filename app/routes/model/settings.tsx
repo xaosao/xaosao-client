@@ -37,15 +37,28 @@ export default function ModelSettings() {
     { id: "delete", label: t("modelSettings.tabs.delete"), icon: Trash2, path: "/model/settings/delete-account", description: t("modelSettings.tabs.deleteDesc") },
   ];
 
-  // Redirect to first tab if on settings index (only on desktop)
+  // Redirect based on tab query param or default to first tab (only on desktop)
   useEffect(() => {
     if (location.pathname === "/model/settings") {
+      const searchParams = new URLSearchParams(location.search);
+      const tabParam = searchParams.get("tab");
+
+      // If tab query param exists, redirect to that tab's path
+      if (tabParam) {
+        const targetTab = tabs.find(t => t.id === tabParam);
+        if (targetTab) {
+          navigate(targetTab.path, { replace: true });
+          return;
+        }
+      }
+
+      // Default: redirect to services tab on desktop
       const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
       if (isDesktop) {
         navigate("/model/settings/services", { replace: true });
       }
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, location.search, navigate]);
 
   const currentPath = location.pathname;
   const isChildRouteActive = currentPath !== "/model/settings" && currentPath.startsWith("/model/settings/");

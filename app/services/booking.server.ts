@@ -272,21 +272,203 @@ async function refundPaymentToCustomer(
 }
 
 /**
- * Check if booking can be cancelled (2 hours before start time rule)
+ * Get time windows (in minutes) based on service type
+ * Returns cancellation cutoff and dispute window durations
  */
-export function canCancelBooking(startDate: Date): { canCancel: boolean; message: string } {
-  const now = new Date();
-  const bookingStart = new Date(startDate);
-  const hoursUntilBooking = (bookingStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+export function getServiceTimeWindows(serviceName: string): {
+  cancellationCutoffMinutes: number;
+  disputeWindowMinutes: number;
+} {
+  // Service name normalization (case-insensitive matching)
+  const normalizedName = serviceName.toLowerCase();
 
-  if (hoursUntilBooking < 2) {
+  // Massage services: 30 minutes
+  if (normalizedName.includes('massage')) {
     return {
-      canCancel: false,
-      message: "Cannot cancel within 2 hours of booking start time. Please contact support.",
+      cancellationCutoffMinutes: 30,
+      disputeWindowMinutes: 30,
     };
   }
 
-  return { canCancel: true, message: "" };
+  // DrinkingFriend & TravelingPartner: 1 hour (60 minutes)
+  if (normalizedName.includes('drinking') || normalizedName.includes('travel')) {
+    return {
+      cancellationCutoffMinutes: 60,
+      disputeWindowMinutes: 60,
+    };
+  }
+
+  // Default: 1 hour for unknown services
+  return {
+    cancellationCutoffMinutes: 60,
+    disputeWindowMinutes: 60,
+  };
+}
+
+/**
+ * Check if customer can cancel booking
+ * Rule: Must cancel BEFORE the cutoff time (e.g., if booking is 8:00, cutoff at 7:30 for 30min window)
+ * Cannot cancel AT or AFTER 7:30
+ */
+export function canCancelBooking(
+  startDate: Date,
+  serviceName: string
+): { canCancel: boolean; message: string; minutesUntilCutoff?: number } {
+  const now = new Date();
+  const bookingStart = new Date(startDate);
+  const { cancellationCutoffMinutes } = getServiceTimeWindows(serviceName);
+
+  // Calculate cutoff time (e.g., 30 minutes before start)
+  const cutoffTime = new Date(bookingStart.getTime() - cancellationCutoffMinutes * 60 * 1000);
+  const minutesUntilCutoff = Math.ceil((cutoffTime.getTime() - now.getTime()) / (1000 * 60));
+
+  // If we're at or past the cutoff time, cannot cancel
+  if (now >= cutoffTime) {
+    return {
+      canCancel: false,
+      message: `Cannot cancel within ${cancellationCutoffMinutes} minutes of booking start time. Please contact support.`,
+    };
+  }
+
+  return {
+    canCancel: true,
+    message: "",
+    minutesUntilCutoff,
+  };
+}
+
+/**
+ * Calculate effective end date for a booking
+ * For hour-based services, endDate might be null - calculate from startDate + hours
+ */
+export function calculateEffectiveEndDate(
+  startDate: Date | null,
+  endDate: Date | null,
+  hours: number | null
+): Date | null {
+  if (endDate) {
+    return new Date(endDate);
+  }
+  if (startDate && hours) {
+    return new Date(new Date(startDate).getTime() + hours * 60 * 60 * 1000);
+  }
+  if (startDate) {
+    // Default: end of the start date
+    const end = new Date(startDate);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }
+  return null;
+}
+
+/**
+ * Check if customer can dispute booking
+ * Rule: Can dispute within the dispute window AFTER booking ends
+ * (e.g., 30 minutes after end time for massage, 1 hour for others)
+ */
+export function canDisputeBooking(
+  startDate: Date | null,
+  endDate: Date | null,
+  hours: number | null,
+  serviceName: string
+): { canDispute: boolean; message: string; minutesRemaining?: number } {
+  const effectiveEndDate = calculateEffectiveEndDate(startDate, endDate, hours);
+
+  if (!effectiveEndDate) {
+    return {
+      canDispute: false,
+      message: "Booking has no end date. Cannot dispute.",
+    };
+  }
+
+  const now = new Date();
+  const bookingEnd = effectiveEndDate;
+  const { disputeWindowMinutes } = getServiceTimeWindows(serviceName);
+
+  // Calculate dispute window end time
+  const disputeWindowEnd = new Date(bookingEnd.getTime() + disputeWindowMinutes * 60 * 1000);
+  const minutesRemaining = Math.ceil((disputeWindowEnd.getTime() - now.getTime()) / (1000 * 60));
+
+  // Must be after booking ends
+  if (now < bookingEnd) {
+    return {
+      canDispute: false,
+      message: "Cannot dispute before booking ends. Please wait until the service is completed.",
+    };
+  }
+
+  // Must be within dispute window
+  if (now > disputeWindowEnd) {
+    return {
+      canDispute: false,
+      message: `Dispute window has closed. You had ${disputeWindowMinutes} minutes after booking completion to dispute.`,
+    };
+  }
+
+  return {
+    canDispute: true,
+    message: "",
+    minutesRemaining,
+  };
+}
+
+/**
+ * Check if model can receive money from booking
+ * Rule: Can receive money after booking ends AND status is not "disputed"
+ */
+export function canReceiveMoney(
+  booking: {
+    status: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    hours: number | null;
+  },
+  _serviceName: string
+): { canReceive: boolean; message: string; minutesUntilAvailable?: number } {
+  const now = new Date();
+
+  // Cannot receive if booking is disputed
+  if (booking.status === "disputed") {
+    return {
+      canReceive: false,
+      message: "This booking is under dispute. Admin review is required.",
+    };
+  }
+
+  // Must be confirmed status
+  if (booking.status !== "confirmed") {
+    return {
+      canReceive: false,
+      message: "Booking must be in confirmed status to receive payment.",
+    };
+  }
+
+  // Calculate effective end date
+  const effectiveEndDate = calculateEffectiveEndDate(booking.startDate, booking.endDate, booking.hours);
+
+  if (!effectiveEndDate) {
+    return {
+      canReceive: false,
+      message: "Booking has no end date. Cannot determine payment eligibility.",
+    };
+  }
+
+  const bookingEnd = effectiveEndDate;
+  const minutesUntilAvailable = Math.ceil((bookingEnd.getTime() - now.getTime()) / (1000 * 60));
+
+  // Model can receive money after booking ends
+  if (now < bookingEnd) {
+    return {
+      canReceive: false,
+      message: `Payment will be available after booking ends (${minutesUntilAvailable} minutes remaining).`,
+      minutesUntilAvailable,
+    };
+  }
+
+  return {
+    canReceive: true,
+    message: "",
+  };
 }
 
 /**
@@ -420,6 +602,7 @@ async function checkForOverlappingBookings(
 /**
  * Get model's booked time slots for display on booking page
  * Only returns dates/times, not customer info
+ * Filters to only show truly future bookings (where end time + 1hr buffer is still in the future)
  */
 export async function getModelBookedSlots(modelId: string): Promise<{
   bookedSlots: Array<{
@@ -428,17 +611,16 @@ export async function getModelBookedSlots(modelId: string): Promise<{
     hours: number | null;
     serviceName: string;
     isDateOnly: boolean;
+    lockedUntil: Date; // The time when this slot becomes available again (end time + 1hr buffer)
   }>;
 }> {
+  const now = new Date();
+
   const bookings = await prisma.service_booking.findMany({
     where: {
       modelId,
       status: {
         in: ["pending", "confirmed", "in_progress"],
-      },
-      // Only show future or ongoing bookings
-      startDate: {
-        gte: new Date(new Date().setHours(0, 0, 0, 0)), // Start of today
       },
     },
     select: {
@@ -460,18 +642,42 @@ export async function getModelBookedSlots(modelId: string): Promise<{
     },
   });
 
-  return {
-    bookedSlots: bookings.map((booking) => {
+  // Filter and map bookings to only include those that are still relevant (locked until time is in the future)
+  const filteredSlots = bookings
+    .map((booking) => {
       const serviceName = booking.modelService?.service?.name || '';
       const isDateOnly = ['hmongNewYear', 'traveling'].includes(serviceName);
+
+      // Calculate the effective end time
+      let effectiveEndTime: Date;
+      if (booking.endDate) {
+        effectiveEndTime = new Date(booking.endDate);
+      } else if (booking.hours) {
+        // For hour-based services, end time = start time + hours
+        effectiveEndTime = new Date(booking.startDate.getTime() + booking.hours * 60 * 60 * 1000);
+      } else {
+        // Default: assume end of the start date
+        effectiveEndTime = new Date(booking.startDate);
+        effectiveEndTime.setHours(23, 59, 59, 999);
+      }
+
+      // Add 1-hour buffer after the end time
+      const lockedUntil = new Date(effectiveEndTime.getTime() + 1 * 60 * 60 * 1000);
+
       return {
         startDate: booking.startDate,
         endDate: booking.endDate,
         hours: booking.hours,
         serviceName,
         isDateOnly,
+        lockedUntil,
       };
-    }),
+    })
+    // Filter to only show slots where lockedUntil is still in the future
+    .filter((slot) => slot.lockedUntil > now);
+
+  return {
+    bookedSlots: filteredSlots,
   };
 }
 
@@ -597,7 +803,7 @@ export async function createServiceBooking(
             serviceName: modelService.service.name,
             totalPrice: data.price,
             startDate: data.startDate,
-            endDate: data.endDate,
+            endDate: data.endDate || undefined,
             location: data.location,
           });
         }
@@ -1063,6 +1269,13 @@ export async function cancelServiceBooking(id: string, customerId: string) {
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
+      include: {
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
     });
 
     if (!booking) {
@@ -1090,8 +1303,11 @@ export async function cancelServiceBooking(id: string, customerId: string) {
       });
     }
 
-    // Check 2-hour cancellation rule
-    const cancelCheck = canCancelBooking(booking.startDate);
+    // Get service name for time window calculation
+    const serviceName = booking.modelService?.service?.name || "default";
+
+    // Check cancellation rule with service-specific time window
+    const cancelCheck = canCancelBooking(booking.startDate, serviceName);
     if (!cancelCheck.canCancel) {
       throw new FieldValidationError({
         success: false,
@@ -1293,6 +1509,7 @@ export async function getModelBookingDetail(id: string, modelId: string) {
                 description: true,
                 baseRate: true,
                 billingType: true,
+                commission: true,
               },
             },
           },
@@ -1320,6 +1537,13 @@ export async function acceptBooking(id: string, modelId: string) {
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
+      include: {
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
     });
 
     if (!booking) {
@@ -1361,6 +1585,32 @@ export async function acceptBooking(id: string, modelId: string) {
         message: "You already have a confirmed booking during this time. Please reject this booking or cancel your other booking first.",
       });
     }
+
+    // Calculate net amount (booking price - commission)
+    const commissionRate = booking.modelService?.service?.commission || 0;
+    const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+    const netAmount = booking.price - commissionAmount;
+
+    // Get model's wallet and add to pending balance
+    const modelWallet = await prisma.wallet.findFirst({
+      where: { modelId, status: "active" },
+    });
+
+    if (!modelWallet) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Model wallet not found!",
+      });
+    }
+
+    // Update wallet pending balance
+    await prisma.wallet.update({
+      where: { id: modelWallet.id },
+      data: {
+        totalPending: modelWallet.totalPending + netAmount,
+      },
+    });
 
     const updatedBooking = await prisma.service_booking.update({
       where: { id },
@@ -2392,6 +2642,7 @@ export async function getBookingWithToken(id: string, modelId: string) {
 
 /**
  * Customer disputes booking - goes to admin review
+ * NEW WORKFLOW: Can dispute within dispute window (30min/1hr) after booking ends
  */
 export async function customerDisputeBooking(
   id: string,
@@ -2416,6 +2667,13 @@ export async function customerDisputeBooking(
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
+      include: {
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
     });
 
     if (!booking) {
@@ -2434,11 +2692,24 @@ export async function customerDisputeBooking(
       });
     }
 
-    if (booking.status !== "awaiting_confirmation") {
+    // Only confirmed bookings can be disputed
+    if (booking.status !== "confirmed") {
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: "This booking cannot be disputed at this time!",
+        message: "Only confirmed bookings can be disputed!",
+      });
+    }
+
+    // Get service name and check dispute window
+    const serviceName = booking.modelService?.service?.name || "default";
+    const disputeCheck = canDisputeBooking(booking.startDate, booking.endDate, booking.hours, serviceName);
+
+    if (!disputeCheck.canDispute) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: disputeCheck.message,
       });
     }
 
@@ -2744,4 +3015,365 @@ export function getBookingCheckInStatus(booking: {
   }
 
   return checkInStatus;
+}
+
+// ========================================
+// NEW WORKFLOW: Model Receive Money & Admin Dispute Resolution
+// ========================================
+
+/**
+ * Model receives money from completed booking
+ * NEW WORKFLOW:
+ * - Moves money from pending to available balance
+ * - Can only receive after dispute window closes
+ * - Cannot receive if status is "disputed"
+ */
+export async function receiveMoneyFromBooking(id: string, modelId: string) {
+  if (!id) throw new Error("Missing booking id!");
+  if (!modelId) throw new Error("Missing model id!");
+
+  const auditBase = {
+    action: "RECEIVE_MONEY_FROM_BOOKING",
+    model: modelId,
+  };
+
+  try {
+    const booking = await prisma.service_booking.findUnique({
+      where: { id },
+      include: {
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The booking does not exist!",
+      });
+    }
+
+    if (booking.modelId !== modelId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Unauthorized to receive money from this booking!",
+      });
+    }
+
+    // Get service name and check eligibility
+    const serviceName = booking.modelService?.service?.name || "default";
+    const receiveCheck = canReceiveMoney(
+      { status: booking.status, startDate: booking.startDate, endDate: booking.endDate, hours: booking.hours },
+      serviceName
+    );
+
+    if (!receiveCheck.canReceive) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: receiveCheck.message,
+      });
+    }
+
+    // Get model's wallet
+    const modelWallet = await prisma.wallet.findFirst({
+      where: { modelId, status: "active" },
+    });
+
+    if (!modelWallet) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Model wallet not found!",
+      });
+    }
+
+    // Calculate net amount (after commission)
+    const commissionRate = booking.modelService?.service?.commission || 0;
+    const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+    const netAmount = booking.price - commissionAmount;
+
+    // Create earning transaction
+    const earningTransaction = await prisma.transaction_history.create({
+      data: {
+        identifier: "booking_earning",
+        amount: netAmount,
+        status: "approved",
+        comission: commissionAmount,
+        fee: 0,
+        modelId,
+        reason: `Earning from completed booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+      },
+    });
+
+    // Update hold transaction status to released
+    if (booking.holdTransactionId) {
+      await prisma.transaction_history.update({
+        where: { id: booking.holdTransactionId },
+        data: { status: "released" },
+      });
+    }
+
+    // Move from pending to available: decrease pending, increase balance
+    await prisma.wallet.update({
+      where: { id: modelWallet.id },
+      data: {
+        totalPending: modelWallet.totalPending - netAmount,
+        totalBalance: modelWallet.totalBalance + netAmount,
+        totalDeposit: modelWallet.totalDeposit + netAmount,
+      },
+    });
+
+    // Update booking status to completed
+    const completedBooking = await prisma.service_booking.update({
+      where: { id },
+      data: {
+        status: "completed",
+        paymentStatus: "released",
+        completedAt: new Date(),
+        releaseTransactionId: earningTransaction.id,
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Model received ${netAmount.toLocaleString()} LAK from booking ${id}. Commission: ${commissionAmount.toLocaleString()} LAK.`,
+      status: "success",
+      onSuccess: { booking: completedBooking, transaction: earningTransaction },
+    });
+
+    return completedBooking;
+  } catch (error) {
+    console.error("RECEIVE_MONEY_FROM_BOOKING_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Receive money from booking failed!`,
+      status: "failed",
+      onError: error,
+    });
+
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to receive money from booking!",
+    });
+  }
+}
+
+/**
+ * Admin resolves a disputed booking
+ * Admin decides to either release payment to model or refund to customer
+ */
+export async function adminResolveDispute(
+  bookingId: string,
+  adminId: string,
+  resolution: "released" | "refunded"
+) {
+  if (!bookingId) throw new Error("Missing booking id!");
+  if (!adminId) throw new Error("Missing admin id!");
+  if (!resolution || (resolution !== "released" && resolution !== "refunded")) {
+    throw new Error("Invalid resolution! Must be 'released' or 'refunded'");
+  }
+
+  const auditBase = {
+    action: "ADMIN_RESOLVE_DISPUTE",
+    user: adminId,
+  };
+
+  try {
+    const booking = await prisma.service_booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The booking does not exist!",
+      });
+    }
+
+    if (booking.status !== "disputed") {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Only disputed bookings can be resolved!",
+      });
+    }
+
+    if (!booking.modelId || !booking.customerId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Booking missing model or customer information!",
+      });
+    }
+
+    if (resolution === "released") {
+      // RELEASE to model: Move from pending to available
+      const modelWallet = await prisma.wallet.findFirst({
+        where: { modelId: booking.modelId, status: "active" },
+      });
+
+      if (!modelWallet) {
+        throw new FieldValidationError({
+          success: false,
+          error: true,
+          message: "Model wallet not found!",
+        });
+      }
+
+      // Calculate net amount (after commission)
+      const commissionRate = booking.modelService?.service?.commission || 0;
+      const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+      const netAmount = booking.price - commissionAmount;
+
+      // Create earning transaction
+      const earningTransaction = await prisma.transaction_history.create({
+        data: {
+          identifier: "booking_earning",
+          amount: netAmount,
+          status: "approved",
+          comission: commissionAmount,
+          fee: 0,
+          modelId: booking.modelId,
+          reason: `Earning from disputed booking #${booking.id} resolved by admin (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+        },
+      });
+
+      // Update hold transaction status to released
+      if (booking.holdTransactionId) {
+        await prisma.transaction_history.update({
+          where: { id: booking.holdTransactionId },
+          data: { status: "released" },
+        });
+      }
+
+      // Move from pending to available: decrease pending, increase balance
+      await prisma.wallet.update({
+        where: { id: modelWallet.id },
+        data: {
+          totalPending: modelWallet.totalPending - netAmount,
+          totalBalance: modelWallet.totalBalance + netAmount,
+          totalDeposit: modelWallet.totalDeposit + netAmount,
+        },
+      });
+
+      // Update booking to completed
+      await prisma.service_booking.update({
+        where: { id: bookingId },
+        data: {
+          status: "completed",
+          paymentStatus: "released",
+          completedAt: new Date(),
+          disputeResolvedAt: new Date(),
+          disputeResolution: "released",
+          releaseTransactionId: earningTransaction.id,
+        },
+      });
+
+      await createAuditLogs({
+        ...auditBase,
+        description: `Admin resolved dispute for booking ${bookingId} - Released ${netAmount.toLocaleString()} LAK to model. Commission: ${commissionAmount.toLocaleString()} LAK.`,
+        status: "success",
+        onSuccess: { booking, transaction: earningTransaction },
+      });
+    } else {
+      // REFUND to customer
+      if (booking.holdTransactionId) {
+        await refundPaymentToCustomer(
+          booking.customerId,
+          booking.price,
+          booking.id,
+          booking.holdTransactionId,
+          "Admin resolved dispute in favor of customer"
+        );
+      }
+
+      // Get model wallet and remove from pending balance
+      const modelWallet = await prisma.wallet.findFirst({
+        where: { modelId: booking.modelId, status: "active" },
+      });
+
+      if (modelWallet) {
+        const commissionRate = booking.modelService?.service?.commission || 0;
+        const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+        const netAmount = booking.price - commissionAmount;
+
+        // Remove from pending balance
+        await prisma.wallet.update({
+          where: { id: modelWallet.id },
+          data: {
+            totalPending: Math.max(0, modelWallet.totalPending - netAmount),
+          },
+        });
+      }
+
+      // Update booking to cancelled with refund
+      await prisma.service_booking.update({
+        where: { id: bookingId },
+        data: {
+          status: "cancelled",
+          paymentStatus: "refunded",
+          disputeResolvedAt: new Date(),
+          disputeResolution: "refunded",
+        },
+      });
+
+      await createAuditLogs({
+        ...auditBase,
+        description: `Admin resolved dispute for booking ${bookingId} - Refunded ${booking.price.toLocaleString()} LAK to customer.`,
+        status: "success",
+        onSuccess: booking,
+      });
+
+      // Send refund notification to customer
+      try {
+        await notifyPaymentRefunded(
+          booking.customerId,
+          booking.id,
+          booking.price,
+          "Admin resolved dispute in your favor"
+        );
+      } catch (notifyError) {
+        console.error("NOTIFY_REFUND_FAILED", notifyError);
+      }
+    }
+
+    return { success: true, resolution };
+  } catch (error) {
+    console.error("ADMIN_RESOLVE_DISPUTE_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Admin resolve dispute failed!`,
+      status: "failed",
+      onError: error,
+    });
+
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to resolve dispute!",
+    });
+  }
 }

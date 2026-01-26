@@ -125,7 +125,7 @@ export default function ServiceBooking() {
    ]
 
    const actionData = useActionData<typeof action>()
-   const loaderData = useLoaderData<{ service: IServiceBookingResponse; bookedSlots: Array<{ startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }> }>();
+   const loaderData = useLoaderData<{ service: IServiceBookingResponse; bookedSlots: Array<{ startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean; lockedUntil: Date }> }>();
    const service = loaderData.service;
    const bookedSlots = loaderData.bookedSlots || [];
    const isSubmitting =
@@ -192,7 +192,7 @@ export default function ServiceBooking() {
       return translatedDesc;
    };
 
-   // Helper function to check if a date can be selected (allows today if 1+ hour from now)
+   // Helper function to check if a date can be selected
    const isDateDisabled = (date: Date): boolean => {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -201,39 +201,34 @@ export default function ServiceBooking() {
       // Past dates are always disabled
       if (dateToCheck < today) return true;
 
-      // Future dates are always allowed
-      if (dateToCheck > today) return false;
-
-      // For today: allow if there's at least 1 hour remaining in the day
-      // (time validation will be done when user selects the time)
-      const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
-
-      // Disable today only if less than 1 hour left in the day
-      return oneHourFromNow > endOfDay;
+      // Today and future dates are allowed (can book now without waiting)
+      return false;
    };
 
    // Helper function to format booked slots for display
-   const formatBookedSlot = (slot: { startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean }) => {
+   const formatBookedSlot = (slot: { startDate: Date; endDate: Date | null; hours: number | null; serviceName: string; isDateOnly: boolean; lockedUntil: Date }) => {
       const start = new Date(slot.startDate);
-      const end = slot.endDate
-         ? new Date(slot.endDate)
-         : slot.hours
-            ? new Date(start.getTime() + slot.hours * 60 * 60 * 1000)
-            : null;
+      const lockedUntil = new Date(slot.lockedUntil);
 
       if (slot.isDateOnly) {
-         // For date-only services (hmongNewYear, traveling), show date range
+         // For date-only services (hmongNewYear, traveling), show date range with available time
+         const end = slot.endDate ? new Date(slot.endDate) : null;
          if (end && end.toDateString() !== start.toDateString()) {
-            return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+            return `${format(start, 'dd/MM/yyyy')} - ${format(end, 'dd/MM/yyyy')} (${t('profileBook.availableAfter', { defaultValue: 'available after' })} ${format(lockedUntil, 'HH:mm')})`;
          }
-         return format(start, 'MMM d, yyyy');
+         return `${format(start, 'dd/MM/yyyy')} (${t('profileBook.availableAfter', { defaultValue: 'available after' })} ${format(lockedUntil, 'HH:mm')})`;
       } else {
-         // For time-based services (drinkingPartner, sleepPartner), show date + time
+         // For time-based services, show start time and when available again
+         const end = slot.endDate
+            ? new Date(slot.endDate)
+            : slot.hours
+               ? new Date(start.getTime() + slot.hours * 60 * 60 * 1000)
+               : null;
+
          if (end) {
-            return `${format(start, 'MMM d, HH:mm')} - ${format(end, 'HH:mm')}`;
+            return `${format(start, 'dd/MM/yyyy, HH:mm')} - ${format(end, 'HH:mm')} (${t('profileBook.availableAfter', { defaultValue: 'available after' })} ${format(lockedUntil, 'HH:mm')})`;
          }
-         return format(start, 'MMM d, yyyy HH:mm');
+         return `${format(start, 'dd/MM/yyyy, HH:mm')} (${t('profileBook.availableAfter', { defaultValue: 'available after' })} ${format(lockedUntil, 'HH:mm')})`;
       }
    };
 
@@ -333,37 +328,9 @@ export default function ServiceBooking() {
                                           const newDate = new Date(startDate);
                                           newDate.setHours(hours);
                                           newDate.setMinutes(minutes);
-
-                                          // Check if the selected datetime is at least 1 hour from now
-                                          const now = new Date();
-                                          const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
-
-                                          if (newDate < oneHourFromNow) {
-                                             // Set to 1 hour from now if selected time is too soon
-                                             const minAllowedTime = new Date(oneHourFromNow);
-                                             minAllowedTime.setSeconds(0);
-                                             minAllowedTime.setMilliseconds(0);
-                                             setStartDate(minAllowedTime);
-                                          } else {
-                                             setStartDate(newDate);
-                                          }
+                                          setStartDate(newDate);
                                        }}
                                     />
-                                    {startDate && (() => {
-                                       const now = new Date();
-                                       const oneHourFromNow = new Date(now.getTime() + 1 * 60 * 60 * 1000);
-                                       const isToday = startDate.toDateString() === now.toDateString();
-                                       if (isToday) {
-                                          const minHour = oneHourFromNow.getHours().toString().padStart(2, '0');
-                                          const minMinute = oneHourFromNow.getMinutes().toString().padStart(2, '0');
-                                          return (
-                                             <p className="text-xs text-amber-600 mt-1">
-                                                {t('profileBook.minTimeToday', { time: `${minHour}:${minMinute}`, defaultValue: `Minimum time for today: ${minHour}:${minMinute}` })}
-                                             </p>
-                                          );
-                                       }
-                                       return null;
-                                    })()}
                                  </div>
                               </PopoverContent>
                            </Popover>
@@ -527,7 +494,6 @@ export default function ServiceBooking() {
                {billingType !== 'per_minute' && (
                   <>
                      <div className="grid gap-3 sm:gap-6 md:grid-cols-2">
-                        {/* For massage service: Show massage type selector first */}
                         {billingType === 'per_hour' && service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0 && (
                            <div className="space-y-2">
                               <Label htmlFor="massage-type-select" className="text-sm font-medium">
@@ -551,34 +517,33 @@ export default function ServiceBooking() {
                               </Select>
                            </div>
                         )}
+                     </div>
 
-                        <div className="space-y-4">
-                           <div className="space-y-2">
-                              <Label htmlFor="meeting-location" className="text-sm font-medium">
-                                 {t('profileBook.location')} <span className="text-destructive">*</span>
-                              </Label>
-                              {service.service.name.toLowerCase() === 'massage' ? (
-                                 <>
-                                    <Input
-                                       id="meeting-location"
-                                       value={service.serviceLocation || t('profileBook.noAddressAvailable')}
-                                       className="h-11 text-sm bg-gray-100"
-                                       readOnly
-                                    />
-                                    <input type="hidden" name="location" value={service.serviceLocation || ''} />
-                                 </>
-                              ) : (
+                     <div className="space-y-4">
+                        <div className="space-y-2">
+                           <Label htmlFor="meeting-location" className="text-sm font-medium">
+                              {t('profileBook.location')} <span className="text-destructive">*</span>
+                           </Label>
+                           {service.service.name.toLowerCase() === 'massage' ? (
+                              <>
                                  <Input
-                                    name="location"
                                     id="meeting-location"
-                                    placeholder={t('profileBook.locationPlaceholder')}
-                                    className="h-11 text-sm"
+                                    value={service.serviceLocation || t('profileBook.noAddressAvailable')}
+                                    className="h-11 text-sm bg-gray-100"
+                                    readOnly
                                  />
-                              )}
-                           </div>
+                                 <input type="hidden" name="location" value={service.serviceLocation || ''} />
+                              </>
+                           ) : (
+                              <Input
+                                 name="location"
+                                 id="meeting-location"
+                                 placeholder={t('profileBook.locationPlaceholder')}
+                                 className="h-11 text-sm"
+                              />
+                           )}
                         </div>
                      </div>
-                     {/* Hide Preferred Attire for massage service */}
                      {service.service.name.toLowerCase() !== 'massage' && (
                         <div className="space-y-4">
                            <div className="space-y-2">
@@ -766,7 +731,7 @@ export default function ServiceBooking() {
                      variant="outline"
                      className="flex gap-2 bg-rose-500 text-white hover:bg-rose-600 hover:text-white"
                   >
-                     {isSubmitting ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : <Calendar1 />}
+                     {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : <Calendar1 />}
                      {isSubmitting ? t('profileBook.booking') : t('profileBook.bookNow')}
                   </Button>
                </div>

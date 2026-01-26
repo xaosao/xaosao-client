@@ -54,8 +54,7 @@ export default [
 
   // Model dashboard routes
   route("model", "./routes/model/layout.tsx", [
-    index("./routes/model/dashboard.tsx"),
-    route("matches", "./routes/model/matches/matches.tsx"),
+    index("./routes/model/matches/matches.tsx"),
     route("profile", "./routes/model/profile/profile.tsx"),
     route("profile/edit", "./routes/model/profile/edit.tsx"),
     route(
@@ -75,6 +74,7 @@ export default [
       route("complete/:id", "./routes/model/dating/dating.complete.tsx"),
       route("delete/:id", "./routes/model/dating/dating.delete.tsx"),
       route("checkin/:id", "./routes/model/dating/dating.checkin.tsx"),
+      route("receive-money/:id", "./routes/model/dating/dating.receive-money.tsx"),
     ]),
 
     // Referral program

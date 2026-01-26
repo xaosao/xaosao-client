@@ -1,13 +1,12 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, MoreVertical, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, Eye, SquarePen, X, MapPinCheck, Trash2, Video } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, SquarePen, X, Trash2, Video } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 
 // interface and service
 import type { IServiceBooking } from "~/interfaces/service"
@@ -86,8 +85,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       "booking_confirmed",
       "booking_rejected",
       "booking_completed",
-      "booking_checkin_model",
-      "booking_confirmed_completion",
    ];
 
    // Handle new notifications - refresh bookings when booking-related
@@ -120,17 +117,14 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       return t(`booking.status.${status}`, { defaultValue: statusConfig[status]?.label || status });
    };
 
-   // Check if dispute should be available (2+ hours after start time, model hasn't checked in)
+   // Check if dispute button should be enabled (available for 30 minutes starting from booking time)
    const canDispute = (booking: IServiceBooking): boolean => {
-      // Only for confirmed bookings where model hasn't checked in
-      if (booking.status !== "confirmed" || booking.modelCheckedInAt) {
-         return false;
-      }
-      // Check if 2+ hours have passed since start date
+      if (booking.status !== "confirmed") return false;
       const now = new Date();
       const startDate = new Date(booking.startDate);
-      const hoursDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-      return hoursDiff >= 2;
+      const disputeWindowEnd = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes after start
+      // Dispute is only available during the 30-minute window from booking start
+      return now >= startDate && now <= disputeWindowEnd;
    };
 
    if (isLoading) {
@@ -180,16 +174,16 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                      <span>{t('booking.policy.paymentHeld')}</span>
                   </li>
                   <li className="flex items-center gap-2">
-                     <MapPin className="h-3 w-3" />
-                     <span>{t('booking.policy.gpsCheckin')}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                     <Info className="h-3 w-3" />
-                     <span>{t('booking.policy.confirmOrDispute')}</span>
+                     <Clock className="h-3 w-3" />
+                     <span>{t('booking.policy.cancellationNotice')}</span>
                   </li>
                   <li className="flex items-center gap-2">
                      <AlertTriangle className="h-3 w-3" />
-                     <span className="font-medium">{t('booking.policy.cancellationNotice')}</span>
+                     <span>{t('booking.policy.disputeWindow')}</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                     <Info className="h-3 w-3" />
+                     <span>{t('booking.policy.autoRelease')}</span>
                   </li>
                </ul>
             </div>
@@ -200,7 +194,8 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                {bookInfos.map((booking) => (
                   <Card
                      key={booking.id}
-                     className="border hover:shadow-md transition-shadow rounded-sm"
+                     className="border hover:shadow-md transition-shadow rounded-sm cursor-pointer"
+                     onClick={() => navigate(`/customer/book-service/detail/${booking.id}`)}
                   >
                      <CardHeader>
                         <div className="flex items-start justify-between gap-4">
@@ -208,211 +203,18 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                               <h3 className="text-md leading-tight text-balance">
                                  {getServiceName(booking)}
                               </h3>
-                              <Badge
-                                 variant="outline"
-                                 className={statusConfig[booking.status]?.className || "bg-gray-500/10 text-gray-700 border-gray-500/20"}
-                              >
-                                 {getStatusLabel(booking.status)}
-                              </Badge>
                            </div>
 
-                           <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">Open menu</span>
-                                 </Button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent align="end">
-                                 {/* View details - always available */}
-                                 <DropdownMenuItem
-                                    onClick={() =>
-                                       navigate(`/customer/book-service/detail/${booking.id}`)
-                                    }
-                                    className="cursor-pointer"
-                                 >
-                                    <Eye className="h-4 w-4" />
-                                    {t('booking.viewDetails')}
-                                 </DropdownMenuItem>
-
-                                 {/* Call Service specific actions */}
-                                 {isCallService(booking) ? (
-                                    <>
-                                       {/* For confirmed call service - only Start Call */}
-                                       {booking.status === "confirmed" && (
-                                          <DropdownMenuItem
-                                             onClick={() =>
-                                                navigate(`/customer/call/start/${booking.id}`)
-                                             }
-                                             className="cursor-pointer text-emerald-600"
-                                          >
-                                             <Video className="h-4 w-4" />
-                                             {t('booking.startCall')}
-                                          </DropdownMenuItem>
-                                       )}
-
-                                       {/* For pending call service - Edit and Cancel */}
-                                       {booking.status === "pending" && (
-                                          <>
-                                             <DropdownMenuItem
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/edit/${booking.id}`)
-                                                }
-                                                className="cursor-pointer"
-                                             >
-                                                <SquarePen className="h-4 w-5" />
-                                                {t('booking.editBooking')}
-                                             </DropdownMenuItem>
-                                             <DropdownMenuItem
-                                                className="text-destructive cursor-pointer"
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/cancel/${booking.id}`)
-                                                }
-                                             >
-                                                <X className="w-4 h-4" />
-                                                {t('booking.cancelBooking')}
-                                             </DropdownMenuItem>
-                                          </>
-                                       )}
-
-                                       {/* For completed/cancelled/rejected call service - Delete only */}
-                                       {["cancelled", "completed"].includes(booking.status) && (
-                                          <DropdownMenuItem
-                                             className="text-destructive cursor-pointer"
-                                             onClick={() =>
-                                                navigate(`/customer/book-service/delete/${booking.id}`)
-                                             }
-                                          >
-                                             <Trash2 className="h-4 w-4" />
-                                             {t('booking.deleteBooking')}
-                                          </DropdownMenuItem>
-                                       )}
-                                       {/* For rejected call service - no extra actions, only view details above */}
-                                    </>
-                                 ) : (
-                                    <>
-                                       {/* Regular service actions */}
-                                       {booking.status === "pending" && (
-                                          <>
-                                             <DropdownMenuItem
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/edit/${booking.id}`)
-                                                }
-                                                className="cursor-pointer"
-                                             >
-                                                <SquarePen className="h-4 w-5" />
-                                                {t('booking.editBooking')}
-                                             </DropdownMenuItem>
-                                             <DropdownMenuItem
-                                                className="text-destructive cursor-pointer"
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/cancel/${booking.id}`)
-                                                }
-                                             >
-                                                <X className="w-4 h-4" />
-                                                {t('booking.cancelBooking')}
-                                             </DropdownMenuItem>
-                                          </>
-                                       )}
-
-                                       {booking.status === "confirmed" && (
-                                          <>
-                                             <DropdownMenuItem
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/checkin/${booking.id}`)
-                                                }
-                                                className="cursor-pointer"
-                                             >
-                                                <MapPinCheck className="h-4 w-4" />
-                                                {t('booking.checkIn')}
-                                             </DropdownMenuItem>
-                                             {booking.model?.whatsapp && (
-                                                <DropdownMenuItem
-                                                   onClick={() => window.open(`tel:${booking.model.whatsapp}`, "_self")}
-                                                   className="cursor-pointer text-blue-600"
-                                                >
-                                                   <Phone className="h-4 w-4" />
-                                                   {t('booking.callModel')}
-                                                </DropdownMenuItem>
-                                             )}
-                                             {canDispute(booking) && (
-                                                <DropdownMenuItem
-                                                   onClick={() =>
-                                                      navigate(`/customer/book-service/dispute/${booking.id}`)
-                                                   }
-                                                   className="cursor-pointer text-red-600"
-                                                >
-                                                   <AlertTriangle className="h-4 w-4" />
-                                                   {t('booking.dispute')}
-                                                </DropdownMenuItem>
-                                             )}
-                                          </>
-                                       )}
-
-                                       {booking.model?.whatsapp && booking.status !== "completed" && (
-                                          <DropdownMenuItem
-                                             onClick={() => {
-                                                const bookingUrl = `${window.location.origin}/model/dating/detail/${booking.id}`;
-                                                const message = t("booking.whatsappMessage", {
-                                                   modelName: booking.model.firstName,
-                                                   serviceName: getServiceName(booking),
-                                                   date: formatDate(String(booking.startDate)),
-                                                   bookingUrl
-                                                });
-                                                window.open(`https://wa.me/${booking.model.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
-                                             }}
-                                             className="cursor-pointer text-green-600"
-                                          >
-                                             <MessageCircleMore className="h-4 w-4" />
-                                             {t('booking.messageModel')}
-                                          </DropdownMenuItem>
-                                       )}
-
-                                       {booking.status === "awaiting_confirmation" && booking.completionToken && (
-                                          <>
-                                             <DropdownMenuItem
-                                                onClick={() =>
-                                                   navigate(`/customer/confirm-booking/${booking.completionToken}`)
-                                                }
-                                                className="cursor-pointer text-emerald-600"
-                                             >
-                                                <CheckCircle2 className="h-4 w-4" />
-                                                {t('booking.confirmRelease')}
-                                             </DropdownMenuItem>
-                                             <DropdownMenuItem
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/dispute/${booking.id}`)
-                                                }
-                                                className="cursor-pointer text-red-600"
-                                             >
-                                                <AlertTriangle className="h-4 w-4" />
-                                                {t('booking.dispute')}
-                                             </DropdownMenuItem>
-                                          </>
-                                       )}
-
-                                       {["cancelled", "rejected", "completed"].includes(
-                                          booking.status
-                                       ) && (
-                                             <DropdownMenuItem
-                                                className="text-destructive cursor-pointer"
-                                                onClick={() =>
-                                                   navigate(`/customer/book-service/delete/${booking.id}`)
-                                                }
-                                             >
-                                                <Trash2 className="h-4 w-4" />
-                                                {t('booking.deleteBooking')}
-                                             </DropdownMenuItem>
-                                          )}
-                                    </>
-                                 )}
-                              </DropdownMenuContent>
-                           </DropdownMenu>
+                           <Badge
+                              variant="outline"
+                              className={statusConfig[booking.status]?.className || "bg-gray-500/10 text-gray-700 border-gray-500/20"}
+                           >
+                              {getStatusLabel(booking.status)}
+                           </Badge>
                         </div>
                      </CardHeader>
 
-                     <CardContent className="space-y-2 -mt-3">
+                     <CardContent className="space-y-3 -mt-3">
                         <div className="flex items-start gap-3">
                            <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                            <p className="text-sm text-muted-foreground">
@@ -486,6 +288,172 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                               </span>
                            </div>
                         )}
+
+                        {/* Action Buttons */}
+                        <div className="pt-3 border-t flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                           {isCallService(booking) ? (
+                              <>
+                                 {/* For confirmed call service - only Start Call */}
+                                 {booking.status === "confirmed" && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/call/start/${booking.id}`)}
+                                       className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+                                    >
+                                       <Video className="h-3 w-3" />
+                                       {t('booking.startCall')}
+                                    </Button>
+                                 )}
+
+                                 {/* For pending call service - Edit and Cancel */}
+                                 {booking.status === "pending" && (
+                                    <>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
+                                          className="text-xs h-8"
+                                       >
+                                          <SquarePen className="h-3 w-3" />
+                                          {t('booking.editBooking')}
+                                       </Button>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
+                                          className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                       >
+                                          <X className="h-3 w-3" />
+                                          {t('booking.cancelBooking')}
+                                       </Button>
+                                    </>
+                                 )}
+
+                                 {/* For completed/cancelled call service - Delete only */}
+                                 {["cancelled", "completed"].includes(booking.status) && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/delete/${booking.id}`)}
+                                       className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                    >
+                                       <Trash2 className="h-3 w-3" />
+                                       {t('booking.deleteBooking')}
+                                    </Button>
+                                 )}
+                              </>
+                           ) : (
+                              <>
+                                 {/* Regular service actions */}
+                                 {booking.status === "pending" && (
+                                    <>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
+                                          className="text-xs h-8"
+                                       >
+                                          <SquarePen className="h-3 w-3" />
+                                          {t('booking.editBooking')}
+                                       </Button>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
+                                          className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                       >
+                                          <X className="h-3 w-3" />
+                                          {t('booking.cancelBooking')}
+                                       </Button>
+                                    </>
+                                 )}
+
+                                 {booking.model?.whatsapp && booking.status !== "completed" && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                          const bookingUrl = `${window.location.origin}/model/dating/detail/${booking.id}`;
+                                          const message = t("booking.whatsappMessage", {
+                                             modelName: booking.model.firstName,
+                                             serviceName: getServiceName(booking),
+                                             date: formatDate(String(booking.startDate)),
+                                             bookingUrl
+                                          });
+                                          window.open(`https://wa.me/${booking.model.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                       }}
+                                       className="text-xs h-8 text-green-600 border-green-600 hover:bg-green-50"
+                                    >
+                                       <MessageCircleMore className="h-3 w-3" />
+                                       {t('booking.messageModel')}
+                                    </Button>
+                                 )}
+
+                                 {booking.status === "confirmed" && (
+                                    <>
+                                       {booking.model?.whatsapp && (
+                                          <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => window.open(`tel:${booking.model.whatsapp}`, "_self")}
+                                             className="text-xs h-8 text-blue-600 border-blue-600 hover:bg-blue-50"
+                                          >
+                                             <Phone className="h-3 w-3" />
+                                             {t('booking.callModel')}
+                                          </Button>
+                                       )}
+                                       {canDispute(booking) && (
+                                          <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => navigate(`/customer/book-service/dispute/${booking.id}`)}
+                                             className="text-xs h-8 text-orange-600 border-orange-600 hover:bg-orange-50"
+                                          >
+                                             <AlertTriangle className="h-3 w-3" />
+                                             {t('booking.dispute')}
+                                          </Button>
+                                       )}
+                                    </>
+                                 )}
+
+                                 {booking.status === "awaiting_confirmation" && booking.completionToken && (
+                                    <>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/confirm-booking/${booking.completionToken}`)}
+                                          className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+                                       >
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          {t('booking.confirmRelease')}
+                                       </Button>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/dispute/${booking.id}`)}
+                                          className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                       >
+                                          <AlertTriangle className="h-3 w-3" />
+                                          {t('booking.dispute')}
+                                       </Button>
+                                    </>
+                                 )}
+
+                                 {["cancelled", "rejected", "completed"].includes(booking.status) && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/delete/${booking.id}`)}
+                                       className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                    >
+                                       <Trash2 className="h-3 w-3" />
+                                       {t('booking.deleteBooking')}
+                                    </Button>
+                                 )}
+                              </>
+                           )}
+                        </div>
                      </CardContent>
                   </Card>
                ))}

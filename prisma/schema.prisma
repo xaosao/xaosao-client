@@ -420,6 +420,7 @@ model friend_contacts {
 model wallet {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   totalBalance  Float    @default(0)
+  totalPending  Float    @default(0)
   totalRecharge Float    @default(0)
   totalDeposit  Float    @default(0)
   status        String   @default("active")

@@ -374,10 +374,10 @@
     "support": "Support",
     "policy": {
       "title": "Booking & Payment Policy",
-      "paymentHeld": "Payment is held from your wallet when you book a service",
-      "gpsCheckin": "Both parties must GPS check-in at the location to verify attendance",
-      "confirmOrDispute": "After model completes, you have 48 hours to confirm or dispute",
-      "cancellationNotice": "Cancellation not allowed within 2 hours of booking start time"
+      "paymentHeld": "Payment is securely held from your wallet when you book a service",
+      "cancellationNotice": "You can cancel your booking up to 30 minutes before the scheduled time",
+      "disputeWindow": "You can file a dispute within 30 minutes after booking starts (e.g., 8:00 booking → dispute until 8:30)",
+      "autoRelease": "If no dispute is filed, payment is automatically released to the model within 24 hours"
     },
     "status": {
       "pending": "Pending",
@@ -413,7 +413,9 @@
         "pendingTitle": "Awaiting Review",
         "pendingMessage": "Your booking is pending your date partner to confirm!",
         "cancelledTitle": "Cancelled",
-        "cancelledMessage": "You have cancelled your booking"
+        "cancelledMessage": "You have cancelled your booking",
+        "disputeAvailableTitle": "Dispute Available",
+        "disputeAvailableMessage": "If there was an issue with the service, you can file a dispute within the time window."
       }
     },
     "edit": {
@@ -1116,6 +1118,7 @@
     "noAddressAvailable": "No address available",
     "unavailableTimes": "Unavailable times:",
     "andMoreSlots": "...and {{count}} more",
+    "availableAfter": "available after",
     "success": {
       "booked": "Service booked successfully!"
     },
@@ -1973,11 +1976,11 @@
     "serviceUnavailable": "Service Unavailable",
     "support": "Support",
     "policy": {
-      "title": "Secure Payment Policy",
-      "paymentHeld": "Payment is held securely when customer books your service",
-      "gpsCheckin": "Both parties must GPS check-in at the location to verify attendance",
-      "customerConfirm": "After completing, customer has 48 hours to confirm (auto-releases if no response)",
-      "rejectRefund": "If you reject a booking, customer will be automatically refunded"
+      "title": "Booking & Payment Policy",
+      "paymentHeld": "Payment is securely held when a customer books your service",
+      "customerCancel": "Customer can cancel up to 30 minutes before the scheduled time (full refund)",
+      "receiveImmediately": "You can receive payment immediately after the booking time starts",
+      "autoTransfer": "If not claimed, payment is automatically transferred to your wallet within 24 hours"
     },
     "card": {
       "to": "to",
@@ -1997,7 +2000,10 @@
       "completeGetPaid": "Complete & Get Paid",
       "viewQRCode": "View QR Code",
       "messageCustomer": "Message Customer",
-      "delete": "Delete"
+      "message": "Message",
+      "call": "Call",
+      "delete": "Delete",
+      "receiveMoney": "Receive Money"
     },
     "whatsappMessage": "🌸 *XaoSao* 🌸\nHello {{customerName}}!\nI'm reaching out regarding your booking for *{{serviceName}}* on *{{date}}*.\nLooking forward to meeting you!\n📋 View booking: {{bookingUrl}}",
     "empty": {
@@ -2032,6 +2038,22 @@
         "invalidRequest": "Invalid request method!"
       }
     },
+    "receiveMoney": {
+      "title": "Receive Payment",
+      "confirmQuestion": "You are about to receive payment for service",
+      "confirmTitle": "Payment Confirmation",
+      "confirmDescription": "The payment will be transferred to your wallet balance.",
+      "totalPrice": "Total Price",
+      "commission": "Platform Fee",
+      "youReceive": "You Receive",
+      "cancel": "Cancel",
+      "confirmButton": "Confirm & Receive",
+      "success": "Payment received successfully!",
+      "errors": {
+        "failed": "Failed to receive payment!",
+        "invalidRequest": "Invalid request method!"
+      }
+    },
     "detail": {
       "title": "Booking Details",
       "bookingId": "Booking ID",
@@ -2051,6 +2073,9 @@
       "close": "Close",
       "reject": "Reject",
       "accept": "Accept",
+      "receiveMoney": "Receive Money",
+      "receiveMoneyTitle": "Payment Available",
+      "receiveMoneyDescription": "The dispute window has closed. You can now receive your payment for this booking.",
       "statusMessages": {
         "confirmed": {
           "title": "Booking Confirmed",
@@ -2277,5 +2302,36 @@
     "errors": {
       "bookingFailed": "Failed to book call service"
     }
+  },
+  "push": {
+    "title": "Stay Updated",
+    "subtitle": "Enable push notifications",
+    "description": "Get notified about new bookings, messages, and important updates even when you're not using the app.",
+    "enabled": "Notifications Enabled!",
+    "enabledDesc": "You'll receive important updates",
+    "successMessage": "You'll now receive notifications for bookings, messages, and updates.",
+    "benefitModel1": "New booking requests",
+    "benefitCustomer1": "Booking confirmations",
+    "benefitMessages": "New messages",
+    "benefitModel3": "Payment notifications",
+    "benefitCustomer3": "Service updates",
+    "notNow": "Not Now",
+    "enable": "Enable Notifications",
+    "enabling": "Enabling...",
+    "gotIt": "Got it",
+    "permissionDenied": "Notifications are blocked. Please enable them in your browser settings.",
+    "blockedTitle": "Notifications Blocked",
+    "blockedDesc": "Enable in browser settings",
+    "settingTitle": "Push Notifications",
+    "settingEnabled": "Enabled on this device",
+    "settingDisabled": "Receive updates anywhere",
+    "disable": "Disable",
+    "iosInstruction": "To receive notifications on iOS, please add this app to your home screen first.",
+    "iosStepsTitle": "How to add:",
+    "iosStep1": "Tap the Share button (square with arrow)",
+    "iosStep2": "Scroll down and tap \"Add to Home Screen\"",
+    "iosStep3": "Tap \"Add\" to confirm",
+    "iosStep4": "Open the app from your home screen",
+    "iosNote": "Push notifications on iOS only work when the app is added to home screen."
   }
 }

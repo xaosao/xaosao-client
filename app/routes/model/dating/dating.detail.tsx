@@ -1,4 +1,4 @@
-import { Clock, Check, X, User } from "lucide-react"
+import { Clock, Check, X, User, DollarSign } from "lucide-react"
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
 
@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button"
 
 // utils and service
 import { requireModelSession } from "~/services/model-auth.server"
-import { getModelBookingDetail } from "~/services/booking.server"
+import { getModelBookingDetail, canReceiveMoney } from "~/services/booking.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 import { capitalize } from "~/utils/functions/textFormat"
 
@@ -46,16 +46,39 @@ interface BookingDetail {
    } | null;
 }
 
+interface LoaderData {
+   booking: BookingDetail;
+   canReceiveMoney: boolean;
+   receiveMoneyMessage?: string;
+}
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
    const modelId = await requireModelSession(request);
-   const data = await getModelBookingDetail(params.id!, modelId);
-   return data;
+   const booking = await getModelBookingDetail(params.id!, modelId);
+
+   // Check if model can receive money (server-side check)
+   const serviceName = booking?.modelService?.service?.name || "default";
+   const receiveMoneyStatus = canReceiveMoney(
+      {
+         status: booking?.status || "",
+         startDate: booking?.startDate ? new Date(booking.startDate) : null,
+         endDate: booking?.endDate ? new Date(booking.endDate) : null,
+         hours: booking?.hours || null
+      },
+      serviceName
+   );
+
+   return {
+      booking,
+      canReceiveMoney: receiveMoneyStatus.canReceive,
+      receiveMoneyMessage: receiveMoneyStatus.message,
+   };
 }
 
 export default function DatingDetailModal() {
    const { t } = useTranslation();
    const navigate = useNavigate();
-   const data = useLoaderData<BookingDetail>();
+   const { booking: data, canReceiveMoney: canReceive } = useLoaderData<LoaderData>();
 
    function closeHandler() {
       navigate("/model/dating");
@@ -229,7 +252,11 @@ export default function DatingDetailModal() {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-               <Button variant="outline" onClick={closeHandler} className="bg-rose-500 text-white hover:bg-rose-600 hover:text-white">
+               <Button
+                  variant="outline"
+                  onClick={closeHandler}
+                  className={`${data?.status === "pending" || canReceive ? "w-auto" : "w-full"} sm:w-auto bg-rose-500 text-white hover:bg-rose-600 hover:text-white`}
+               >
                   {t("modelDating.detail.close")}
                </Button>
                {data?.status === "pending" && (
@@ -249,6 +276,35 @@ export default function DatingDetailModal() {
                         {t("modelDating.detail.accept")}
                      </Button>
                   </>
+               )}
+               {canReceive && data?.status === "confirmed" && (
+                  <div className="w-full bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                     <div className="flex items-start space-x-3">
+                        <DollarSign className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                        <div className="flex-1">
+                           <p className="font-medium text-sm text-emerald-800">
+                              {t("modelDating.detail.receiveMoneyTitle", { defaultValue: "Payment Available" })}
+                           </p>
+                           <p className="text-xs text-emerald-600 mt-1">
+                              {t("modelDating.detail.receiveMoneyDescription", { defaultValue: "The dispute window has closed. You can now receive your payment for this booking." })}
+                           </p>
+                           <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/model/dating/receive-money/${data?.id}`)}
+                              className="mt-2 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
+                           >
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              {t("modelDating.detail.receiveMoney")}
+                           </Button>
+                        </div>
+                     </div>
+                  </div>
+               )}
+               {data?.status === "disputed" && (
+                  <div className="text-sm text-orange-600 font-medium">
+                     {t("modelDating.detail.disputedStatus", { defaultValue: "Under dispute - Admin review required" })}
+                  </div>
                )}
             </div>
          </div>

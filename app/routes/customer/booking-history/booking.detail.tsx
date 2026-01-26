@@ -8,34 +8,51 @@ import { Button } from "~/components/ui/button"
 
 // utils and service
 import type { IServiceBooking } from "~/interfaces/service"
-import { getMyServiceBookingDetail } from "~/services/booking.server"
+import { getMyServiceBookingDetail, canDisputeBooking, canCancelBooking } from "~/services/booking.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 
+interface LoaderData {
+   booking: IServiceBooking;
+   canDispute: boolean;
+   canCancel: boolean;
+}
+
 export async function loader({ params }: LoaderFunctionArgs) {
-   const data = await getMyServiceBookingDetail(params.id!);
-   return data;
+   const booking = await getMyServiceBookingDetail(params.id!);
+
+   // Check dispute eligibility (server-side)
+   let canDispute = false;
+   if (booking && booking.status === "confirmed") {
+      const serviceName = booking?.modelService?.service?.name || "default";
+      const disputeCheck = canDisputeBooking(
+         booking.startDate ? new Date(booking.startDate) : null,
+         booking.endDate ? new Date(booking.endDate) : null,
+         booking.hours,
+         serviceName
+      );
+      canDispute = disputeCheck.canDispute;
+   }
+
+   // Check cancel eligibility (server-side)
+   let canCancel = false;
+   if (booking && (booking.status === "pending" || booking.status === "confirmed")) {
+      const serviceName = booking?.modelService?.service?.name || "default";
+      const cancelCheck = canCancelBooking(new Date(booking.startDate), serviceName);
+      canCancel = cancelCheck.canCancel;
+   }
+
+   return { booking, canDispute, canCancel };
 }
 
 export default function BookingServiceDetails() {
    const { t } = useTranslation()
    const navigate = useNavigate();
-   const data = useLoaderData<IServiceBooking>();
+   const { booking: data, canDispute, canCancel } = useLoaderData<LoaderData>();
 
    const getServiceName = (): string => {
       const serviceName = data?.modelService?.service?.name;
       if (!serviceName) return t("booking.serviceUnavailable");
       return t(`modelServices.serviceItems.${serviceName}.name`, { defaultValue: serviceName });
-   };
-
-   // Check if dispute should be available (2+ hours after start time, model hasn't checked in)
-   const canDispute = (): boolean => {
-      if (!data || data.status !== "confirmed" || data.modelCheckedInAt) {
-         return false;
-      }
-      const now = new Date();
-      const startDate = new Date(data.startDate);
-      const hoursDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-      return hoursDiff >= 2;
    };
 
    function closeHandler() {
@@ -124,16 +141,16 @@ export default function BookingServiceDetails() {
                                  </p>
                               </div>
                            </div>
-                           {canDispute() && (
+                           {canDispute && (
                               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                                  <div className="flex items-start space-x-3">
                                     <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
                                     <div className="flex-1">
                                        <p className="font-medium text-sm text-orange-800">
-                                          {t('booking.detail.status.noCheckinTitle', { defaultValue: 'Model has not checked in' })}
+                                          {t('booking.detail.status.disputeAvailableTitle', { defaultValue: 'Dispute Available' })}
                                        </p>
                                        <p className="text-xs text-orange-600 mt-1">
-                                          {t('booking.detail.status.noCheckinMessage', { defaultValue: 'More than 2 hours have passed since the booking start time and the model has not checked in. You can file a dispute.' })}
+                                          {t('booking.detail.status.disputeAvailableMessage', { defaultValue: 'If there was an issue with the service, you can file a dispute within the time window.' })}
                                        </p>
                                        <Button
                                           variant="outline"
@@ -150,6 +167,20 @@ export default function BookingServiceDetails() {
                            )}
                         </div>
                      )}
+
+                     {/* {data?.status === "disputed" && ( */}
+                     <div className="flex items-start space-x-3">
+                        <div className="p-2 rounded-lg bg-orange-50 border border-orange-300">
+                           <AlertTriangle className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div>
+                           <p className="font-medium text-sm">{t('booking.detail.status.disputedTitle', { defaultValue: 'Booking Under Dispute' })}</p>
+                           <p className="text-xs text-gray-500">
+                              {t('booking.detail.status.disputedMessage', { defaultValue: 'Your dispute has been submitted and is under admin review. We will contact you shortly.' })}
+                           </p>
+                        </div>
+                     </div>
+                     {/* )} */}
 
                      {data?.status === "rejected" && (
                         <div className="flex items-start space-x-3">
@@ -213,6 +244,16 @@ export default function BookingServiceDetails() {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
+               {canCancel && (data?.status === "pending" || data?.status === "confirmed") && (
+                  <Button
+                     variant="outline"
+                     onClick={() => navigate(`/customer/book-service/cancel/${data.id}`)}
+                     className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                  >
+                     <X className="h-4 w-4 mr-1" />
+                     {t('booking.cancel')}
+                  </Button>
+               )}
                <Button variant="outline" onClick={closeHandler} className="bg-rose-500 text-white hover:bg-rose-600 hover:text-white">
                   {t('booking.detail.close')}
                </Button>

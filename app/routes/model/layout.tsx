@@ -6,10 +6,10 @@ import {
     Heart,
     LogOut,
     MessageCircle,
-    Search,
     Settings,
     User,
     User2Icon,
+    Wallet,
 } from "lucide-react";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
@@ -108,24 +108,32 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     });
 
     const navigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
+        { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
         // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
+        { title: t('navigation.wallet'), url: "/model/settings?tab=wallet", icon: Wallet, badge: 0 },
         { title: t('navigation.myProfile'), url: "/model/profile", icon: User, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
     ], [t, i18n.language, pendingBookingCount]);
 
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/model", icon: Search, badge: 0 },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
+        { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
         // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
+        { title: t('navigation.wallet'), url: "/model/settings?tab=wallet", icon: Wallet, badge: 0 },
         { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
     ], [t, i18n.language, pendingBookingCount]);
 
     const isActiveRoute = (url: string) => {
+        // Handle wallet with query param
+        if (url === "/model/settings?tab=wallet") {
+            return location.pathname === "/model/settings" && location.search === "?tab=wallet";
+        }
+        // Handle settings (but not wallet)
+        if (url === "/model/settings") {
+            return location.pathname === "/model/settings" && location.search !== "?tab=wallet";
+        }
         if (url === "/model" && location.pathname === "/model") return true;
         if (url !== "/model" && location.pathname.startsWith(url)) return true;
         return false;
