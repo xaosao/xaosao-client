@@ -16,6 +16,10 @@ export default [
     "api/notifications/mark-read",
     "./routes/api/notifications/mark-read.ts"
   ),
+  route(
+    "api/notifications/update-settings",
+    "./routes/api/notifications/update-settings.ts"
+  ),
 
   // API routes for Push notifications
   route("api/push/subscribe", "./routes/api/push/subscribe.ts"),

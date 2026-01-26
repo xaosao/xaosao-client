@@ -6,6 +6,7 @@ import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 interface PushNotificationPromptProps {
   userType: "model" | "customer";
+  hasEnabledNotifications?: boolean;
 }
 
 // Only remember dismissal for current session (until page refresh)
@@ -52,7 +53,7 @@ function isIOSVersionSupported(): boolean {
   }
 }
 
-export function PushNotificationPrompt({ userType }: PushNotificationPromptProps) {
+export function PushNotificationPrompt({ userType, hasEnabledNotifications }: PushNotificationPromptProps) {
   const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -99,6 +100,12 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
       if (iosInSafari && iosVersionOK) {
         console.log("[PushPrompt] iOS Safari detected");
 
+        // Don't show if notifications are already enabled (push or SMS)
+        if (hasEnabledNotifications) {
+          console.log("[PushPrompt] Not showing: Notifications already enabled");
+          return;
+        }
+
         if (sessionDismissed[userType]) {
           console.log("[PushPrompt] Not showing: Dismissed in current session");
           return;
@@ -126,6 +133,12 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
         userType,
         iosInPWA,
       });
+
+      // Don't show if notifications are already enabled (push or SMS)
+      if (hasEnabledNotifications) {
+        console.log("[PushPrompt] Not showing: Notifications already enabled");
+        return;
+      }
 
       // For iOS PWA, show prompt if not subscribed (even if isSupported is false)
       const shouldShowForIOSPWA = iosInPWA && !isSubscribed && permission !== "denied";
@@ -156,11 +169,28 @@ export function PushNotificationPrompt({ userType }: PushNotificationPromptProps
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isSupported, isSubscribed, permission, userType, isInitializing]);
+  }, [isSupported, isSubscribed, permission, userType, isInitializing, hasEnabledNotifications]);
 
   const handleEnable = async () => {
     const success = await subscribe();
     if (success) {
+      // Update notification settings in the database
+      try {
+        await fetch("/api/notifications/update-settings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userType,
+            sendPushNoti: true,
+            sendSMSNoti: true,
+          }),
+        });
+      } catch (error) {
+        console.error("[PushPrompt] Failed to update notification settings:", error);
+      }
+
       setShowSuccess(true);
       // Auto close modal after showing success message
       setTimeout(() => {

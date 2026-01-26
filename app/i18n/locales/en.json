@@ -1706,7 +1706,31 @@
       "reportDesc": "Report technical issues",
       "delete": "Delete Account",
       "deleteDesc": "Permanently delete account",
-      "logoutDesc": "Sign out of your account"
+      "logoutDesc": "Sign out of your account",
+      "notifications": "Notifications",
+      "notificationsDesc": "Manage your notification preferences"
+    },
+    "serviceRequired": {
+      "title": "Service Setup Required",
+      "description": "You need to set up at least one service before you can start receiving bookings from customers. Please add your service details to get started.",
+      "button": "Set Up Services"
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "subtitle": "Choose how you want to receive notifications"
+    }
+  },
+  "settings": {
+    "notification": {
+      "push": "Push Notifications",
+      "pushDesc": "Receive notifications on your device",
+      "sms": "SMS Notifications",
+      "smsDesc": "Receive important alerts via SMS"
+    },
+    "common": {
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "logout": "Logout"
     }
   },
   "modelProfile": {

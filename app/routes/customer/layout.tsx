@@ -24,6 +24,7 @@ interface LoaderReturn {
     unreadNotifications: number;
     initialNotifications: Notification[];
     hasActiveSubscription: boolean;
+    hasEnabledNotifications: boolean;
 }
 
 interface TransactionProps {
@@ -51,13 +52,16 @@ export const loader: LoaderFunction = async ({ request }) => {
         createdAt: n.createdAt.toISOString(),
     }));
 
-    return { customerData, unreadNotifications, initialNotifications, hasActiveSubscription: hasSubscription };
+    // Check if customer has enabled notifications (either push or SMS)
+    const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
+
+    return { customerData, unreadNotifications, initialNotifications, hasActiveSubscription: hasSubscription, hasEnabledNotifications };
 }
 
 export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription } = loaderData;
+    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasEnabledNotifications } = loaderData;
     const { t, i18n } = useTranslation();
 
     // Handler for chat navigation with subscription check
@@ -225,7 +229,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
             )}
 
             {/* Push Notification Permission Prompt */}
-            <PushNotificationPrompt userType="customer" />
+            <PushNotificationPrompt userType="customer" hasEnabledNotifications={hasEnabledNotifications} />
         </div>
     );
 }

@@ -235,7 +235,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                  {t('booking.duration')}:
                               </p>
                               <p className="text-sm text-muted-foreground font-semibold">
-                                 {/* Show duration based on billing type */}
                                  {booking.modelService?.service?.billingType === 'per_hour' && booking.hours ? (
                                     <>
                                        {booking.hours} {booking.hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
@@ -293,7 +292,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                         <div className="pt-3 border-t flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                            {isCallService(booking) ? (
                               <>
-                                 {/* For confirmed call service - only Start Call */}
                                  {booking.status === "confirmed" && (
                                     <Button
                                        variant="outline"
@@ -305,8 +303,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        {t('booking.startCall')}
                                     </Button>
                                  )}
-
-                                 {/* For pending call service - Edit and Cancel */}
                                  {booking.status === "pending" && (
                                     <>
                                        <Button
@@ -329,8 +325,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        </Button>
                                     </>
                                  )}
-
-                                 {/* For completed/cancelled call service - Delete only */}
+                                
                                  {["cancelled", "completed"].includes(booking.status) && (
                                     <Button
                                        variant="outline"
@@ -345,7 +340,6 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                               </>
                            ) : (
                               <>
-                                 {/* Regular service actions */}
                                  {booking.status === "pending" && (
                                     <>
                                        <Button

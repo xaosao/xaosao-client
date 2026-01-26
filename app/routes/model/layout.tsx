@@ -2,15 +2,24 @@ import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
+    Briefcase,
     HandHeart,
     Heart,
     LogOut,
-    MessageCircle,
     Settings,
     User,
     User2Icon,
     Wallet,
 } from "lucide-react";
+import {
+    Dialog,
+    DialogDescription,
+    DialogHeader,
+    DialogOverlay,
+    DialogPortal,
+    DialogTitle,
+} from "~/components/ui/dialog";
+import { Button } from "~/components/ui/button";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
@@ -39,6 +48,8 @@ interface LoaderReturn {
     unreadNotifications: number;
     initialNotifications: Notification[];
     pendingBookingCount: number;
+    hasServices: boolean;
+    hasEnabledNotifications: boolean;
 }
 
 interface LayoutProps {
@@ -64,14 +75,20 @@ export const loader: LoaderFunction = async ({ request }) => {
         createdAt: n.createdAt.toISOString(),
     }));
 
-    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount };
+    // Check if model has at least one active service
+    const hasServices = (modelData?.ModelService?.length ?? 0) > 0;
+
+    // Check if model has enabled notifications (either push or SMS)
+    const hasEnabledNotifications = modelData?.sendPushNoti || modelData?.sendSMSNoti || false;
+
+    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications };
 }
 
 export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount } = loaderData;
+    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications } = loaderData;
     const { t, i18n } = useTranslation();
 
     // Booking notification types that should trigger a layout refresh (for pending count)
@@ -290,7 +307,37 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
             )}
 
             {/* Push Notification Permission Prompt */}
-            <PushNotificationPrompt userType="model" />
+            <PushNotificationPrompt userType="model" hasEnabledNotifications={hasEnabledNotifications} />
+
+            {/* Service Setup Required Modal */}
+            <Dialog open={!hasServices && !location.pathname.startsWith("/model/settings")} modal={true}>
+                <DialogPortal>
+                    <DialogOverlay className="bg-black/80" />
+                    <div className="fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-sm bg-white">
+                        <DialogHeader className="text-center">
+                            <div className="mx-auto mb-4 p-4 bg-rose-100 rounded-full w-fit">
+                                <Briefcase className="w-5 h-5 text-rose-600" />
+                            </div>
+                            <DialogTitle className="text-center text-lg">
+                                {t('modelSettings.serviceRequired.title', { defaultValue: 'Service Setup Required' })}
+                            </DialogTitle>
+                            <DialogDescription className="text-center pt-2">
+                                {t('modelSettings.serviceRequired.description', {
+                                    defaultValue: 'You need to set up at least one service before you can start receiving bookings from customers. Please add your service details to get started.'
+                                })}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-4">
+                            <Button
+                                onClick={() => navigate("/model/settings/services")}
+                                className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                            >
+                                {t('modelSettings.serviceRequired.button', { defaultValue: 'Set Up Services' })}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogPortal>
+            </Dialog>
         </div>
     );
 }
