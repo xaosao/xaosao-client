@@ -110,6 +110,8 @@ export default function ServiceBooking() {
    const [selectedMinutes, setSelectedMinutes] = useState<number>(30) // Default 30 minutes for call service
    const [selectedSessionType, setSelectedSessionType] = useState<'one_time' | 'one_night'>('one_time')
    const [selectedMassageVariantId, setSelectedMassageVariantId] = useState<string>("")
+   const [isStartDatePopoverOpen, setIsStartDatePopoverOpen] = useState(false)
+   const [isEndDatePopoverOpen, setIsEndDatePopoverOpen] = useState(false)
 
    // Duration options for call service (in minutes)
    const callDurationOptions = [
@@ -290,7 +292,7 @@ export default function ServiceBooking() {
                            <Label htmlFor="start-date" className="text-sm font-medium">
                               {t('profileBook.startDate')} <span className="text-destructive">*</span>
                            </Label>
-                           <Popover>
+                           <Popover open={isStartDatePopoverOpen} onOpenChange={setIsStartDatePopoverOpen}>
                               <PopoverTrigger asChild>
                                  <Button
                                     id="start-date"
@@ -312,25 +314,34 @@ export default function ServiceBooking() {
                                     disabled={isDateDisabled}
                                     initialFocus
                                  />
-                                 <div className="p-2 space-y-1">
-                                    <Label className="text-sm font-medium text-gray-700">
-                                       {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
-                                    </Label>
-                                    <Input
-                                       required
-                                       type="time"
-                                       name="startDate"
-                                       className="w-full"
-                                       placeholder="Dates"
-                                       onChange={(e) => {
-                                          if (!startDate) return;
-                                          const [hours, minutes] = e.target.value.split(":").map(Number);
-                                          const newDate = new Date(startDate);
-                                          newDate.setHours(hours);
-                                          newDate.setMinutes(minutes);
-                                          setStartDate(newDate);
-                                       }}
-                                    />
+                                 <div className="p-2 space-y-3">
+                                    <div className="space-y-1">
+                                       <Label className="text-sm font-medium text-gray-700">
+                                          {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                       </Label>
+                                       <Input
+                                          required
+                                          type="time"
+                                          name="startDate"
+                                          className="w-40 sm:w-48"
+                                          placeholder="Dates"
+                                          onChange={(e) => {
+                                             if (!startDate) return;
+                                             const [hours, minutes] = e.target.value.split(":").map(Number);
+                                             const newDate = new Date(startDate);
+                                             newDate.setHours(hours);
+                                             newDate.setMinutes(minutes);
+                                             setStartDate(newDate);
+                                          }}
+                                       />
+                                    </div>
+                                    <Button
+                                       type="button"
+                                       onClick={() => setIsStartDatePopoverOpen(false)}
+                                       className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                                    >
+                                       {t('profileBook.close', { defaultValue: 'Close' })}
+                                    </Button>
                                  </div>
                               </PopoverContent>
                            </Popover>
@@ -351,7 +362,7 @@ export default function ServiceBooking() {
                               <Label htmlFor="end-date" className="text-sm font-medium">
                                  {t('profileBook.endDate')}
                               </Label>
-                              <Popover>
+                              <Popover open={isEndDatePopoverOpen} onOpenChange={setIsEndDatePopoverOpen}>
                                  <PopoverTrigger asChild>
                                     <Button
                                        id="end-date"
@@ -376,23 +387,32 @@ export default function ServiceBooking() {
                                        }}
                                        initialFocus
                                     />
-                                    <div className="p-2 space-y-1">
-                                       <Label className="text-sm font-medium text-gray-700">
-                                          {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
-                                       </Label>
-                                       <Input
-                                          type="time"
-                                          name="endDate"
-                                          className="w-full"
-                                          onChange={(e) => {
-                                             if (!endDate) return;
-                                             const [hours, minutes] = e.target.value.split(":").map(Number);
-                                             const newDate = new Date(endDate);
-                                             newDate.setHours(hours);
-                                             newDate.setMinutes(minutes);
-                                             setEndDate(newDate);
-                                          }}
-                                       />
+                                    <div className="p-2 space-y-3">
+                                       <div className="space-y-1">
+                                          <Label className="text-sm font-medium text-gray-700">
+                                             {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                          </Label>
+                                          <Input
+                                             type="time"
+                                             name="endDate"
+                                             // className="w-56 sm:w-34"
+                                             onChange={(e) => {
+                                                if (!endDate) return;
+                                                const [hours, minutes] = e.target.value.split(":").map(Number);
+                                                const newDate = new Date(endDate);
+                                                newDate.setHours(hours);
+                                                newDate.setMinutes(minutes);
+                                                setEndDate(newDate);
+                                             }}
+                                          />
+                                       </div>
+                                       <Button
+                                          type="button"
+                                          onClick={() => setIsEndDatePopoverOpen(false)}
+                                          className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                                       >
+                                          {t('profileBook.close', { defaultValue: 'Close' })}
+                                       </Button>
                                     </div>
                                  </PopoverContent>
                               </Popover>
