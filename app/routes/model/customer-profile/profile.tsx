@@ -136,15 +136,34 @@ export default function CustomerProfilePage() {
    };
 
    const handleTouchStart = (e: React.TouchEvent) => {
-      setTouchStartX(e.targetTouches[0].clientX);
+      const touch = e.targetTouches[0];
+      const x = touch.clientX;
+      const y = touch.clientY;
+
+      // Ignore touches in top-right corner (close button area)
+      // 80px from top and 80px from right
+      const isInCloseButtonArea = y < 80 && x > window.innerWidth - 80;
+      if (isInCloseButtonArea) {
+         return;
+      }
+
+      setTouchStartX(x);
    };
 
    const handleTouchMove = (e: React.TouchEvent) => {
+      // Only track movement if we have a valid start position
+      if (touchStartX === null) return;
       setTouchEndX(e.targetTouches[0].clientX);
    };
 
    const handleTouchEnd = () => {
-      if (!touchStartX || !touchEndX) return;
+      if (!touchStartX || !touchEndX) {
+         // Reset and return
+         setTouchStartX(null);
+         setTouchEndX(null);
+         return;
+      }
+
       const distance = touchStartX - touchEndX;
 
       if (distance > 50) {
@@ -188,22 +207,23 @@ export default function CustomerProfilePage() {
                         </Button>
                      </Form>
 
-                     <Form method="post">
-                        {customer.whatsapp && (
-                           <Button
-                              size="sm"
-                              type="button"
-                              className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                              onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
-                           >
-                              <MessageSquareText className="w-3 h-3" />
-                           </Button>
-                        )}
-                        {customer.isContact ? (
-                           <div className="flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md">
-                              <UserCheck className="w-3 h-3" />
-                           </div>
-                        ) : (
+                     {customer.whatsapp && (
+                        <Button
+                           size="sm"
+                           type="button"
+                           className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                           onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                        >
+                           <MessageSquareText className="w-3 h-3" />
+                        </Button>
+                     )}
+
+                     {customer.isContact ? (
+                        <div className="flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md">
+                           <UserCheck className="w-3 h-3" />
+                        </div>
+                     ) : (
+                        <Form method="post">
                            <Button
                               size="sm"
                               type="submit"
@@ -213,8 +233,8 @@ export default function CustomerProfilePage() {
                            >
                               <UserPlus className="w-3 h-3" />
                            </Button>
-                        )}
-                     </Form>
+                        </Form>
+                     )}
                   </div>
                   <Forward
                      className="w-6 h-6 text-gray-500 cursor-pointer"
@@ -279,24 +299,25 @@ export default function CustomerProfilePage() {
                            </Button>
                         </Form>
 
-                        <Form method="post">
-                           {customer.whatsapp && (
-                              <Button
-                                 size="sm"
-                                 type="button"
-                                 className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                 onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
-                              >
-                                 <MessageSquareText className="w-4 h-4" />
-                                 {t("modelCustomerProfile.message")}
-                              </Button>
-                           )}
-                           {customer.isContact ? (
-                              <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
-                                 <UserCheck className="w-4 h-4" />
-                                 {t("modelCustomerProfile.friend", { defaultValue: "Friend" })}
-                              </div>
-                           ) : (
+                        {customer.whatsapp && (
+                           <Button
+                              size="sm"
+                              type="button"
+                              className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                              onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                           >
+                              <MessageSquareText className="w-4 h-4" />
+                              {t("modelCustomerProfile.message")}
+                           </Button>
+                        )}
+
+                        {customer.isContact ? (
+                           <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
+                              <UserCheck className="w-4 h-4" />
+                              {t("modelCustomerProfile.friend", { defaultValue: "Friend" })}
+                           </div>
+                        ) : (
+                           <Form method="post">
                               <Button
                                  size="sm"
                                  type="submit"
@@ -307,8 +328,8 @@ export default function CustomerProfilePage() {
                                  <UserPlus className="w-4 h-4" />
                                  {t("modelCustomerProfile.addFriend")}
                               </Button>
-                           )}
-                        </Form>
+                           </Form>
+                        )}
 
                         <Button
                            size="sm"
@@ -429,11 +450,17 @@ export default function CustomerProfilePage() {
                onTouchMove={handleTouchMove}
                onTouchEnd={handleTouchEnd}
             >
+               {/* Close button - touch area excluded from swipe detection */}
                <button
-                  onClick={() => setSelectedIndex(null)}
-                  className="absolute top-4 right-4 text-white p-2 rounded-full z-10"
+                  onClick={(e) => {
+                     e.stopPropagation();
+                     setSelectedIndex(null);
+                  }}
+                  className="absolute top-4 right-4 text-white p-4 bg-black/50 hover:bg-black/70 rounded-full z-50 cursor-pointer active:bg-black/80 transition-colors"
+                  type="button"
+                  aria-label="Close"
                >
-                  <span className="w-6 h-6 text-2xl">&times;</span>
+                  <X className="w-6 h-6" />
                </button>
 
                <button
@@ -463,8 +490,10 @@ export default function CustomerProfilePage() {
                   <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
                </button>
 
-               <div className="absolute bottom-4 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-                  {selectedIndex + 1} / {images.length}
+               <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
+                  <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                     {selectedIndex + 1} / {images.length}
+                  </div>
                </div>
             </div>
          )}

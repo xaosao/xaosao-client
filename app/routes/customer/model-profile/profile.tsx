@@ -636,17 +636,20 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             {selectedIndex !== null && (
                                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
                                     <button
-                                        className="absolute top-4 right-4 text-white"
+                                        className="absolute top-4 right-4 text-white p-4 bg-black/50 hover:bg-black/70 rounded-full z-50 cursor-pointer active:bg-black/80 transition-colors"
                                         onClick={() => setSelectedIndex(null)}
+                                        type="button"
+                                        aria-label="Close"
                                     >
-                                        <X size={32} />
+                                        <X size={24} />
                                     </button>
 
                                     <button
-                                        className="absolute left-4 text-white hidden sm:block"
+                                        className="absolute left-4 text-white p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer hidden sm:block"
                                         onClick={handlePrev}
+                                        type="button"
                                     >
-                                        <ChevronLeft size={40} />
+                                        <ChevronLeft size={32} />
                                     </button>
 
                                     <img
@@ -659,11 +662,18 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     />
 
                                     <button
-                                        className="absolute right-4 text-white hidden sm:block"
+                                        className="absolute right-4 text-white p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer hidden sm:block"
                                         onClick={handleNext}
+                                        type="button"
                                     >
-                                        <ChevronRight size={40} />
+                                        <ChevronRight size={32} />
                                     </button>
+
+                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
+                                        <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                            {selectedIndex + 1} / {images.length}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </TabsContent>
@@ -903,7 +913,12 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                     >
                         <button
                             className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
-                            onClick={() => setShowProfileFullscreen(false)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowProfileFullscreen(false);
+                            }}
+                            type="button"
+                            aria-label="Close"
                         >
                             <X size={32} />
                         </button>

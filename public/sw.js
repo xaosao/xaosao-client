@@ -1,9 +1,12 @@
-const CACHE_NAME = 'xaosao-v13';
-const STATIC_CACHE = 'xaosao-static-v13';
-const DYNAMIC_CACHE = 'xaosao-dynamic-v13';
+const CACHE_NAME = 'xaosao-v14';
+const STATIC_CACHE = 'xaosao-static-v14';
+const DYNAMIC_CACHE = 'xaosao-dynamic-v14';
 
 // Log version on load for debugging
 console.log('[SW] Service Worker Version:', CACHE_NAME);
+
+// Detect iOS
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state
@@ -95,7 +98,14 @@ self.addEventListener('fetch', (event) => {
   // Don't cache navigation requests as they depend on auth state and can cause issues on iOS Safari
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, {
+        cache: 'no-store', // Force fresh fetch on iOS
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
         .then((response) => {
           // Don't cache navigation responses - they are dynamic and auth-dependent
           return response;
@@ -106,11 +116,15 @@ self.addEventListener('fetch', (event) => {
           console.error('[SW] Navigation fetch failed:', error);
           // Return a simple offline response instead of cached content
           return new Response(
-            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1a1a1a;color:white;text-align:center;"><div><h1>You are offline</h1><p>Please check your internet connection and try again.</p><button onclick="location.reload()" style="padding:12px 24px;background:#f43f5e;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;">Retry</button></div></body></html>',
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f43f5e;color:white;text-align:center;padding:20px;"><div style="max-width:400px;"><svg style="width:80px;height:80px;margin:0 auto 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"/></svg><h1 style="font-size:24px;margin:0 0 10px;">You are offline</h1><p style="color:rgba(255,255,255,0.9);margin:0 0 20px;">Please check your internet connection and try again.</p><button onclick="location.reload()" style="width:100%;padding:12px 24px;background:white;color:#f43f5e;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">Retry</button></div></body></html>',
             {
               status: 503,
               statusText: 'Service Unavailable',
-              headers: { 'Content-Type': 'text/html; charset=utf-8' }
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store, no-cache, must-revalidate',
+                'Pragma': 'no-cache'
+              }
             }
           );
         })
@@ -118,17 +132,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (JS, CSS) - ALWAYS fetch from network, no caching
+  // For static assets (JS, CSS) - ALWAYS fetch from network with no-cache on iOS, no caching
   // This prevents iOS Safari caching issues where old JS/CSS causes UI breaks
   if (url.pathname.match(/\.(js|css)$/)) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request, isIOS ? {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      } : {})
+    );
     return;
   }
 
-  // For local images (/images/) - ALWAYS fetch from network, no caching
+  // For local images (/images/) - ALWAYS fetch from network with no-cache on iOS, no caching
   // This prevents iOS Safari from serving stale images
   if (url.pathname.startsWith('/images/')) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request, isIOS ? {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      } : {})
+    );
     return;
   }
 

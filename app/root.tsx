@@ -19,7 +19,7 @@ import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
 
 // App version - increment this when deploying new versions to force cache refresh
-const APP_VERSION = "1.0.13";
+const APP_VERSION = "1.0.14";
 
 // Check if device is mobile
 function isMobileDevice(): boolean {
@@ -58,6 +58,8 @@ function useCacheClear() {
     if (typeof window === "undefined") return;
 
     const storedVersion = localStorage.getItem("app_version");
+    const lastCacheClear = localStorage.getItem("last_cache_clear");
+    const now = Date.now();
 
     console.log(`[Cache] Version check - stored: ${storedVersion}, current: ${APP_VERSION}`);
 
@@ -73,8 +75,9 @@ function useCacheClear() {
         });
       }
 
-      // Update stored version
+      // Update stored version and clear timestamp
       localStorage.setItem("app_version", APP_VERSION);
+      localStorage.setItem("last_cache_clear", now.toString());
 
       // Unregister old service workers
       if ("serviceWorker" in navigator) {
@@ -89,6 +92,23 @@ function useCacheClear() {
       // First time visit, just store the version
       console.log("[Cache] First visit, storing version");
       localStorage.setItem("app_version", APP_VERSION);
+      localStorage.setItem("last_cache_clear", now.toString());
+    }
+
+    // iOS-specific: Periodic cache clear every 24 hours to prevent stale cache buildup
+    if (isIOSPWA() && lastCacheClear) {
+      const hoursSinceLastClear = (now - parseInt(lastCacheClear)) / (1000 * 60 * 60);
+      if (hoursSinceLastClear >= 24) {
+        console.log("[Cache] iOS PWA: 24 hours passed, clearing caches...");
+        if ("caches" in window) {
+          caches.keys().then((names) => {
+            Promise.all(names.map((name) => caches.delete(name))).then(() => {
+              localStorage.setItem("last_cache_clear", now.toString());
+              console.log("[Cache] iOS PWA: Cache cleared successfully");
+            });
+          });
+        }
+      }
     }
 
     // Check for service worker updates on launch
@@ -314,15 +334,100 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     stack = error.stack;
   }
 
+  // Log error for debugging
+  console.error("[ErrorBoundary] Error occurred:", error);
+
+  // Handle reload action
+  const handleReload = () => {
+    // Clear all caches and reload
+    if ("caches" in window) {
+      caches.keys().then((names) => {
+        names.forEach((name) => caches.delete(name));
+      });
+    }
+
+    // Clear service worker and reload
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        Promise.all(registrations.map((reg) => reg.unregister())).then(() => {
+          window.location.reload();
+        });
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
+  const handleGoHome = () => {
+    window.location.href = "/";
+  };
+
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
-        </pre>
-      )}
+    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-rose-50 to-purple-50">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+        <div className="w-20 h-20 mx-auto mb-6 bg-rose-100 rounded-full flex items-center justify-center">
+          <svg
+            className="w-10 h-10 text-rose-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{message}</h1>
+        <p className="text-gray-600 mb-6">{details}</p>
+
+        {stack && (
+          <details className="mb-6 text-left">
+            <summary className="cursor-pointer text-sm text-rose-600 hover:text-rose-700 mb-2">
+              Show error details
+            </summary>
+            <pre className="text-xs bg-gray-100 p-3 rounded-lg overflow-x-auto">
+              <code>{stack}</code>
+            </pre>
+          </details>
+        )}
+
+        <div className="space-y-3">
+          <button
+            onClick={handleReload}
+            className="w-full bg-rose-500 hover:bg-rose-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Clear Cache & Reload
+          </button>
+
+          <button
+            onClick={handleGoHome}
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            Go to Home
+          </button>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-6">
+          If this issue persists, try closing and reopening the app.
+        </p>
+      </div>
     </main>
   );
 }
