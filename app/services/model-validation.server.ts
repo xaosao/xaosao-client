@@ -184,9 +184,6 @@ const modelSignUpSchema = z
         .string()
         .min(8, "modelAuth.validation.passwordMinLength")
         .max(128, "modelAuth.validation.passwordTooLong")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-          message: "modelAuth.validation.passwordRequirements",
-        })
     ),
     dob: z
       .string()
@@ -311,9 +308,6 @@ const modelResetPasswordSchema = z
         .string()
         .min(8, "modelAuth.validation.passwordMinLength")
         .max(128, "modelAuth.validation.passwordTooLong")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-          message: "modelAuth.validation.passwordRequirements",
-        })
     ),
     confirmPassword: z.string(),
   })

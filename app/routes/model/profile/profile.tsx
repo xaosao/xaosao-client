@@ -542,18 +542,11 @@ export default function ModelProfilePage() {
                             <Button
                                 size="sm"
                                 type="button"
-                                className="cursor-pointer block sm:hidden text-gray-500 bg-white hover:bg-gray-500 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                className="flex items-center justify-center cursor-pointer sm:hidden text-gray-500 bg-white hover:bg-gray-500 hover:text-white px-4 font-medium text-sm transition-all duration-200 rounded-md bg-rose-50 border border-rose-100 text-rose-500"
                                 onClick={() => navigate('/model/referral')}
                             >
                                 <SquareArrowOutUpRight className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                size="sm"
-                                type="button"
-                                className="cursor-pointer block sm:hidden text-gray-500 bg-white hover:bg-gray-500 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                onClick={() => navigate('/model/settings')}
-                            >
-                                <Settings className="w-4 h-4" />
+                                <span>{t("modelProfile.referral")}</span>
                             </Button>
                         </div>
                     </div>
@@ -611,7 +604,6 @@ export default function ModelProfilePage() {
                                     onClick={() => navigate('/model/profile/edit')}
                                 >
                                     <UserPen />
-                                    {/* {t("modelProfile.editProfile")} */}
                                 </Button>
                                 <Button
                                     size="sm"

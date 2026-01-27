@@ -1,6 +1,6 @@
 import { differenceInYears } from "date-fns";
 import { Form, useNavigate } from "react-router";
-import { MapPin, Heart, MessageSquareText, X, User, UserRoundPlus } from "lucide-react";
+import { MapPin, Heart, MessageSquareText, X, User, UserRoundPlus, UserCheck } from "lucide-react";
 
 // swiper imports
 import "swiper/css";
@@ -115,25 +115,26 @@ export default function CustomerCard({
           <input type="hidden" name="isFriend" value="false" id={`isFriend-${customer.id}`} />
 
           <div className="absolute top-4 right-4 z-10 flex space-x-2">
+            {customer.whatsapp && (
+              <button
+                type="button"
+                onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                className="bg-rose-500 hover:bg-rose-600 text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
+              >
+                <MessageSquareText className="w-3.5 h-3.5" />
+              </button>
+            )}
             {customer.isContact ? (
-              <>
-                {customer.whatsapp && (
-                  <button
-                    type="button"
-                    onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
-                    className="bg-rose-500 hover:bg-rose-600 text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
-                  >
-                    <MessageSquareText className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </>
+              <div className="backdrop-blur-sm p-1.5 rounded-full bg-green-100 text-green-500 shadow-lg">
+                <UserCheck className="w-3.5 h-3.5" />
+              </div>
             ) : (
               <button
                 type="submit"
                 onClick={() => {
                   (document.getElementById(`isFriend-${customer.id}`) as HTMLInputElement).value = "true";
                 }}
-                className="bg-white/90 hover:bg-rose-500 hover:text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
+                className="cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg bg-white/90 hover:bg-rose-500 hover:text-white"
               >
                 <UserRoundPlus className="w-3.5 h-3.5" />
               </button>
@@ -150,16 +151,6 @@ export default function CustomerCard({
                 }`}
             >
               <Heart className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="submit"
-              onClick={() => {
-                (document.getElementById(`likeInput-${customer.id}`) as HTMLInputElement).value = "false";
-                (document.getElementById(`passInput-${customer.id}`) as HTMLInputElement).value = "true";
-              }}
-              className="cursor-pointer bg-white/90 backdrop-blur-sm hover:bg-gray-700 hover:text-white p-1.5 rounded-full transition-all duration-300 shadow-lg"
-            >
-              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </Form>

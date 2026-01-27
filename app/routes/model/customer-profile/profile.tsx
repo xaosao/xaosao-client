@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, Form, redirect, useNavigation } from 'react-router';
-import { User, Calendar, MarsStroke, ToggleLeft, MapPin, Book, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, MessageSquareText, Forward, UserPlus, Loader, X } from 'lucide-react';
+import { User, Calendar, MarsStroke, ToggleLeft, MapPin, Book, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, MessageSquareText, Forward, UserPlus, UserCheck, Loader, X } from 'lucide-react';
 
 // components
 import { Badge } from '~/components/ui/badge';
@@ -188,40 +188,28 @@ export default function CustomerProfilePage() {
                         </Button>
                      </Form>
 
-                     {customer.modelAction !== "LIKE" && (
-                        <Form method="post">
-                           <input type="hidden" name="pass" value="true" />
-                           <Button
-                              size="sm"
-                              type="submit"
-                              className={`cursor-pointer px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${customer.modelAction === "PASS"
-                                 ? "bg-gray-700 text-white hover:bg-gray-800"
-                                 : "text-gray-500 bg-white hover:bg-gray-500 hover:text-white"
-                                 }`}
-                           >
-                              <X className="w-3 h-3" />
-                           </Button>
-                        </Form>
-                     )}
-
                      <Form method="post">
-                        {customer.isContact ? (
+                        {customer.whatsapp && (
                            <Button
                               size="sm"
                               type="button"
                               className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                              // onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
                               onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
                            >
                               <MessageSquareText className="w-3 h-3" />
                            </Button>
+                        )}
+                        {customer.isContact ? (
+                           <div className="flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md">
+                              <UserCheck className="w-3 h-3" />
+                           </div>
                         ) : (
                            <Button
                               size="sm"
                               type="submit"
                               name="isFriend"
                               value="true"
-                              className="cursor-pointer bg-white hover:bg-gray-700 text-gray-700 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                              className="cursor-pointer px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md bg-white hover:bg-gray-700 text-gray-700 hover:text-white"
                            >
                               <UserPlus className="w-3 h-3" />
                            </Button>
@@ -292,24 +280,29 @@ export default function CustomerProfilePage() {
                         </Form>
 
                         <Form method="post">
-                           {customer.isContact ? (
+                           {customer.whatsapp && (
                               <Button
                                  size="sm"
                                  type="button"
                                  className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                 // onClick={() => navigate(`/model/chat?id=${customer.firstName}`)}
                                  onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
                               >
                                  <MessageSquareText className="w-4 h-4" />
                                  {t("modelCustomerProfile.message")}
                               </Button>
+                           )}
+                           {customer.isContact ? (
+                              <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
+                                 <UserCheck className="w-4 h-4" />
+                                 {t("modelCustomerProfile.friend", { defaultValue: "Friend" })}
+                              </div>
                            ) : (
                               <Button
                                  size="sm"
                                  type="submit"
                                  name="isFriend"
                                  value="true"
-                                 className="cursor-pointer hidden sm:flex bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                 className="cursor-pointer hidden sm:flex px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 hover:text-white"
                               >
                                  <UserPlus className="w-4 h-4" />
                                  {t("modelCustomerProfile.addFriend")}

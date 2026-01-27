@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Form, useNavigate } from "react-router";
-import { MapPin, MessageSquareText, Heart, X, UserPlus } from "lucide-react";
+import { MapPin, MessageSquareText, Heart, X, UserPlus, UserCheck } from "lucide-react";
 
 // swiper imports
 import "swiper/css";
@@ -70,41 +70,31 @@ export default function CustomerCard({ customer, modelLatitude, modelLongitude }
                 <div className="absolute top-3 right-3 flex gap-2 z-10">
                     <Form method="post">
                         <input type="hidden" name="customerId" value={customer.id} />
-                        {customer?.isContact ?
-                            <div className="flex gap-2">
-                                {customer?.whatsapp && (
-                                    <button
-                                        type="button"
-                                        className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                        onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
-                                    >
-                                        <MessageSquareText className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-                            :
-                            <button
-                                type="submit"
-                                name="isFriend"
-                                value="true"
-                                className="cursor-pointer bg-white/20 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                            >
-                                <UserPlus className="w-4 h-4" />
-                            </button>
-                        }
-                    </Form>
-
-                    <Form method="post">
-                        <input type="hidden" name="pass" value="PASS" id="passInput" />
-                        <input type="hidden" name="customerId" value={customer.id} />
-                        {customer.model_interactions?.some((interaction: any) => interaction.action === "LIKE") ? "" :
-                            <button
-                                type="submit"
-                                className={`${customer.model_interactions?.some((interaction: any) => interaction.action === "PASS") ? "bg-gray-600 text-white" : "sm:opacity-0 group-hover:opacity-100 hover:bg-gray-500 hover:text-white"} cursor-pointer bg-white/20 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full`}
-                            >
-                                <X size={14} />
-                            </button>
-                        }
+                        <div className="flex gap-2">
+                            {customer?.whatsapp && (
+                                <button
+                                    type="button"
+                                    className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
+                                    onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                                >
+                                    <MessageSquareText className="w-4 h-4" />
+                                </button>
+                            )}
+                            {customer?.isContact ? (
+                                <div className="sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-green-100 text-green-500">
+                                    <UserCheck className="w-4 h-4" />
+                                </div>
+                            ) : (
+                                <button
+                                    type="submit"
+                                    name="isFriend"
+                                    value="true"
+                                    className="cursor-pointer sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-white/20 hover:bg-rose-500 hover:text-white"
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
                     </Form>
 
                     <Form method="post">

@@ -10,6 +10,7 @@ import {
     Minimize,
     Maximize,
     UserPlus,
+    UserCheck,
     ChevronLeft,
     ChevronRight,
     MessageSquareText,
@@ -58,6 +59,40 @@ interface DiscoverPageProps {
     loaderData: LoaderReturn;
 }
 
+// Seeded random number generator for consistent pseudo-random shuffling
+function seededRandom(seed: number) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+// Fisher-Yates shuffle with seed for consistent randomization per customer
+function shuffleWithSeed<T>(array: T[], seed: number): T[] {
+    const shuffled = [...array];
+    let currentSeed = seed;
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        currentSeed = (currentSeed * 9301 + 49297) % 233280;
+        const j = Math.floor(seededRandom(currentSeed) * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+}
+
+// Generate seed from customer ID and current timestamp
+function generateSeed(customerId: string): number {
+    // Convert customer ID to number
+    let customerIdNum = 0;
+    for (let i = 0; i < customerId.length; i++) {
+        customerIdNum += customerId.charCodeAt(i) * (i + 1);
+    }
+
+    // Use current timestamp for randomization on every page visit
+    const timestamp = Date.now();
+
+    return customerIdNum + timestamp;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { hasActiveSubscription } = await import("~/services/package.server");
@@ -95,9 +130,16 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Get nearby models with same filters
     const nearbyModels = await getNearbyModels(customerId as string, filters);
 
+    // Generate seed based on customer ID and current hour
+    const seed = generateSeed(customerId);
+
+    // Shuffle both arrays with the same seed for consistent personalized order
+    const shuffledModels = shuffleWithSeed(models, seed);
+    const shuffledNearbyModels = shuffleWithSeed(nearbyModels, seed);
+
     return {
-        models,
-        nearbyModels,
+        models: shuffledModels,
+        nearbyModels: shuffledNearbyModels,
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
@@ -855,29 +897,30 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 <input type="hidden" name="isFriend" value="false" id="isFriend" />
 
                                                 <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
-                                                    {selectedProfile?.isContact ?
-                                                        <>
-                                                            {selectedProfile?.whatsapp && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                                    onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
-                                                                >
-                                                                    <MessageSquareText className="w-4 h-4" />
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                        :
+                                                    {selectedProfile?.whatsapp && (
+                                                        <button
+                                                            type="button"
+                                                            className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                        >
+                                                            <MessageSquareText className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {selectedProfile?.isContact ? (
+                                                        <div className="p-2 rounded-full bg-green-100 text-green-500">
+                                                            <UserCheck className="w-4 h-4" />
+                                                        </div>
+                                                    ) : (
                                                         <button
                                                             type="submit"
-                                                            className="cursor-pointer bg-gray-700 text-gray-300 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors"
+                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
                                                             onClick={() => {
                                                                 (document.getElementById("isFriend") as HTMLInputElement).value = "true";
                                                             }}
                                                         >
                                                             <UserPlus className="w-4 h-4" />
                                                         </button>
-                                                    }
+                                                    )}
                                                     <button
                                                         type="submit"
                                                         className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
@@ -888,42 +931,33 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     >
                                                         <Heart className="w-4 h-4" />
                                                     </button>
-                                                    <button
-                                                        type="submit"
-                                                        className="cursor-pointer bg-gray-700 p-2 rounded-full text-white transition-colors"
-                                                        onClick={() => {
-                                                            (document.getElementById("likeInput") as HTMLInputElement).value = "false";
-                                                            (document.getElementById("passInput") as HTMLInputElement).value = "true";
-                                                        }}
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
                                                 </div>
 
                                                 <div className="absolute bottom-4 right-4 hidden sm:flex space-x-3">
-                                                    {selectedProfile.isContact ?
-                                                        <>
-                                                            {selectedProfile?.whatsapp && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                                    onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
-                                                                >
-                                                                    <MessageSquareText className="w-4 h-4" />
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                        :
+                                                    {selectedProfile?.whatsapp && (
+                                                        <button
+                                                            type="button"
+                                                            className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                        >
+                                                            <MessageSquareText className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {selectedProfile?.isContact ? (
+                                                        <div className="p-2 rounded-full bg-green-100 text-green-500">
+                                                            <UserCheck className="w-4 h-4" />
+                                                        </div>
+                                                    ) : (
                                                         <button
                                                             type="submit"
-                                                            className="cursor-pointer bg-gray-700 text-gray-300 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors"
+                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
                                                             onClick={() => {
                                                                 (document.getElementById("isFriend") as HTMLInputElement).value = "true";
                                                             }}
                                                         >
                                                             <UserPlus className="w-4 h-4" />
                                                         </button>
-                                                    }
+                                                    )}
                                                     <button
                                                         type="submit"
                                                         className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
@@ -933,16 +967,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         }}
                                                     >
                                                         <Heart className={`w-4 h-4 ${selectedProfile.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
-                                                    </button>
-                                                    <button
-                                                        type="submit"
-                                                        className="cursor-pointer bg-gray-700 p-2 rounded-full text-gray-300 hover:text-rose-500 hover:bg-rose-200 transition-colors"
-                                                        onClick={() => {
-                                                            (document.getElementById("likeInput") as HTMLInputElement).value = "false";
-                                                            (document.getElementById("passInput") as HTMLInputElement).value = "true";
-                                                        }}
-                                                    >
-                                                        <X className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </Form>
@@ -981,29 +1005,30 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <input type="hidden" name="isFriend" value="false" id="isFriend" />
 
                                             <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
-                                                {selectedProfile?.isContact ?
-                                                    <>
-                                                        {selectedProfile?.whatsapp && (
-                                                            <button
-                                                                type="button"
-                                                                className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                                onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
-                                                            >
-                                                                <MessageSquareText className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                    :
+                                                {selectedProfile?.whatsapp && (
+                                                    <button
+                                                        type="button"
+                                                        className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                    >
+                                                        <MessageSquareText className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {selectedProfile?.isContact ? (
+                                                    <div className="p-2 rounded-full bg-green-100 text-green-500">
+                                                        <UserCheck className="w-4 h-4" />
+                                                    </div>
+                                                ) : (
                                                     <button
                                                         type="submit"
-                                                        className="cursor-pointer bg-gray-700 text-gray-300 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors"
+                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
                                                         onClick={() => {
                                                             (document.getElementById("isFriend") as HTMLInputElement).value = "true";
                                                         }}
                                                     >
                                                         <UserPlus className="w-4 h-4" />
                                                     </button>
-                                                }
+                                                )}
                                                 <button
                                                     type="submit"
                                                     className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
@@ -1014,42 +1039,33 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 >
                                                     <Heart className="w-4 h-4" />
                                                 </button>
-                                                <button
-                                                    type="submit"
-                                                    className="cursor-pointer bg-gray-700 p-2 rounded-full text-white transition-colors"
-                                                    onClick={() => {
-                                                        (document.getElementById("likeInput") as HTMLInputElement).value = "false";
-                                                        (document.getElementById("passInput") as HTMLInputElement).value = "true";
-                                                    }}
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
                                             </div>
 
                                             <div className="absolute bottom-4 right-4 hidden sm:flex space-x-3">
-                                                {selectedProfile.isContact ?
-                                                    <>
-                                                        {selectedProfile?.whatsapp && (
-                                                            <button
-                                                                type="button"
-                                                                className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                                onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
-                                                            >
-                                                                <MessageSquareText className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                    :
+                                                {selectedProfile?.whatsapp && (
+                                                    <button
+                                                        type="button"
+                                                        className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                    >
+                                                        <MessageSquareText className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {selectedProfile?.isContact ? (
+                                                    <div className="p-2 rounded-full bg-green-100 text-green-500">
+                                                        <UserCheck className="w-4 h-4" />
+                                                    </div>
+                                                ) : (
                                                     <button
                                                         type="submit"
-                                                        className="cursor-pointer bg-gray-700 text-gray-300 p-2 rounded-full hover:bg-rose-100 hover:text-rose-500 transition-colors"
+                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
                                                         onClick={() => {
                                                             (document.getElementById("isFriend") as HTMLInputElement).value = "true";
                                                         }}
                                                     >
                                                         <UserPlus className="w-4 h-4" />
                                                     </button>
-                                                }
+                                                )}
                                                 <button
                                                     type="submit"
                                                     className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
@@ -1059,16 +1075,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     }}
                                                 >
                                                     <Heart className={`w-4 h-4 ${selectedProfile.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
-                                                </button>
-                                                <button
-                                                    type="submit"
-                                                    className="cursor-pointer bg-gray-700 p-2 rounded-full text-gray-300 hover:text-rose-500 hover:bg-rose-200 transition-colors"
-                                                    onClick={() => {
-                                                        (document.getElementById("likeInput") as HTMLInputElement).value = "false";
-                                                        (document.getElementById("passInput") as HTMLInputElement).value = "true";
-                                                    }}
-                                                >
-                                                    <X className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </Form>
@@ -1157,31 +1163,34 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             >
                                 <Form method="post">
                                     <input type="hidden" name="modelId" value={model.id} />
-                                    {model?.isContact ?
-                                        <>
-                                            {model?.whatsapp && (
-                                                <button
-                                                    type="button"
-                                                    className="absolute top-4 right-4 rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                                >
-                                                    <MessageSquareText className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </>
-                                        :
-                                        <button
-                                            type="submit"
-                                            name="isFriend"
-                                            value="true"
-                                            className="absolute top-4 right-4 rounded-lg py-1.5 px-2 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                            onClick={() => {
-                                                (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                            }}
-                                        >
-                                            <UserPlus className="w-4 h-4" />
-                                        </button>
-                                    }
+                                    <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                                        {model?.whatsapp && (
+                                            <button
+                                                type="button"
+                                                className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                            >
+                                                <MessageSquareText className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        {model?.isContact ? (
+                                            <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                                <UserCheck className="w-4 h-4" />
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="submit"
+                                                name="isFriend"
+                                                value="true"
+                                                className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
+                                                onClick={() => {
+                                                    (document.getElementById("isFriend") as HTMLInputElement).value = "true";
+                                                }}
+                                            >
+                                                <UserPlus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </Form>
                                 <div className="relative h-full overflow-hidden">
                                     <div
@@ -1355,28 +1364,31 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             <Form method="post">
                                 <input type="hidden" name="modelId" value={model.id} />
                                 <input type="hidden" name="isFriend" value="true" id="isFriend" />
-                                {model?.isContact ?
-                                    <>
-                                        {model?.whatsapp && (
-                                            <button
-                                                type="button"
-                                                className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                            >
-                                                <MessageSquareText className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </>
-                                    :
-                                    <button
-                                        type="submit"
-                                        name="isFriend"
-                                        value="true"
-                                        className="rounded-lg py-1.5 px-2 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                    >
-                                        <UserPlus className="w-4 h-4" />
-                                    </button>
-                                }
+                                <div className="flex space-x-2">
+                                    {model?.whatsapp && (
+                                        <button
+                                            type="button"
+                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
+                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                        >
+                                            <MessageSquareText className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {model?.isContact ? (
+                                        <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
+                                            <UserCheck className="w-4 h-4" />
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="submit"
+                                            name="isFriend"
+                                            value="true"
+                                            className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
+                                        >
+                                            <UserPlus className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </Form>
                         </div>
                     ))}

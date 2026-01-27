@@ -231,10 +231,8 @@ export default function ModelRegister() {
   const [profileError, setProfileError] = useState<string>("");
   const [isCompressing, setIsCompressing] = useState(false);
 
-  // Password validation checks
+  // Password validation check - only length
   const passwordChecks = {
-    hasUpperAndLower: /[a-z]/.test(password) && /[A-Z]/.test(password),
-    hasNumber: /\d/.test(password),
     isLongEnough: password.length >= 8,
   };
 
@@ -545,28 +543,17 @@ export default function ModelRegister() {
                 </div>
                 {/* Password validation checklist */}
                 <div className="mt-2 space-y-1">
-                  <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.hasUpperAndLower ? 'text-green-600' : 'text-red-500'}`}>
-                    {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.hasUpperAndLower ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                    <span>{t("modelAuth.register.passwordUpperLower")}</span>
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
-                    {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.hasNumber ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                    <span>{t("modelAuth.register.passwordNumber")}</span>
-                  </div>
                   <div className={`flex items-center gap-1 text-xs ${password.length === 0 ? 'text-gray-400' : passwordChecks.isLongEnough ? 'text-green-600' : 'text-red-500'}`}>
                     {password.length === 0 ? <X className="w-3 h-3" /> : passwordChecks.isLongEnough ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                     <span>{t("modelAuth.register.passwordLength")}</span>
                   </div>
-                  <p className="text-sm text-yellow-500 mt-2">
-                    ({t("modelAuth.register.passwordRequirementsNote")})
-                  </p>
                 </div>
               </div>
 
               <div className="mt-4 sm:mt-8 md:col-span-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting || isCompressing || !passwordChecks.hasUpperAndLower || !passwordChecks.hasNumber || !passwordChecks.isLongEnough}
+                  disabled={isSubmitting || isCompressing || !passwordChecks.isLongEnough}
                   className="cursor-pointer w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {(isSubmitting || isCompressing) && <Loader className="w-4 h-4 animate-spin" />}
