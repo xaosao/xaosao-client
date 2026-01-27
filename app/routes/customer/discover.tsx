@@ -551,7 +551,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
                 <div className="flex items-center justify-center gap-2">
                     <Loader className="w-8 h-8 text-rose-500 animate-spin" />
-                    {/* <p className="text-rose-600">{isLoading ? t('discover.loadingResults') : t('discover.processing')}</p> */}
                 </div>
             </div>
         );
@@ -569,7 +568,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             {t("modelDashboard.subtitle")}
                         </p>
                     </div>
-                   
+
                     <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                         <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
                             <SlidersHorizontal className="w-4 h-4" />
@@ -790,7 +789,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             onClick={() => handleProfileClick(data.id)}
                         >
                             <div
-                                className={`text-center overflow-hidden space-y-3 transition-colors ${selectedProfile?.id === data.id
+                                className={`flex items-center justify-center flex-col overflow-hidden space-y-3 transition-colors ${selectedProfile?.id === data.id
                                     ? "text-rose-500 border-b-2 border-rose-500 pb-1"
                                     : ""
                                     }`}
@@ -813,7 +812,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-xs">{data.firstName}&nbsp;{data.lastName}</p>
+                                <p className="text-xs">{data.firstName}</p>
                             </div>
                         </div>
                     ))}

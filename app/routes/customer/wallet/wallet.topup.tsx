@@ -48,6 +48,11 @@ export async function action({ request }: Route.ActionArgs) {
             await validateTopUpInputs(transactionData as ITransactionCredentials);
             const res = await topUpWallet(transactionData.paymentSlip as string, Number(amount), customerId);
             if (res.id) {
+                // Check for return URL in the form data
+                const returnUrl = formData.get("return_url") as string;
+                if (returnUrl) {
+                    return redirect(`${returnUrl}?toastMessage=Deposit+success.+Your+transaction+is+under+review!&toastType=success`);
+                }
                 return redirect(`/customer/wallets?toastMessage=Deposit+success.+Your+transaction+is+under+review!&toastType=success`);
             }
 
@@ -94,6 +99,15 @@ export default function WalletTopUpPage() {
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
     const [previewSlip, setPreviewSlip] = React.useState<string | null>(null);
     const [isCompressing, setIsCompressing] = React.useState<boolean>(false);
+    const [returnUrl, setReturnUrl] = React.useState<string>("");
+
+    // Get return URL from sessionStorage on mount
+    React.useEffect(() => {
+        const storedReturnUrl = sessionStorage.getItem("topup_return_url");
+        if (storedReturnUrl) {
+            setReturnUrl(storedReturnUrl);
+        }
+    }, []);
 
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST";
@@ -121,7 +135,14 @@ export default function WalletTopUpPage() {
     ];
 
     function closeHandler() {
-        navigate("/customer/wallets");
+        // Check for stored return URL
+        const returnUrl = sessionStorage.getItem("topup_return_url");
+        if (returnUrl) {
+            sessionStorage.removeItem("topup_return_url");
+            navigate(returnUrl);
+        } else {
+            navigate("/customer/wallets");
+        }
     }
 
     const downloadQR = () => {
@@ -546,6 +567,9 @@ export default function WalletTopUpPage() {
     return (
         <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-2 sm:px-4 sm:p-0 border">
             <Form method="post" encType="multipart/form-data" className="space-y-4 mt-10 sm:mt-0">
+                {/* Hidden field for return URL */}
+                {returnUrl && <input type="hidden" name="return_url" value={returnUrl} />}
+
                 <div className="space-y-1">
                     <h1 className="text-lg text-gray-800">
                         {step === 1 && t('wallet.topup.steps.amount')}

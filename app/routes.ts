@@ -204,6 +204,7 @@ export default [
     route("packages", "./routes/customer/packages/package.tsx"),
     route("payment/:id", "./routes/customer/packages/payment.tsx"),
     route("subscription-history", "./routes/customer/packages/history.tsx"),
+    route("subscribe-trial", "./routes/customer/subscribe-trial.ts"),
 
     // Notifications
     route("notifications", "./routes/customer/notifications/notifications.tsx"),

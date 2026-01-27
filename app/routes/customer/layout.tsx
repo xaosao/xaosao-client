@@ -18,6 +18,8 @@ import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { getCustomerUnreadCount, getCustomerNotifications } from "~/services/notification.server";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
+import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -25,6 +27,11 @@ interface LoaderReturn {
     initialNotifications: Notification[];
     hasActiveSubscription: boolean;
     hasEnabledNotifications: boolean;
+    trialPackage: {
+        id: string;
+        price: number;
+    } | null;
+    customerBalance: number;
 }
 
 interface TransactionProps {
@@ -34,12 +41,21 @@ interface TransactionProps {
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { hasActiveSubscription } = await import("~/services/package.server");
+    const { prisma } = await import("~/services/database.server");
 
-    const [customerData, unreadNotifications, notifications, hasSubscription] = await Promise.all([
+    const [customerData, unreadNotifications, notifications, hasSubscription, trialPackage, wallet] = await Promise.all([
         getCustomerProfile(customerId),
         getCustomerUnreadCount(customerId),
         getCustomerNotifications(customerId, { limit: 10 }),
         hasActiveSubscription(customerId),
+        prisma.subscription_plan.findFirst({
+            where: { name: "24-Hour Trial", status: "active" },
+            select: { id: true, price: true },
+        }),
+        prisma.wallet.findFirst({
+            where: { customerId },
+            select: { totalBalance: true },
+        }),
     ]);
 
     const initialNotifications: Notification[] = notifications.map((n) => ({
@@ -55,21 +71,46 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Check if customer has enabled notifications (either push or SMS)
     const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
 
-    return { customerData, unreadNotifications, initialNotifications, hasActiveSubscription: hasSubscription, hasEnabledNotifications };
+    return {
+        customerData,
+        unreadNotifications,
+        initialNotifications,
+        hasActiveSubscription: hasSubscription,
+        hasEnabledNotifications,
+        trialPackage,
+        customerBalance: wallet?.totalBalance || 0,
+    };
 }
 
 export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasEnabledNotifications } = loaderData;
+    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasEnabledNotifications, trialPackage, customerBalance } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Only show modal on mount when on dashboard page
+    const isDashboardPage = location.pathname === "/customer";
+
+    // Subscription modal management
+    const {
+        showSubscriptionModal,
+        openSubscriptionModal,
+        closeSubscriptionModal,
+        handleSubscribe,
+    } = useSubscriptionCheck({
+        hasActiveSubscription,
+        customerBalance,
+        trialPrice: trialPackage?.price || 10000,
+        trialPlanId: trialPackage?.id || "",
+        showOnMount: isDashboardPage, // Only show on mount when on dashboard
+    });
 
     // Handler for chat navigation with subscription check
     const handleChatNavigation = (e: React.MouseEvent, url: string) => {
         if (url.includes("realtime-chat") || url.includes("chat")) {
             if (!hasActiveSubscription) {
                 e.preventDefault();
-                navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+chat+with+models&toastType=warning");
+                openSubscriptionModal();
             }
         }
     };
@@ -230,6 +271,18 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
             {/* Push Notification Permission Prompt */}
             <PushNotificationPrompt userType="customer" hasEnabledNotifications={hasEnabledNotifications} />
+
+            {/* Subscription Trial Modal */}
+            {trialPackage && (
+                <SubscriptionModal
+                    isOpen={showSubscriptionModal}
+                    onClose={closeSubscriptionModal}
+                    customerBalance={customerBalance}
+                    trialPrice={trialPackage.price}
+                    trialPlanId={trialPackage.id}
+                    onSubscribe={handleSubscribe}
+                />
+            )}
         </div>
     );
 }

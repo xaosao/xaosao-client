@@ -144,7 +144,7 @@ export async function action({
 export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const navigate = useNavigate()
     const navigation = useNavigation()
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
     const { model, hasActiveSubscription } = loaderData
     const images = model.Images
@@ -163,7 +163,12 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     // Handler for book service button click with subscription check
     const handleBookClick = (modelId: string, serviceId: string) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+book+services&toastType=warning");
+            // Store booking intent in sessionStorage for post-subscription redirect
+            sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId }));
+            // Show subscription modal by setting search param (preserve existing params)
+            const newParams = new URLSearchParams(searchParams);
+            newParams.set("showSubscription", "true");
+            setSearchParams(newParams);
         } else {
             navigate(`/customer/book-service/${modelId}/${serviceId}`);
         }

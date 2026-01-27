@@ -10,4 +10,10 @@ export default defineConfig({
     host: true, // Required for ngrok to connect
     allowedHosts: [".ngrok-free.app", ".ngrok-free.dev", ".ngrok.io"],
   },
+  optimizeDeps: {
+    exclude: ['telbiz', 'web-push', 'nodemailer'],
+  },
+  ssr: {
+    external: ['telbiz', 'web-push', 'nodemailer'],
+  },
 });

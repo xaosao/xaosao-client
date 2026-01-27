@@ -773,6 +773,48 @@
       "cancel": "Cancel",
       "delete": "Delete",
       "deleting": "Deleting..."
+    },
+    "topUp": {
+      "title": "Top Up Wallet",
+      "subtitle": "Add money to your wallet",
+      "currentBalance": "Current Balance",
+      "amount": "Top-up Amount",
+      "minAmount": "Minimum top-up: 1,000 KIP",
+      "quickAmounts": "Quick Select",
+      "instructions": "Payment Instructions",
+      "step1": "Transfer to our bank account",
+      "step2": "Upload payment slip below",
+      "step3": "Wait for admin approval",
+      "paymentSlip": "Payment Slip",
+      "clickToUpload": "Click to upload",
+      "afterApproval": "After approval, your balance will be:",
+      "submit": "Submit Top-Up Request",
+      "submitting": "Submitting...",
+      "cancel": "Cancel",
+      "slipUploaded": "Payment slip uploaded successfully",
+      "removeSlip": "Remove and upload different slip"
+    }
+  },
+  "subscription": {
+    "trial": {
+      "title": "Try 24-Hour Access",
+      "subtitle": "Unlock unlimited features for 24 hours",
+      "price": "Trial Price",
+      "duration": "Duration",
+      "hours": "Hours",
+      "benefits": "What You Get:",
+      "benefit1": "Unlimited Chat",
+      "benefit1Desc": "Chat with any model without restrictions",
+      "benefit2": "Unlimited Bookings",
+      "benefit2Desc": "Book as many dates as you want",
+      "yourBalance": "Your Balance",
+      "needMore": "Need",
+      "viewAllPackages": "View all subscription packages →",
+      "subscribe": "Subscribe Now",
+      "subscribing": "Subscribing...",
+      "topUp": "Top Up Wallet",
+      "maybeLater": "Maybe Later",
+      "close": "Close"
     }
   },
   "settings": {
@@ -1718,19 +1760,6 @@
     "notifications": {
       "title": "Notification Preferences",
       "subtitle": "Choose how you want to receive notifications"
-    }
-  },
-  "settings": {
-    "notification": {
-      "push": "Push Notifications",
-      "pushDesc": "Receive notifications on your device",
-      "sms": "SMS Notifications",
-      "smsDesc": "Receive important alerts via SMS"
-    },
-    "common": {
-      "save": "Save Changes",
-      "saving": "Saving...",
-      "logout": "Logout"
     }
   },
   "modelProfile": {
