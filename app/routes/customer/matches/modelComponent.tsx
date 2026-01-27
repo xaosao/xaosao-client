@@ -18,16 +18,21 @@ interface ModelCardProps {
     customerLatitude?: number;
     customerLongitude?: number;
     hasActiveSubscription?: boolean;
+    onOpenSubscriptionModal?: () => void;
 }
 
-export default function ModelCard({ model, customerLatitude, customerLongitude, hasActiveSubscription }: ModelCardProps) {
+export default function ModelCard({ model, customerLatitude, customerLongitude, hasActiveSubscription, onOpenSubscriptionModal }: ModelCardProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
+            if (onOpenSubscriptionModal) {
+                onOpenSubscriptionModal();
+            } else {
+                navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
+            }
         } else {
             window.open(`https://wa.me/${whatsappNumber}`);
         }

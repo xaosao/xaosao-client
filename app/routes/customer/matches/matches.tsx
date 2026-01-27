@@ -39,6 +39,8 @@ import {
 } from "~/services/model.server";
 import { capitalize } from "~/utils/functions/textFormat";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
     foryouModels: IForYouModelResponse[];
@@ -52,6 +54,11 @@ interface LoaderReturn {
     customerLatitude: number;
     customerLongitude: number;
     hasActiveSubscription: boolean;
+    trialPackage: {
+        id: string;
+        price: number;
+    } | null;
+    customerBalance: number;
 }
 
 interface ForyouModelsProps {
@@ -86,12 +93,21 @@ export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { getCustomerProfile } = await import("~/services/profile.server");
     const { hasActiveSubscription } = await import("~/services/package.server");
+    const { prisma } = await import("~/services/database.server");
     const url = new URL(request.url);
 
-    // Get customer's current GPS location from database and subscription status
-    const [customer, hasSubscription] = await Promise.all([
+    // Get customer's current GPS location from database, subscription status, trial package, and wallet balance
+    const [customer, hasSubscription, trialPackage, wallet] = await Promise.all([
         getCustomerProfile(customerId),
         hasActiveSubscription(customerId),
+        prisma.subscription_plan.findFirst({
+            where: { name: "24-Hour Trial", status: "active" },
+            select: { id: true, price: true },
+        }),
+        prisma.wallet.findFirst({
+            where: { customerId },
+            select: { totalBalance: true },
+        }),
     ]);
     const customerLatitude = customer?.latitude || 0;
     const customerLongitude = customer?.longitude || 0;
@@ -171,6 +187,8 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            trialPackage,
+            customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
     }
 
@@ -190,6 +208,8 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            trialPackage,
+            customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
     }
 
@@ -211,6 +231,8 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            trialPackage,
+            customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
     }
 
@@ -230,6 +252,8 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            trialPackage,
+            customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
     }
 
@@ -245,6 +269,8 @@ export const loader: LoaderFunction = async ({ request }) => {
         customerLatitude,
         customerLongitude,
         hasActiveSubscription: hasSubscription,
+        trialPackage,
+        customerBalance: wallet?.totalBalance || 0,
     } as LoaderReturn;
 };
 
@@ -343,6 +369,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         customerLatitude,
         customerLongitude,
         hasActiveSubscription,
+        trialPackage,
+        customerBalance,
     } = loaderData;
     const actionData = useActionData<typeof action>();
 
@@ -351,6 +379,20 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         "foryou"
     );
     const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+    // Subscription modal management
+    const {
+        showSubscriptionModal,
+        openSubscriptionModal,
+        closeSubscriptionModal,
+        handleSubscribe,
+    } = useSubscriptionCheck({
+        hasActiveSubscription,
+        customerBalance,
+        trialPrice: trialPackage?.price || 10000,
+        trialPlanId: trialPackage?.id || "",
+        showOnMount: false,
+    });
 
     // Show submission overlay while a POST form is being processed
     const isSubmitting =
@@ -717,6 +759,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
                                             hasActiveSubscription={hasActiveSubscription}
+                                            onOpenSubscriptionModal={openSubscriptionModal}
                                         />
                                     ))}
                                 </div>
@@ -757,6 +800,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
                                             hasActiveSubscription={hasActiveSubscription}
+                                            onOpenSubscriptionModal={openSubscriptionModal}
                                         />
                                     ))}
                                 </div>
@@ -798,6 +842,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
                                             hasActiveSubscription={hasActiveSubscription}
+                                            onOpenSubscriptionModal={openSubscriptionModal}
                                         />
                                     ))}
                                 </div>
@@ -839,6 +884,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                             customerLatitude={customerLatitude}
                                             customerLongitude={customerLongitude}
                                             hasActiveSubscription={hasActiveSubscription}
+                                            onOpenSubscriptionModal={openSubscriptionModal}
                                         />
                                     ))}
                                 </div>
@@ -865,6 +911,18 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            {/* Subscription Trial Modal */}
+            {trialPackage && (
+                <SubscriptionModal
+                    isOpen={showSubscriptionModal}
+                    onClose={closeSubscriptionModal}
+                    customerBalance={customerBalance}
+                    trialPrice={trialPackage.price}
+                    trialPlanId={trialPackage.id}
+                    onSubscribe={handleSubscribe}
+                />
+            )}
         </div>
     );
 }

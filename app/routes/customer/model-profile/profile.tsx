@@ -2,7 +2,7 @@ import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
-import { BadgeCheck, UserPlus, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send } from 'lucide-react';
+import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle } from 'lucide-react';
 
 // components
 import {
@@ -206,12 +206,16 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         }
     };
 
-    // Handler for book service button click with subscription check
-    const handleBookClick = (modelId: string, serviceId: string) => {
+    // Handler for book service button click with subscription and balance check
+    const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number) => {
         if (!hasActiveSubscription) {
             // Store booking intent in sessionStorage for post-subscription redirect
             sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId }));
             openSubscriptionModal();
+        } else if (customerBalance < servicePrice) {
+            // Show insufficient balance modal
+            setInsufficientBalanceData({ servicePrice, serviceName });
+            setShowInsufficientBalanceModal(true);
         } else {
             navigate(`/customer/book-service/${modelId}/${serviceId}`);
         }
@@ -221,6 +225,13 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
     const [touchEndX, setTouchEndX] = React.useState<number | null>(null);
     const [showProfileFullscreen, setShowProfileFullscreen] = React.useState(false);
+
+    // Insufficient balance modal state
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = React.useState(false);
+    const [insufficientBalanceData, setInsufficientBalanceData] = React.useState<{
+        servicePrice: number;
+        serviceName: string;
+    } | null>(null);
 
     // Review state
     const [reviewRating, setReviewRating] = React.useState<number>(0);
@@ -333,33 +344,34 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         : <Heart />}
                                 </Button>
                             </Form>
-                            <Form method="post">
-                                <input type="hidden" name="modelId" value={model.id} />
-                                {model?.isContact ?
-                                    <>
-                                        {model?.whatsapp && (
-                                            <Button
-                                                size="sm"
-                                                type="button"
-                                                className="cursor-pointer block sm:hidden border border-rose-500 text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                            >
-                                                <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
-                                            </Button>
-                                        )}
-                                    </>
-                                    :
+                            {model?.whatsapp && (
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    className="cursor-pointer block sm:hidden border border-rose-500 text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                >
+                                    <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
+                                </Button>
+                            )}
+                            {model?.isContact ? (
+                                <div className="block sm:hidden rounded-md py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                    <UserCheck className="w-5 h-5" />
+                                </div>
+                            ) : (
+                                <Form method="post">
+                                    <input type="hidden" name="modelId" value={model.id} />
                                     <Button
                                         size="sm"
                                         type="submit"
                                         name="isFriend"
                                         value="true"
-                                        className="cursor-pointer bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 sm:block hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                        className="cursor-pointer block sm:hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
                                     >
                                         <UserPlus className="w-5 h-5 text-gray-500 cursor-pointer" />
                                     </Button>
-                                }
-                            </Form>
+                                </Form>
+                            )}
                         </div>
                         <div className="flex items-start gap-4">
                             <Forward className="w-6 h-6 text-gray-500 cursor-pointer" onClick={() => navigate(`/customer/user-profile-share/${model.id}`)} />
@@ -404,22 +416,24 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                             : t('profile.like')}
                                     </Button>
                                 </Form>
-                                <Form method="post">
-                                    <input type="hidden" name="modelId" value={model.id} />
-                                    {model?.isContact ?
-                                        <>
-                                            {model?.whatsapp && (
-                                                <Button
-                                                    size="sm"
-                                                    type="button"
-                                                    className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                                >
-                                                    {t('profile.message')}
-                                                </Button>
-                                            )}
-                                        </>
-                                        :
+                                {model?.whatsapp && (
+                                    <Button
+                                        size="sm"
+                                        type="button"
+                                        className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                    >
+                                        {t('profile.message')}
+                                    </Button>
+                                )}
+                                {model?.isContact ? (
+                                    <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
+                                        <UserCheck className="w-4 h-4" />
+                                        {t('profile.friend')}
+                                    </div>
+                                ) : (
+                                    <Form method="post">
+                                        <input type="hidden" name="modelId" value={model.id} />
                                         <Button
                                             size="sm"
                                             type="submit"
@@ -427,10 +441,10 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                             value="true"
                                             className="cursor-pointer hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 sm:block hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
                                         >
-                                            {t('profile.addFriend')}
+                                            <UserPlus className="w-4 h-4" />
                                         </Button>
-                                    }
-                                </Form>
+                                    </Form>
+                                )}
                                 <Button
                                     size="sm"
                                     type="button"
@@ -549,7 +563,13 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                             type="button"
                                                             variant="outline"
                                                             className="w-full hover:border hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500"
-                                                            onClick={() => handleBookClick(model.id, service.id)}
+                                                            onClick={() => {
+                                                                const serviceName = getServiceName(service.service.name);
+                                                                const servicePrice = service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0
+                                                                    ? Math.min(...service.model_service_variant.map(v => v.pricePerHour))
+                                                                    : Number(service.customHourlyRate || service.service.hourlyRate || service.customOneTimePrice || service.service.oneTimePrice || 0);
+                                                                handleBookClick(model.id, service.id, serviceName, servicePrice);
+                                                            }}
                                                         >
                                                             {t('profile.bookNow')}
                                                         </Button>
@@ -974,17 +994,114 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                     </div>
                 )}
 
-            {/* Subscription Trial Modal */}
-            {trialPackage && (
-                <SubscriptionModal
-                    isOpen={showSubscriptionModal}
-                    onClose={handleCloseSubscriptionModal}
-                    customerBalance={customerBalance}
-                    trialPrice={trialPackage.price}
-                    trialPlanId={trialPackage.id}
-                    onSubscribe={handleSubscribe}
-                />
-            )}
+                {/* Subscription Trial Modal */}
+                {trialPackage && (
+                    <SubscriptionModal
+                        isOpen={showSubscriptionModal}
+                        onClose={handleCloseSubscriptionModal}
+                        customerBalance={customerBalance}
+                        trialPrice={trialPackage.price}
+                        trialPlanId={trialPackage.id}
+                        onSubscribe={handleSubscribe}
+                    />
+                )}
+
+                {/* Insufficient Balance Modal */}
+                {showInsufficientBalanceModal && insufficientBalanceData && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="w-full max-w-md bg-white rounded-lg shadow-2xl animate-in zoom-in duration-300 mx-4">
+                            <div className="relative p-6">
+                                <button
+                                    onClick={() => setShowInsufficientBalanceModal(false)}
+                                    className="absolute right-4 top-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                                    aria-label="Close"
+                                >
+                                    <X className="w-4 h-4 text-gray-500" />
+                                </button>
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-md font-bold text-gray-900">
+                                            {t("profile.insufficientBalance.title", { defaultValue: "Insufficient Balance" })}
+                                        </h2>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            {t("profile.insufficientBalance.subtitle", {
+                                                defaultValue: "You don't have enough balance to book this service",
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="px-6 space-y-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="text-sm text-gray-600">
+                                            {t("profile.insufficientBalance.service", { defaultValue: "Service" })}
+                                        </div>
+                                        <div className="font-semibold text-gray-900">
+                                            {insufficientBalanceData.serviceName}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="text-sm text-gray-600">
+                                            {t("profile.insufficientBalance.requiredAmount", { defaultValue: "Required Amount" })}
+                                        </div>
+                                        <div className="font-semibold text-rose-600">
+                                            {formatCurrency(insufficientBalanceData.servicePrice)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm text-gray-600">
+                                            {t("profile.insufficientBalance.yourBalance", { defaultValue: "Your Balance" })}
+                                        </div>
+                                        <div className="font-semibold text-amber-600">
+                                            {formatCurrency(customerBalance)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                                    <div className="flex items-center gap-3">
+                                        <Wallet className="w-5 h-5 text-rose-600" />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-rose-900">
+                                                {t("profile.insufficientBalance.needMore", { defaultValue: "You need" })}
+                                            </p>
+                                            <p className="text-md font-bold text-rose-600">
+                                                +{formatCurrency(insufficientBalanceData.servicePrice - customerBalance)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 p-6">
+                                <Button
+                                    onClick={() => setShowInsufficientBalanceModal(false)}
+                                    variant="outline"
+                                    className="w-auto"
+                                >
+                                    {t("profile.insufficientBalance.close", { defaultValue: "Close" })}
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        // Store return URL for after top-up
+                                        sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`);
+                                        navigate("/customer/wallet-topup");
+                                        setShowInsufficientBalanceModal(false);
+                                    }}
+                                    className="w-auto bg-rose-500 hover:bg-rose-600 text-white"
+                                >
+                                    <CreditCard className="w-4 h-4" />
+                                    {t("profile.insufficientBalance.topUp", { defaultValue: "Top Up" })}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div >
     );

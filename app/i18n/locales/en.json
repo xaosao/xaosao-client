@@ -1058,7 +1058,18 @@
     "noServicesDesc": "It looks like this model does not have any active services at the moment.",
     "noPhotos": "No Photos Yet",
     "noPhotosDesc": "This model has not shared any images so far. Come back soon to see their latest gallery!",
-    "clickToClose": "Click anywhere to close"
+    "clickToClose": "Click anywhere to close",
+    "friend": "Friend",
+    "insufficientBalance": {
+      "title": "Insufficient Balance",
+      "subtitle": "You don't have enough balance to book this service",
+      "service": "Service",
+      "requiredAmount": "Required Amount",
+      "yourBalance": "Your Balance",
+      "needMore": "You need",
+      "close": "Close",
+      "topUp": "Top Up"
+    }
   },
   "profileEdit": {
     "loading": "Loading...",
