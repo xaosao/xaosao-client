@@ -340,7 +340,7 @@ export default function ServiceBooking() {
                                        onClick={() => setIsStartDatePopoverOpen(false)}
                                        className="w-full bg-rose-500 hover:bg-rose-600 text-white"
                                     >
-                                       {t('profileBook.close', { defaultValue: 'Close' })}
+                                       {t('profileBook.confirm', { defaultValue: 'Confirm' })}
                                     </Button>
                                  </div>
                               </PopoverContent>
@@ -411,7 +411,7 @@ export default function ServiceBooking() {
                                           onClick={() => setIsEndDatePopoverOpen(false)}
                                           className="w-full bg-rose-500 hover:bg-rose-600 text-white"
                                        >
-                                          {t('profileBook.close', { defaultValue: 'Close' })}
+                                          {t('profileBook.confirm', { defaultValue: 'Confirm' })}
                                        </Button>
                                     </div>
                                  </PopoverContent>

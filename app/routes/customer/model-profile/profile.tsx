@@ -31,10 +31,17 @@ import type { ISinglemodelProfileResponse, IReviewData } from '~/interfaces';
 import { getUserTokenFromSession, requireUserSession } from '~/services/auths.server';
 import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative } from '~/utils';
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
+import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
     hasActiveSubscription: boolean
+    trialPackage: {
+        id: string;
+        price: number;
+    } | null;
+    customerBalance: number;
 }
 
 interface ProfilePageProps {
@@ -45,14 +52,23 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     const customerId = await requireUserSession(request)
     const modelId = params.userId as string
     const { hasActiveSubscription } = await import("~/services/package.server");
+    const { prisma } = await import("~/services/database.server");
     const model = await getModelProfile(modelId, customerId)
 
-    // Fetch review data
-    const [reviewsResult, canReviewResult, customerReview, hasSubscription] = await Promise.all([
+    // Fetch review data, subscription status, trial package, and wallet balance
+    const [reviewsResult, canReviewResult, customerReview, hasSubscription, trialPackage, wallet] = await Promise.all([
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
         getCustomerReviewForModel(customerId, modelId),
         hasActiveSubscription(customerId),
+        prisma.subscription_plan.findFirst({
+            where: { name: "24-Hour Trial", status: "active" },
+            select: { id: true, price: true },
+        }),
+        prisma.wallet.findFirst({
+            where: { customerId },
+            select: { totalBalance: true },
+        }),
     ]);
 
     const reviewData: IReviewData = {
@@ -65,7 +81,12 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         customerReview: customerReview as any
     };
 
-    return { model: { ...model, reviewData }, hasActiveSubscription: hasSubscription }
+    return {
+        model: { ...model, reviewData },
+        hasActiveSubscription: hasSubscription,
+        trialPackage,
+        customerBalance: wallet?.totalBalance || 0,
+    }
 }
 
 export async function action({
@@ -146,15 +167,40 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const navigation = useNavigation()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model, hasActiveSubscription } = loaderData
+    const { model, hasActiveSubscription, trialPackage, customerBalance } = loaderData
     const images = model.Images
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST"
 
+    // Check if we should show subscription modal from URL param
+    const shouldShowSubscriptionFromUrl = searchParams.get("showSubscription") === "true" && !hasActiveSubscription;
+
+    // Subscription modal management
+    const {
+        showSubscriptionModal,
+        openSubscriptionModal,
+        closeSubscriptionModal,
+        handleSubscribe,
+    } = useSubscriptionCheck({
+        hasActiveSubscription,
+        customerBalance,
+        trialPrice: trialPackage?.price || 10000,
+        trialPlanId: trialPackage?.id || "",
+        showOnMount: shouldShowSubscriptionFromUrl,
+    });
+
+    // Remove showSubscription param when modal closes
+    const handleCloseSubscriptionModal = () => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("showSubscription");
+        setSearchParams(newParams, { replace: true });
+        closeSubscriptionModal();
+    };
+
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
+            openSubscriptionModal();
         } else {
             window.open(`https://wa.me/${whatsappNumber}`);
         }
@@ -165,10 +211,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         if (!hasActiveSubscription) {
             // Store booking intent in sessionStorage for post-subscription redirect
             sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId }));
-            // Show subscription modal by setting search param (preserve existing params)
-            const newParams = new URLSearchParams(searchParams);
-            newParams.set("showSubscription", "true");
-            setSearchParams(newParams);
+            openSubscriptionModal();
         } else {
             navigate(`/customer/book-service/${modelId}/${serviceId}`);
         }
@@ -930,6 +973,18 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         <p className="absolute bottom-4 text-white/70 text-sm">{t('profile.clickToClose')}</p>
                     </div>
                 )}
+
+            {/* Subscription Trial Modal */}
+            {trialPackage && (
+                <SubscriptionModal
+                    isOpen={showSubscriptionModal}
+                    onClose={handleCloseSubscriptionModal}
+                    customerBalance={customerBalance}
+                    trialPrice={trialPackage.price}
+                    trialPlanId={trialPackage.id}
+                    onSubscribe={handleSubscribe}
+                />
+            )}
             </div>
         </div >
     );

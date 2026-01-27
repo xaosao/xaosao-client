@@ -46,6 +46,8 @@ import type { Gender, IAvailableStatus, IUserImages } from "~/interfaces/base";
 import { createCustomerInteraction, customerAddFriend } from "~/services/interaction.server";
 import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
 import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
+import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
     latitude: number;
@@ -53,6 +55,11 @@ interface LoaderReturn {
     models: ImodelsResponse[];
     hasActiveSubscription: boolean;
     nearbyModels: INearbyModelResponse[];
+    trialPackage: {
+        id: string;
+        price: number;
+    } | null;
+    customerBalance: number;
 }
 
 interface DiscoverPageProps {
@@ -97,6 +104,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { hasActiveSubscription } = await import("~/services/package.server");
     const { getCustomerProfile } = await import("~/services/profile.server");
+    const { prisma } = await import("~/services/database.server");
 
     // Get customer's current GPS location from database
     const customer = await getCustomerProfile(customerId);
@@ -105,6 +113,18 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     // Check if customer has active subscription
     const hasSubscription = await hasActiveSubscription(customerId);
+
+    // Get trial package and customer balance
+    const [trialPackage, wallet] = await Promise.all([
+        prisma.subscription_plan.findFirst({
+            where: { name: "24-Hour Trial", status: "active" },
+            select: { id: true, price: true },
+        }),
+        prisma.wallet.findFirst({
+            where: { customerId },
+            select: { totalBalance: true },
+        }),
+    ]);
 
     // Parse filter parameters from URL
     const url = new URL(request.url);
@@ -143,6 +163,8 @@ export const loader: LoaderFunction = async ({ request }) => {
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
+        trialPackage,
+        customerBalance: wallet?.totalBalance || 0,
     };
 };
 
@@ -197,16 +219,30 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, latitude, longitude, hasActiveSubscription } = loaderData;
+    const { models, nearbyModels, latitude, longitude, hasActiveSubscription, trialPackage, customerBalance } = loaderData;
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
     const isLoading = navigation.state === "loading";
 
+    // Subscription modal management
+    const {
+        showSubscriptionModal,
+        openSubscriptionModal,
+        closeSubscriptionModal,
+        handleSubscribe,
+    } = useSubscriptionCheck({
+        hasActiveSubscription,
+        customerBalance,
+        trialPrice: trialPackage?.price || 10000,
+        trialPlanId: trialPackage?.id || "",
+        showOnMount: false, // Don't show on mount for discover page
+    });
+
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
-            navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
+            openSubscriptionModal();
         } else {
             window.open(`https://wa.me/${whatsappNumber}`);
         }
@@ -288,7 +324,17 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     };
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        setTouchStartX(e.targetTouches[0].clientX);
+        const touch = e.targetTouches[0];
+        const x = touch.clientX;
+        const y = touch.clientY;
+
+        // Ignore touches in top-right corner (close button area)
+        const isInCloseButtonArea = y < 80 && x > window.innerWidth - 80;
+        if (isInCloseButtonArea) {
+            return;
+        }
+
+        setTouchStartX(x);
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
@@ -318,9 +364,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
                                 {t("modelDashboard.title")}
                             </h1>
-                            <p className="text-sm text-gray-600">
-                                {t("modelDashboard.subtitle")}
-                            </p>
                         </div>
 
                         {/* Filter Button */}
@@ -606,9 +649,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
                             {t("modelDashboard.title")}
                         </h1>
-                        <p className="text-sm text-gray-600">
-                            {t("modelDashboard.subtitle")}
-                        </p>
                     </div>
 
                     <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -1327,8 +1367,18 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         {selectedIndex !== null && (
                                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
                                                 <button
-                                                    className="absolute top-4 right-4 text-white"
-                                                    onClick={() => setSelectedIndex(null)}
+                                                    className="absolute top-4 right-4 text-white z-50 hover:text-gray-300 transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedIndex(null);
+                                                    }}
+                                                    onTouchEnd={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        setSelectedIndex(null);
+                                                    }}
+                                                    type="button"
+                                                    aria-label="Close"
                                                 >
                                                     <X size={32} />
                                                 </button>
@@ -1355,6 +1405,12 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 >
                                                     <ChevronRight size={40} />
                                                 </button>
+
+                                                <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
+                                                    <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                                        {selectedIndex + 1} / {images.length}
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -1405,6 +1461,18 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     <Maximize className="w-5 h-5" />
                 )}
             </button>
+
+            {/* Subscription Trial Modal */}
+            {trialPackage && (
+                <SubscriptionModal
+                    isOpen={showSubscriptionModal}
+                    onClose={closeSubscriptionModal}
+                    customerBalance={customerBalance}
+                    trialPrice={trialPackage.price}
+                    trialPlanId={trialPackage.id}
+                    onSubscribe={handleSubscribe}
+                />
+            )}
         </div>
     );
 }
