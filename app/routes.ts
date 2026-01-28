@@ -25,6 +25,10 @@ export default [
   route("api/push/subscribe", "./routes/api/push/subscribe.ts"),
   route("api/push/unsubscribe", "./routes/api/push/unsubscribe.ts"),
 
+  // API routes for Subscription SSE
+  route("api/subscription-events", "./routes/api/subscription-events.ts"),
+  route("api/trigger-subscription-event", "./routes/api/trigger-subscription-event.ts"),
+
   // API routes for Call service
   route("api/call/initiate", "./routes/api/call/initiate.ts"),
   route("api/call/accept", "./routes/api/call/accept.ts"),

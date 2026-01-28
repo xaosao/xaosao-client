@@ -19,22 +19,38 @@ const MAX_FILE_SIZE_MB = 50; // Maximum file size before compression (50MB - gen
 const COMPRESSED_MAX_SIZE_MB = 3; // Target size after compression (safely under Vercel's 4.5MB limit with buffer for form data)
 
 export const loader: LoaderFunction = async ({ request }) => {
-    await requireUserSession(request);
+    const customerId = await requireUserSession(request);
     const url = new URL(request.url);
     const suggestedAmount = url.searchParams.get("amount");
+    const planId = url.searchParams.get("planId");
+
+    // If this is a subscription top-up, check if customer already has pending subscription
+    if (planId) {
+        const { hasPendingSubscription } = await import("~/services/package.server");
+        const hasPending = await hasPendingSubscription(customerId);
+
+        if (hasPending) {
+            // Redirect back with error message
+            const returnUrl = url.searchParams.get("returnUrl") || "/customer/wallets";
+            return redirect(`${returnUrl}?toastMessage=You+already+have+a+pending+subscription.+Please+wait+for+admin+approval.&toastType=error`);
+        }
+    }
 
     return {
         suggestedAmount: suggestedAmount ? parseInt(suggestedAmount, 10) : null,
+        planId: planId || null,
     };
 };
 
 export async function action({ request }: Route.ActionArgs) {
     const { topUpWallet } = await import("~/services/wallet.server");
+    const { createPendingSubscription } = await import("~/services/package.server");
     const customerId = await requireUserSession(request);
     const formData = await request.formData();
     const transactionData = Object.fromEntries(formData) as Partial<ITransactionCredentials>;
     const amount = formData.get("amount");
     const voucher = formData.get("voucher");
+    const planId = formData.get("planId") as string | null;
 
     if (request.method === "POST") {
         try {
@@ -58,6 +74,28 @@ export async function action({ request }: Route.ActionArgs) {
             await validateTopUpInputs(transactionData as ITransactionCredentials);
             const res = await topUpWallet(transactionData.paymentSlip as string, Number(amount), customerId);
             if (res.id) {
+                // If planId exists, create a pending subscription linked to this transaction
+                if (planId) {
+                    try {
+                        await createPendingSubscription(customerId, planId, res.id);
+                    } catch (subscriptionError: any) {
+                        console.error("Error creating pending subscription:", subscriptionError);
+
+                        // If it's a pending subscription error, show error to user
+                        if (subscriptionError?.payload?.message?.includes("pending subscription")) {
+                            return {
+                                success: false,
+                                error: true,
+                                message: subscriptionError.payload.message,
+                            };
+                        }
+
+                        // For other errors, continue with transaction success
+                        // The transaction is already created
+                        console.warn("Non-blocking subscription error, continuing with transaction");
+                    }
+                }
+
                 // Check for return URL in the form data
                 const returnUrl = formData.get("return_url") as string;
                 if (returnUrl) {
@@ -102,7 +140,7 @@ export default function WalletTopUpPage() {
     const actionData = useActionData<typeof action>();
     const loaderData = useLoaderData<typeof loader>();
 
-    const { suggestedAmount } = loaderData;
+    const { suggestedAmount, planId } = loaderData;
     const MIN_AMOUNT = suggestedAmount || 10000; // Use suggested amount or default to 10,000
 
     const [step, setStep] = React.useState<number>(1);
@@ -591,6 +629,8 @@ export default function WalletTopUpPage() {
             <Form method="post" encType="multipart/form-data" className="space-y-4 mt-10 sm:mt-0">
                 {/* Hidden field for return URL */}
                 {returnUrl && <input type="hidden" name="return_url" value={returnUrl} />}
+                {/* Hidden field for planId (subscription flow) */}
+                {planId && <input type="hidden" name="planId" value={planId} />}
 
                 <div className="space-y-1">
                     <h1 className="text-lg text-gray-800">

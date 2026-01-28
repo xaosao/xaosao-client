@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "~/components/ui/button";
-import { X, Check, Wallet, CreditCard, MessageCircle, Calendar, Loader } from "lucide-react";
+import { X, Check, Wallet, CreditCard, MessageCircle, Calendar, Loader, Clock } from "lucide-react";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface SubscriptionModalProps {
   trialPrice: number;
   trialPlanId: string;
   onSubscribe: (planId: string) => Promise<void>;
+  hasPendingSubscription?: boolean;
 }
 
 export function SubscriptionModal({
@@ -20,6 +21,7 @@ export function SubscriptionModal({
   trialPrice,
   trialPlanId,
   onSubscribe,
+  hasPendingSubscription = false,
 }: SubscriptionModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -180,7 +182,30 @@ export function SubscriptionModal({
         </div>
 
         <div className="flex items-center justify-center gap-2 p-6 space-x-3">
-          {hasEnoughBalance ? (
+          {hasPendingSubscription ? (
+            <div className="w-full space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  <p className="text-sm font-semibold text-amber-900">
+                    {t("subscription.trial.pending", { defaultValue: "Subscription Pending" })}
+                  </p>
+                </div>
+                <p className="text-xs text-amber-700">
+                  {t("subscription.trial.pendingMessage", {
+                    defaultValue: "Your subscription is waiting for admin approval. You'll be notified once it's activated.",
+                  })}
+                </p>
+              </div>
+              <Button
+                onClick={onClose}
+                variant="outline"
+                className="w-full text-sm"
+              >
+                {t("subscription.trial.close", { defaultValue: "Close" })}
+              </Button>
+            </div>
+          ) : hasEnoughBalance ? (
             <>
               <Button
                 onClick={handleSubscribe}
@@ -223,7 +248,7 @@ export function SubscriptionModal({
                   } else {
                     sessionStorage.setItem("topup_return_url", window.location.pathname);
                   }
-                  navigate(`/customer/wallet-topup?amount=${deficit}`);
+                  navigate(`/customer/wallet-topup?amount=${deficit}&planId=${trialPlanId}`);
                   onClose();
                 }}
                 className="w-auto bg-rose-500 hover:bg-rose-500 text-white text-sm"

@@ -20,6 +20,23 @@ export async function hasActiveSubscription(customerId: string) {
   }
 }
 
+// Check if customer has pending subscription
+export async function hasPendingSubscription(customerId: string) {
+  try {
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        customerId,
+        status: "pending_payment",
+      },
+    });
+
+    return !!subscription;
+  } catch (error) {
+    console.error("CHECK_PENDING_SUBSCRIPTION_FAILED", error);
+    return false;
+  }
+}
+
 export async function getPackages(customerId: string) {
   try {
     const plans = await prisma.subscription_plan.findMany({
@@ -449,6 +466,118 @@ export async function createSubscriptionWithWallet(
       success: false,
       error: true,
       message: "Failed to create subscription with wallet!",
+    });
+  }
+}
+
+// Create pending subscription linked to existing transaction
+export async function createPendingSubscription(
+  customerId: string,
+  planId: string,
+  transactionId: string
+) {
+  const auditBase = {
+    action: "CUSTOMER_PENDING_SUBSCRIPTION",
+    customer: customerId,
+  };
+
+  try {
+    // Check if there's already a pending subscription
+    const existingPending = await prisma.subscription.findFirst({
+      where: {
+        customerId,
+        status: "pending_payment",
+      },
+    });
+
+    if (existingPending) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "You already have a pending subscription. Please wait for admin approval.",
+      });
+    }
+
+    const plan = await prisma.subscription_plan.findFirst({
+      where: {
+        id: planId,
+        status: "active",
+      },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        durationDays: true,
+      },
+    });
+
+    if (!plan) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Plan not found or inactive!",
+      });
+    }
+
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + plan.durationDays);
+
+    const subscription = await prisma.subscription.create({
+      data: {
+        customerId,
+        planId,
+        startDate,
+        endDate,
+        status: "pending_payment",
+        autoRenew: true,
+        paymentMethod: "manually",
+        transactionId,
+        notes: "Waiting for admin approval",
+      },
+    });
+
+    await prisma.subscription_history.create({
+      data: {
+        subscriptionId: subscription.id,
+        customerId,
+        planName: plan.name,
+        planPrice: plan.price,
+        durationDays: plan.durationDays,
+        startDate,
+        endDate,
+        paymentMethod: "manually",
+        transactionId,
+        status: "pending_payment",
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `${customerId} - Pending subscription created, waiting for admin approval`,
+      status: "success",
+      onSuccess: subscription,
+    });
+
+    return subscription;
+  } catch (error: any) {
+    console.error("CREATE_PENDING_SUBSCRIPTION_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `${customerId} - Failed to create pending subscription!`,
+      status: "failed",
+      onError: error,
+    });
+
+    // Re-throw FieldValidationError as-is
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to create pending subscription!",
     });
   }
 }

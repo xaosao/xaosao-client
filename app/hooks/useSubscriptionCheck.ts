@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 
 interface UseSubscriptionCheckProps {
   hasActiveSubscription: boolean;
+  hasPendingSubscription: boolean;
   customerBalance: number;
   trialPrice: number;
   trialPlanId: string;
@@ -11,6 +12,7 @@ interface UseSubscriptionCheckProps {
 
 export function useSubscriptionCheck({
   hasActiveSubscription,
+  hasPendingSubscription,
   customerBalance,
   trialPrice,
   trialPlanId,
@@ -30,7 +32,7 @@ export function useSubscriptionCheck({
     const urlParams = new URLSearchParams(location.search);
     const shouldShowFromUrl = urlParams.get("showSubscription") === "true";
 
-    // Only show modal if explicitly requested via URL parameter
+    // Only show modal if explicitly requested via URL parameter and no active/pending subscription
     if (shouldShowFromUrl && !hasActiveSubscription) {
       setShowSubscriptionModal(true);
       // Remove the parameter from URL after showing
@@ -43,7 +45,8 @@ export function useSubscriptionCheck({
   // Handle auto-show on dashboard mount
   useEffect(() => {
     // Only check on mount if showOnMount is true (for dashboard)
-    if (showOnMount && !hasActiveSubscription) {
+    // Don't show if customer has active or pending subscription
+    if (showOnMount && !hasActiveSubscription && !hasPendingSubscription) {
       const wasShownInSession = sessionStorage.getItem(SESSION_KEY);
 
       if (!wasShownInSession) {
@@ -56,7 +59,7 @@ export function useSubscriptionCheck({
         return () => clearTimeout(timer);
       }
     }
-  }, [hasActiveSubscription, showOnMount]);
+  }, [hasActiveSubscription, hasPendingSubscription, showOnMount]);
 
   const openSubscriptionModal = () => {
     setShowSubscriptionModal(true);
@@ -109,5 +112,6 @@ export function useSubscriptionCheck({
     openSubscriptionModal,
     closeSubscriptionModal,
     handleSubscribe,
+    hasPendingSubscription,
   };
 }

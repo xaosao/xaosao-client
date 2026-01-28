@@ -20,12 +20,14 @@ import { getCustomerUnreadCount, getCustomerNotifications } from "~/services/not
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
+import { useSubscriptionSSE } from "~/hooks/useSubscriptionSSE";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
     unreadNotifications: number;
     initialNotifications: Notification[];
     hasActiveSubscription: boolean;
+    hasPendingSubscription: boolean;
     hasEnabledNotifications: boolean;
     trialPackage: {
         id: string;
@@ -40,14 +42,15 @@ interface TransactionProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
-    const { hasActiveSubscription } = await import("~/services/package.server");
+    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
 
-    const [customerData, unreadNotifications, notifications, hasSubscription, trialPackage, wallet] = await Promise.all([
+    const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
         getCustomerProfile(customerId),
         getCustomerUnreadCount(customerId),
         getCustomerNotifications(customerId, { limit: 10 }),
         hasActiveSubscription(customerId),
+        hasPendingSubscription(customerId),
         prisma.subscription_plan.findFirst({
             where: { name: "24-Hour Trial", status: "active" },
             select: { id: true, price: true },
@@ -76,6 +79,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         unreadNotifications,
         initialNotifications,
         hasActiveSubscription: hasSubscription,
+        hasPendingSubscription: hasPending,
         hasEnabledNotifications,
         trialPackage,
         customerBalance: wallet?.totalBalance || 0,
@@ -85,7 +89,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasEnabledNotifications, trialPackage, customerBalance } = loaderData;
+    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance } = loaderData;
     const { t, i18n } = useTranslation();
 
     // Only show modal on mount when on dashboard page
@@ -99,10 +103,19 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         handleSubscribe,
     } = useSubscriptionCheck({
         hasActiveSubscription,
+        hasPendingSubscription,
         customerBalance,
         trialPrice: trialPackage?.price || 10000,
         trialPlanId: trialPackage?.id || "",
         showOnMount: isDashboardPage, // Only show on mount when on dashboard
+    });
+
+    // SSE connection for subscription activation notifications
+    useSubscriptionSSE({
+        hasPendingSubscription,
+        onActivated: (data) => {
+            console.log("Subscription activated via SSE:", data);
+        },
     });
 
     // Handler for chat navigation with subscription check
@@ -281,6 +294,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     trialPrice={trialPackage.price}
                     trialPlanId={trialPackage.id}
                     onSubscribe={handleSubscribe}
+                    hasPendingSubscription={hasPendingSubscription}
                 />
             )}
         </div>
