@@ -149,7 +149,9 @@ export default function SubscriptionPaymentPage() {
    }
 
    function handleTopUpRedirect() {
-      navigate("/customer/wallet-topup");
+      // Calculate deficit amount (package price - current balance)
+      const deficit = Math.max(plan.price - wallet.totalBalance, 10000);
+      navigate(`/customer/wallet-topup?amount=${deficit}`);
    }
 
    function handleConfirmPayment() {

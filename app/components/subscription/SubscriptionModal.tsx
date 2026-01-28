@@ -213,6 +213,8 @@ export function SubscriptionModal({
               </Button>
               <Button
                 onClick={() => {
+                  // Calculate deficit (trial price - customer balance)
+                  const deficit = Math.max(trialPrice - customerBalance, 10000);
                   // Store the current page URL for return after top-up
                   const bookingIntent = sessionStorage.getItem("booking_intent");
                   if (bookingIntent) {
@@ -221,7 +223,7 @@ export function SubscriptionModal({
                   } else {
                     sessionStorage.setItem("topup_return_url", window.location.pathname);
                   }
-                  navigate("/customer/wallet-topup");
+                  navigate(`/customer/wallet-topup?amount=${deficit}`);
                   onClose();
                 }}
                 className="w-auto bg-rose-500 hover:bg-rose-500 text-white text-sm"

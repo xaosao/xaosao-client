@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Route } from "./+types/wallet.topup";
-import { Form, redirect, useActionData, useNavigate, useNavigation } from "react-router";
+import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
 import { AlertCircle, Check, CheckCircle, Clock, Copy, Download, Loader, QrCode, Upload } from "lucide-react";
 
 // components
@@ -17,6 +17,16 @@ import { compressImage } from "~/utils/imageCompression";
 // Constants for file upload limits
 const MAX_FILE_SIZE_MB = 50; // Maximum file size before compression (50MB - generous limit)
 const COMPRESSED_MAX_SIZE_MB = 3; // Target size after compression (safely under Vercel's 4.5MB limit with buffer for form data)
+
+export const loader: LoaderFunction = async ({ request }) => {
+    await requireUserSession(request);
+    const url = new URL(request.url);
+    const suggestedAmount = url.searchParams.get("amount");
+
+    return {
+        suggestedAmount: suggestedAmount ? parseInt(suggestedAmount, 10) : null,
+    };
+};
 
 export async function action({ request }: Route.ActionArgs) {
     const { topUpWallet } = await import("~/services/wallet.server");
@@ -89,11 +99,15 @@ export default function WalletTopUpPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const navigation = useNavigation();
-    const actionData = useActionData<typeof action>()
+    const actionData = useActionData<typeof action>();
+    const loaderData = useLoaderData<typeof loader>();
+
+    const { suggestedAmount } = loaderData;
+    const MIN_AMOUNT = suggestedAmount || 10000; // Use suggested amount or default to 10,000
 
     const [step, setStep] = React.useState<number>(1);
     const [dragOver, setDragOver] = React.useState<boolean>(false);
-    const [amount, setAmount] = React.useState<number>(0);
+    const [amount, setAmount] = React.useState<number>(suggestedAmount || 0);
     const [paymentMethod, setPaymentMethod] = React.useState<string>("qr");
     const [copiedAccount, setCopiedAccount] = React.useState<boolean>(false);
     const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
@@ -290,8 +304,6 @@ export default function WalletTopUpPage() {
         setDragOver(false);
     };
 
-    const MIN_AMOUNT = 10000; // Minimum 5 digits (10,000 Kip)
-
     const canProceed = () => {
         switch (step) {
             case 1:
@@ -336,7 +348,10 @@ export default function WalletTopUpPage() {
                             </div>
                             {amount > 0 && amount < MIN_AMOUNT && (
                                 <p className="text-xs text-red-500 mt-1">
-                                    {t('wallet.topup.minimumAmount', { defaultValue: 'Minimum amount is 10,000 Kip' })}
+                                    {t('wallet.topup.minimumAmount', {
+                                        defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`,
+                                        amount: MIN_AMOUNT.toLocaleString()
+                                    })}
                                 </p>
                             )}
                         </div>

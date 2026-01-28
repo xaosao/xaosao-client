@@ -1080,9 +1080,11 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                 </Button>
                                 <Button
                                     onClick={() => {
+                                        // Calculate deficit amount
+                                        const deficit = Math.max(insufficientBalanceData.servicePrice - customerBalance, 10000);
                                         // Store return URL for after top-up
                                         sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`);
-                                        navigate("/customer/wallet-topup");
+                                        navigate(`/customer/wallet-topup?amount=${deficit}`);
                                         setShowInsufficientBalanceModal(false);
                                     }}
                                     className="w-auto bg-rose-500 hover:bg-rose-600 text-white"

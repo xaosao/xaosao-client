@@ -715,23 +715,33 @@ export default function ServiceBooking() {
                         </div>
 
                         {/* Show recharge button if insufficient balance */}
-                        {actionData.message?.toLowerCase().includes('insufficient balance') && (
-                           <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg space-y-3">
-                              <div className="flex items-start space-x-2">
-                                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                 <span className="text-amber-700 text-sm">
-                                    {t('profileBook.rechargeWarning')}
-                                 </span>
+                        {actionData.message?.toLowerCase().includes('insufficient balance') && (() => {
+                           // Calculate deficit amount from error message
+                           const match = actionData.message.match(/need\s+([\d,]+)\s+LAK\s+but\s+have\s+([\d,]+)\s+LAK/i);
+                           let deficitAmount = 10000; // Default minimum
+                           if (match) {
+                              const required = parseInt(match[1].replace(/,/g, ''), 10);
+                              const current = parseInt(match[2].replace(/,/g, ''), 10);
+                              deficitAmount = Math.max(required - current, 10000);
+                           }
+                           return (
+                              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg space-y-3">
+                                 <div className="flex items-start space-x-2">
+                                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                    <span className="text-amber-700 text-sm">
+                                       {t('profileBook.rechargeWarning')}
+                                    </span>
+                                 </div>
+                                 <Link
+                                    to={`/customer/wallet-topup?amount=${deficitAmount}`}
+                                    className="inline-flex items-center justify-center gap-2 py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors text-sm font-medium"
+                                 >
+                                    <Wallet className="w-4 h-4" />
+                                    {t('profileBook.rechargeNow')}
+                                 </Link>
                               </div>
-                              <Link
-                                 to="/customer/wallet-topup"
-                                 className="inline-flex items-center justify-center gap-2 py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors text-sm font-medium"
-                              >
-                                 <Wallet className="w-4 h-4" />
-                                 {t('profileBook.rechargeNow')}
-                              </Link>
-                           </div>
-                        )}
+                           );
+                        })()}
                      </div>
                   )}
                </div>
