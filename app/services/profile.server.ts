@@ -614,6 +614,9 @@ export async function deleteAccount(customerId: string) {
       where: {
         id: customerId,
       },
+      include: {
+        Wallet: true,
+      },
     });
 
     if (!customer) {
@@ -624,37 +627,66 @@ export async function deleteAccount(customerId: string) {
       });
     }
 
-    const deleteCustomer = await prisma.customer.update({
-      where: {
-        id: customer.id,
-      },
-      data: {
-        status: "inactive",
-      },
-    });
+    // Get customer's wallet balance
+    const wallet = customer.Wallet?.[0];
+    const hasBalance = wallet && wallet.totalBalance > 0;
 
-    if (deleteCustomer.id) {
+    let deleteCustomer;
+    let deletionType: "soft" | "hard" = "hard";
+
+    if (hasBalance) {
+      // If customer has balance, soft delete (status = "inactive")
+      // Account can be recovered within 7 days
+      deleteCustomer = await prisma.customer.update({
+        where: {
+          id: customer.id,
+        },
+        data: {
+          status: "inactive",
+        },
+      });
+      deletionType = "soft";
+
       await createAuditLogs({
         ...auditBase,
-        description: `Create customer: ${deleteCustomer.id} image successfully.`,
+        description: `Customer ${deleteCustomer.id} account soft deleted (has balance: ${wallet?.totalBalance} KIP). Account can be recovered within 7 days.`,
         status: "success",
         onSuccess: deleteCustomer,
       });
+    } else {
+      // If customer has no balance, permanent delete from database
+      deleteCustomer = await prisma.customer.delete({
+        where: {
+          id: customer.id,
+        },
+      });
+      deletionType = "hard";
+
+      await createAuditLogs({
+        ...auditBase,
+        description: `Customer ${customer.id} account permanently deleted (no balance).`,
+        status: "success",
+        onSuccess: { id: customer.id, deletionType },
+      });
     }
 
-    return deleteCustomer;
+    return {
+      ...deleteCustomer,
+      deletionType,
+      hasBalance: hasBalance || false,
+    };
   } catch (error: any) {
     console.error("DELETE_CUSTOMER_ACCOUNT", error);
     await createAuditLogs({
       ...auditBase,
-      description: `Delete cusotmer account failed!`,
+      description: `Delete customer account failed!`,
       status: "failed",
       onError: error,
     });
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: "Failed to customer account!",
+      message: "Failed to delete customer account!",
     });
   }
 }

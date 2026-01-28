@@ -82,6 +82,7 @@ export interface IModelOwnProfileResponse {
 export interface IModelBank {
   id: string;
   qr_code: string;
+  bank_account_name: string;
   isDefault: boolean;
   status: string;
   createdAt: Date;

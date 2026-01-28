@@ -186,6 +186,9 @@ export default function ServicesSettings() {
   // Service location state (for massage service)
   const [serviceLocation, setServiceLocation] = useState<string>("");
 
+  // Minimum price validation (5 digits = 10,000 Kip)
+  const MIN_PRICE = 10000;
+
   const [applyModal, setApplyModal] = useState<Service | null>(null);
   const [editModal, setEditModal] = useState<Service | null>(null);
   const [cancelModal, setCancelModal] = useState<Service | null>(null);
@@ -253,6 +256,34 @@ export default function ServicesSettings() {
   const calculateEarnings = (rate: number, commission: number) => {
     const commissionAmount = (rate * commission) / 100;
     return rate - commissionAmount;
+  };
+
+  // Helper to check if price meets minimum requirement
+  const isPriceValid = (priceStr: string): boolean => {
+    const price = parseFloat(parseFormattedNumber(priceStr));
+    return !isNaN(price) && price >= MIN_PRICE;
+  };
+
+  // Helper to check if all prices are valid for the current service
+  const areAllPricesValid = (service: Service | null): boolean => {
+    if (!service) return false;
+
+    switch (service.billingType) {
+      case "per_day":
+        return isPriceValid(customRate);
+      case "per_hour":
+        if (service.name.toLowerCase() === "massage") {
+          // Check all massage variants have valid prices
+          return massageVariants.every(v => v.name.trim() !== "" && v.pricePerHour >= MIN_PRICE);
+        }
+        return isPriceValid(customHourlyRate);
+      case "per_session":
+        return isPriceValid(customOneTimePrice) && isPriceValid(customOneNightPrice);
+      case "per_minute":
+        return isPriceValid(customMinuteRate);
+      default:
+        return false;
+    }
   };
 
   // Helper function to get translated service name
@@ -594,10 +625,15 @@ export default function ServicesSettings() {
                           value={customRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomRate)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customRate && !isPriceValid(customRate) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterYourDailyRate")}
                         />
                       </div>
+                      {customRate && !isPriceValid(customRate) && (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -679,9 +715,14 @@ export default function ServicesSettings() {
                                       updateMassageVariant(index, "pricePerHour", parseFloat(numericValue) || 0);
                                     }}
                                     required
-                                    className="pl-10 text-sm"
+                                    className={`pl-10 text-sm ${variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE ? 'border-red-500' : ''}`}
                                   />
                                 </div>
+                                {variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE && (
+                                  <p className="text-xs text-red-500">
+                                    {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                                  </p>
+                                )}
                               </div>
                               {massageVariants.length > 1 && (
                                 <Button
@@ -736,13 +777,19 @@ export default function ServicesSettings() {
                               value={customHourlyRate}
                               onChange={(e) => handlePriceChange(e.target.value, setCustomHourlyRate)}
                               required
-                              className="pl-10"
+                              className={`pl-10 ${customHourlyRate && !isPriceValid(customHourlyRate) ? 'border-red-500' : ''}`}
                               placeholder={t("modelServices.enterYourHourlyRate")}
                             />
                           </div>
-                          <p className="text-xs text-gray-500">
-                            {t("modelServices.hourlyRateHint")}
-                          </p>
+                          {customHourlyRate && !isPriceValid(customHourlyRate) ? (
+                            <p className="text-xs text-red-500">
+                              {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-500">
+                              {t("modelServices.hourlyRateHint")}
+                            </p>
+                          )}
                         </div>
 
                         {/* Earnings Breakdown */}
@@ -793,13 +840,19 @@ export default function ServicesSettings() {
                           value={customOneTimePrice}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomOneTimePrice)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customOneTimePrice && !isPriceValid(customOneTimePrice) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterOneTimePrice")}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.oneTimePriceHint")}
-                      </p>
+                      {customOneTimePrice && !isPriceValid(customOneTimePrice) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.oneTimePriceHint")}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="customOneNightPrice">
@@ -815,13 +868,19 @@ export default function ServicesSettings() {
                           value={customOneNightPrice}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomOneNightPrice)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customOneNightPrice && !isPriceValid(customOneNightPrice) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterOneNightPrice")}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.oneNightPriceHint")}
-                      </p>
+                      {customOneNightPrice && !isPriceValid(customOneNightPrice) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.oneNightPriceHint")}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -894,13 +953,19 @@ export default function ServicesSettings() {
                           value={customMinuteRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomMinuteRate)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
-                      </p>
+                      {customMinuteRate && !isPriceValid(customMinuteRate) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -944,7 +1009,7 @@ export default function ServicesSettings() {
                   <Button
                     type="submit"
                     className="flex-1 bg-rose-500 hover:bg-rose-600"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !areAllPricesValid(applyModal)}
                   >
                     {isSubmitting ? (
                       <>
@@ -995,13 +1060,19 @@ export default function ServicesSettings() {
                           value={customRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomRate)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customRate && !isPriceValid(customRate) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterYourDailyRate")}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.editModal.rateHint")}
-                      </p>
+                      {customRate && !isPriceValid(customRate) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.editModal.rateHint")}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -1083,9 +1154,14 @@ export default function ServicesSettings() {
                                       updateMassageVariant(index, "pricePerHour", parseFloat(numericValue) || 0);
                                     }}
                                     required
-                                    className="pl-10 text-sm"
+                                    className={`pl-10 text-sm ${variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE ? 'border-red-500' : ''}`}
                                   />
                                 </div>
+                                {variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE && (
+                                  <p className="text-xs text-red-500">
+                                    {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                                  </p>
+                                )}
                               </div>
                               {massageVariants.length > 1 && (
                                 <Button
@@ -1139,13 +1215,19 @@ export default function ServicesSettings() {
                               value={customHourlyRate}
                               onChange={(e) => handlePriceChange(e.target.value, setCustomHourlyRate)}
                               required
-                              className="pl-10"
+                              className={`pl-10 ${customHourlyRate && !isPriceValid(customHourlyRate) ? 'border-red-500' : ''}`}
                               placeholder={t("modelServices.enterYourHourlyRate")}
                             />
                           </div>
-                          <p className="text-xs text-gray-500">
-                            {t("modelServices.hourlyRateHint")}
-                          </p>
+                          {customHourlyRate && !isPriceValid(customHourlyRate) ? (
+                            <p className="text-xs text-red-500">
+                              {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-500">
+                              {t("modelServices.hourlyRateHint")}
+                            </p>
+                          )}
                         </div>
 
                         {/* Earnings Breakdown */}
@@ -1196,13 +1278,19 @@ export default function ServicesSettings() {
                           value={customOneTimePrice}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomOneTimePrice)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customOneTimePrice && !isPriceValid(customOneTimePrice) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterOneTimePrice")}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.oneTimePriceHint")}
-                      </p>
+                      {customOneTimePrice && !isPriceValid(customOneTimePrice) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.oneTimePriceHint")}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editCustomOneNightPrice">
@@ -1218,13 +1306,19 @@ export default function ServicesSettings() {
                           value={customOneNightPrice}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomOneNightPrice)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customOneNightPrice && !isPriceValid(customOneNightPrice) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterOneNightPrice")}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.oneNightPriceHint")}
-                      </p>
+                      {customOneNightPrice && !isPriceValid(customOneNightPrice) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.oneNightPriceHint")}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -1297,13 +1391,19 @@ export default function ServicesSettings() {
                           value={customMinuteRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomMinuteRate)}
                           required
-                          className="pl-10"
+                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate) ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
-                      </p>
+                      {customMinuteRate && !isPriceValid(customMinuteRate) ? (
+                        <p className="text-xs text-red-500">
+                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                        </p>
+                      )}
                     </div>
 
                     {/* Earnings Breakdown */}
@@ -1347,7 +1447,7 @@ export default function ServicesSettings() {
                   <Button
                     type="submit"
                     className="flex-1 bg-rose-500 hover:bg-rose-600"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !areAllPricesValid(editModal)}
                   >
                     {isSubmitting ? (
                       <>

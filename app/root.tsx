@@ -339,22 +339,36 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   // Handle reload action
   const handleReload = () => {
-    // Clear all caches and reload
+    // 1. Clear all browser caches
     if ("caches" in window) {
       caches.keys().then((names) => {
         names.forEach((name) => caches.delete(name));
       });
     }
 
-    // Clear service worker and reload
+    // 2. Clear localStorage
+    localStorage.clear();
+
+    // 3. Clear sessionStorage
+    sessionStorage.clear();
+
+    // 4. Clear all cookies (including auth tokens)
+    document.cookie.split(";").forEach((cookie) => {
+      const name = cookie.split("=")[0].trim();
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      // Also clear with domain for production
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.xaosao.com;`;
+    });
+
+    // 5. Unregister service workers and navigate to home
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         Promise.all(registrations.map((reg) => reg.unregister())).then(() => {
-          window.location.reload();
+          window.location.href = "/"; // Force navigate to home
         });
       });
     } else {
-      window.location.reload();
+      window.location.href = "/";
     }
   };
 

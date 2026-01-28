@@ -358,12 +358,13 @@ model images {
 }
 
 model banks {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  qr_code   String
-  isDefault Boolean  @default(false)
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  qr_code           String
+  bank_account_name String   @unique
+  isDefault         Boolean  @default(false)
+  status            String   @default("active")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   model   model?  @relation(fields: [modelId], references: [id])
   modelId String? @db.ObjectId

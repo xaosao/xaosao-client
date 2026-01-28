@@ -290,10 +290,12 @@ export default function WalletTopUpPage() {
         setDragOver(false);
     };
 
+    const MIN_AMOUNT = 10000; // Minimum 5 digits (10,000 Kip)
+
     const canProceed = () => {
         switch (step) {
             case 1:
-                return amount && amount > 0;
+                return amount && amount >= MIN_AMOUNT;
             case 2:
                 return paymentMethod;
             case 3:
@@ -329,9 +331,14 @@ export default function WalletTopUpPage() {
                                         }
                                     }}
                                     placeholder={t('wallet.topup.amountPlaceholder')}
-                                    className="block w-full p-4 py-2 border border-gray-300 rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors"
+                                    className={`block w-full p-4 py-2 border rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors ${amount > 0 && amount < MIN_AMOUNT ? 'border-red-500' : 'border-gray-300'}`}
                                 />
                             </div>
+                            {amount > 0 && amount < MIN_AMOUNT && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    {t('wallet.topup.minimumAmount', { defaultValue: 'Minimum amount is 10,000 Kip' })}
+                                </p>
+                            )}
                         </div>
 
                         <div>

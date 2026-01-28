@@ -189,14 +189,6 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         showOnMount: shouldShowSubscriptionFromUrl,
     });
 
-    // Remove showSubscription param when modal closes
-    const handleCloseSubscriptionModal = () => {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete("showSubscription");
-        setSearchParams(newParams, { replace: true });
-        closeSubscriptionModal();
-    };
-
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
@@ -998,7 +990,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                 {trialPackage && (
                     <SubscriptionModal
                         isOpen={showSubscriptionModal}
-                        onClose={handleCloseSubscriptionModal}
+                        onClose={closeSubscriptionModal}
                         customerBalance={customerBalance}
                         trialPrice={trialPackage.price}
                         trialPlanId={trialPackage.id}

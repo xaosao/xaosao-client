@@ -175,8 +175,23 @@ export async function action({ request }: ActionFunctionArgs) {
       console.log("messageKey:", payload.messageKey);
       console.log("message:", payload.message);
 
-      // Ensure we use messageKey if it exists
-      const errorMessage = payload.messageKey || "modelAuth.errors.registrationFailed";
+      // Use message if it exists, otherwise use messageKey, otherwise use default
+      let errorMessage = "modelAuth.errors.registrationFailed";
+
+      if (payload.message) {
+        // Map specific error messages to translation keys
+        if (payload.message.includes("phone number is already registered")) {
+          errorMessage = "modelAuth.errors.phoneAlreadyRegistered";
+        } else if (payload.message.includes("email is already registered")) {
+          errorMessage = "modelAuth.errors.emailAlreadyRegistered";
+        } else {
+          // Use the actual message for other errors
+          errorMessage = payload.message;
+        }
+      } else if (payload.messageKey) {
+        errorMessage = payload.messageKey;
+      }
+
       console.log("Returning error message:", errorMessage);
 
       return {
@@ -188,15 +203,15 @@ export async function action({ request }: ActionFunctionArgs) {
     // Handle validation errors (thrown as object with field keys)
     if (error && typeof error === "object" && !error.message) {
       const fieldNames: Record<string, string> = {
-        firstName: "First Name",
-        lastName: "Last Name",
-        password: "Password",
-        dob: "Date of Birth",
-        gender: "Gender",
-        whatsapp: "Phone Number",
-        bio: "Bio",
-        profile: "Profile Image",
-        address: "Address",
+        firstName: "modelAuth.register.fields.firstName",
+        lastName: "modelAuth.register.fields.lastName",
+        password: "modelAuth.register.fields.password",
+        dob: "modelAuth.register.fields.dob",
+        gender: "modelAuth.register.fields.gender",
+        whatsapp: "modelAuth.register.fields.whatsapp",
+        bio: "modelAuth.register.fields.bio",
+        profile: "modelAuth.register.fields.profile",
+        address: "modelAuth.register.fields.address",
       };
 
       // Get first error with field name
@@ -565,7 +580,7 @@ export default function ModelRegister() {
             {actionData?.error && (
               <div className="text-sm bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                 {(actionData as any).errorField && (
-                  <span className="font-semibold">{(actionData as any).errorField}: </span>
+                  <span className="font-semibold">{t((actionData as any).errorField)}: </span>
                 )}
                 {t(actionData.error)}
               </div>

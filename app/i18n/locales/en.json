@@ -699,7 +699,8 @@
       "submit": "Submit",
       "submitting": "Submiting....",
       "done": "Done",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "minimumAmount": "Minimum amount is 10,000 Kip"
     },
     "edit": {
       "title": "Transaction Edit",
@@ -973,6 +974,10 @@
       "subtitle": "Permanently remove your account and all associated data",
       "warning": "Warning: This action cannot be undone!",
       "warningMessage": "Deleting your account will permanently remove all your data, including your profile, messages, and subscription history. This action is irreversible.",
+      "balanceWarningTitle": "Wallet Balance Detected",
+      "balanceWarningMessage": "You have {{balance}} KIP in your wallet.",
+      "softDeleteMessage": "Your account will be deactivated and can be recovered within 7 days. After 7 days, it will be permanently deleted along with your remaining balance.",
+      "hardDeleteMessage": "Your account will be permanently deleted immediately. This action cannot be undone.",
       "confirmLabel": "Type DELETE to confirm",
       "confirmation": "Type DELETE to confirm",
       "confirmPlaceholder": "Type DELETE",
@@ -1258,7 +1263,18 @@
       "passwordUpperLower": "Contains uppercase and lowercase letters",
       "passwordNumber": "Contains a number",
       "passwordLength": "At least 8 characters",
-      "passwordRequirementsNote": "Your password must meet all the above requirements to register."
+      "passwordRequirementsNote": "Your password must meet all the above requirements to register.",
+      "fields": {
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "password": "Password",
+        "dob": "Date of Birth",
+        "gender": "Gender",
+        "whatsapp": "Phone Number",
+        "bio": "Bio",
+        "profile": "Profile Image",
+        "address": "Address"
+      }
     },
     "forgotPassword": {
       "title": "Forgot password?",
@@ -1337,7 +1353,9 @@
       "passwordsDoNotMatch": "Passwords do not match",
       "registrationFailed": "Registration failed. Please try again.",
       "imagePreviewFailed": "Failed to load image preview",
-      "profileImageRequiredUpload": "Profile image is required. Please upload a photo."
+      "profileImageRequiredUpload": "Profile image is required. Please upload a photo.",
+      "phoneAlreadyRegistered": "This phone number is already registered!",
+      "emailAlreadyRegistered": "This email is already registered!"
     },
     "serverMessages": {
       "loginInvalidCredentials": "Could not log you in, please check the provided credentials.",
@@ -1465,6 +1483,7 @@
     "customMinuteRateLabel": "Your rate per minute",
     "enterMinuteRate": "Enter rate per minute...",
     "minuteRateHint": "Set your rate for voice/video calls. Customers will be charged per minute.",
+    "minimumPrice": "Minimum price is 10,000 Kip",
     "youEarn": "You earn",
     "earningsBreakdown": "Your Earnings",
     "customerPays": "Customer pays",

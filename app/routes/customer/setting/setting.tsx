@@ -15,15 +15,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 // service and interface
 import { useIsMobile } from "~/hooks/use-mobile";
 import { capitalize } from "~/utils/functions/textFormat";
-import { requireUserSession } from "~/services/auths.server";
+import { requireUserSession, destroyUserSession } from "~/services/auths.server";
 import type { ICustomerCredentials, ICustomerResponse, ICustomerSettingCredentials } from "~/interfaces/customer";
 import { validateICustomerSettingInputs, validateReportUpInputs, validateUpdateProfileInputs } from "~/services/validation.server";
 import { changeCustomerPassword, createReport, deleteAccount, getCustomerProfile, updateCustomerSetting, updateProfile } from "~/services/profile.server";
+import { prisma } from "~/services/database.server";
 
 type NotificationType = "push" | "sms"; // "email" disabled for now
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
+    walletBalance: number;
 }
 
 interface TransactionProps {
@@ -66,7 +68,17 @@ const handleError = (error: any, actionType: string) => {
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const customerData = await getCustomerProfile(customerId);
-    return { customerData };
+
+    // Get wallet balance for delete account warning
+    const wallet = await prisma.wallet.findFirst({
+        where: { customerId },
+        select: { totalBalance: true },
+    });
+
+    return {
+        customerData,
+        walletBalance: wallet?.totalBalance || 0,
+    };
 };
 
 export async function action({ request }: Route.ActionArgs) {
@@ -173,7 +185,8 @@ export async function action({ request }: Route.ActionArgs) {
         if (request.method === "DELETE") {
             const deleteRes = await deleteAccount(customerId);
             if (deleteRes.id) {
-                return redirect("/login?toastMessage=Your+account+was+deleted+succesful!&toastType=success");
+                // Clear session and cookies before redirecting
+                return await destroyUserSession(request);
             }
         }
     } catch (error: any) {
@@ -232,7 +245,7 @@ export default function SettingPage({ loaderData }: TransactionProps) {
     const navigate = useNavigate();
     const navigation = useNavigation();
     // const [searchParams] = useSearchParams();
-    const { customerData } = loaderData;
+    const { customerData, walletBalance } = loaderData;
     const actionData = useActionData<typeof action>();
     const isMobile = useIsMobile();
 
@@ -848,10 +861,28 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                             </h3>
                             <input type="hidden" name="currectAction" defaultValue="deleteAccount" />
                             <div className="space-y-4">
+                                {walletBalance > 0 && (
+                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+                                        <h4 className="font-medium text-amber-800">💰 {t('settings.deleteAccount.balanceWarningTitle', { defaultValue: 'Wallet Balance Detected' })}</h4>
+                                        <p className="text-sm text-amber-700">
+                                            {t('settings.deleteAccount.balanceWarningMessage', {
+                                                defaultValue: 'You have {{balance}} KIP in your wallet.',
+                                                balance: walletBalance.toLocaleString()
+                                            })}
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                                    <h4 className="font-medium text-red-800 mb-2">{t('settings.deleteAccount.warning')}</h4>
+                                    <h4 className="font-medium text-red-800 mb-2">⚠️ {t('settings.deleteAccount.warning')}</h4>
                                     <p className="text-sm text-red-700">
-                                        {t('settings.deleteAccount.warningMessage')}
+                                        {walletBalance > 0
+                                            ? t('settings.deleteAccount.softDeleteMessage', {
+                                                defaultValue: 'Your account will be deactivated and can be recovered within 7 days. After 7 days, it will be permanently deleted along with your remaining balance.'
+                                            })
+                                            : t('settings.deleteAccount.hardDeleteMessage', {
+                                                defaultValue: 'Your account will be permanently deleted immediately. This action cannot be undone.'
+                                            })
+                                        }
                                     </p>
                                 </div>
                                 <div>
