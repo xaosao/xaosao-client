@@ -612,13 +612,14 @@ export async function createModelBank(
       });
     }
 
-    // Generate a unique bank account name using modelId and timestamp
-    const uniqueBankName = `BANK_${modelId}_${Date.now()}`;
+    // Generate bank account name like "Bank1", "Bank2", etc. based on count
+    const bankNumber = existingBanks + 1;
+    const bankName = `Bank${bankNumber}`;
 
     const createBank = await prisma.banks.create({
       data: {
         qr_code: data.qr_code,
-        bank_account_name: uniqueBankName,
+        bank_account_name: bankName,
         isDefault: shouldBeDefault,
         status: "active",
         modelId,

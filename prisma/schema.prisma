@@ -360,7 +360,7 @@ model images {
 model banks {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
   qr_code           String
-  bank_account_name String   @unique
+  bank_account_name String
   isDefault         Boolean  @default(false)
   status            String   @default("active")
   createdAt         DateTime @default(now())
@@ -368,6 +368,8 @@ model banks {
 
   model   model?  @relation(fields: [modelId], references: [id])
   modelId String? @db.ObjectId
+
+  @@unique([modelId, bank_account_name])
 }
 
 // customer like model
