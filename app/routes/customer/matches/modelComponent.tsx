@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Form, useNavigate, type FetcherWithComponents } from "react-router";
+import { useNavigate } from "react-router";
 import { MapPin, MessageSquareText, Heart, X, UserPlus, User, UserCheck } from "lucide-react";
 
 // swiper imports
@@ -14,16 +14,44 @@ import type { IForYouModelResponse } from "~/interfaces";
 
 interface ModelCardProps {
     model: IForYouModelResponse;
-    fetcher?: FetcherWithComponents<any>;
     customerLatitude?: number;
     customerLongitude?: number;
     hasActiveSubscription?: boolean;
     onOpenSubscriptionModal?: () => void;
+    displayState?: {
+        customerAction: "LIKE" | "PASS" | null;
+        isContact: boolean;
+    };
+    onLike?: (model: IForYouModelResponse) => void;
+    onPass?: (model: IForYouModelResponse) => void;
+    onAddFriend?: (model: IForYouModelResponse) => void;
+    isFetching?: boolean;
 }
 
-export default function ModelCard({ model, customerLatitude, customerLongitude, hasActiveSubscription, onOpenSubscriptionModal }: ModelCardProps) {
+export default function ModelCard({
+    model,
+    customerLatitude,
+    customerLongitude,
+    hasActiveSubscription,
+    onOpenSubscriptionModal,
+    displayState,
+    onLike,
+    onPass,
+    onAddFriend,
+    isFetching
+}: ModelCardProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
+
+    // Use displayState if provided, otherwise fall back to model properties
+    const currentDisplayState = displayState || {
+        customerAction: model.customer_interactions?.some(i => i.action === "LIKE")
+            ? "LIKE"
+            : model.customer_interactions?.some(i => i.action === "PASS")
+            ? "PASS"
+            : null,
+        isContact: model.isContact || false
+    };
 
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
@@ -80,47 +108,39 @@ export default function ModelCard({ model, customerLatitude, customerLongitude, 
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
                 <div className="absolute top-3 right-3 flex gap-2 z-10">
-                    <Form method="post">
-                        <input type="hidden" name="modelId" value={model.id} />
-                        <div className="flex gap-2">
-                            {model?.whatsapp && (
-                                <button
-                                    type="button"
-                                    className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                >
-                                    <MessageSquareText className="w-4 h-4" />
-                                </button>
-                            )}
-                            {model?.isContact ? (
-                                <div className="sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-green-100 text-green-500">
-                                    <UserCheck className="w-4 h-4" />
-                                </div>
-                            ) : (
-                                <button
-                                    type="submit"
-                                    name="isFriend"
-                                    value="true"
-                                    className="cursor-pointer sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-white/20 hover:bg-rose-500 hover:text-white"
-                                >
-                                    <UserPlus className="w-4 h-4" />
-                                </button>
-                            )}
+                    {model?.whatsapp && (
+                        <button
+                            type="button"
+                            className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
+                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                        >
+                            <MessageSquareText className="w-4 h-4" />
+                        </button>
+                    )}
+                    {currentDisplayState.isContact ? (
+                        <div className="sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-green-100 text-green-500">
+                            <UserCheck className="w-4 h-4" />
                         </div>
-                    </Form>
-
-                    <Form method="post">
-                        <input type="hidden" name="like" value="LIKE" id="likeInput" />
-                        <input type="hidden" name="modelId" value={model.id} />
-                        {model.customer_interactions?.some(interaction => interaction.action === "PASS") ? "" :
-                            <button
-                                type="submit"
-                                className={`cursor-pointer backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white ${model.customer_interactions?.some(interaction => interaction.action === "LIKE") ? 'bg-rose-500 text-white' : "sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/20"}`}
-                            >
-                                <Heart size={14} />
-                            </button>
-                        }
-                    </Form>
+                    ) : (
+                        <button
+                            type="button"
+                            className="cursor-pointer sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full bg-white/20 hover:bg-rose-500 hover:text-white"
+                            onClick={() => onAddFriend?.(model)}
+                            disabled={isFetching}
+                        >
+                            <UserPlus className="w-4 h-4" />
+                        </button>
+                    )}
+                    {currentDisplayState.customerAction !== "PASS" && (
+                        <button
+                            type="button"
+                            className={`cursor-pointer backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white ${currentDisplayState.customerAction === "LIKE" ? 'bg-rose-500 text-white' : "sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/20"}`}
+                            onClick={() => onLike?.(model)}
+                            disabled={isFetching}
+                        >
+                            <Heart size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 

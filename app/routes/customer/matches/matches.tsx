@@ -9,6 +9,7 @@ import {
 import {
     Form,
     redirect,
+    useFetcher,
     useActionData,
     useNavigate,
     useNavigation,
@@ -54,6 +55,7 @@ interface LoaderReturn {
     customerLatitude: number;
     customerLongitude: number;
     hasActiveSubscription: boolean;
+    hasPendingSubscription: boolean;
     trialPackage: {
         id: string;
         price: number;
@@ -92,14 +94,15 @@ const DEFAULT_PAGINATION: PaginationProps = {
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { getCustomerProfile } = await import("~/services/profile.server");
-    const { hasActiveSubscription } = await import("~/services/package.server");
+    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
     const url = new URL(request.url);
 
     // Get customer's current GPS location from database, subscription status, trial package, and wallet balance
-    const [customer, hasSubscription, trialPackage, wallet] = await Promise.all([
+    const [customer, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
         getCustomerProfile(customerId),
         hasActiveSubscription(customerId),
+        hasPendingSubscription(customerId),
         prisma.subscription_plan.findFirst({
             where: { name: "24-Hour Trial", status: "active" },
             select: { id: true, price: true },
@@ -187,6 +190,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
@@ -208,6 +212,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
@@ -231,6 +236,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
@@ -252,6 +258,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             customerLatitude,
             customerLongitude,
             hasActiveSubscription: hasSubscription,
+            hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: wallet?.totalBalance || 0,
         } as LoaderReturn;
@@ -269,86 +276,79 @@ export const loader: LoaderFunction = async ({ request }) => {
         customerLatitude,
         customerLongitude,
         hasActiveSubscription: hasSubscription,
+        hasPendingSubscription: hasPending,
         trialPackage,
         customerBalance: wallet?.totalBalance || 0,
     } as LoaderReturn;
 };
 
 export async function action({ request }: Route.ActionArgs) {
+    if (request.method !== "POST") {
+        return {
+            success: false,
+            error: true,
+            message: "Invalid request method",
+        };
+    }
+
     const { createCustomerInteraction, customerAddFriend } = await import(
         "~/services/interaction.server"
     );
 
     const customerId = await requireUserSession(request);
+    const token = await getUserTokenFromSession(request);
     const formData = await request.formData();
-    const like = formData.get("like");
-    const pass = formData.get("pass");
-    const modelIdEntry = formData.get("modelId");
-    const addFriend = formData.get("isFriend") === "true";
-    const token = await getUserTokenFromSession(request)
 
-    if (!modelIdEntry || typeof modelIdEntry !== "string") {
+    const actionType = formData.get("actionType") as string;
+    const modelId = formData.get("modelId") as string;
+
+    if (!modelId) {
         return {
             success: false,
             error: true,
             message: "Missing or invalid modelId",
         };
     }
-    const modelId = modelIdEntry;
 
-    if (request.method === "POST") {
-        if (addFriend === true) {
-            try {
-                const res = await customerAddFriend(customerId, modelId, token);
-                if (res?.success) {
-                    return redirect(`/customer/matches?toastMessage=Add+friend+successfully!&toastType=success`);
-                }
-            } catch (error: any) {
-                return redirect(`/customer/matches?toastMessage=${error.message}&toastType=error`);
-            }
-        } else {
-            const actionValue = (like ?? pass) as FormDataEntryValue | null;
-            if (!actionValue || typeof actionValue !== "string") {
-                return {
-                    success: false,
-                    error: true,
-                    message: "Invalid request action to process!",
-                };
-            }
-            const actionType = actionValue.toString().toUpperCase() === "LIKE" ? "LIKE" : "PASS";
-
-            try {
-                const res = await createCustomerInteraction(customerId, modelId, actionType);
-                if (res?.success) {
-                    return {
-                        success: true,
-                        error: false,
-                        message: res.message || "Create Interaction success!",
-                        modelId,
-                        actionType,
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: true,
-                        message: res?.message || "Failed to create interaction",
-                    };
-                }
-            } catch (error: any) {
-                return redirect(
-                    `/customer/matches?toastMessage=${encodeURIComponent(
-                        error?.message || "Something went wrong"
-                    )}&toastType=error`
-                );
-            }
+    try {
+        if (actionType === "addFriend") {
+            const res = await customerAddFriend(customerId, modelId, token);
+            return {
+                success: res?.success || false,
+                action: "addFriend",
+                modelId,
+                message: res?.success ? "Add friend successfully!" : (res?.message || "Failed to add friend"),
+            };
         }
-    }
 
-    return redirect(
-        `/customer/matches?toastMessage=${encodeURIComponent(
-            "Invalid request method. Please try again later"
-        )}&toastType=warning`
-    );
+        if (actionType === "like" || actionType === "pass") {
+            const interactionAction = actionType === "like" ? "LIKE" : "PASS";
+            const res = await createCustomerInteraction(customerId, modelId, interactionAction);
+
+            return {
+                success: res?.success || false,
+                action: actionType,
+                modelId,
+                currentAction: interactionAction,
+                message: res?.message || (res?.success ? "Interaction success!" : "Failed to create interaction"),
+            };
+        }
+
+        return {
+            success: false,
+            error: true,
+            message: "Invalid action type",
+        };
+    } catch (error: any) {
+        console.error("Matches action error:", error);
+        return {
+            success: false,
+            error: true,
+            action: actionType,
+            modelId,
+            message: error?.message || "Something went wrong",
+        };
+    }
 }
 
 // Page
@@ -369,6 +369,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         customerLatitude,
         customerLongitude,
         hasActiveSubscription,
+        hasPendingSubscription,
         trialPackage,
         customerBalance,
     } = loaderData;
@@ -388,15 +389,145 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         handleSubscribe,
     } = useSubscriptionCheck({
         hasActiveSubscription,
+        hasPendingSubscription,
         customerBalance,
         trialPrice: trialPackage?.price || 10000,
         trialPlanId: trialPackage?.id || "",
         showOnMount: false,
     });
 
-    // Show submission overlay while a POST form is being processed
-    const isSubmitting =
-        navigation.state !== "idle" && navigation.formMethod === "POST";
+    // Optimistic UI with useFetcher
+    const fetcher = useFetcher<typeof action>();
+
+    const [optimisticInteractions, setOptimisticInteractions] = React.useState<{
+        [modelId: string]: {
+            action: "LIKE" | "PASS" | null;
+            isFriend: boolean;
+        };
+    }>({});
+
+    // Cache models to prevent reload
+    const [cachedForyou, setCachedForyou] = React.useState(foryouModels);
+    const [cachedLikeMe, setCachedLikeMe] = React.useState(likeMeModels);
+    const [cachedFavourite, setCachedFavourite] = React.useState(myFavouriteModels);
+    const [cachedPassed, setCachedPassed] = React.useState(myPassModels);
+
+    // Update cached models only when loader data changes (not from fetcher)
+    React.useEffect(() => {
+        if (fetcher.state === "loading") return;
+        setCachedForyou(foryouModels);
+        setCachedLikeMe(likeMeModels);
+        setCachedFavourite(myFavouriteModels);
+        setCachedPassed(myPassModels);
+    }, [foryouModels, likeMeModels, myFavouriteModels, myPassModels, fetcher.state]);
+
+    // Handle fetcher response
+    React.useEffect(() => {
+        if (fetcher.state === "idle" && fetcher.data) {
+            const { success, action, modelId } = fetcher.data;
+            const optimisticState = optimisticInteractions[modelId];
+
+            if (success && optimisticState) {
+                // Update all cached model lists
+                const updateModel = (model: IForYouModelResponse) => {
+                    if (model.id === modelId) {
+                        if (action === "like" || action === "pass") {
+                            return { ...model, customerAction: optimisticState.action };
+                        } else if (action === "addFriend") {
+                            return { ...model, isContact: optimisticState.isFriend };
+                        }
+                    }
+                    return model;
+                };
+
+                setCachedForyou(prev => prev.map(updateModel));
+                setCachedLikeMe(prev => prev.map(updateModel));
+                setCachedFavourite(prev => prev.map(updateModel));
+                setCachedPassed(prev => prev.map(updateModel));
+
+                // Remove optimistic state
+                setOptimisticInteractions(prev => {
+                    const updated = { ...prev };
+                    delete updated[modelId];
+                    return updated;
+                });
+            } else if (!success) {
+                // Revert optimistic state on error
+                setOptimisticInteractions(prev => {
+                    const updated = { ...prev };
+                    delete updated[modelId];
+                    return updated;
+                });
+            }
+        }
+    }, [fetcher.state, fetcher.data]);
+
+    // Helper to get display state (optimistic or real)
+    const getModelState = (model: IForYouModelResponse) => {
+        const optimistic = optimisticInteractions[model.id];
+        if (optimistic) {
+            return {
+                customerAction: optimistic.action,
+                isContact: optimistic.isFriend,
+            };
+        }
+        return {
+            customerAction: model.customerAction,
+            isContact: model.isContact,
+        };
+    };
+
+    // Event handlers
+    const handleLike = (model: IForYouModelResponse) => {
+        const currentAction = getModelState(model).customerAction;
+        const newAction = currentAction === "LIKE" ? null : "LIKE";
+
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [model.id]: {
+                action: newAction,
+                isFriend: model.isContact || false,
+            },
+        }));
+
+        const formData = new FormData();
+        formData.append("actionType", "like");
+        formData.append("modelId", model.id);
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const handlePass = (model: IForYouModelResponse) => {
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [model.id]: {
+                action: "PASS",
+                isFriend: model.isContact || false,
+            },
+        }));
+
+        const formData = new FormData();
+        formData.append("actionType", "pass");
+        formData.append("modelId", model.id);
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const handleAddFriend = (model: IForYouModelResponse) => {
+        if (model.isContact) return;
+
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [model.id]: {
+                action: model.customerAction as "LIKE" | "PASS" | null,
+                isFriend: true,
+            },
+        }));
+
+        const formData = new FormData();
+        formData.append("actionType", "addFriend");
+        formData.append("modelId", model.id);
+        fetcher.submit(formData, { method: "post" });
+    };
+
     const isLoading = navigation.state === "loading";
 
     // Alert visibility control (auto-hide after 5s)
@@ -455,17 +586,6 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
             navigate(`?${newParams.toString()}`, { replace: true });
         }
     }, [searchParams, navigate]);
-
-    if (isSubmitting) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
-                <div className="flex items-center justify-center gap-2">
-                    <Loader className="w-8 h-8 text-rose-500 animate-spin" />
-                    {/* <p className="text-rose-600">{t('matches.processing')}</p> */}
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen relative">
@@ -749,19 +869,27 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                 <Loader className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
-                        ) : foryouModels.length > 0 ? (
+                        ) : cachedForyou.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 px-2">
-                                    {foryouModels.map((model) => (
-                                        <ModelCard
-                                            key={model.id}
-                                            model={model}
-                                            customerLatitude={customerLatitude}
-                                            customerLongitude={customerLongitude}
-                                            hasActiveSubscription={hasActiveSubscription}
-                                            onOpenSubscriptionModal={openSubscriptionModal}
-                                        />
-                                    ))}
+                                    {cachedForyou.map((model) => {
+                                        const displayState = getModelState(model);
+                                        return (
+                                            <ModelCard
+                                                key={model.id}
+                                                model={model}
+                                                displayState={displayState}
+                                                customerLatitude={customerLatitude}
+                                                customerLongitude={customerLongitude}
+                                                hasActiveSubscription={hasActiveSubscription}
+                                                onOpenSubscriptionModal={openSubscriptionModal}
+                                                onLike={() => handleLike(model)}
+                                                onPass={() => handlePass(model)}
+                                                onAddFriend={() => handleAddFriend(model)}
+                                                isFetching={fetcher.state !== "idle"}
+                                            />
+                                        );
+                                    })}
                                 </div>
                                 {foryouPagination.totalPages > 1 && (
                                     <Pagination
@@ -790,19 +918,27 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                 <Loader className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
-                        ) : likeMeModels.length > 0 ? (
+                        ) : cachedLikeMe.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {likeMeModels.map((model) => (
-                                        <ModelCard
-                                            key={model.id}
-                                            model={model}
-                                            customerLatitude={customerLatitude}
-                                            customerLongitude={customerLongitude}
-                                            hasActiveSubscription={hasActiveSubscription}
-                                            onOpenSubscriptionModal={openSubscriptionModal}
-                                        />
-                                    ))}
+                                    {cachedLikeMe.map((model) => {
+                                        const displayState = getModelState(model);
+                                        return (
+                                            <ModelCard
+                                                key={model.id}
+                                                model={model}
+                                                displayState={displayState}
+                                                customerLatitude={customerLatitude}
+                                                customerLongitude={customerLongitude}
+                                                hasActiveSubscription={hasActiveSubscription}
+                                                onOpenSubscriptionModal={openSubscriptionModal}
+                                                onLike={() => handleLike(model)}
+                                                onPass={() => handlePass(model)}
+                                                onAddFriend={() => handleAddFriend(model)}
+                                                isFetching={fetcher.state !== "idle"}
+                                            />
+                                        );
+                                    })}
                                 </div>
                                 {likemePagination.totalPages > 1 && (
                                     <Pagination
@@ -832,19 +968,27 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                 <Loader className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
-                        ) : myFavouriteModels.length > 0 ? (
+                        ) : cachedFavourite.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {myFavouriteModels.map((model) => (
-                                        <ModelCard
-                                            key={model.id}
-                                            model={model}
-                                            customerLatitude={customerLatitude}
-                                            customerLongitude={customerLongitude}
-                                            hasActiveSubscription={hasActiveSubscription}
-                                            onOpenSubscriptionModal={openSubscriptionModal}
-                                        />
-                                    ))}
+                                    {cachedFavourite.map((model) => {
+                                        const displayState = getModelState(model);
+                                        return (
+                                            <ModelCard
+                                                key={model.id}
+                                                model={model}
+                                                displayState={displayState}
+                                                customerLatitude={customerLatitude}
+                                                customerLongitude={customerLongitude}
+                                                hasActiveSubscription={hasActiveSubscription}
+                                                onOpenSubscriptionModal={openSubscriptionModal}
+                                                onLike={() => handleLike(model)}
+                                                onPass={() => handlePass(model)}
+                                                onAddFriend={() => handleAddFriend(model)}
+                                                isFetching={fetcher.state !== "idle"}
+                                            />
+                                        );
+                                    })}
                                 </div>
                                 {favouritePagination.totalPages > 1 && (
                                     <Pagination
@@ -874,19 +1018,27 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                 <Loader className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
-                        ) : myPassModels.length > 0 ? (
+                        ) : cachedPassed.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {myPassModels.map((model) => (
-                                        <ModelCard
-                                            key={model.id}
-                                            model={model}
-                                            customerLatitude={customerLatitude}
-                                            customerLongitude={customerLongitude}
-                                            hasActiveSubscription={hasActiveSubscription}
-                                            onOpenSubscriptionModal={openSubscriptionModal}
-                                        />
-                                    ))}
+                                    {cachedPassed.map((model) => {
+                                        const displayState = getModelState(model);
+                                        return (
+                                            <ModelCard
+                                                key={model.id}
+                                                model={model}
+                                                displayState={displayState}
+                                                customerLatitude={customerLatitude}
+                                                customerLongitude={customerLongitude}
+                                                hasActiveSubscription={hasActiveSubscription}
+                                                onOpenSubscriptionModal={openSubscriptionModal}
+                                                onLike={() => handleLike(model)}
+                                                onPass={() => handlePass(model)}
+                                                onAddFriend={() => handleAddFriend(model)}
+                                                isFetching={fetcher.state !== "idle"}
+                                            />
+                                        );
+                                    })}
                                 </div>
                                 {passPagination.totalPages > 1 && (
                                     <Pagination

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
-import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
+import { Form, redirect, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
 import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle } from 'lucide-react';
 
 // components
@@ -95,74 +95,91 @@ export const loader: LoaderFunction = async ({ params, request }) => {
 export async function action({
     request,
 }: Route.ActionArgs) {
+    if (request.method !== "POST") {
+        return { success: false, action: "invalid", modelId: "", message: "Invalid request method" };
+    }
+
     const customerId = await requireUserSession(request)
     const formData = await request.formData()
     const modelId = formData.get("modelId") as string
-    const isInteraction = formData.get("interaction")
-    const addFriend = formData.get("isFriend") === "true";
-    const submitReview = formData.get("submitReview") === "true";
+    const actionType = formData.get("actionType") as string
     const token = await getUserTokenFromSession(request)
     const { createCustomerInteraction, customerAddFriend } = await import(
         "~/services/interaction.server"
     );
 
-    if (request.method === "POST") {
-        // Handle review submission
-        if (submitReview) {
-            const rating = Number(formData.get("rating"));
-            const title = formData.get("title") as string | null;
-            const reviewText = formData.get("reviewText") as string | null;
-            const isAnonymous = formData.get("isAnonymous") === "true";
+    // Handle review submission (keep redirect for this)
+    if (actionType === "submitReview") {
+        const rating = Number(formData.get("rating"));
+        const title = formData.get("title") as string | null;
+        const reviewText = formData.get("reviewText") as string | null;
+        const isAnonymous = formData.get("isAnonymous") === "true";
 
-            // Validation
-            if (!rating || rating < 1 || rating > 5) {
-                return redirect(`/customer/user-profile/${modelId}?toastMessage=Please+select+a+rating+between+1+and+5&toastType=error`);
-            }
-
-            try {
-                const res = await createReview({
-                    rating,
-                    title: title || undefined,
-                    reviewText: reviewText || undefined,
-                    isAnonymous,
-                    modelId,
-                    customerId
-                });
-                if (res?.success) {
-                    return redirect(`/customer/user-profile/${modelId}?toastMessage=Review+submitted+successfully!&toastType=success`);
-                }
-            } catch (error: any) {
-                const errorMessage = encodeURIComponent(error.message || "Failed to submit review");
-                return redirect(`/customer/user-profile/${modelId}?toastMessage=${errorMessage}&toastType=error`);
-            }
+        // Validation
+        if (!rating || rating < 1 || rating > 5) {
+            return redirect(`/customer/user-profile/${modelId}?toastMessage=Please+select+a+rating+between+1+and+5&toastType=error`);
         }
 
-        if (addFriend === true) {
-            try {
-                const res = await customerAddFriend(customerId, modelId, token);
-                if (res?.success) {
-                    return redirect(`/customer/user-profile/${modelId}?toastMessage=Add+friend+successfully!&toastType=success`);
-                }
-            } catch (error: any) {
-                return redirect(`/customer/user-profile/${modelId}?toastMessage=${error.message}&toastType=error`);
+        try {
+            const res = await createReview({
+                rating,
+                title: title || undefined,
+                reviewText: reviewText || undefined,
+                isAnonymous,
+                modelId,
+                customerId
+            });
+            if (res?.success) {
+                return redirect(`/customer/user-profile/${modelId}?toastMessage=Review+submitted+successfully!&toastType=success`);
             }
-        } else {
-            const actionType = "LIKE";
-            try {
-                if (isInteraction === "true") {
-                    const res = await createCustomerInteraction(customerId, modelId, actionType);
-                    if (res?.success) {
-                        return redirect(`/customer/user-profile/${modelId}?toastMessage=Interaction+successfully!&toastType=success`);
-                    }
-                } else {
-                    return redirect(`/customer/user-profile/${modelId}?toastMessage=Something+wrong.+Please+try+again+later!&toastType=error`);
-                }
-            } catch (error: any) {
-                return { success: false, error: true, message: error.message || "Phone number or password incorrect!" };
-            }
+            return redirect(`/customer/user-profile/${modelId}?toastMessage=Failed+to+submit+review&toastType=error`);
+        } catch (error: any) {
+            const errorMessage = encodeURIComponent(error.message || "Failed to submit review");
+            return redirect(`/customer/user-profile/${modelId}?toastMessage=${errorMessage}&toastType=error`);
         }
     }
-    return redirect(`/customer/user-profile/${modelId}?toastMessage=Invalid+request+method!&toastType=warning`);
+
+    // Handle add friend (optimistic UI)
+    if (actionType === "addFriend") {
+        try {
+            const res = await customerAddFriend(customerId, modelId, token);
+            return {
+                success: res?.success || false,
+                action: "addFriend",
+                modelId,
+                message: res?.success ? "Add friend successfully!" : "Failed to add friend"
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                action: "addFriend",
+                modelId,
+                message: error.message || "Failed to add friend"
+            };
+        }
+    }
+
+    // Handle like/unlike (optimistic UI)
+    if (actionType === "like") {
+        try {
+            const res = await createCustomerInteraction(customerId, modelId, "LIKE");
+            return {
+                success: res?.success || false,
+                action: "like",
+                modelId,
+                currentAction: "LIKE"
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                action: "like",
+                modelId,
+                message: error.message || "Failed to like"
+            };
+        }
+    }
+
+    return { success: false, action: "invalid", modelId, message: "Invalid action type" };
 }
 
 export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
@@ -192,6 +209,75 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         trialPlanId: trialPackage?.id || "",
         showOnMount: shouldShowSubscriptionFromUrl,
     });
+
+    // Optimistic UI with useFetcher
+    const fetcher = useFetcher<typeof action>();
+
+    const [optimisticState, setOptimisticState] = React.useState<{
+        customerAction: "LIKE" | null;
+        isContact: boolean;
+    }>({
+        customerAction: model.customer_interactions?.some(i => i.action === "LIKE") ? "LIKE" : null,
+        isContact: model.isContact || false
+    });
+
+    // Handle fetcher response
+    React.useEffect(() => {
+        if (fetcher.state === "idle" && fetcher.data) {
+            const { success, action, message } = fetcher.data;
+
+            if (success) {
+                // Success - optimistic update becomes real
+                if (action === "addFriend") {
+                    setOptimisticState(prev => ({ ...prev, isContact: true }));
+                } else if (action === "like") {
+                    // Toggle is handled by optimistic state already
+                }
+            } else {
+                // Error - revert optimistic state
+                setOptimisticState({
+                    customerAction: model.customer_interactions?.some(i => i.action === "LIKE") ? "LIKE" : null,
+                    isContact: model.isContact || false
+                });
+                // TODO: Show error toast with message
+            }
+        }
+    }, [fetcher.state, fetcher.data, model.customer_interactions, model.isContact]);
+
+    // Event handlers
+    const handleLike = () => {
+        const newAction = optimisticState.customerAction === "LIKE" ? null : "LIKE";
+
+        // Optimistic update
+        setOptimisticState(prev => ({
+            ...prev,
+            customerAction: newAction
+        }));
+
+        // Submit in background
+        const formData = new FormData();
+        formData.append("actionType", "like");
+        formData.append("modelId", model.id);
+
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const handleAddFriend = () => {
+        if (optimisticState.isContact) return; // Already friends
+
+        // Optimistic update
+        setOptimisticState(prev => ({
+            ...prev,
+            isContact: true
+        }));
+
+        // Submit in background
+        const formData = new FormData();
+        formData.append("actionType", "addFriend");
+        formData.append("modelId", model.id);
+
+        fetcher.submit(formData, { method: "post" });
+    };
 
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
@@ -327,19 +413,15 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                 <div className="px-2 sm:px-6 py-2 sm:py-8 space-y-2">
                     <div className="flex sm:hidden items-start justify-between sm:justify-end px-0 sm:px-4">
                         <div className="flex sm:hidden items-center gap-2">
-                            <Form method="post" >
-                                <input type="hidden" name="modelId" value={model.id} />
-                                <input type="hidden" name="interaction" value="true" />
-                                <Button
-                                    size="sm"
-                                    type="submit"
-                                    className={`cursor-pointer block sm:hidden text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${model.customer_interactions?.some(interaction => interaction.action === "LIKE") ? "bg-rose-500 hover:bg-rose-600" : "border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white"}`}
-                                >
-                                    {model.customer_interactions?.some(interaction => interaction.action === "LIKE")
-                                        ? <Heart />
-                                        : <Heart />}
-                                </Button>
-                            </Form>
+                            <Button
+                                size="sm"
+                                type="button"
+                                onClick={handleLike}
+                                disabled={fetcher.state !== "idle"}
+                                className={`cursor-pointer block sm:hidden text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${optimisticState.customerAction === "LIKE" ? "bg-rose-500 hover:bg-rose-600" : "border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white"}`}
+                            >
+                                <Heart />
+                            </Button>
                             {model?.whatsapp && (
                                 <Button
                                     size="sm"
@@ -350,23 +432,20 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
                                 </Button>
                             )}
-                            {model?.isContact ? (
+                            {optimisticState.isContact ? (
                                 <div className="block sm:hidden rounded-md py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
                                     <UserCheck className="w-5 h-5" />
                                 </div>
                             ) : (
-                                <Form method="post">
-                                    <input type="hidden" name="modelId" value={model.id} />
-                                    <Button
-                                        size="sm"
-                                        type="submit"
-                                        name="isFriend"
-                                        value="true"
-                                        className="cursor-pointer block sm:hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                    >
-                                        <UserPlus className="w-5 h-5 text-gray-500 cursor-pointer" />
-                                    </Button>
-                                </Form>
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    onClick={handleAddFriend}
+                                    disabled={fetcher.state !== "idle"}
+                                    className="cursor-pointer block sm:hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                >
+                                    <UserPlus className="w-5 h-5 text-gray-500 cursor-pointer" />
+                                </Button>
                             )}
                         </div>
                         <div className="flex items-start gap-4">
@@ -399,19 +478,17 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             </div>
 
                             <div className="flex items-center gap-3 mb-6">
-                                <Form method="post" >
-                                    <input type="hidden" name="modelId" value={model.id} />
-                                    <input type="hidden" name="interaction" value="true" />
-                                    <Button
-                                        size="sm"
-                                        type="submit"
-                                        className={`cursor-pointer hidden sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${model.customer_interactions?.some(interaction => interaction.action === "LIKE") ? "bg-rose-500 hover:bg-rose-600" : "border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white"}`}
-                                    >
-                                        {model.customer_interactions?.some(interaction => interaction.action === "LIKE")
-                                            ? t('profile.liked')
-                                            : t('profile.like')}
-                                    </Button>
-                                </Form>
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    onClick={handleLike}
+                                    disabled={fetcher.state !== "idle"}
+                                    className={`cursor-pointer hidden sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${optimisticState.customerAction === "LIKE" ? "bg-rose-500 hover:bg-rose-600" : "border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white"}`}
+                                >
+                                    {optimisticState.customerAction === "LIKE"
+                                        ? t('profile.liked')
+                                        : t('profile.like')}
+                                </Button>
                                 {model?.whatsapp && (
                                     <Button
                                         size="sm"
@@ -422,24 +499,21 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         {t('profile.message')}
                                     </Button>
                                 )}
-                                {model?.isContact ? (
+                                {optimisticState.isContact ? (
                                     <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
                                         <UserCheck className="w-4 h-4" />
                                         {t('profile.friend')}
                                     </div>
                                 ) : (
-                                    <Form method="post">
-                                        <input type="hidden" name="modelId" value={model.id} />
-                                        <Button
-                                            size="sm"
-                                            type="submit"
-                                            name="isFriend"
-                                            value="true"
-                                            className="cursor-pointer hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 sm:block hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                        >
-                                            <UserPlus className="w-4 h-4" />
-                                        </Button>
-                                    </Form>
+                                    <Button
+                                        size="sm"
+                                        type="button"
+                                        onClick={handleAddFriend}
+                                        disabled={fetcher.state !== "idle"}
+                                        className="cursor-pointer hidden bg-white border border-gray-700 hover:bg-gray-700 text-gray-700 sm:block hover:text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                    >
+                                        <UserPlus className="w-4 h-4" />
+                                    </Button>
                                 )}
                                 <Button
                                     size="sm"

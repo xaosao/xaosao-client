@@ -4,7 +4,6 @@ import {
     User,
     Heart,
     MapPin,
-    Loader,
     Search,
     Calendar,
     Minimize,
@@ -19,7 +18,7 @@ import {
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
 import React, { useState, useRef, useEffect } from "react";
-import { Form, redirect, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
+import { Form, redirect, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
 
 // swiper
 import "swiper/css";
@@ -27,6 +26,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import Rating from "~/components/ui/rating";
 import { Badge } from "~/components/ui/badge";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 
@@ -54,6 +54,7 @@ interface LoaderReturn {
     longitude: number;
     models: ImodelsResponse[];
     hasActiveSubscription: boolean;
+    hasPendingSubscription: boolean;
     nearbyModels: INearbyModelResponse[];
     trialPackage: {
         id: string;
@@ -102,7 +103,7 @@ function generateSeed(customerId: string): number {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
-    const { hasActiveSubscription } = await import("~/services/package.server");
+    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { getCustomerProfile } = await import("~/services/profile.server");
     const { prisma } = await import("~/services/database.server");
 
@@ -111,8 +112,9 @@ export const loader: LoaderFunction = async ({ request }) => {
     const latitude = customer?.latitude || 0;
     const longitude = customer?.longitude || 0;
 
-    // Check if customer has active subscription
+    // Check if customer has active or pending subscription
     const hasSubscription = await hasActiveSubscription(customerId);
+    const hasPending = await hasPendingSubscription(customerId);
 
     // Get trial package and customer balance
     const [trialPackage, wallet] = await Promise.all([
@@ -145,6 +147,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         ...model,
         gender: model.gender as Gender,
         available_status: model.available_status as IAvailableStatus,
+        bio: model.bio || "", // Ensure bio is always a string, not null
     }));
 
     // Get nearby models with same filters
@@ -163,6 +166,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
+        hasPendingSubscription: hasPending,
         trialPackage,
         customerBalance: wallet?.totalBalance || 0,
     };
@@ -172,45 +176,79 @@ export async function action({
     request,
 }: Route.ActionArgs) {
     if (request.method !== "POST") {
-        return redirect(`/customer/?toastMessage=Invalid+request+method.+Please+try+again+later&toastType=warning`);
+        return {
+            success: false,
+            action: "invalid",
+            modelId: "",
+            message: "Invalid request method"
+        };
     }
 
     const customerId = await requireUserSession(request)
     const token = await getUserTokenFromSession(request)
     const formData = await request.formData();
-    const like = formData.get("like") === "true";
-    const pass = formData.get("pass") === "true";
-    const addFriend = formData.get("isFriend") === "true";
+
+    // New pattern: get actionType directly from formData
+    const actionType = formData.get("actionType") as string; // "like" | "pass" | "addFriend"
     const modelId = formData.get("modelId") as string;
 
-    // Preserve the profileId to keep selection after action
-    const profileIdParam = modelId ? `&profileId=${modelId}` : "";
-
-    if (addFriend === true) {
-        try {
+    try {
+        // Handle Add Friend action
+        if (actionType === "addFriend") {
             const res = await customerAddFriend(customerId, modelId, token);
             if (res?.success) {
-                return redirect(`/customer/?toastMessage=Add+friend+successfully!&toastType=success${profileIdParam}`);
+                return {
+                    success: true,
+                    action: "addFriend",
+                    modelId,
+                    message: "discover.addFriend.success"
+                };
             }
-            return redirect(`/customer/?toastMessage=${res?.message || 'Failed to add friend'}&toastType=error${profileIdParam}`);
-        } catch (error: any) {
-            return redirect(`/customer/?toastMessage=${error.message}&toastType=error${profileIdParam}`);
+            return {
+                success: false,
+                action: "addFriend",
+                modelId,
+                message: res?.message || "discover.addFriend.failed"
+            };
         }
-    }
 
-    if (like === false && pass === false) {
-        return redirect(`/customer/?toastMessage=Invalid+request+action&toastType=warning${profileIdParam}`);
-    }
+        // Handle Like/Pass actions
+        if (actionType === "like" || actionType === "pass") {
+            const interactionAction = actionType === "like" ? "LIKE" : "PASS";
+            const res = await createCustomerInteraction(customerId, modelId, interactionAction);
 
-    const actionType = like === true ? "LIKE" : "PASS"
-    try {
-        const res = await createCustomerInteraction(customerId, modelId, actionType);
-        if (res?.success) {
-            return redirect(`/customer/?toastMessage=Interaction+successfully!&toastType=success${profileIdParam}`);
+            if (res?.success) {
+                return {
+                    success: true,
+                    action: actionType,
+                    modelId,
+                    currentAction: interactionAction
+                };
+            }
+            return {
+                success: false,
+                action: actionType,
+                modelId,
+                message: res?.message || "discover.interaction.failed"
+            };
         }
-        return redirect(`/customer/?toastMessage=${res?.message || 'Interaction failed'}&toastType=error${profileIdParam}`);
+
+        // Invalid action type
+        return {
+            success: false,
+            action: actionType || "invalid",
+            modelId,
+            message: "discover.invalidAction"
+        };
+
     } catch (error: any) {
-        return redirect(`/customer/?toastMessage=${error.message}&toastType=error${profileIdParam}`);
+        console.error("Discover action error:", error);
+        return {
+            success: false,
+            action: actionType || "error",
+            modelId,
+            message: error.message || "discover.error.somethingWrong"
+        };
     }
 }
 
@@ -219,7 +257,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, latitude, longitude, hasActiveSubscription, trialPackage, customerBalance } = loaderData;
+    const { models, nearbyModels, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -233,11 +271,119 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         handleSubscribe,
     } = useSubscriptionCheck({
         hasActiveSubscription,
+        hasPendingSubscription,
         customerBalance,
         trialPrice: trialPackage?.price || 10000,
         trialPlanId: trialPackage?.id || "",
         showOnMount: false, // Don't show on mount for discover page
     });
+
+    // Optimistic UI: useFetcher for non-navigation form submissions
+    const fetcher = useFetcher<typeof action>();
+
+    // Optimistic state: Track pending interactions by modelId
+    const [optimisticInteractions, setOptimisticInteractions] = useState<{
+        [modelId: string]: {
+            action: "LIKE" | "PASS" | null;
+            isFriend: boolean;
+        }
+    }>({});
+
+    // Track if last change was from fetcher action (to prevent auto-scroll)
+    const isFetcherActionRef = useRef(false);
+
+    // Track last processed fetcher data to prevent duplicate processing
+    const lastProcessedDataRef = useRef<any>(null);
+
+    // Cache models in local state to prevent reloading after interactions
+    const [cachedModels, setCachedModels] = useState<ImodelsResponse[]>(models);
+    const [cachedNearbyModels, setCachedNearbyModels] = useState<INearbyModelResponse[]>(nearbyModels);
+
+    // Update cached models only on initial load or when not from fetcher action
+    useEffect(() => {
+        // If fetcher just completed, don't update cache (keep current order)
+        if (fetcher.state === "loading" || isFetcherActionRef.current) {
+            return;
+        }
+
+        // Update cache with new data from loader (initial load or explicit refresh)
+        setCachedModels(models);
+        setCachedNearbyModels(nearbyModels);
+    }, [models, nearbyModels, fetcher.state]);
+
+    // Handle fetcher response
+    useEffect(() => {
+        if (fetcher.state === "idle" && fetcher.data) {
+            // Prevent processing the same response twice
+            if (lastProcessedDataRef.current === fetcher.data) {
+                return;
+            }
+            lastProcessedDataRef.current = fetcher.data;
+
+            const { success, action, modelId, message } = fetcher.data;
+
+            if (success) {
+                // Get the optimistic state before deleting it (this has the correct new state)
+                const optimisticState = optimisticInteractions[modelId];
+
+                // Success: Update cached models with new state from optimistic update
+                setCachedModels(prev => prev.map(model => {
+                    if (model.id === modelId && optimisticState) {
+                        if (action === "like" || action === "pass") {
+                            return { ...model, customerAction: optimisticState.action };
+                        } else if (action === "addFriend") {
+                            return { ...model, isContact: optimisticState.isFriend };
+                        }
+                    }
+                    return model;
+                }));
+
+                // Also update nearby models if the model is there
+                setCachedNearbyModels(prev => prev.map(model => {
+                    if (model.id === modelId && optimisticState) {
+                        if (action === "like" || action === "pass") {
+                            return { ...model, customerAction: optimisticState.action };
+                        } else if (action === "addFriend") {
+                            return { ...model, isContact: optimisticState.isFriend };
+                        }
+                    }
+                    return model;
+                }));
+
+                // Remove optimistic state (now in cached models)
+                setOptimisticInteractions(prev => {
+                    const updated = { ...prev };
+                    delete updated[modelId];
+                    return updated;
+                });
+            } else {
+                // Error: Revert optimistic state
+                setOptimisticInteractions(prev => {
+                    const updated = { ...prev };
+                    delete updated[modelId];
+                    return updated;
+                });
+
+                // Show error toast
+                console.error("Action failed:", message);
+            }
+        }
+    }, [fetcher.state, fetcher.data]);
+
+    // Helper: Get display state (optimistic or real)
+    const getModelState = (profile: ImodelsResponse | INearbyModelResponse) => {
+        const optimistic = optimisticInteractions[profile.id];
+        if (optimistic) {
+            return {
+                customerAction: optimistic.action,
+                isContact: optimistic.isFriend
+            };
+        }
+        return {
+            customerAction: 'customerAction' in profile ? profile.customerAction : null,
+            isContact: profile.isContact
+        };
+    };
 
     // Handler for WhatsApp button click with subscription check
     const handleWhatsAppClick = (whatsappNumber: number) => {
@@ -247,20 +393,99 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
             window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
-    const isSubmitting =
-        navigation.state !== "idle" && navigation.formMethod === "POST"
 
+    // Optimistic UI Handlers
+    const handleLike = (profile: ImodelsResponse | INearbyModelResponse) => {
+        const currentAction = getModelState(profile).customerAction;
+        const newAction = currentAction === "LIKE" ? null : "LIKE";
 
-    const selectedId = searchParams.get("profileId") || models?.[0]?.id;
-    const selectedProfile = models.find((p) => p.id === selectedId);
+        // Mark as fetcher action to prevent auto-scroll
+        isFetcherActionRef.current = true;
+
+        // Optimistic update
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [profile.id]: {
+                action: newAction,
+                isFriend: profile.isContact || false
+            }
+        }));
+
+        // Submit in background - always send "like", server will handle toggle
+        const formData = new FormData();
+        formData.append("actionType", "like");
+        formData.append("modelId", profile.id);
+
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const handlePass = (profile: ImodelsResponse | INearbyModelResponse) => {
+        // Mark as fetcher action to prevent auto-scroll
+        isFetcherActionRef.current = true;
+
+        // Optimistic update
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [profile.id]: {
+                action: "PASS",
+                isFriend: profile.isContact || false
+            }
+        }));
+
+        // Submit in background
+        const formData = new FormData();
+        formData.append("actionType", "pass");
+        formData.append("modelId", profile.id);
+
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const handleAddFriend = (profile: ImodelsResponse | INearbyModelResponse) => {
+        if (profile.isContact) return; // Already friends
+
+        // Mark as fetcher action to prevent auto-scroll
+        isFetcherActionRef.current = true;
+
+        // Optimistic update
+        setOptimisticInteractions(prev => ({
+            ...prev,
+            [profile.id]: {
+                action: ('customerAction' in profile ? profile.customerAction : null) as "LIKE" | "PASS" | null,
+                isFriend: true
+            }
+        }));
+
+        // Submit in background
+        const formData = new FormData();
+        formData.append("actionType", "addFriend");
+        formData.append("modelId", profile.id);
+
+        fetcher.submit(formData, { method: "post" });
+    };
+
+    const selectedId = searchParams.get("profileId") || cachedModels?.[0]?.id;
+    const selectedProfile = cachedModels.find((p) => p.id === selectedId);
+
+    // Get optimistic display state for selectedProfile
+    const displayState = selectedProfile ? getModelState(selectedProfile) : {
+        customerAction: null,
+        isContact: false
+    };
+
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Refs for auto-scroll to selected model in header
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const modelItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-    // Auto-scroll to selected model when selectedId changes or after form submission
+    // Auto-scroll to selected model when selectedId changes (but NOT after fetcher actions)
     useEffect(() => {
+        // Skip auto-scroll if this change is from a fetcher action (like/pass/addFriend)
+        if (isFetcherActionRef.current) {
+            isFetcherActionRef.current = false; // Reset flag
+            return;
+        }
+
         // Only run when navigation is idle (not during submission/loading)
         if (navigation.state !== 'idle') return;
 
@@ -355,7 +580,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         setTouchEndX(null);
     };
 
-    if (models.length === 0) {
+    if (cachedModels.length === 0) {
         return (
             <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
                 <div>
@@ -631,14 +856,57 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         navigate({ search: searchParams.toString() }, { replace: false });
     };
 
-    if (isSubmitting || isLoading) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
-                <div className="flex items-center justify-center gap-2">
-                    <Loader className="w-8 h-8 text-rose-500 animate-spin" />
+    // Profile skeleton component for loading state
+    const ProfileSkeleton = () => (
+        <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
+            <div className="flex items-start justify-between bg-gray-100 sm:bg-white w-full p-3 sm:px-0">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-10 w-10 rounded-md" />
+            </div>
+
+            {/* Model header skeleton */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex items-center gap-3 overflow-x-auto px-4 py-3">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-16 w-16 rounded-full flex-shrink-0" />
+                    ))}
                 </div>
             </div>
-        );
+
+            {/* Main profile skeleton */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <Skeleton className="w-full h-96" />
+                <div className="p-6 space-y-4">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Nearby models skeleton */}
+            <div className="space-y-4">
+                <Skeleton className="h-6 w-48" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="space-y-3">
+                            <Skeleton className="h-48 w-full rounded-2xl" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    // Show skeleton only on initial load when we have no cached models
+    if (isLoading && cachedModels.length === 0) {
+        return <ProfileSkeleton />;
     }
 
     return (
@@ -861,7 +1129,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         scrollbarWidth: 'none',
                     }}
                 >
-                    {models.map((data) => (
+                    {cachedModels.map((data) => (
                         <div
                             key={data.id}
                             ref={(el) => {
@@ -930,12 +1198,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
                                                 <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                             </div>
-                                            <Form method="post">
-                                                <input type="hidden" name="like" value={selectedProfile.customerAction === "LIKE" ? "true" : "flase"} id="likeInput" />
-                                                <input type="hidden" name="pass" value="false" id="passInput" />
-                                                <input type="hidden" name="modelId" value={selectedProfile.id} />
-                                                <input type="hidden" name="isFriend" value="false" id="isFriend" />
-
+                                            <div>
                                                 <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
                                                     {selectedProfile?.whatsapp && (
                                                         <button
@@ -946,30 +1209,27 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             <MessageSquareText className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {selectedProfile?.isContact ? (
+                                                    {displayState.isContact ? (
                                                         <div className="p-2 rounded-full bg-green-100 text-green-500">
                                                             <UserCheck className="w-4 h-4" />
                                                         </div>
                                                     ) : (
                                                         <button
-                                                            type="submit"
-                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
-                                                            onClick={() => {
-                                                                (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                            }}
+                                                            type="button"
+                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-green-100 hover:text-green-500"
+                                                            onClick={() => selectedProfile && handleAddFriend(selectedProfile)}
+                                                            disabled={fetcher.state !== "idle"}
                                                         >
                                                             <UserPlus className="w-4 h-4" />
                                                         </button>
                                                     )}
                                                     <button
-                                                        type="submit"
-                                                        className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
-                                                        onClick={() => {
-                                                            (document.getElementById("likeInput") as HTMLInputElement).value = "true";
-                                                            (document.getElementById("passInput") as HTMLInputElement).value = "false";
-                                                        }}
+                                                        type="button"
+                                                        className={`${displayState.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full hover:text-rose-500 hover:bg-rose-200 transition-colors`}
+                                                        onClick={() => selectedProfile && handleLike(selectedProfile)}
+                                                        disabled={fetcher.state !== "idle"}
                                                     >
-                                                        <Heart className="w-4 h-4" />
+                                                        <Heart className={`w-4 h-4 ${displayState.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
                                                     </button>
                                                 </div>
 
@@ -983,33 +1243,30 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             <MessageSquareText className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {selectedProfile?.isContact ? (
+                                                    {displayState.isContact ? (
                                                         <div className="p-2 rounded-full bg-green-100 text-green-500">
                                                             <UserCheck className="w-4 h-4" />
                                                         </div>
                                                     ) : (
                                                         <button
-                                                            type="submit"
-                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
-                                                            onClick={() => {
-                                                                (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                            }}
+                                                            type="button"
+                                                            className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-green-100 hover:text-green-500"
+                                                            onClick={() => selectedProfile && handleAddFriend(selectedProfile)}
+                                                            disabled={fetcher.state !== "idle"}
                                                         >
                                                             <UserPlus className="w-4 h-4" />
                                                         </button>
                                                     )}
                                                     <button
-                                                        type="submit"
-                                                        className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
-                                                        onClick={() => {
-                                                            (document.getElementById("likeInput") as HTMLInputElement).value = "true";
-                                                            (document.getElementById("passInput") as HTMLInputElement).value = "false";
-                                                        }}
+                                                        type="button"
+                                                        className={`${displayState.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full hover:text-rose-500 hover:bg-rose-200 transition-colors`}
+                                                        onClick={() => selectedProfile && handleLike(selectedProfile)}
+                                                        disabled={fetcher.state !== "idle"}
                                                     >
-                                                        <Heart className={`w-4 h-4 ${selectedProfile.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
+                                                        <Heart className={`w-4 h-4 ${displayState.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
                                                     </button>
                                                 </div>
-                                            </Form>
+                                            </div>
 
                                         </SwiperSlide>
                                     ))
@@ -1038,12 +1295,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
                                             <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                         </div>
-                                        <Form method="post">
-                                            <input type="hidden" name="like" value={selectedProfile.customerAction === "LIKE" ? "true" : "flase"} id="likeInput" />
-                                            <input type="hidden" name="pass" value="false" id="passInput" />
-                                            <input type="hidden" name="modelId" value={selectedProfile.id} />
-                                            <input type="hidden" name="isFriend" value="false" id="isFriend" />
-
+                                        <div>
                                             <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
                                                 {selectedProfile?.whatsapp && (
                                                     <button
@@ -1054,30 +1306,27 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         <MessageSquareText className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {selectedProfile?.isContact ? (
+                                                {displayState.isContact ? (
                                                     <div className="p-2 rounded-full bg-green-100 text-green-500">
                                                         <UserCheck className="w-4 h-4" />
                                                     </div>
                                                 ) : (
                                                     <button
-                                                        type="submit"
-                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
-                                                        onClick={() => {
-                                                            (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                        }}
+                                                        type="button"
+                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-green-100 hover:text-green-500"
+                                                        onClick={() => selectedProfile && handleAddFriend(selectedProfile)}
+                                                        disabled={fetcher.state !== "idle"}
                                                     >
                                                         <UserPlus className="w-4 h-4" />
                                                     </button>
                                                 )}
                                                 <button
-                                                    type="submit"
-                                                    className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
-                                                    onClick={() => {
-                                                        (document.getElementById("likeInput") as HTMLInputElement).value = "true";
-                                                        (document.getElementById("passInput") as HTMLInputElement).value = "false";
-                                                    }}
+                                                    type="button"
+                                                    className={`${displayState.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full hover:text-rose-500 hover:bg-rose-200 transition-colors`}
+                                                    onClick={() => selectedProfile && handleLike(selectedProfile)}
+                                                    disabled={fetcher.state !== "idle"}
                                                 >
-                                                    <Heart className="w-4 h-4" />
+                                                    <Heart className={`w-4 h-4 ${displayState.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
                                                 </button>
                                             </div>
 
@@ -1091,33 +1340,30 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         <MessageSquareText className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {selectedProfile?.isContact ? (
+                                                {displayState.isContact ? (
                                                     <div className="p-2 rounded-full bg-green-100 text-green-500">
                                                         <UserCheck className="w-4 h-4" />
                                                     </div>
                                                 ) : (
                                                     <button
-                                                        type="submit"
-                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-rose-100 hover:text-rose-500"
-                                                        onClick={() => {
-                                                            (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                        }}
+                                                        type="button"
+                                                        className="cursor-pointer p-2 rounded-full transition-colors bg-gray-700 text-gray-300 hover:bg-green-100 hover:text-green-500"
+                                                        onClick={() => selectedProfile && handleAddFriend(selectedProfile)}
+                                                        disabled={fetcher.state !== "idle"}
                                                     >
                                                         <UserPlus className="w-4 h-4" />
                                                     </button>
                                                 )}
                                                 <button
-                                                    type="submit"
-                                                    className={`${selectedProfile.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full  hover:text-rose-500 hover:bg-rose-200 transition-colors`}
-                                                    onClick={() => {
-                                                        (document.getElementById("likeInput") as HTMLInputElement).value = "true";
-                                                        (document.getElementById("passInput") as HTMLInputElement).value = "false";
-                                                    }}
+                                                    type="button"
+                                                    className={`${displayState.customerAction === "LIKE" ? "bg-rose-100 text-rose-500" : "bg-gray-700 text-gray-300"} cursor-pointer p-2 rounded-full hover:text-rose-500 hover:bg-rose-200 transition-colors`}
+                                                    onClick={() => selectedProfile && handleLike(selectedProfile)}
+                                                    disabled={fetcher.state !== "idle"}
                                                 >
-                                                    <Heart className={`w-4 h-4 ${selectedProfile.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
+                                                    <Heart className={`w-4 h-4 ${displayState.customerAction === "LIKE" ? "text-rose-500 fill-rose-500" : ""}`} />
                                                 </button>
                                             </div>
-                                        </Form>
+                                        </div>
 
                                     </SwiperSlide>
                                 )}
@@ -1196,13 +1442,14 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
                 <div className="hidden sm:block">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                        {nearbyModels?.map((model) => (
+                        {cachedNearbyModels?.map((model) => {
+                            const modelDisplayState = getModelState(model);
+                            return (
                             <div
                                 key={model.id}
                                 className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden h-auto w-full group"
                             >
-                                <Form method="post">
-                                    <input type="hidden" name="modelId" value={model.id} />
+                                <div>
                                     <div className="absolute top-4 right-4 flex space-x-2 z-10">
                                         {model?.whatsapp && (
                                             <button
@@ -1213,25 +1460,22 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 <MessageSquareText className="w-4 h-4" />
                                             </button>
                                         )}
-                                        {model?.isContact ? (
+                                        {modelDisplayState.isContact ? (
                                             <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
                                                 <UserCheck className="w-4 h-4" />
                                             </div>
                                         ) : (
                                             <button
-                                                type="submit"
-                                                name="isFriend"
-                                                value="true"
-                                                className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
-                                                onClick={() => {
-                                                    (document.getElementById("isFriend") as HTMLInputElement).value = "true";
-                                                }}
+                                                type="button"
+                                                className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
+                                                onClick={() => handleAddFriend(model)}
+                                                disabled={fetcher.state !== "idle"}
                                             >
                                                 <UserPlus className="w-4 h-4" />
                                             </button>
                                         )}
                                     </div>
-                                </Form>
+                                </div>
                                 <div className="relative h-full overflow-hidden">
                                     <div
                                         onClick={() => navigate(`/customer/user-profile/${model.id}`)}
@@ -1278,12 +1522,15 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        );
+                        })}
                     </div>
                 </div>
 
                 <div className="block sm:hidden w-full space-y-8">
-                    {nearbyModels?.map((model) => (
+                    {cachedNearbyModels?.map((model) => {
+                        const modelDisplayState = getModelState(model);
+                        return (
                         <div key={model.id} className="flex items-start justify-between pb-4 border-b">
                             <div className="flex items-start justify-start gap-2">
                                 {model.profile ? (
@@ -1417,37 +1664,34 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                 </div>
                             </div>
 
-                            <Form method="post">
-                                <input type="hidden" name="modelId" value={model.id} />
-                                <input type="hidden" name="isFriend" value="true" id="isFriend" />
-                                <div className="flex space-x-2">
-                                    {model?.whatsapp && (
-                                        <button
-                                            type="button"
-                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                        >
-                                            <MessageSquareText className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                    {model?.isContact ? (
-                                        <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
-                                            <UserCheck className="w-4 h-4" />
-                                        </div>
-                                    ) : (
-                                        <button
-                                            type="submit"
-                                            name="isFriend"
-                                            value="true"
-                                            className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
-                                        >
-                                            <UserPlus className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </Form>
+                            <div className="flex space-x-2">
+                                {model?.whatsapp && (
+                                    <button
+                                        type="button"
+                                        className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
+                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                    >
+                                        <MessageSquareText className="w-4 h-4" />
+                                    </button>
+                                )}
+                                {modelDisplayState.isContact ? (
+                                    <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
+                                        <UserCheck className="w-4 h-4" />
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
+                                        onClick={() => handleAddFriend(model)}
+                                        disabled={fetcher.state !== "idle"}
+                                    >
+                                        <UserPlus className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
