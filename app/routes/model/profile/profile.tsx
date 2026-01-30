@@ -557,13 +557,13 @@ export default function ModelProfilePage() {
                         >
                             <img
                                 src={model?.profile || undefined}
-                                alt={`${model.firstName}-${model.lastName}`}
+                                alt={`${model.firstName}${model.lastName ? `-${model.lastName}` : ''}`}
                                 className="w-32 h-32 rounded-full object-cover border-2 border-rose-500 hover:opacity-90 transition-opacity"
                             />
                         </div>
                         <div className="flex sm:hidden items-center justify-center gap-2 text-center">
                             <div className="flex items-center justify-center gap-2 mb-1 px-4 py-0.5 rounded-full bg-gray-100">
-                                <h2 className="text-lg text-gray-800">{`${model.firstName} ${model.lastName || ''}`}</h2>
+                                <h2 className="text-lg text-gray-800">{model.firstName}{model.lastName ? ` ${model.lastName}` : ''}</h2>
                                 <BadgeCheck className="w-5 h-5 text-rose-500" />
                             </div>
                             <div
@@ -577,7 +577,7 @@ export default function ModelProfilePage() {
                         <div className="hidden sm:block flex-1">
                             <div className="mb-2">
                                 <h1 className="text-2xl font-bold mb-1">
-                                    {model.firstName}&nbsp;{model.lastName || ''}
+                                    {model.firstName}{model.lastName ? ` ${model.lastName}` : ''}
                                 </h1>
 
                             </div>
@@ -657,7 +657,7 @@ export default function ModelProfilePage() {
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
                                 <div className="w-full flex items-start justify-start flex-col space-y-3 text-sm p-2">
                                     <h3 className="text-gray-800 font-bold uppercase">{t("modelProfile.account.personalInfo")}</h3>
-                                    <p className='flex items-center'><User size={14} />&nbsp;{t("modelProfile.account.fullName")}:&nbsp;<span className="font-semibold">{model.firstName}&nbsp;{model.lastName || ''}</span></p>
+                                    <p className='flex items-center'><User size={14} />&nbsp;{t("modelProfile.account.fullName")}:&nbsp;<span className="font-semibold">{model.firstName}{model.lastName ? ` ${model.lastName}` : ''}</span></p>
                                     <p className="flex items-center"> <Calendar size={14} />&nbsp;{t("modelProfile.account.age")}:&nbsp;<span className="font-semibold">{calculateAgeFromDOB(model.dob)} {t("modelProfile.account.yearsOld")}</span></p>
                                     <div className="flex items-center"><MarsStroke size={14} />&nbsp;{t("modelProfile.account.gender")}:&nbsp;&nbsp;
                                         <Badge variant="outline" className={`${model.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1 font-semibold`}>
@@ -1295,7 +1295,7 @@ export default function ModelProfilePage() {
                         </button>
                         <img
                             src={model.profile}
-                            alt={`${model.firstName} ${model.lastName || ''}`}
+                            alt={`${model.firstName}${model.lastName ? ` ${model.lastName}` : ''}`}
                             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"
                         />
                         <p className="absolute bottom-4 text-white/70 text-sm">{t("modelProfile.clickToClose")}</p>

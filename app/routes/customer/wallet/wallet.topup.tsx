@@ -32,7 +32,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         if (hasPending) {
             // Redirect back with error message
             const returnUrl = url.searchParams.get("returnUrl") || "/customer/wallets";
-            return redirect(`${returnUrl}?toastMessage=You+already+have+a+pending+subscription.+Please+wait+for+admin+approval.&toastType=error`);
+            return redirect(`${returnUrl}?toastMessage=errors.pendingSubscriptionExists&toastType=error`);
         }
     }
 
@@ -99,9 +99,9 @@ export async function action({ request }: Route.ActionArgs) {
                 // Check for return URL in the form data
                 const returnUrl = formData.get("return_url") as string;
                 if (returnUrl) {
-                    return redirect(`${returnUrl}?toastMessage=Deposit+success.+Your+transaction+is+under+review!&toastType=success`);
+                    return redirect(`${returnUrl}?toastMessage=wallet.topup.depositSuccess&toastType=success`);
                 }
-                return redirect(`/customer/wallets?toastMessage=Deposit+success.+Your+transaction+is+under+review!&toastType=success`);
+                return redirect(`/customer/wallets?toastMessage=wallet.topup.depositSuccess&toastType=success`);
             }
 
         } catch (error: any) {
@@ -648,7 +648,7 @@ export default function WalletTopUpPage() {
                         <div className="mb-4 p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                             <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                             <span className="text-red-500 text-sm">
-                                {capitalize(actionData.message)}
+                                {capitalize(t(actionData.message))}
                             </span>
                         </div>
                     )}

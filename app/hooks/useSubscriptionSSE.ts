@@ -66,7 +66,7 @@ export function useSubscriptionSSE({
             console.log("[SSE Hook] Subscription activated:", data);
 
             // Show success toast
-            const toastMessage = "Your subscription is now active! 🎉";
+            const toastMessage = "subscription.activationSuccess";
             const currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set("toastMessage", toastMessage);
             currentUrl.searchParams.set("toastType", "success");

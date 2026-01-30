@@ -494,7 +494,7 @@ export async function createPendingSubscription(
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: "You already have a pending subscription. Please wait for admin approval.",
+        message: "errors.pendingSubscriptionExists",
       });
     }
 

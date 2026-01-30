@@ -649,7 +649,7 @@ export async function createModelBank(
       error: true,
       message:
         error.code === "P2002"
-          ? "Bank account already exists!"
+          ? "errors.bankAccountExists"
           : "Failed to create model bank!",
     });
   }
@@ -667,7 +667,7 @@ export async function updateModelBank(
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: "Missing model id or bank id!",
+      message: "errors.missingBankId",
     });
 
   const auditBase = {
@@ -721,7 +721,7 @@ export async function updateModelBank(
       error: true,
       message:
         error.code === "P2002"
-          ? "Bank account already exists!"
+          ? "errors.bankAccountExists"
           : "Failed to update model bank!",
     });
   }
@@ -733,7 +733,7 @@ export async function deleteModelBank(id: string, modelId: string) {
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: "Missing model id or bank id!",
+      message: "errors.missingBankId",
     });
 
   const auditBase = {
@@ -812,7 +812,7 @@ export async function setDefaultBank(id: string, modelId: string) {
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: "Missing model id or bank id!",
+      message: "errors.missingBankId",
     });
 
   const auditBase = {

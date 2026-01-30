@@ -37,6 +37,7 @@ import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
     hasActiveSubscription: boolean
+    hasPendingSubscription: boolean
     trialPackage: {
         id: string;
         price: number;
@@ -51,16 +52,17 @@ interface ProfilePageProps {
 export const loader: LoaderFunction = async ({ params, request }) => {
     const customerId = await requireUserSession(request)
     const modelId = params.userId as string
-    const { hasActiveSubscription } = await import("~/services/package.server");
+    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
     const model = await getModelProfile(modelId, customerId)
 
     // Fetch review data, subscription status, trial package, and wallet balance
-    const [reviewsResult, canReviewResult, customerReview, hasSubscription, trialPackage, wallet] = await Promise.all([
+    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
         getCustomerReviewForModel(customerId, modelId),
         hasActiveSubscription(customerId),
+        hasPendingSubscription(customerId),
         prisma.subscription_plan.findFirst({
             where: { name: "24-Hour Trial", status: "active" },
             select: { id: true, price: true },
@@ -84,6 +86,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     return {
         model: { ...model, reviewData },
         hasActiveSubscription: hasSubscription,
+        hasPendingSubscription: hasPending,
         trialPackage,
         customerBalance: wallet?.totalBalance || 0,
     }
@@ -167,7 +170,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const navigation = useNavigation()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model, hasActiveSubscription, trialPackage, customerBalance } = loaderData
+    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData
     const images = model.Images
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST"
@@ -183,6 +186,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         handleSubscribe,
     } = useSubscriptionCheck({
         hasActiveSubscription,
+        hasPendingSubscription,
         customerBalance,
         trialPrice: trialPackage?.price || 10000,
         trialPlanId: trialPackage?.id || "",
@@ -376,13 +380,13 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         >
                             <img
                                 src={model?.profile || undefined}
-                                alt={`${model.firstName}-${model.lastName}`}
+                                alt={`${model.firstName}${model.lastName ? `-${model.lastName}` : ''}`}
                                 className="w-32 h-32 rounded-full object-cover border-2 border-rose-500 hover:opacity-90 transition-opacity"
                             />
                         </div>
                         <div className="flex sm:hidden items-center justify-center gap-2 text-center">
                             <div className="flex items-center justify-center gap-2 mb-1 px-4 py-0.5 rounded-full bg-gray-100">
-                                <h2 className="text-lg text-gray-800">{`${model.firstName} ${model.lastName}`}</h2>
+                                <h2 className="text-lg text-gray-800">{model.firstName}{model.lastName ? ` ${model.lastName}` : ''}</h2>
                                 <BadgeCheck className="w-5 h-5 text-rose-500" />
                             </div>
                         </div>
@@ -390,7 +394,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         <div className="hidden sm:block flex-1">
                             <div className="mb-4">
                                 <h1 className="text-2xl font-bold mb-1">
-                                    {model.firstName}&nbsp;{model.lastName}
+                                    {model.firstName}{model.lastName ? ` ${model.lastName}` : ''}
                                 </h1>
                             </div>
 
@@ -584,7 +588,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
                                 <div className="w-full flex items-start justify-start flex-col space-y-3 text-sm p-2">
                                     <h3 className="text-gray-800 font-bold">{t('profile.personalInfo')}</h3>
-                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}:&nbsp;<span className="font-semibold">{model.firstName}&nbsp;{model.lastName}</span></p>
+                                    <p className='flex items-center'><User size={14} />&nbsp;{t('profile.fullname')}:&nbsp;<span className="font-semibold">{model.firstName}{model.lastName ? ` ${model.lastName}` : ''}</span></p>
                                     <p className="flex items-center"> <Calendar size={14} />&nbsp;{t('profile.age')}:&nbsp;<span className="font-semibold">{calculateAgeFromDOB(model.dob)} {t('profile.yearsOld')}</span></p>
                                     <div className="flex items-center"><MarsStroke size={14} />&nbsp;{t('profile.gender')}:&nbsp;&nbsp;
                                         <Badge variant="outline" className={`${model.gender === "male" ? "bg-gray-700 text-gray-300" : "bg-rose-100 text-rose-500"} px-3 py-1 font-semibold`}>
@@ -979,7 +983,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         </button>
                         <img
                             src={model.profile}
-                            alt={`${model.firstName} ${model.lastName}`}
+                            alt={`${model.firstName}${model.lastName ? ` ${model.lastName}` : ''}`}
                             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"
                         />
                         <p className="absolute bottom-4 text-white/70 text-sm">{t('profile.clickToClose')}</p>

@@ -178,7 +178,10 @@
       "invalidCredentials": "Invalid phone number or password. Please try again.",
       "accountUnavailable": "Your account is currently unavailable. Please contact support.",
       "loginFailed": "Login failed. Please try again.",
-      "unexpectedError": "An unexpected error occurred. Please try again."
+      "unexpectedError": "An unexpected error occurred. Please try again.",
+      "pendingSubscriptionExists": "You already have a pending subscription. Please wait for admin approval.",
+      "bankAccountExists": "Bank account already exists!",
+      "missingBankId": "Missing model id or bank id!"
     }
   },
   "forgotPassword": {
@@ -700,7 +703,8 @@
       "submitting": "Submiting....",
       "done": "Done",
       "cancel": "Cancel",
-      "minimumAmount": "Minimum amount is 10,000 Kip"
+      "minimumAmount": "Minimum amount is 10,000 Kip",
+      "depositSuccess": "Deposit success. Your transaction is under review!"
     },
     "edit": {
       "title": "Transaction Edit",
@@ -816,7 +820,9 @@
       "topUp": "Top Up Wallet",
       "maybeLater": "Maybe Later",
       "close": "Close"
-    }
+    },
+    "activationSuccess": "Your subscription is now active! 🎉",
+    "pendingPayment": "Subscription Pending Payment"
   },
   "settings": {
     "title": "Settings",
