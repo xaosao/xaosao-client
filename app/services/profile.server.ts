@@ -313,6 +313,70 @@ export async function updateCustomerImage(
   }
 }
 
+// Delete customer image
+export async function deleteCustomerImage(
+  id: string,
+  customerId: string
+) {
+  if (!customerId)
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Missing customer id!",
+    });
+
+  const auditBase = {
+    action: "DELETE_CUSTOMER_IMAGE",
+    customer: customerId,
+  };
+
+  try {
+    const customerImage = await prisma.images.findUnique({
+      where: {
+        id,
+        customerId,
+      },
+    });
+
+    if (!customerImage) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The image does not exist!",
+      });
+    }
+
+    const deletedCustomerImage = await prisma.images.delete({
+      where: {
+        id: customerImage.id,
+      },
+    });
+
+    if (deletedCustomerImage.id) {
+      await createAuditLogs({
+        ...auditBase,
+        description: `Delete customer: ${deletedCustomerImage.id} image successfully.`,
+        status: "success",
+        onSuccess: deletedCustomerImage,
+      });
+    }
+    return deletedCustomerImage;
+  } catch (error: any) {
+    console.error("DELETE_CUSTOMER_IMAGE_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Delete customer image failed!`,
+      status: "failed",
+      onError: error,
+    });
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to delete customer image!",
+    });
+  }
+}
+
 // Update customer password
 export async function changeCustomerPassword(
   customerId: string,

@@ -6,8 +6,6 @@ import {
   pushBookingConfirmed,
   pushBookingRejected,
   pushBookingCancelled,
-  pushModelCheckedIn,
-  pushCustomerCheckedIn,
   pushBookingCompleted,
   pushPaymentReleased,
   pushNewMatch,
@@ -646,60 +644,6 @@ export async function notifyBookingCancelled(
 }
 
 /**
- * Send notification when model checks in
- */
-export async function notifyModelCheckedIn(
-  customerId: string,
-  modelId: string,
-  bookingId: string,
-  modelName: string,
-  location?: string
-) {
-  await createCustomerNotification(customerId, {
-    type: "booking_checkin_model",
-    title: "Model Checked In",
-    message: `${modelName} has arrived at the location and checked in.`,
-    data: { bookingId, modelId },
-  });
-
-  // Send SMS to customer
-  const smsMessage = `XaoSao: ${modelName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
-  sendSMSToCustomer(customerId, smsMessage);
-
-  // Send push notification to customer
-  pushModelCheckedIn(customerId, modelName, bookingId).catch((err) =>
-    console.error("[Push] Failed to send model checked in push:", err)
-  );
-}
-
-/**
- * Send notification when customer checks in
- */
-export async function notifyCustomerCheckedIn(
-  modelId: string,
-  customerId: string,
-  bookingId: string,
-  customerName: string,
-  location?: string
-) {
-  await createModelNotification(modelId, {
-    type: "booking_checkin_customer",
-    title: "Customer Checked In",
-    message: `${customerName} has arrived at the location and checked in.`,
-    data: { bookingId, customerId },
-  });
-
-  // Send SMS to model
-  const smsMessage = `XaoSao: ${customerName} ໄດ້ Check-in ແລ້ວ${location ? ` ທີ່ ${location}` : ""}! ກະລຸນາ Check-in ເພື່ອເລີ່ມຕົ້ນບໍລິການ.`;
-  sendSMSToModel(modelId, smsMessage);
-
-  // Send push notification to model
-  pushCustomerCheckedIn(modelId, customerName, bookingId).catch((err) =>
-    console.error("[Push] Failed to send customer checked in push:", err)
-  );
-}
-
-/**
  * Send notification when model marks booking as complete
  */
 export async function notifyBookingCompleted(
@@ -725,34 +669,6 @@ export async function notifyBookingCompleted(
   // Send push notification to customer
   pushBookingCompleted(customerId, modelName, serviceName, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking completed push:", err)
-  );
-}
-
-/**
- * Send notification when customer confirms completion (payment released)
- */
-export async function notifyCompletionConfirmed(
-  modelId: string,
-  customerId: string,
-  bookingId: string,
-  serviceName: string,
-  customerName: string,
-  amount: number
-) {
-  await createModelNotification(modelId, {
-    type: "payment_released",
-    title: "Payment Released",
-    message: `${customerName} has confirmed the booking. ${amount.toLocaleString()} LAK has been released to your wallet.`,
-    data: { bookingId, customerId, amount },
-  });
-
-  // Send SMS to model
-  const smsMessage = `XaoSao: ${customerName} ໄດ້ຢືນຢັນການສຳເລັດບໍລິການ "${serviceName}"! ເງິນ ${amount.toLocaleString()} LAK ໄດ້ຖືກໂອນເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
-  sendSMSToModel(modelId, smsMessage);
-
-  // Send push notification to model
-  pushPaymentReleased(modelId, amount, bookingId).catch((err) =>
-    console.error("[Push] Failed to send payment released push:", err)
   );
 }
 

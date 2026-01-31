@@ -42,18 +42,26 @@ export async function action({ request }: Route.ActionArgs) {
     const customerData = Object.fromEntries(formData) as Partial<ICustomerCredentials>
     const newProfile = formData.get("newProfile") as File | null
     const profile = formData.get("profile")
+    const deleteImage = formData.get("deleteImage") === "true"
 
     if (request.method === "PATCH") {
         try {
-            if (newProfile && newProfile instanceof File && newProfile.size > 0) {
+            // Handle image deletion
+            if (deleteImage && profile) {
+                await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
+                customerData.profile = ""; // Set to empty or you can use a default image URL
+            }
+            // Handle new image upload
+            else if (newProfile && newProfile instanceof File && newProfile.size > 0) {
                 if (profile) {
                     await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
                 }
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
                 customerData.profile = url;
-
-            } else {
+            }
+            // Keep existing profile
+            else {
                 customerData.profile = formData.get("profile") as string;
             }
 
@@ -134,6 +142,7 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
     const [isCompressing, setIsCompressing] = useState(false)
     const [compressedFile, setCompressedFile] = useState<File | null>(null)
     const [imageError, setImageError] = useState<string | null>(null)
+    const [deleteImage, setDeleteImage] = useState(false)
     const [isCustomSubmitting, setIsCustomSubmitting] = useState(false)
     const isSubmitting = isCustomSubmitting || (navigation.state !== "idle" && navigation.formMethod === "PATCH")
     const isLoading = navigation.state === "loading"
@@ -145,6 +154,7 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
             setIsCompressing(true);
             setImageError(null);
             setCompressedFile(null);
+            setDeleteImage(false); // Reset delete flag when uploading new image
 
             try {
                 // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
@@ -160,17 +170,23 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                 // Store the compressed file for form submission
                 setCompressedFile(compressed);
 
-                // Create preview from compressed file
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    console.log('Preview DataURL length:', result.length);
-                    setImage(result);
-                };
-                reader.onerror = (err) => {
-                    console.error('FileReader error:', err);
-                };
-                reader.readAsDataURL(compressed);
+                // Create preview from compressed file (only in browser)
+                if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        console.log('Preview DataURL length:', result.length);
+                        setImage(result);
+                    };
+                    reader.onerror = (err) => {
+                        console.error('FileReader error:', err);
+                    };
+                    reader.readAsDataURL(compressed);
+                } else {
+                    // Fallback: Use object URL for preview (works in all browsers)
+                    const objectUrl = URL.createObjectURL(compressed);
+                    setImage(objectUrl);
+                }
             } catch (error) {
                 console.error('Error compressing image:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
@@ -183,10 +199,28 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
         }
     };
 
+    // Handle image deletion
+    const handleDeleteImage = () => {
+        setImage("");
+        setCompressedFile(null);
+        setDeleteImage(true);
+        setImageError(null);
+        // Clear the file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    // Handle new image upload (triggers file input)
+    const handleNewImage = () => {
+        setDeleteImage(false);
+        fileInputRef.current?.click();
+    };
+
     // Custom form submission to ensure compressed file is used
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        if (!compressedFile && !image) {
-            // No new image, let the form submit normally
+        if (!compressedFile && !image && !deleteImage) {
+            // No new image and not deleting, let the form submit normally
             return;
         }
 
@@ -275,8 +309,8 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
     }
 
     return (
-        <Modal onClose={closeHandler} className="w-full sm:w-3/5 h-screen sm:h-auto border">
-            <Form method="patch" encType="multipart/form-data" className="py-4 space-y-4" onSubmit={handleSubmit}>
+        <Modal onClose={closeHandler} className="w-full sm:w-3/5 h-auto">
+            <Form method="patch" encType="multipart/form-data" className="py-16 sm:py-4 space-y-4" onSubmit={handleSubmit}>
                 <div className="flex items-center justify-between block sm:hidden">
                     <div className="flex items-center" onClick={() => navigate("/customer/profile")}>
                         <ChevronLeft />
@@ -289,7 +323,7 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                     <div className="flex flex-col items-center justify-center space-y-2">
                         <div className="relative w-[100px] h-[100px] rounded-full flex items-center justify-center">
                             <img
-                                src={image ? image : customerData.profile ? customerData.profile : "/images/default.webp"}
+                                src={deleteImage ? "/images/default.webp" : (image ? image : customerData.profile ? customerData.profile : "/images/default.webp")}
                                 alt="Profile"
                                 className={`w-full h-full rounded-full object-cover shadow-md ${isCompressing ? 'opacity-50' : ''}`}
                             />
@@ -298,11 +332,35 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                                     <Loader className="w-6 h-6 animate-spin text-rose-500" />
                                 </div>
                             )}
-                            <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
-                                <Camera className="w-4 h-4 text-gray-700" />
-                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing} />
-                            </label>
+                            {!deleteImage && (image || customerData.profile) ? (
+                                // Show action buttons when image exists
+                                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleNewImage}
+                                        disabled={isCompressing}
+                                        className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-blue-600 shadow-md disabled:opacity-50"
+                                    >
+                                        New
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDeleteImage}
+                                        disabled={isCompressing}
+                                        className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-red-600 shadow-md disabled:opacity-50"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            ) : (
+                                // Show camera icon when no image
+                                <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
+                                    <Camera className="w-4 h-4 text-gray-700" />
+                                </label>
+                            )}
+                            <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing} />
                             <input className="hidden" name="profile" defaultValue={customerData.profile} />
+                            <input type="hidden" name="deleteImage" value={deleteImage ? "true" : "false"} />
                         </div>
                         {imageError && (
                             <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">

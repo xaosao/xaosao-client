@@ -144,17 +144,22 @@ export default function TransactionEdit() {
          } catch (error) {
             console.error("Error creating preview:", error);
 
-            // Fallback to FileReader if URL.createObjectURL fails
-            const reader = new FileReader();
-            reader.onloadend = () => {
-               const base64 = reader.result as string;
-               console.log("FileReader preview created");
-               setPreviewSlip(base64);
-            };
-            reader.onerror = (error) => {
-               console.error("FileReader error:", error);
-            };
-            reader.readAsDataURL(file);
+            // Fallback to FileReader if URL.createObjectURL fails (check browser support)
+            if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+               const reader = new FileReader();
+               reader.onloadend = () => {
+                  const base64 = reader.result as string;
+                  console.log("FileReader preview created");
+                  setPreviewSlip(base64);
+               };
+               reader.onerror = (error) => {
+                  console.error("FileReader error:", error);
+               };
+               reader.readAsDataURL(file);
+            } else {
+               console.error("FileReader not supported in this environment");
+               setPreviewSlip(null);
+            }
          }
       }
    }

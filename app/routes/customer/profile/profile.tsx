@@ -15,7 +15,7 @@ import { requireUserSession } from '~/services/auths.server';
 import type { ICustomerResponse } from '~/interfaces/customer';
 import { capitalize, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
-import { createCustomerImage, getCustomerProfile, updateCustomerImage } from '~/services/profile.server';
+import { createCustomerImage, getCustomerProfile, updateCustomerImage, deleteCustomerImage } from '~/services/profile.server';
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -38,8 +38,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const imageId = formData.get("imageId") as string;
     const imageName = formData.get("imageName") as string;
     const newFile = formData.get("newFile") as File;
+    const deleteImage = formData.get("deleteImage") === "true";
 
-    if (!imageId || !newFile) {
+    if (!imageId) {
         return { success: false, error: true, message: "Invalid credentials data!" };
     }
     let image = ""
@@ -52,7 +53,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
             const res = await createCustomerImage(customerId, image);
             if (res.id) {
-                return redirect(`/customer/profile?toastMessage=Upload+your+image+successfully!&toastType=success`);
+                return { success: true, action: "upload", message: "Upload your image successfully!" };
             }
         } catch (error: any) {
             console.error("Error insert images:", error);
@@ -84,7 +85,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     if (request.method === "PATCH") {
         try {
-            if (newFile && newFile instanceof File && newFile.size > 0) {
+            // Handle image deletion
+            if (deleteImage) {
+                // Delete the image from Bunny CDN if it exists
+                if (imageName) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string));
+                }
+                // Delete the image record from database
+                const res = await deleteCustomerImage(imageId, customerId);
+                if (res.id) {
+                    return { success: true, action: "delete", imageId, message: "Image deleted successfully!" };
+                }
+            }
+            // Handle image update
+            else if (newFile && newFile instanceof File && newFile.size > 0) {
                 if (imageName) {
                     await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string))
                 }
@@ -92,12 +106,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
                 image = url;
 
+                const res = await updateCustomerImage(imageId, customerId, image);
+                if (res.id) {
+                    return { success: true, action: "update", imageId, message: "Image updated successfully!" };
+                }
             } else {
                 image = formData.get("imageName") as string;
-            }
-            const res = await updateCustomerImage(imageId, customerId, image);
-            if (res.id) {
-                return redirect("/customer/profile");
+                const res = await updateCustomerImage(imageId, customerId, image);
+                if (res.id) {
+                    return { success: true, action: "update", imageId, message: "Image updated successfully!" };
+                }
             }
 
         } catch (error: any) {
@@ -142,7 +160,9 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [selectedImageId, setSelectedImageId] = React.useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = React.useState<string | null>(null);
     const [uploadingImageId, setUploadingImageId] = React.useState<string | null>(null);
+    const [deletingImageId, setDeletingImageId] = React.useState<string | null>(null);
     const [isCompressing, setIsCompressing] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState("images");
 
     // Image preview states
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
@@ -151,7 +171,8 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [showProfileFullscreen, setShowProfileFullscreen] = React.useState(false);
 
     const DEFAULT_IMAGE = "https://coffective.com/wp-content/uploads/2018/06/default-featured-image.png.jpg";
-    const isLoading = navigation.state === "loading";
+    // Only show full-screen loading on initial page load, not during data revalidation after fetcher submissions
+    const isLoading = navigation.state === "loading" && fetcher.state === "idle";
 
     const getInterests = (): string[] => {
         if (!customerData?.interests) return [];
@@ -185,6 +206,37 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         }
     }, [toastMessage, toastType]);
 
+    // Handle fetcher responses without page reload
+    React.useEffect(() => {
+        if (fetcher.state === "idle" && fetcher.data) {
+            const { success, action, imageId, message } = fetcher.data;
+
+            if (success) {
+                // Clear loading states
+                setUploadingImageId(null);
+                setDeletingImageId(null);
+                setIsCompressing(false);
+
+                // Show success toast
+                if (message) {
+                    showToast(message, "success");
+                }
+
+                // Keep user on images tab
+                setActiveTab("images");
+            } else {
+                // Error: Clear loading states and show error toast
+                setUploadingImageId(null);
+                setDeletingImageId(null);
+                setIsCompressing(false);
+
+                if (message) {
+                    showToast(message, "error");
+                }
+            }
+        }
+    }, [fetcher.state, fetcher.data]);
+
     const makeColumn = (images: { id: string; name: string }[]) => {
         const slots = [...images];
         while (slots.length < 3) {
@@ -205,13 +257,32 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         }
     };
 
+    const handleDeleteImage = (imageId: string, imageName: string) => {
+        if (imageId.startsWith('placeholder')) return;
+
+        setDeletingImageId(imageId);
+        setActiveTab("images"); // Stay on images tab
+
+        // Submit delete request to server (server will handle Bunny deletion)
+        const formData = new FormData();
+        formData.append("imageId", imageId);
+        formData.append("imageName", imageName);
+        formData.append("deleteImage", "true");
+
+        fetcher.submit(formData, {
+            method: "patch",
+            action: "/customer/profile",
+        });
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && selectedImageId && selectedImageName) {
             const file = e.target.files[0];
 
-            // Set compressing state
+            // Set compressing state and stay on images tab
             setIsCompressing(true);
             setUploadingImageId(selectedImageId);
+            setActiveTab("images");
 
             try {
                 // Compress the image (also handles HEIC conversion)
@@ -245,12 +316,20 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         }
     };
 
-    // Reset uploading state when fetcher completes
+    // Reset uploading/deleting state when fetcher completes
     React.useEffect(() => {
-        if (fetcher.state === 'idle' && uploadingImageId) {
-            setUploadingImageId(null);
+        if (fetcher.state === 'idle') {
+            if (uploadingImageId) setUploadingImageId(null);
+            if (deletingImageId) setDeletingImageId(null);
         }
-    }, [fetcher.state, uploadingImageId]);
+    }, [fetcher.state, uploadingImageId, deletingImageId]);
+
+    // Set active tab to "images" if URL hash is #images (after upload redirect)
+    React.useEffect(() => {
+        if (window.location.hash === '#images') {
+            setActiveTab('images');
+        }
+    }, []);
 
     // Keyboard navigation for lightbox
     React.useEffect(() => {
@@ -302,28 +381,18 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         setTouchEndX(null);
     };
 
-    const isFetcherUploading = fetcher.state !== 'idle' || isCompressing;
-
-    if (isSubmitting || isUpdating || isFetcherUploading) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                <div className="flex items-center justify-center bg-white p-6 rounded-xl shadow-md gap-2">
-                    <Loader className="w-4 h-4 animate-spin" />
-                    <p className="text-gray-600">
-                        {isCompressing ? t('profileEdit.compressing') : t('profile.processing')}
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    // Remove full screen loading - show per-image loading instead
 
     const renderImage = (image: { id: string; name: string }, index: number, sizePattern: string[], imageIndex: number) => {
         const sizeClass = sizePattern[index % sizePattern.length];
         const isUploading = uploadingImageId === image.id;
+        const isDeleting = deletingImageId === image.id;
+        const isBusy = isUploading || isDeleting;
         const isPlaceholder = image.id.startsWith('placeholder');
+        const hasImage = !isPlaceholder && image.name !== DEFAULT_IMAGE;
 
         const handleImageClick = () => {
-            if (!isPlaceholder && imageIndex >= 0) {
+            if (!isPlaceholder && imageIndex >= 0 && !isBusy) {
                 console.log('Image clicked:', { imageIndex, image, allImages });
                 setSelectedIndex(imageIndex);
             }
@@ -334,36 +403,73 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                 key={image.id}
                 className={`relative w-full group overflow-hidden rounded-lg transition-all ${!isPlaceholder ? 'hover:ring-2 hover:ring-rose-500' : ''}`}
                 onClick={handleImageClick}
-                style={{ cursor: !isPlaceholder ? 'pointer' : 'default' }}
+                style={{ cursor: !isPlaceholder && !isBusy ? 'pointer' : 'default' }}
             >
                 <img
                     src={image.name}
                     alt={`Profile ${index + 1}`}
-                    className={`w-full ${sizeClass} object-cover shadow-sm transition-transform duration-300 ease-in-out ${!isPlaceholder ? 'group-hover:scale-105' : ''} ${isUploading ? 'opacity-50' : ''}`}
+                    className={`w-full ${sizeClass} object-cover shadow-sm transition-transform duration-300 ease-in-out ${!isPlaceholder ? 'group-hover:scale-105' : ''} ${isBusy ? 'opacity-50' : ''}`}
                 />
-                {isUploading && (
+                {isBusy && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg pointer-events-none z-10">
                         <div className="flex flex-col items-center gap-2 text-white">
                             <Loader className="w-8 h-8 animate-spin" />
-                            <p className="text-sm font-medium">{isCompressing ? t('profileEdit.compressing') : t('profile.uploading')}</p>
+                            <p className="text-sm font-medium">
+                                {isDeleting ? 'Deleting...' : isCompressing ? t('profileEdit.compressing') : t('profile.uploading')}
+                            </p>
                         </div>
                     </div>
                 )}
                 <div className="absolute inset-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-end justify-center rounded-lg transition gap-2 z-20 pointer-events-none pb-5">
-                    <button
-                        type="button"
-                        className="flex text-rose-500 bg-rose-100 border border-rose-300 rounded-sm px-2 py-1 text-xs pointer-events-auto shadow-md gap-1 cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedImageId(image.id);
-                            setSelectedImageName(image.name);
-                            handleAddNew();
-                        }}
-                        disabled={isUploading}
-                    >
-                        <Upload size={14} />
-                        Upload New
-                    </button>
+                    {hasImage ? (
+                        // Show "New" and "Delete" buttons for uploaded images
+                        <>
+                            <button
+                                type="button"
+                                className="flex text-white bg-blue-500 hover:bg-blue-600 rounded-sm px-2 py-1 text-xs pointer-events-auto shadow-md gap-1 cursor-pointer disabled:opacity-50"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedImageId(image.id);
+                                    setSelectedImageName(image.name);
+                                    setActiveTab("images");
+                                    handleAddNew();
+                                }}
+                                disabled={isBusy}
+                            >
+                                <Upload size={14} />
+                                New
+                            </button>
+                            <button
+                                type="button"
+                                className="flex text-white bg-red-500 hover:bg-red-600 rounded-sm px-2 py-1 text-xs pointer-events-auto shadow-md gap-1 cursor-pointer disabled:opacity-50"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteImage(image.id, image.name);
+                                }}
+                                disabled={isBusy}
+                            >
+                                <X size={14} />
+                                Delete
+                            </button>
+                        </>
+                    ) : (
+                        // Show "Upload New" for placeholders/empty slots
+                        <button
+                            type="button"
+                            className="flex text-rose-500 bg-rose-100 border border-rose-300 rounded-sm px-2 py-1 text-xs pointer-events-auto shadow-md gap-1 cursor-pointer disabled:opacity-50"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedImageId(image.id);
+                                setSelectedImageName(image.name);
+                                setActiveTab("images");
+                                handleAddNew();
+                            }}
+                            disabled={isBusy}
+                        >
+                            <Upload size={14} />
+                            Upload New
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -518,7 +624,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                     </div>
                     {/* Mobile screen  */}
                     <div className="block sm:hidden">
-                        <Tabs defaultValue="account" className="w-full">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                             <TabsList className='w-full'>
                                 <TabsTrigger value="account">{t('profile.tabs.accountInfo')}</TabsTrigger>
                                 <TabsTrigger value="interest">{t('profile.tabs.interest')}</TabsTrigger>
@@ -598,17 +704,35 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
 
                 {/* Image Preview Lightbox */}
                 {selectedIndex !== null && allImages.length > 0 && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+                        onClick={(e) => {
+                            // Close when clicking the backdrop (not the image)
+                            if (e.target === e.currentTarget) {
+                                setSelectedIndex(null);
+                            }
+                        }}
+                    >
                         <button
-                            className="absolute top-4 right-4 text-white"
-                            onClick={() => setSelectedIndex(null)}
+                            className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 rounded-full p-2 z-50 touch-manipulation"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedIndex(null);
+                            }}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                setSelectedIndex(null);
+                            }}
                         >
                             <X size={32} />
                         </button>
 
                         <button
-                            className="absolute left-4 text-white hidden sm:block"
-                            onClick={handlePrev}
+                            className="absolute left-4 text-white hidden sm:block bg-black/50 hover:bg-black/70 rounded-full p-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrev();
+                            }}
                         >
                             <ChevronLeft size={40} />
                         </button>
@@ -623,8 +747,11 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         />
 
                         <button
-                            className="absolute right-4 text-white hidden sm:block"
-                            onClick={handleNext}
+                            className="absolute right-4 text-white hidden sm:block bg-black/50 hover:bg-black/70 rounded-full p-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleNext();
+                            }}
                         >
                             <ChevronRight size={40} />
                         </button>
@@ -635,11 +762,22 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                 {showProfileFullscreen && customerData.profile && (
                     <div
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer"
-                        onClick={() => setShowProfileFullscreen(false)}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setShowProfileFullscreen(false);
+                            }
+                        }}
                     >
                         <button
-                            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
-                            onClick={() => setShowProfileFullscreen(false)}
+                            className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 rounded-full p-2 z-50 touch-manipulation transition-colors"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowProfileFullscreen(false);
+                            }}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                setShowProfileFullscreen(false);
+                            }}
                         >
                             <X size={32} />
                         </button>
@@ -647,6 +785,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                             src={customerData.profile}
                             alt="Profile"
                             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"
+                            onClick={(e) => e.stopPropagation()}
                         />
                         <p className="absolute bottom-4 text-white/70 text-sm">{t('profile.clickToClose')}</p>
                     </div>

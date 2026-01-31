@@ -305,11 +305,19 @@ export default function WalletTopUpPage() {
         }
 
         setUploadedFile(processedFile);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreviewSlip(reader.result as string);
-        };
-        reader.readAsDataURL(processedFile);
+
+        // Create preview (check for browser support)
+        if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewSlip(reader.result as string);
+            };
+            reader.readAsDataURL(processedFile);
+        } else {
+            // Fallback: Use object URL
+            const objectUrl = URL.createObjectURL(processedFile);
+            setPreviewSlip(objectUrl);
+        }
 
         // sync with actual input for form submission
         if (fileInputRef.current) {

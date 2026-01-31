@@ -79,9 +79,7 @@ export default [
       route("detail/:id", "./routes/model/dating/dating.detail.tsx"),
       route("accept/:id", "./routes/model/dating/dating.accept.tsx"),
       route("reject/:id", "./routes/model/dating/dating.reject.tsx"),
-      route("complete/:id", "./routes/model/dating/dating.complete.tsx"),
       route("delete/:id", "./routes/model/dating/dating.delete.tsx"),
-      route("checkin/:id", "./routes/model/dating/dating.checkin.tsx"),
       route("receive-money/:id", "./routes/model/dating/dating.receive-money.tsx"),
     ]),
 
@@ -169,16 +167,8 @@ export default [
       "./routes/customer/booking-history/booking.cancel.tsx"
     ),
     route(
-      "book-service/checkin/:id",
-      "./routes/customer/booking-history/booking.checkin.tsx"
-    ),
-    route(
       "book-service/dispute/:id",
       "./routes/customer/booking-history/booking.dispute.tsx"
-    ),
-    route(
-      "confirm-booking/:token",
-      "./routes/customer/booking-history/booking.confirm-qr.tsx"
     ),
 
     // setting

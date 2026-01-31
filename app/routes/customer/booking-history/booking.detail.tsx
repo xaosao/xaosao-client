@@ -35,10 +35,16 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
    // Check cancel eligibility (server-side)
    let canCancel = false;
-   if (booking && (booking.status === "pending" || booking.status === "confirmed")) {
-      const serviceName = booking?.modelService?.service?.name || "default";
-      const cancelCheck = canCancelBooking(new Date(booking.startDate), serviceName);
-      canCancel = cancelCheck.canCancel;
+   if (booking) {
+      if (booking.status === "pending") {
+         // Pending bookings can always be cancelled, regardless of time
+         canCancel = true;
+      } else if (booking.status === "confirmed") {
+         // Confirmed bookings follow the time-based cancellation rules
+         const serviceName = booking?.modelService?.service?.name || "default";
+         const cancelCheck = canCancelBooking(new Date(booking.startDate), serviceName);
+         canCancel = cancelCheck.canCancel;
+      }
    }
 
    return { booking, canDispute, canCancel };

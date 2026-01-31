@@ -456,32 +456,9 @@
       "close": "Close",
       "confirm": "Confirm",
       "cancellationPolicy": "Cancellation Policy",
-      "cancellationPolicyMessage": "You cannot cancel within 2 hours of the booking start time. Please contact support if you need assistance.",
+      "cancellationPolicyMessage": "You cannot cancel within 30 minutes of the booking start time. Please contact support if you need assistance.",
       "refundPolicy": "Refund Policy",
       "refundPolicyMessage": "If cancelled successfully, your payment will be refunded to your wallet immediately."
-    },
-    "checkin": {
-      "title": "Check In",
-      "description": "Verify your presence at the booking location",
-      "gpsVerification": "GPS Verification",
-      "gpsVerificationMessage": "Your location will be verified to confirm you are at the booking location (within 500m).",
-      "gettingLocation": "Getting your location...",
-      "locationAcquired": "Location acquired",
-      "retry": "Retry",
-      "close": "Close",
-      "checkInButton": "Check In",
-      "checkingIn": "Checking in...",
-      "success": "Checked in successfully!",
-      "errors": {
-        "locationRequired": "Unable to get your location. Please enable GPS and try again.",
-        "failed": "Failed to check in. Please try again.",
-        "invalidRequest": "Invalid request method.",
-        "geoNotSupported": "Geolocation is not supported by your browser.",
-        "permissionDenied": "Please allow location access to check in.",
-        "locationUnavailable": "Location information is unavailable.",
-        "timeout": "Location request timed out.",
-        "locationError": "An error occurred while getting your location."
-      }
     },
     "confirmModal": {
       "title": "Confirm Completion",
@@ -2189,58 +2166,19 @@
         }
       }
     },
-    "checkin": {
-      "title": "Check In",
-      "subtitle": "Verify your presence at the booking location",
-      "gpsVerification": "GPS Verification",
-      "gpsDescription": "Your location will be verified to confirm you are at the booking location (within 50m).",
-      "gettingLocation": "Getting your location...",
-      "locationAcquired": "Location acquired",
-      "geoNotSupported": "Geolocation is not supported by your browser",
-      "permissionDenied": "Please allow location access to check in",
-      "locationUnavailable": "Location information is unavailable",
-      "timeout": "Location request timed out",
-      "locationError": "An error occurred while getting your location",
-      "retry": "Retry",
-      "close": "Close",
-      "checkInButton": "Check In",
-      "success": "Checked in successfully!",
-      "errors": {
-        "locationRequired": "Unable to get your location. Please enable GPS and try again.",
-        "failed": "Failed to check in!",
-        "invalidRequest": "Invalid request method!",
-        "locationError": "An error occurred while getting your location."
-      }
-    },
     "complete": {
       "title": "Complete Booking",
       "subtitle": "Mark this booking as completed after finishing the service.",
       "confirmTitle": "Confirm Completion",
       "confirmDescription": "By marking this booking as completed, you confirm that the service has been successfully delivered to the customer.",
-      "qrTitle": "QR Code Confirmation",
-      "qrDescription": "A QR code will be generated for the customer to scan and confirm the service completion.",
       "paymentTitle": "Payment Release",
-      "paymentDescription": "Payment will be released to your wallet after customer scans QR or after 24 hours (auto-release).",
+      "paymentDescription": "Payment will be released to your wallet after 24 hours (auto-release).",
       "close": "Close",
-      "generateQR": "Generate QR Code",
-      "success": "QR code generated! Let the customer scan to complete.",
+      "success": "Booking marked as completed!",
       "errors": {
         "failed": "Failed to complete booking!",
         "invalidRequest": "Invalid request method!"
       }
-    },
-    "completeQR": {
-      "title": "Scan to Complete",
-      "subtitle": "Show this QR code to your customer to confirm service completion",
-      "customerLabel": "Customer",
-      "serviceLabel": "Service",
-      "amountLabel": "Amount",
-      "autoReleaseIn": "Auto-release in",
-      "autoReleaseNote": "If customer doesn't scan, payment will be auto-released after 24 hours",
-      "autoReleased": "Auto-releasing soon...",
-      "instructionTitle": "How to complete",
-      "instructionDescription": "Ask your customer to scan this QR code with their phone camera or the app. Once they confirm, payment will be released to your wallet.",
-      "close": "Close"
     },
     "delete": {
       "title": "Delete Booking",
@@ -2254,31 +2192,6 @@
         "failed": "Failed to delete booking!",
         "invalidRequest": "Invalid request method!"
       }
-    }
-  },
-  "customerConfirmQR": {
-    "title": "Confirm Service Completion",
-    "subtitle": "Please confirm that the service has been completed satisfactorily",
-    "errorTitle": "Unable to Load",
-    "alreadyCompletedTitle": "Already Completed",
-    "alreadyCompletedDescription": "This booking has already been confirmed and completed.",
-    "expiredTitle": "QR Code Expired",
-    "expiredDescription": "This QR code has expired. The payment will be automatically released to the model within 24 hours.",
-    "modelLabel": "Model",
-    "serviceLabel": "Service",
-    "amountLabel": "Amount to Release",
-    "paymentTitle": "Payment Confirmation",
-    "paymentDescription": "By confirming, you agree that the service was delivered as expected. The payment will be released to the model immediately.",
-    "confirmButton": "Confirm & Release Payment",
-    "confirming": "Confirming...",
-    "cancel": "Cancel",
-    "goToBookings": "Go to My Bookings",
-    "success": "Service confirmed! Payment has been released.",
-    "errors": {
-      "invalidToken": "Invalid or expired QR code",
-      "invalidQR": "This QR code is invalid or has already been used",
-      "failed": "Failed to confirm service",
-      "invalidRequest": "Invalid request"
     }
   },
   "modelNotifications": {

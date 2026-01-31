@@ -412,46 +412,6 @@ export async function pushBookingCancelled(
 }
 
 /**
- * Send push notification when model checks in (to customer)
- */
-export async function pushModelCheckedIn(
-  customerId: string,
-  modelName: string,
-  bookingId: string
-): Promise<void> {
-  await sendPushToCustomer(customerId, {
-    title: "Model Arrived!",
-    body: `${modelName} has checked in at the location`,
-    tag: `checkin-${bookingId}`,
-    data: {
-      type: "booking_checkin_model",
-      bookingId,
-      url: "/customer/dates-history",
-    },
-  });
-}
-
-/**
- * Send push notification when customer checks in (to model)
- */
-export async function pushCustomerCheckedIn(
-  modelId: string,
-  customerName: string,
-  bookingId: string
-): Promise<void> {
-  await sendPushToModel(modelId, {
-    title: "Customer Arrived!",
-    body: `${customerName} has checked in at the location`,
-    tag: `checkin-${bookingId}`,
-    data: {
-      type: "booking_checkin_customer",
-      bookingId,
-      url: "/model/dating",
-    },
-  });
-}
-
-/**
  * Send push notification when service is completed (to customer)
  */
 export async function pushBookingCompleted(

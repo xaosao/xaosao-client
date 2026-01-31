@@ -55,7 +55,6 @@ export default function CancelBookingService() {
          <h1 className="text-md font-bold">{t('booking.cancel.title')}</h1>
          <p className="hidden sm:block text-md text-gray-500 my-2">{t('booking.cancel.description')}</p>
          <Form method="patch" className="space-y-4 mt-4">
-            {/* Policy Notice */}
             <div className="space-y-3">
                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start space-x-2">
