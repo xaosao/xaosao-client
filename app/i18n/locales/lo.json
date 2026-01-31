@@ -385,7 +385,7 @@
     "status": {
       "pending": "ລໍຖ້າ",
       "confirmed": "ຢືນຢັນແລ້ວ",
-      "in_progress": "ກຳລັງດຳເນີນການ",
+      "in_progress": "ກຳລັງດຳເນີນ",
       "awaiting_confirmation": "ລໍຖ້າການຢືນຢັນ",
       "completed": "ສຳເລັດແລ້ວ",
       "cancelled": "ຍົກເລີກແລ້ວ",

@@ -1293,17 +1293,21 @@ export async function cancelServiceBooking(id: string, customerId: string) {
       });
     }
 
-    // Get service name for time window calculation
-    const serviceName = booking.modelService?.service?.name || "default";
+    // Pending bookings can always be cancelled (full refund)
+    // Confirmed bookings must be cancelled before the cutoff time
+    if (booking.status === "confirmed") {
+      // Get service name for time window calculation
+      const serviceName = booking.modelService?.service?.name || "default";
 
-    // Check cancellation rule with service-specific time window
-    const cancelCheck = canCancelBooking(booking.startDate, serviceName);
-    if (!cancelCheck.canCancel) {
-      throw new FieldValidationError({
-        success: false,
-        error: true,
-        message: cancelCheck.message,
-      });
+      // Check cancellation rule with service-specific time window
+      const cancelCheck = canCancelBooking(booking.startDate, serviceName);
+      if (!cancelCheck.canCancel) {
+        throw new FieldValidationError({
+          success: false,
+          error: true,
+          message: cancelCheck.message,
+        });
+      }
     }
 
     // Refund payment if held

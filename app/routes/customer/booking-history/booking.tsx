@@ -127,21 +127,27 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       return now >= startDate && now <= disputeWindowEnd;
    };
 
-   // Check if cancel button should be shown (before start time minus cutoff window)
+   // Check if cancel button should be shown
    const canCancel = (booking: IServiceBooking): boolean => {
-      // Only pending and confirmed bookings can be cancelled
-      if (booking.status !== "pending" && booking.status !== "confirmed") return false;
+      // Pending bookings can always be cancelled (get full refund)
+      if (booking.status === "pending") return true;
 
-      const now = new Date();
-      const startDate = new Date(booking.startDate);
+      // Confirmed bookings can only be cancelled before cutoff time
+      if (booking.status === "confirmed") {
+         const now = new Date();
+         const startDate = new Date(booking.startDate);
 
-      // Determine cancellation cutoff window based on service type
-      const serviceName = booking.modelService?.service?.name || "";
-      const cutoffMinutes = serviceName === "massage" ? 30 : 60;
-      const cutoffTime = new Date(startDate.getTime() - cutoffMinutes * 60 * 1000);
+         // Determine cancellation cutoff window based on service type
+         const serviceName = booking.modelService?.service?.name || "";
+         const cutoffMinutes = serviceName === "massage" ? 30 : 60;
+         const cutoffTime = new Date(startDate.getTime() - cutoffMinutes * 60 * 1000);
 
-      // Can cancel if current time is before the cutoff time
-      return now < cutoffTime;
+         // Can cancel if current time is before the cutoff time
+         return now < cutoffTime;
+      }
+
+      // Other statuses cannot be cancelled
+      return false;
    };
 
    if (isLoading) {
