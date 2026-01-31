@@ -127,6 +127,23 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       return now >= startDate && now <= disputeWindowEnd;
    };
 
+   // Check if cancel button should be shown (before start time minus cutoff window)
+   const canCancel = (booking: IServiceBooking): boolean => {
+      // Only pending and confirmed bookings can be cancelled
+      if (booking.status !== "pending" && booking.status !== "confirmed") return false;
+
+      const now = new Date();
+      const startDate = new Date(booking.startDate);
+
+      // Determine cancellation cutoff window based on service type
+      const serviceName = booking.modelService?.service?.name || "";
+      const cutoffMinutes = serviceName === "massage" ? 30 : 60;
+      const cutoffTime = new Date(startDate.getTime() - cutoffMinutes * 60 * 1000);
+
+      // Can cancel if current time is before the cutoff time
+      return now < cutoffTime;
+   };
+
    if (isLoading) {
       return (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
@@ -304,26 +321,26 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                     </Button>
                                  )}
                                  {booking.status === "pending" && (
-                                    <>
-                                       <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
-                                          className="text-xs h-8"
-                                       >
-                                          <SquarePen className="h-3 w-3" />
-                                          {t('booking.editBooking')}
-                                       </Button>
-                                       <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
-                                          className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
-                                       >
-                                          <X className="h-3 w-3" />
-                                          {t('booking.cancelBooking')}
-                                       </Button>
-                                    </>
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
+                                       className="text-xs h-8"
+                                    >
+                                       <SquarePen className="h-3 w-3" />
+                                       {t('booking.editBooking')}
+                                    </Button>
+                                 )}
+                                 {canCancel(booking) && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
+                                       className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                    >
+                                       <X className="h-3 w-3" />
+                                       {t('booking.cancelBooking')}
+                                    </Button>
                                  )}
                                 
                                  {["cancelled", "completed"].includes(booking.status) && (
@@ -341,26 +358,26 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                            ) : (
                               <>
                                  {booking.status === "pending" && (
-                                    <>
-                                       <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
-                                          className="text-xs h-8"
-                                       >
-                                          <SquarePen className="h-3 w-3" />
-                                          {t('booking.editBooking')}
-                                       </Button>
-                                       <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
-                                          className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
-                                       >
-                                          <X className="h-3 w-3" />
-                                          {t('booking.cancelBooking')}
-                                       </Button>
-                                    </>
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
+                                       className="text-xs h-8"
+                                    >
+                                       <SquarePen className="h-3 w-3" />
+                                       {t('booking.editBooking')}
+                                    </Button>
+                                 )}
+                                 {canCancel(booking) && (
+                                    <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
+                                       className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
+                                    >
+                                       <X className="h-3 w-3" />
+                                       {t('booking.cancelBooking')}
+                                    </Button>
                                  )}
 
                                  {booking.model?.whatsapp && booking.status !== "completed" && (

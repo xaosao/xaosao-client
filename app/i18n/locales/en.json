@@ -417,6 +417,8 @@
         "pendingMessage": "Your booking is pending your date partner to confirm!",
         "cancelledTitle": "Cancelled",
         "cancelledMessage": "You have cancelled your booking",
+        "disputedTitle": "Booking Under Dispute",
+        "disputedMessage": "Your dispute has been submitted and is under admin review. We will contact you shortly.",
         "disputeAvailableTitle": "Dispute Available",
         "disputeAvailableMessage": "If there was an issue with the service, you can file a dispute within the time window."
       }

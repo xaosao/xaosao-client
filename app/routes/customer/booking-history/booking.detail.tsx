@@ -257,7 +257,7 @@ export default function BookingServiceDetails() {
                      className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
                   >
                      <X className="h-4 w-4 mr-1" />
-                     {t('booking.cancel')}
+                     {t('booking.cancel.title')}
                   </Button>
                )}
                <Button variant="outline" onClick={closeHandler} className="bg-rose-500 text-white hover:bg-rose-600 hover:text-white">
