@@ -73,6 +73,13 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         // Dynamic import for code splitting
         const { customerLogin } = await import("~/services/auths.server");
         const { prisma } = await import("~/services/database.server");
+        const { getLocationDetails } = await import("~/services/base.server");
+
+        // Get client IP from request headers (set by reverse proxy/load balancer)
+        const forwardedFor = request.headers.get("x-forwarded-for");
+        const clientIp = forwardedFor?.split(",")[0].trim() ||
+            request.headers.get("x-real-ip") ||
+            "127.0.0.1";
 
         // Get redirect parameter from URL
         const url = new URL(request.url);
@@ -119,41 +126,68 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         validateSignInInputs(signInData);
         const result = await customerLogin(signInData, redirectPath);
 
-        // Update user GPS location if provided (non-blocking - don't fail login if this fails)
-        if (latitudeRaw && longitudeRaw) {
-            try {
-                const latitude = parseFloat(String(latitudeRaw));
-                const longitude = parseFloat(String(longitudeRaw));
+        // Update user location on login (non-blocking - don't fail login if this fails)
+        try {
+            const customer = await prisma.customer.findFirst({
+                where: { whatsapp },
+                select: { id: true }
+            });
 
-                // Validate coordinates
-                if (!isNaN(latitude) && !isNaN(longitude) &&
-                    latitude >= -90 && latitude <= 90 &&
-                    longitude >= -180 && longitude <= 180) {
+            if (customer) {
+                // Prepare location update data
+                const locationUpdateData: Record<string, any> = {};
 
-                    const customer = await prisma.customer.findFirst({
-                        where: { whatsapp },
-                        select: { id: true }
-                    });
+                // Update GPS coordinates if provided from browser
+                if (latitudeRaw && longitudeRaw) {
+                    const latitude = parseFloat(String(latitudeRaw));
+                    const longitude = parseFloat(String(longitudeRaw));
 
-                    if (customer) {
-                        // Update customer GPS location in database
-                        await prisma.customer.update({
-                            where: { id: customer.id },
-                            data: {
-                                latitude,
-                                longitude,
-                            },
-                        }).catch(err => {
-                            // Log error but don't fail login
-                            console.error("Failed to update GPS location on login:", err);
-                        });
-
+                    if (!isNaN(latitude) && !isNaN(longitude) &&
+                        latitude >= -90 && latitude <= 90 &&
+                        longitude >= -180 && longitude <= 180) {
+                        locationUpdateData.latitude = latitude;
+                        locationUpdateData.longitude = longitude;
                         console.log(`GPS location updated for user ${whatsapp}: (${latitude}, ${longitude})`);
                     }
                 }
-            } catch (locationError) {
-                console.error("GPS location update error during login:", locationError);
+
+                // Update IP-based location (country, city, etc.) from client IP
+                const accessKey = process.env.APIIP_API_KEY || "";
+                if (clientIp && clientIp !== "127.0.0.1") {
+                    try {
+                        const locationDetails = await getLocationDetails(clientIp, accessKey);
+                        if (locationDetails) {
+                            locationUpdateData.ip = clientIp;
+                            locationUpdateData.country = locationDetails.countryName;
+                            locationUpdateData.location = locationDetails;
+
+                            // Use IP-based lat/long as fallback if GPS not available
+                            if (!locationUpdateData.latitude && locationDetails.latitude) {
+                                locationUpdateData.latitude = +locationDetails.latitude;
+                            }
+                            if (!locationUpdateData.longitude && locationDetails.longitude) {
+                                locationUpdateData.longitude = +locationDetails.longitude;
+                            }
+
+                            console.log(`IP location updated for user ${whatsapp}: ${locationDetails.countryName}, ${locationDetails.city} (IP: ${clientIp})`);
+                        }
+                    } catch (ipLocationError) {
+                        console.error("IP location lookup error:", ipLocationError);
+                    }
+                }
+
+                // Update customer if we have any location data
+                if (Object.keys(locationUpdateData).length > 0) {
+                    await prisma.customer.update({
+                        where: { id: customer.id },
+                        data: locationUpdateData,
+                    }).catch(err => {
+                        console.error("Failed to update location on login:", err);
+                    });
+                }
             }
+        } catch (locationError) {
+            console.error("Location update error during login:", locationError);
         }
 
         if (!result) {

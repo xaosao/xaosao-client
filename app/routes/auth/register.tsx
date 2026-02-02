@@ -15,7 +15,7 @@ import { isAdult } from "~/lib/validation"
 import type { Gender } from "~/interfaces/base"
 import { validateCustomerSignupInputs } from "~/services/validation.server"
 import type { ICustomerSignupCredentials } from "~/interfaces"
-import { FieldValidationError, getCurrentIP } from "~/services/base.server"
+import { FieldValidationError } from "~/services/base.server"
 import { uploadFileToBunnyServer } from "~/services/upload.server"
 import { compressImage } from "~/utils/imageCompression"
 
@@ -44,7 +44,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
     const { customerRegister } = await import("~/services/auths.server")
     const formData = await request.formData()
-    const ip = await getCurrentIP();
+
+    // Get client IP from request headers (set by reverse proxy/load balancer)
+    // This ensures we get the actual client's IP, not the server's IP
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const ip = forwardedFor?.split(",")[0].trim() ||
+        request.headers.get("x-real-ip") ||
+        "127.0.0.1";
+
     const accessKey = process.env.APIIP_API_KEY || "";
 
     const genderValue = formData.get("gender") as string

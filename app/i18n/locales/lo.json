@@ -614,7 +614,7 @@
     "tabs": {
       "all": "ທັງໝົດ",
       "approved": "ອະນຸມັດແລ້ວ",
-      "pending": "ລໍຖ້າ",
+      "pending": "ກຳລັງດຳເນີນ",
       "failed": "ບໍ່ສໍາເລັດ"
     },
     "menu": {
@@ -2274,11 +2274,11 @@
     "call_refund_unused": "ຄືນເງິນໂທທີ່ບໍ່ໄດ້ໃຊ້"
   },
   "walletStatus": {
-    "pending": "ລໍຖ້າ",
+    "pending": "ລໍຖ້າອານຸມັດ",
     "approved": "ອະນຸມັດແລ້ວ",
     "rejected": "ປະຕິເສດ",
     "held": "ກຳລັງດຳເນີນການ",
-    "released": "ປ່ອຍເງີນອອກສໍາເລັດ",
+    "released": "ຈ່າຍເງີນສໍາເລັດ",
     "refunded": "ຄືນເງິນແລ້ວ"
   },
   "callService": {
