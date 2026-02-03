@@ -1135,3 +1135,243 @@ export async function notifyCustomerWelcome(customerId: string, customerName: st
     data: {},
   });
 }
+
+// ========================================
+// Admin Booking Complete/Refund Notifications
+// ========================================
+
+interface AdminBookingCompleteData {
+  bookingId: string;
+  customerId: string;
+  modelId: string;
+  serviceName: string;
+  modelName: string;
+  customerName: string;
+  totalAmount: number;
+  commissionAmount: number;
+  netAmount: number;
+  referrer?: {
+    id: string;
+    firstName: string;
+    whatsapp: number | null;
+    commissionAmount: number;
+  } | null;
+}
+
+/**
+ * Send notifications when admin completes a booking
+ * Notifies: Customer, Model, and Referrer (if eligible)
+ */
+export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData): Promise<void> {
+  const {
+    bookingId,
+    customerId,
+    modelId,
+    serviceName,
+    modelName,
+    customerName,
+    totalAmount,
+    netAmount,
+    referrer,
+  } = data;
+
+  // 1. Notify Customer - Payment has been released
+  await createCustomerNotification(customerId, {
+    type: "payment_released",
+    title: "Booking Completed",
+    message: `Your booking for "${serviceName}" with ${modelName} has been completed. Payment of ${totalAmount.toLocaleString()} LAK has been released.`,
+    data: { bookingId, modelId },
+  });
+
+  // Send SMS to customer
+  const customerSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`;
+  sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send push to customer
+  sendPushToCustomer(customerId, {
+    title: "Booking Completed",
+    body: `Your "${serviceName}" booking with ${modelName} is complete`,
+    tag: `booking-complete-${bookingId}`,
+    data: {
+      type: "payment_released",
+      bookingId,
+      url: "/customer/dates-history",
+    },
+  }).catch((err) => console.error("[Push] Failed to send booking complete push to customer:", err));
+
+  // 2. Notify Model - Payment has been received
+  await createModelNotification(modelId, {
+    type: "payment_released",
+    title: "Payment Received!",
+    message: `You received ${netAmount.toLocaleString()} LAK from "${serviceName}" booking with ${customerName}.`,
+    data: { bookingId, customerId, amount: netAmount },
+  });
+
+  // Send SMS to model
+  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${serviceName}" ກັບ ${customerName}. ກວດເບິ່ງ Wallet ຂອງທ່ານ.`;
+  sendSMSToModel(modelId, modelSmsMessage);
+
+  // Send push to model
+  pushPaymentReleased(modelId, netAmount, bookingId).catch((err) =>
+    console.error("[Push] Failed to send payment released push to model:", err)
+  );
+
+  // 3. Notify Referrer (if eligible and has commission)
+  if (referrer && referrer.commissionAmount > 0) {
+    await createModelNotification(referrer.id, {
+      type: "referral_bonus",
+      title: "Referral Commission Received!",
+      message: `You earned ${referrer.commissionAmount.toLocaleString()} LAK referral commission from ${modelName}'s booking.`,
+      data: { bookingId, modelId, amount: referrer.commissionAmount },
+    });
+
+    // Send SMS to referrer
+    if (referrer.whatsapp) {
+      const referrerSmsMessage = `XaoSao: ຍິນດີດ້ວຍ ${referrer.firstName}! ທ່ານໄດ້ຮັບ ${referrer.commissionAmount.toLocaleString()} LAK ຄ່ານາຍໜ້າຈາກການຈອງຂອງ ${modelName}. ກວດເບິ່ງ Wallet ຂອງທ່ານ.`;
+      sendSMS(referrer.whatsapp, referrerSmsMessage).catch((err) =>
+        console.error("[SMS] Failed to send referral commission SMS:", err)
+      );
+    }
+
+    // Send push to referrer
+    sendPushToModel(referrer.id, {
+      title: "Referral Commission! 🎉",
+      body: `You earned ${referrer.commissionAmount.toLocaleString()} LAK from ${modelName}'s booking`,
+      tag: `referral-commission-${bookingId}`,
+      data: {
+        type: "referral_bonus",
+        bookingId,
+        url: "/model/settings/wallet",
+      },
+    }).catch((err) => console.error("[Push] Failed to send referral commission push:", err));
+  }
+
+  console.log(`[Notification] Admin booking complete notifications sent for booking ${bookingId}`);
+}
+
+interface AdminBookingRefundData {
+  bookingId: string;
+  customerId: string;
+  modelId: string;
+  serviceName: string;
+  modelName: string;
+  customerName: string;
+  refundAmount: number;
+  reason?: string;
+}
+
+/**
+ * Send notifications when admin refunds a booking
+ * Notifies: Customer and Model
+ */
+export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): Promise<void> {
+  const {
+    bookingId,
+    customerId,
+    modelId,
+    serviceName,
+    modelName,
+    customerName,
+    refundAmount,
+    reason,
+  } = data;
+
+  // 1. Notify Customer - Payment has been refunded
+  await createCustomerNotification(customerId, {
+    type: "payment_refunded",
+    title: "Booking Refunded",
+    message: `Your booking for "${serviceName}" has been refunded. ${refundAmount.toLocaleString()} LAK has been returned to your wallet.${reason ? ` Reason: ${reason}` : ""}`,
+    data: { bookingId, modelId, amount: refundAmount },
+  });
+
+  // Send SMS to customer
+  const customerSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
+  sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send push to customer
+  sendPushToCustomer(customerId, {
+    title: "Booking Refunded",
+    body: `${refundAmount.toLocaleString()} LAK refunded for "${serviceName}"`,
+    tag: `booking-refund-${bookingId}`,
+    data: {
+      type: "payment_refunded",
+      bookingId,
+      url: "/customer/wallets",
+    },
+  }).catch((err) => console.error("[Push] Failed to send refund push to customer:", err));
+
+  // 2. Notify Model - Booking has been refunded
+  await createModelNotification(modelId, {
+    type: "booking_cancelled",
+    title: "Booking Refunded",
+    message: `The booking for "${serviceName}" with ${customerName} has been refunded to the customer.${reason ? ` Reason: ${reason}` : ""}`,
+    data: { bookingId, customerId },
+  });
+
+  // Send SMS to model
+  const modelSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
+  sendSMSToModel(modelId, modelSmsMessage);
+
+  // Send push to model
+  sendPushToModel(modelId, {
+    title: "Booking Refunded",
+    body: `"${serviceName}" booking with ${customerName} was refunded`,
+    tag: `booking-refund-model-${bookingId}`,
+    data: {
+      type: "booking_cancelled",
+      bookingId,
+      url: "/model/dating",
+    },
+  }).catch((err) => console.error("[Push] Failed to send refund push to model:", err));
+
+  console.log(`[Notification] Admin booking refund notifications sent for booking ${bookingId}`);
+}
+
+interface ModelReceivedMoneyData {
+  bookingId: string;
+  customerId: string;
+  modelId: string;
+  serviceName: string;
+  modelName: string;
+  amount: number;
+}
+
+/**
+ * Send notification to customer when model clicks "Receive Money"
+ * This lets the customer know the model has received the payment
+ */
+export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Promise<void> {
+  const {
+    bookingId,
+    customerId,
+    serviceName,
+    modelName,
+    amount,
+  } = data;
+
+  // Notify Customer - Model has received the payment
+  await createCustomerNotification(customerId, {
+    type: "payment_released",
+    title: "Payment Completed",
+    message: `${modelName} has received the payment of ${amount.toLocaleString()} LAK for "${serviceName}". Thank you for using XaoSao!`,
+    data: { bookingId, amount },
+  });
+
+  // Send SMS to customer
+  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
+  sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send push to customer
+  sendPushToCustomer(customerId, {
+    title: "Payment Completed",
+    body: `${modelName} received ${amount.toLocaleString()} LAK for "${serviceName}"`,
+    tag: `payment-complete-${bookingId}`,
+    data: {
+      type: "payment_released",
+      bookingId,
+      url: "/customer/dates-history",
+    },
+  }).catch((err) => console.error("[Push] Failed to send payment complete push to customer:", err));
+
+  console.log(`[Notification] Model received money notification sent to customer for booking ${bookingId}`);
+}

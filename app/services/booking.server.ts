@@ -116,6 +116,12 @@ async function holdPaymentFromCustomer(
 ) {
   const wallet = await prisma.wallet.findFirst({
     where: { customerId, status: "active" },
+    select: {
+      id: true,
+      totalBalance: true,
+      totalSpend: true,
+      totalRefunded: true,
+    },
   });
 
   if (!wallet) {
@@ -126,11 +132,17 @@ async function holdPaymentFromCustomer(
     });
   }
 
-  if (wallet.totalBalance < amount) {
+  // Calculate available balance: totalBalance - totalSpend + totalRefunded
+  const totalBalance = wallet.totalBalance || 0;
+  const totalSpend = wallet.totalSpend || 0;
+  const totalRefunded = wallet.totalRefunded || 0;
+  const availableBalance = totalBalance - totalSpend + totalRefunded;
+
+  if (availableBalance < amount) {
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: `Insufficient balance! You need ${amount.toLocaleString()} LAK but have ${wallet.totalBalance.toLocaleString()} LAK.`,
+      message: `Insufficient balance! You need ${amount.toLocaleString()} LAK but have ${availableBalance.toLocaleString()} LAK.`,
     });
   }
 
@@ -146,9 +158,14 @@ async function holdPaymentFromCustomer(
     },
   });
 
+  // Increment totalSpend (customer is spending money on booking)
   await prisma.wallet.update({
     where: { id: wallet.id },
-    data: { totalBalance: wallet.totalBalance - amount },
+    data: {
+      totalSpend: {
+        increment: amount,
+      },
+    },
   });
 
   return holdTransaction;
@@ -162,7 +179,8 @@ async function releasePaymentToModel(
   amount: number,
   bookingId: string,
   holdTransactionId: string,
-  commissionRate: number = 0 // Commission rate as percentage (e.g., 10 for 10%)
+  commissionRate: number = 0, // Commission rate as percentage (e.g., 10 for 10%)
+  releaseTransactionId?: string | null // Model's pending transaction ID (if exists)
 ) {
   const modelWallet = await prisma.wallet.findFirst({
     where: { modelId, status: "active" },
@@ -180,28 +198,54 @@ async function releasePaymentToModel(
   const commissionAmount = Math.floor((amount * commissionRate) / 100);
   const netAmount = amount - commissionAmount;
 
+  // Update customer's hold transaction to released
   await prisma.transaction_history.update({
     where: { id: holdTransactionId },
     data: { status: "released" },
   });
 
-  const earningTransaction = await prisma.transaction_history.create({
-    data: {
-      identifier: "booking_earning",
-      amount: netAmount,
-      status: "approved",
-      comission: commissionAmount,
-      fee: 0,
-      modelId,
-      reason: `Earning from completed booking #${bookingId} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
-    },
-  });
+  let earningTransaction;
 
+  // If model has a pending transaction (created when they accepted the booking), update it
+  if (releaseTransactionId) {
+    earningTransaction = await prisma.transaction_history.update({
+      where: { id: releaseTransactionId },
+      data: {
+        status: "approved",
+        reason: `Earning from completed booking #${bookingId} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+      },
+    });
+  } else {
+    // Fallback: Create new transaction if pending one doesn't exist (for backwards compatibility)
+    earningTransaction = await prisma.transaction_history.create({
+      data: {
+        identifier: "booking_earning",
+        amount: netAmount,
+        status: "approved",
+        comission: commissionAmount,
+        fee: 0,
+        modelId,
+        reason: `Earning from completed booking #${bookingId} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+      },
+    });
+  }
+
+  // Update wallet: add to totalBalance (all earnings), remove from pending
+  // Model wallet fields:
+  // - totalBalance: all approved earnings (incremented here)
+  // - totalPending: pending earnings from confirmed bookings (decremented here)
+  // - totalWithdraw: total withdrawn (not changed here)
+  // - totalAvailable = totalBalance - totalWithdraw (calculated)
   await prisma.wallet.update({
     where: { id: modelWallet.id },
     data: {
-      totalBalance: modelWallet.totalBalance + netAmount,
-      totalDeposit: modelWallet.totalDeposit + netAmount,
+      totalBalance: {
+        increment: netAmount,
+      },
+      // Deduct from pending (when model accepted, pending was added)
+      totalPending: {
+        decrement: netAmount,
+      },
     },
   });
 
@@ -247,9 +291,15 @@ async function refundPaymentToCustomer(
     },
   });
 
+  // Increment totalRefunded instead of totalBalance
+  // totalAvailable = totalBalance - totalSpend + totalRefunded
   await prisma.wallet.update({
     where: { id: wallet.id },
-    data: { totalBalance: wallet.totalBalance + amount },
+    data: {
+      totalRefunded: {
+        increment: amount,
+      },
+    },
   });
 
   return refundTransaction;
@@ -1259,7 +1309,16 @@ export async function cancelServiceBooking(id: string, customerId: string) {
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        startDate: true,
+        modelId: true,
+        customerId: true,
+        paymentStatus: true,
+        holdTransactionId: true,
+        releaseTransactionId: true,
         modelService: {
           include: {
             service: true,
@@ -1319,6 +1378,38 @@ export async function cancelServiceBooking(id: string, customerId: string) {
         booking.holdTransactionId,
         "Booking cancelled by customer"
       );
+    }
+
+    // If confirmed booking (model had a pending transaction), update model's wallet and transaction
+    if (booking.status === "confirmed" && booking.modelId) {
+      const commissionRate = booking.modelService?.service?.commission || 0;
+      const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+      const netAmount = booking.price - commissionAmount;
+
+      // Update model's pending transaction to refunded
+      if (booking.releaseTransactionId) {
+        await prisma.transaction_history.update({
+          where: { id: booking.releaseTransactionId },
+          data: {
+            status: "refunded",
+            reason: `Refunded - Booking #${booking.id} cancelled by customer`,
+          },
+        });
+      }
+
+      // Remove from model's pending balance
+      const modelWallet = await prisma.wallet.findFirst({
+        where: { modelId: booking.modelId, status: "active" },
+      });
+
+      if (modelWallet) {
+        await prisma.wallet.update({
+          where: { id: modelWallet.id },
+          data: {
+            totalPending: Math.max(0, modelWallet.totalPending - netAmount),
+          },
+        });
+      }
     }
 
     const cancelledBooking = await prisma.service_booking.update({
@@ -1606,9 +1697,25 @@ export async function acceptBooking(id: string, modelId: string) {
       },
     });
 
+    // Create pending transaction for model (will be updated to approved/refunded later)
+    const pendingTransaction = await prisma.transaction_history.create({
+      data: {
+        identifier: "booking_earning",
+        amount: netAmount,
+        status: "pending",
+        comission: commissionAmount,
+        fee: 0,
+        modelId,
+        reason: `Pending earning from booking #${id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+      },
+    });
+
     const updatedBooking = await prisma.service_booking.update({
       where: { id },
-      data: { status: "confirmed" },
+      data: {
+        status: "confirmed",
+        releaseTransactionId: pendingTransaction.id,
+      },
     });
 
     if (updatedBooking.id) {
@@ -2032,7 +2139,8 @@ export async function customerConfirmCompletion(id: string, customerId: string) 
         booking.price,
         booking.id,
         booking.holdTransactionId,
-        commissionRate
+        commissionRate,
+        booking.releaseTransactionId // Pass the model's pending transaction ID
       );
     }
 
@@ -2042,7 +2150,7 @@ export async function customerConfirmCompletion(id: string, customerId: string) 
         status: "completed",
         paymentStatus: "released",
         completedAt: new Date(),
-        releaseTransactionId: releaseTransaction?.id || null,
+        releaseTransactionId: releaseTransaction?.id || booking.releaseTransactionId || null,
       },
     });
 
@@ -2273,7 +2381,8 @@ export async function processAutoRelease() {
             booking.price,
             booking.id,
             booking.holdTransactionId,
-            commissionRate
+            commissionRate,
+            booking.releaseTransactionId // Pass the model's pending transaction ID
           );
         }
 
@@ -2283,7 +2392,7 @@ export async function processAutoRelease() {
             status: "completed",
             paymentStatus: "released",
             completedAt: now,
-            releaseTransactionId: releaseTransaction?.id || null,
+            releaseTransactionId: releaseTransaction?.id || booking.releaseTransactionId || null,
           },
         });
 
@@ -2499,7 +2608,31 @@ export async function receiveMoneyFromBooking(id: string, modelId: string) {
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        startDate: true,
+        endDate: true,
+        hours: true,
+        modelId: true,
+        customerId: true,
+        holdTransactionId: true,
+        releaseTransactionId: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        model: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         modelService: {
           include: {
             service: true,
@@ -2557,18 +2690,31 @@ export async function receiveMoneyFromBooking(id: string, modelId: string) {
     const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
     const netAmount = booking.price - commissionAmount;
 
-    // Create earning transaction
-    const earningTransaction = await prisma.transaction_history.create({
-      data: {
-        identifier: "booking_earning",
-        amount: netAmount,
-        status: "approved",
-        comission: commissionAmount,
-        fee: 0,
-        modelId,
-        reason: `Earning from completed booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
-      },
-    });
+    // Update or create earning transaction
+    let earningTransaction;
+    if (booking.releaseTransactionId) {
+      // Update the existing pending transaction to approved
+      earningTransaction = await prisma.transaction_history.update({
+        where: { id: booking.releaseTransactionId },
+        data: {
+          status: "approved",
+          reason: `Earning from completed booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+        },
+      });
+    } else {
+      // Fallback: Create new transaction if pending one doesn't exist (backwards compatibility)
+      earningTransaction = await prisma.transaction_history.create({
+        data: {
+          identifier: "booking_earning",
+          amount: netAmount,
+          status: "approved",
+          comission: commissionAmount,
+          fee: 0,
+          modelId,
+          reason: `Earning from completed booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+        },
+      });
+    }
 
     // Update hold transaction status to released
     if (booking.holdTransactionId) {
@@ -2579,12 +2725,19 @@ export async function receiveMoneyFromBooking(id: string, modelId: string) {
     }
 
     // Move from pending to available: decrease pending, increase balance
+    // Model wallet fields:
+    // - totalBalance: all approved earnings (incremented here)
+    // - totalPending: pending earnings (decremented here)
+    // - totalAvailable = totalBalance - totalWithdraw (calculated)
     await prisma.wallet.update({
       where: { id: modelWallet.id },
       data: {
-        totalPending: modelWallet.totalPending - netAmount,
-        totalBalance: modelWallet.totalBalance + netAmount,
-        totalDeposit: modelWallet.totalDeposit + netAmount,
+        totalPending: {
+          decrement: netAmount,
+        },
+        totalBalance: {
+          increment: netAmount,
+        },
       },
     });
 
@@ -2605,6 +2758,24 @@ export async function receiveMoneyFromBooking(id: string, modelId: string) {
       status: "success",
       onSuccess: { booking: completedBooking, transaction: earningTransaction },
     });
+
+    // Send notification to customer that model has received the money
+    try {
+      const { notifyModelReceivedMoney } = await import("./notification.server");
+      await notifyModelReceivedMoney({
+        bookingId: id,
+        customerId: booking.customerId || "",
+        modelId: booking.modelId || "",
+        serviceName: booking.modelService?.service?.name || "Service",
+        modelName: booking.model
+          ? `${booking.model.firstName} ${booking.model.lastName || ""}`.trim()
+          : "Model",
+        amount: netAmount,
+      });
+    } catch (notificationError) {
+      // Don't fail if notification fails
+      console.error("Model receive money notification error (non-fatal):", notificationError);
+    }
 
     return completedBooking;
   } catch (error) {
@@ -2651,7 +2822,14 @@ export async function adminResolveDispute(
   try {
     const booking = await prisma.service_booking.findUnique({
       where: { id: bookingId },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        modelId: true,
+        customerId: true,
+        holdTransactionId: true,
+        releaseTransactionId: true,
         modelService: {
           include: {
             service: true,
@@ -2703,18 +2881,31 @@ export async function adminResolveDispute(
       const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
       const netAmount = booking.price - commissionAmount;
 
-      // Create earning transaction
-      const earningTransaction = await prisma.transaction_history.create({
-        data: {
-          identifier: "booking_earning",
-          amount: netAmount,
-          status: "approved",
-          comission: commissionAmount,
-          fee: 0,
-          modelId: booking.modelId,
-          reason: `Earning from disputed booking #${booking.id} resolved by admin (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
-        },
-      });
+      // Update or create earning transaction
+      let earningTransaction;
+      if (booking.releaseTransactionId) {
+        // Update the existing pending transaction to approved
+        earningTransaction = await prisma.transaction_history.update({
+          where: { id: booking.releaseTransactionId },
+          data: {
+            status: "approved",
+            reason: `Earning from disputed booking #${booking.id} resolved by admin (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+          },
+        });
+      } else {
+        // Fallback: Create new transaction if pending one doesn't exist (backwards compatibility)
+        earningTransaction = await prisma.transaction_history.create({
+          data: {
+            identifier: "booking_earning",
+            amount: netAmount,
+            status: "approved",
+            comission: commissionAmount,
+            fee: 0,
+            modelId: booking.modelId,
+            reason: `Earning from disputed booking #${booking.id} resolved by admin (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+          },
+        });
+      }
 
       // Update hold transaction status to released
       if (booking.holdTransactionId) {
@@ -2725,12 +2916,19 @@ export async function adminResolveDispute(
       }
 
       // Move from pending to available: decrease pending, increase balance
+      // Model wallet fields:
+      // - totalBalance: all approved earnings (incremented here)
+      // - totalPending: pending earnings (decremented here)
+      // - totalAvailable = totalBalance - totalWithdraw (calculated)
       await prisma.wallet.update({
         where: { id: modelWallet.id },
         data: {
-          totalPending: modelWallet.totalPending - netAmount,
-          totalBalance: modelWallet.totalBalance + netAmount,
-          totalDeposit: modelWallet.totalDeposit + netAmount,
+          totalPending: {
+            decrement: netAmount,
+          },
+          totalBalance: {
+            increment: netAmount,
+          },
         },
       });
 
@@ -2780,6 +2978,17 @@ export async function adminResolveDispute(
           where: { id: modelWallet.id },
           data: {
             totalPending: Math.max(0, modelWallet.totalPending - netAmount),
+          },
+        });
+      }
+
+      // Update model's pending transaction to refunded
+      if (booking.releaseTransactionId) {
+        await prisma.transaction_history.update({
+          where: { id: booking.releaseTransactionId },
+          data: {
+            status: "refunded",
+            reason: `Refunded - Admin resolved dispute for booking #${booking.id} in favor of customer`,
           },
         });
       }

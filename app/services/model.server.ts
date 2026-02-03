@@ -1207,6 +1207,7 @@ export async function getModelDashboardData(modelId: string) {
           totalBalance: true,
           totalRecharge: true,
           totalDeposit: true,
+          totalPending: true,
           status: true,
         },
       },

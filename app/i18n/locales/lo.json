@@ -251,6 +251,10 @@
     "registering": "ກຳລັງລົງທະບຽນ....",
     "alreadyHaveAccount": "ມີບັນຊີແລ້ວ?",
     "backLogin": "ກັບໄປເຂົ້າສູ່ໜ້າເຂົ້າລະບົບ",
+    "referredBy": "ໄດ້ຮັບການແນະນຳຈາກ",
+    "invitedYou": "ໄດ້ເຊີນທ່ານເຂົ້າຮ່ວມ!",
+    "welcomeReferral": "ຍິນດີຕ້ອນຮັບຜູ້ໃໝ່!",
+    "welcomeReferralSubtitle": "ມັນຈະສະແດງຢູ່ໃນໂປຣໄຟລ່ຂອງທ່ານ ແລະ ສາມາດປ່ຽນໄດ້ໃນພາຍຫຼັງ.",
     "errors": {
       "invalidGender": "ກະລຸນາເລືອກເພດທີ່ຖືກຕ້ອງ!",
       "profileRequired": "ຈຳເປັນຕ້ອງມີຮູບໂປຣໄຟລ໌",
@@ -1937,20 +1941,55 @@
     "shareLink": "ແບ່ງປັນລິ້ງ",
     "shareTitle": "ເຂົ້າຮ່ວມ XaoSao ເປັນໂມເດວ!",
     "shareText": "ໃຊ້ລະຫັດແນະນຳຂອງຂ້ອຍເພື່ອລົງທະບຽນ: ",
+    "shareCustomerTitle": "ເຊີນລູກຄ້າມາ XaoSao",
+    "shareCustomerText": "ເຂົ້າຮ່ວມ XaoSao ແລະ ພົບກັບໂມເດວທີ່ດີເລີດ!",
     "copied": "ກ໊ອບປີ້ລະຫັດແລ້ວ!",
     "linkCopied": "ກ໊ອບປີ້ລິ້ງແລ້ວ!",
+    "modelReferralLink": "ລິ້ງແນະນຳໂມເດວ",
+    "customerReferralLink": "ລິ້ງແນະນຳລູກຄ້າ",
+    "earnPerModel": "ຮັບ 50,000 ກີບ ສຳລັບໂມເດວທີ່ໄດ້ຮັບການອະນຸມັດ",
+    "earnCommissionPerModel": "ຮັບ {{rate}}% ຈາກການຈອງຂອງໂມເດວທີ່ແນະນຳ",
+    "earnSubscriptionCommission": "ຮັບ {{rate}}% ຈາກການສະໝັກສະມາຊິກຂອງລູກຄ້າທີ່ແນະນຳ",
+    "inviteCustomers": "ເຊີນລູກຄ້າມາເຂົ້າຮ່ວມ XaoSao",
+    "eligibleForCommission": "ມີສິດຮັບຄ່າຄອມມິດຊັ່ນ",
+    "notEligibleYet": "ຍັງບໍ່ມີສິດ",
+    "earningCommissions": "ທ່ານກຳລັງຮັບຄ່າຄອມມິດຊັ່ນຈາກການແນະນຳຂອງທ່ານ!",
     "stats": {
       "totalReferred": "ແນະນຳທັງໝົດ",
       "approved": "ອະນຸມັດແລ້ວ",
       "pending": "ລໍຖ້າ",
-      "totalEarnings": "ລາຍໄດ້ທັງໝົດ"
+      "totalEarnings": "ລາຍໄດ້ທັງໝົດ",
+      "modelsReferred": "ໂມເດວ",
+      "customersReferred": "ລູກຄ້າ",
+      "commissions": "ຄ່າຄອມມິດຊັ່ນ"
     },
     "rewardInfo": {
       "title": "ຮັບ 50,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄັ້ງ!",
-      "description": "ເມື່ອໝູ່ທີ່ທ່ານແນະນຳຖືກອະນຸມັດ, ທ່ານຈະໄດ້ຮັບ 50,000 ກີບ ທັນທີເຂົ້າກະເປົາເງິນ."
+      "description": "ເມື່ອໝູ່ທີ່ທ່ານແນະນຳຖືກອະນຸມັດ, ທ່ານຈະໄດ້ຮັບ 50,000 ກີບ ທັນທີເຂົ້າກະເປົາເງິນ.",
+      "commissionDescription": "ຮັບຄ່າຄອມມິດຊັ່ນຈາກການແນະນຳຂອງທ່ານ!"
     },
     "referredModels": "ໝູ່ທີ່ທ່ານແນະນຳ",
+    "referredCustomers": "ລູກຄ້າທີ່ແນະນຳ",
+    "customer": "ລູກຄ້າ",
+    "subscription": "ສະໝັກສະມາຊິກ",
     "noReferrals": "ຍັງບໍ່ມີການແນະນຳ. ແບ່ງປັນລະຫັດເພື່ອເລີ່ມຮັບລາຍໄດ້!",
+    "earningsBreakdown": "ລາຍລະອຽດລາຍໄດ້",
+    "bookingCommissions": "ຄ່າຄອມມິດຊັ່ນການຈອງ",
+    "ofBookings": "ຂອງແຕ່ລະການຈອງ",
+    "subscriptionCommissions": "ຄ່າຄອມມິດຊັ່ນສະໝັກສະມາຊິກ",
+    "ofSubscriptions": "ຂອງແຕ່ລະການສະໝັກສະມາຊິກ",
+    "upgradeTitle": "ຕ້ອງການຮັບລາຍໄດ້ເພີ່ມບໍ?",
+    "upgradeDescription": "ຕິດຕໍ່ແອດມິນເພື່ອເປັນໂມເດວພິເສດ ຫຼື ພາດເນີ ແລະ ຮັບຄ່າຄອມມິດຊັ່ນເປີເຊັນຈາກການແນະນຳຂອງທ່ານ!",
+    "upgradeSpecial": "ແບບພິເສດ: 2% ຕໍ່ການຈອງ 1 ຄັ້ງ, 20% ຕໍ່ການສະໝັກສະມາຊິກ 1 ຄັ້ງ",
+    "upgradePartner": "ແບບພາດເນີ: 4% ຕໍ່ການຈອງ 1 ຄັ້ງ, 40% ຕໍ່ການສະໝັກສະມາຊິກ 1 ຄັ້ງ",
+    "modelTypes": {
+      "normal": "ແບບທົ່ວໄປ",
+      "special": "ແບບພິເສດ",
+      "partner": "ແບບພາດເນີ",
+      "normalDesc": "50,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄັ້ງ",
+      "specialDesc": "2% ຕໍ່ການຈອງ 1 ຄັ້ງ, 20% ຕໍ່ການສະໝັກສະມາຊິກ 1 ຄັ້ງ",
+      "partnerDesc": "4% ຕໍ່ການຈອງ 1 ຄັ້ງ, 40% ຕໍ່ການສະໝັກສະມາຊິກ 1 ຄັ້ງ"
+    },
     "howItWorks": {
       "title": "ວິທີເຮັດວຽກ",
       "step1": {
@@ -1963,7 +2002,8 @@
       },
       "step3": {
         "title": "ຮັບລາງວັນ",
-        "description": "ເມື່ອໝູ່ຂອງທ່ານຖືກອະນຸມັດ, ທ່ານຈະໄດ້ຮັບ 50,000 ກີບ ເຂົ້າກະເປົາເງິນ!"
+        "description": "ເມື່ອໝູ່ຂອງທ່ານຖືກອະນຸມັດ, ທ່ານຈະໄດ້ຮັບ 50,000 ກີບ ເຂົ້າກະເປົາເງິນ!",
+        "commissionDescription": "ຮັບຄ່າຄອມມິດຊັ່ນຈາກກິດຈະກຳຂອງພວກເຂົາ!"
       }
     }
   },
@@ -2264,6 +2304,8 @@
     "withdraw": "ຖອນເງິນ",
     "subscription": "ແພັກເກດສະມາຊິກ",
     "referral": "ແນະນຳໝູ່",
+    "subscription_referral": "ຄ່າສະມາຊິກລູກຄ້າທີ່ທ່ານແນະນໍາ",
+    "booking_referral": "ຄ່າຈອງໂມເດວທີ່ທ່ານແນະນໍາ",
     "booking_hold": "ຕັດເງິນຈາກການຈອງ",
     "booking_earning": "ລາຍໄດ້ຈາກການຈອງ",
     "booking_refund": "ຄືນເງິນຈອງ",
@@ -2274,7 +2316,7 @@
     "call_refund_unused": "ຄືນເງິນໂທທີ່ບໍ່ໄດ້ໃຊ້"
   },
   "walletStatus": {
-    "pending": "ລໍຖ້າອານຸມັດ",
+    "pending": "ກຳລັງດຳເນີນ",
     "approved": "ອະນຸມັດແລ້ວ",
     "rejected": "ປະຕິເສດ",
     "held": "ກຳລັງດຳເນີນການ",

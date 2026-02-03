@@ -40,6 +40,11 @@ export async function createWallet(data: IWalletCredentials, userId: string) {
     const wallet = await prisma.wallet.create({
       data: {
         totalBalance: 0,
+        totalPending: 0,
+        totalSpend: 0,
+        totalWithdraw: 0,
+        totalRefunded: 0,
+        // Deprecated fields - kept for backwards compatibility
         totalRecharge: 0,
         totalDeposit: 0,
         status: UserStatus.ACTIVE,
@@ -409,6 +414,66 @@ export async function getWalletByCustomerId(customerId: string) {
   }
 }
 
+// Get customer wallet summary with balance statuses
+export async function getCustomerWalletSummary(customerId: string) {
+  if (!customerId) throw new Error("Missing customer id!");
+
+  try {
+    const wallet = await prisma.wallet.findFirst({
+      where: {
+        customerId,
+        status: "active",
+      },
+      select: {
+        id: true,
+        totalBalance: true,
+        totalSpend: true,
+        totalRefunded: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        customerId: true,
+      },
+    });
+
+    if (!wallet) {
+      const error = new Error("The wallet does not exist!") as any;
+      error.status = 404;
+      throw error;
+    }
+
+    // Customer wallet fields:
+    // - totalBalance: All approved recharges
+    // - totalSpend: All spent on bookings/subscriptions
+    // - totalRefunded: All refunded amount
+    // - totalAvailable: totalBalance - totalSpend + totalRefunded
+
+    const totalBalance = wallet.totalBalance || 0;
+    const totalSpend = wallet.totalSpend || 0;
+    const totalRefunded = wallet.totalRefunded || 0;
+    const totalAvailable = totalBalance - totalSpend + totalRefunded;
+
+    return {
+      ...wallet,
+      // Total recharged: all approved recharges
+      totalRecharged: totalBalance,
+      // Total available: remaining balance for spending
+      totalAvailable: Math.max(0, totalAvailable),
+      // Total spent: all spent on bookings/subscriptions
+      totalSpent: totalSpend,
+      // Total refunded: all refunded amount
+      totalRefunded: totalRefunded,
+    };
+  } catch (error) {
+    console.error("GET_CUSTOMER_WALLET_SUMMARY_FAILED", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to get wallet summary!",
+    });
+  }
+}
+
 // get model transactions with pagination
 export async function getModelTransactions(
   modelId: string,
@@ -681,12 +746,18 @@ export async function withdrawFunds(
       });
     }
 
-    // Check if sufficient balance
-    if (wallet.totalBalance < amount) {
+    // Calculate available balance for withdrawal
+    // Model wallet: totalAvailable = totalBalance - totalWithdraw
+    const totalBalance = wallet.totalBalance || 0;
+    const totalWithdraw = wallet.totalWithdraw || 0;
+    const totalAvailable = totalBalance - totalWithdraw;
+
+    // Check if sufficient available balance (not totalBalance)
+    if (totalAvailable < amount) {
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: "Insufficient balance!",
+        message: `Insufficient balance! Available: ${totalAvailable.toLocaleString()} LAK`,
       });
     }
 
@@ -756,16 +827,27 @@ export async function withdrawFunds(
   }
 }
 
-// Get model wallet summary with 3 balance statuses
+// Get model wallet summary with balance statuses
 export async function getModelWalletSummary(modelId: string) {
   if (!modelId) throw new Error("Missing model id!");
 
   try {
-    // Get wallet for available balance
+    // Get wallet with all balance fields
     const wallet = await prisma.wallet.findFirst({
       where: {
         modelId,
         status: "active",
+      },
+      select: {
+        id: true,
+        totalBalance: true,
+        totalPending: true,
+        totalWithdraw: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        modelId: true,
+        customerId: true,
       },
     });
 
@@ -775,62 +857,36 @@ export async function getModelWalletSummary(modelId: string) {
       throw error;
     }
 
-    // Calculate total balance from all earnings (booking_earning + referral)
-    const totalEarningsResult = await prisma.transaction_history.aggregate({
-      where: {
-        modelId,
-        identifier: { in: ["booking_earning", "referral"] },
-        status: "approved",
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+    // Model wallet fields:
+    // - totalBalance: All approved earnings (booking_earning + referral)
+    // - totalPending: Pending earnings from confirmed bookings
+    // - totalWithdraw: Total approved withdrawals
+    // - totalAvailable: totalBalance - totalWithdraw (what can be withdrawn)
 
-    // Calculate pending balance from bookings that are not yet completed
-    // Pending bookings: confirmed, in_progress, awaiting_confirmation
-    const pendingBookings = await prisma.service_booking.findMany({
-      where: {
-        modelId,
-        status: { in: ["confirmed", "in_progress", "awaiting_confirmation"] },
-        paymentStatus: { in: ["held", "pending_release"] },
-      },
-      select: {
-        price: true,
-        modelService: {
-          select: {
-            service: {
-              select: {
-                commission: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Calculate pending earnings (price - commission for each booking)
-    const pendingBalance = pendingBookings.reduce((sum, booking) => {
-      const commission = booking.modelService?.service?.commission || 0;
-      const netEarnings = booking.price - (booking.price * commission / 100);
-      return sum + netEarnings;
-    }, 0);
+    const totalBalance = wallet.totalBalance || 0;
+    const totalPending = wallet.totalPending || 0;
+    const totalWithdraw = wallet.totalWithdraw || 0;
+    const totalAvailable = totalBalance - totalWithdraw;
 
     return {
       ...wallet,
-      // Total balance: sum of all income from services and referrals
-      totalIncome: totalEarningsResult._sum.amount || 0,
-      // Total available: remaining balance for withdrawal
-      totalAvailable: wallet.totalBalance,
-      // Pending: from pending bookings (moves to available when completed)
-      pendingBalance: Math.round(pendingBalance),
+      // Total income: all approved earnings (same as totalBalance for models)
+      totalIncome: totalBalance,
+      // Total available: remaining balance for withdrawal (totalBalance - totalWithdraw)
+      totalAvailable: Math.max(0, totalAvailable),
+      // Pending: from ongoing bookings (will become available when completed)
+      pendingBalance: Math.round(totalPending),
+      // Total withdrawn: all approved withdrawals
+      totalWithdrawn: totalWithdraw,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET_MODEL_WALLET_SUMMARY_FAILED", error);
+    // Preserve original error message for debugging
+    const errorMessage = error?.message || "Failed to get wallet summary!";
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: "Failed to get wallet summary!",
+      message: errorMessage,
     });
   }
 }
@@ -856,6 +912,12 @@ export async function deductFromWallet(
         customerId,
         status: "active",
       },
+      select: {
+        id: true,
+        totalBalance: true,
+        totalSpend: true,
+        totalRefunded: true,
+      },
     });
 
     if (!wallet) {
@@ -866,7 +928,13 @@ export async function deductFromWallet(
       });
     }
 
-    if (wallet.totalBalance < amount) {
+    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    const totalBalance = wallet.totalBalance || 0;
+    const totalSpend = wallet.totalSpend || 0;
+    const totalRefunded = wallet.totalRefunded || 0;
+    const availableBalance = totalBalance - totalSpend + totalRefunded;
+
+    if (availableBalance < amount) {
       throw new FieldValidationError({
         success: false,
         error: true,
@@ -874,12 +942,17 @@ export async function deductFromWallet(
       });
     }
 
-    // Deduct from wallet balance and update totalDeposit
+    // Increment totalSpend (customer is spending on subscription)
+    // Customer wallet fields:
+    // - totalBalance: all recharged (unchanged)
+    // - totalSpend: all spent (incremented here)
+    // - totalAvailable = totalBalance - totalSpend + totalRefunded
     const updatedWallet = await prisma.wallet.update({
       where: { id: wallet.id },
       data: {
-        totalBalance: wallet.totalBalance - amount,
-        totalDeposit: wallet.totalDeposit + amount,
+        totalSpend: {
+          increment: amount,
+        },
       },
     });
 

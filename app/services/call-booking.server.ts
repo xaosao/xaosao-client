@@ -61,11 +61,18 @@ async function holdCallPayment(
     });
   }
 
-  if (wallet.totalBalance < amount) {
+  // Calculate available balance for customer
+  // Customer wallet: totalAvailable = totalBalance - totalSpend + totalRefunded
+  const totalBalance = wallet.totalBalance || 0;
+  const totalSpend = wallet.totalSpend || 0;
+  const totalRefunded = wallet.totalRefunded || 0;
+  const totalAvailable = totalBalance - totalSpend + totalRefunded;
+
+  if (totalAvailable < amount) {
     throw new FieldValidationError({
       success: false,
       error: true,
-      message: `Insufficient balance! You need at least ${amount.toLocaleString()} LAK for this call.`,
+      message: `Insufficient balance! You need at least ${amount.toLocaleString()} LAK for this call. Available: ${totalAvailable.toLocaleString()} LAK`,
     });
   }
 
@@ -81,9 +88,14 @@ async function holdCallPayment(
     },
   });
 
+  // Increment totalSpend (customer spending on call)
   await prisma.wallet.update({
     where: { id: wallet.id },
-    data: { totalBalance: wallet.totalBalance - amount },
+    data: {
+      totalSpend: {
+        increment: amount,
+      },
+    },
   });
 
   return holdTransaction;
@@ -141,13 +153,12 @@ async function releaseCallPayment(
     },
   });
 
-  // Credit model wallet
+  // Credit model wallet (totalBalance = all approved earnings)
   const currentWallet = await prisma.wallet.findUnique({ where: { id: walletId } });
   await prisma.wallet.update({
     where: { id: walletId },
     data: {
       totalBalance: (currentWallet?.totalBalance || 0) + netAmount,
-      totalDeposit: (currentWallet?.totalDeposit || 0) + netAmount,
     },
   });
 

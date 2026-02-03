@@ -543,8 +543,26 @@ export async function customerRegister(
         resetTokenVerified: false,
         resetTokenExpiry: null,
         twofactorOTP: randomUUID(),
+        // Referral tracking - store which model referred this customer
+        referredByModelId: customerData.referredByModelId || null,
       },
     });
+
+    // If customer was referred by a model, increment the model's totalReferredCustomers
+    if (customerData.referredByModelId) {
+      try {
+        await prisma.model.update({
+          where: { id: customerData.referredByModelId },
+          data: {
+            totalReferredCustomers: { increment: 1 },
+          },
+        });
+        console.log(`Incremented totalReferredCustomers for model ${customerData.referredByModelId}`);
+      } catch (refError) {
+        // Don't fail registration if referral count update fails
+        console.error("Failed to update referrer's customer count:", refError);
+      }
+    }
 
     console.log("Customer:", customer);
 

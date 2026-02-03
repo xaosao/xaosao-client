@@ -313,7 +313,7 @@ export default function ModelWalletPage() {
   // Validate withdrawal amount against available balance
   const validateWithdrawAmount = (formattedAmount: string) => {
     const rawAmount = parseFloat(formattedAmount.replace(/,/g, "")) || 0;
-    if (rawAmount > wallet.totalBalance) {
+    if (rawAmount > wallet.totalAvailable) {
       setWithdrawError(t("modelWallet.errors.insufficientBalance", {
         defaultValue: "Withdrawal amount exceeds available balance"
       }));
@@ -712,7 +712,7 @@ export default function ModelWalletPage() {
           <div className="mb-4 p-4 bg-rose-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">{t("modelWallet.availableBalance")}</p>
             <h3 className="text-lg font-bold text-rose-600 flex items-center gap-1">
-              {formatCurrency(wallet.totalBalance)}
+              {formatCurrency(wallet.totalAvailable)}
             </h3>
           </div>
 

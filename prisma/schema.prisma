@@ -164,6 +164,9 @@ model customer {
   defaultLanguage    String    @default("en") // 10
   defaultTheme       String    @default("light") // 11
 
+  // Referral tracking - which model referred this customer
+  referredByModelId  String?   @db.ObjectId // Model who referred this customer (for special/partner commission)
+
   status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,10 +231,19 @@ model model {
   defaultLanguage     String    @default("en") // 10
   defaultTheme        String    @default("light") // 11
 
+  // Model type for tiered commission system
+  type                     String  @default("normal") // "normal", "special", "partner"
+
   // Referral system fields
-  referralCode       String? // Unique referral code for this model (uniqueness enforced in code)
-  referredById       String?  @db.ObjectId // ID of the model who referred this model
-  referralRewardPaid Boolean  @default(false) // Whether referral reward has been paid to referrer
+  referralCode             String? // Unique referral code for this model (for referring other models)
+  customerReferralCode     String? // Unique referral code for referring customers (only for special/partner)
+  referredById             String? @db.ObjectId // ID of the model who referred this model
+  referralRewardPaid       Boolean @default(false) // Whether referral reward has been paid to referrer
+
+  // Tracking for commission eligibility conditions
+  totalReferredModels      Int     @default(0) // Count of models referred by this model
+  totalReferredCustomers   Int     @default(0) // Count of customers referred by this model
+  totalReferralEarnings    Float   @default(0) // Total earnings from booking referral commissions (for partner condition)
 
   status    ModelStatus @default(pending)
   createdAt DateTime    @default(now())
@@ -422,8 +434,17 @@ model friend_contacts {
 
 model wallet {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  // For Customer: total approved recharges | For Model: total approved earnings
   totalBalance  Float    @default(0)
+  // For Model only: pending earnings from confirmed bookings (0 for customers)
   totalPending  Float    @default(0)
+  // For Customer only: total spent on bookings/subscriptions (0 for models)
+  totalSpend    Float    @default(0)
+  // For Model only: total approved withdrawals (0 for customers)
+  totalWithdraw Float    @default(0)
+  // For Customer only: total refunded amount (0 for models)
+  totalRefunded Float    @default(0)
+  // Deprecated fields - kept for backwards compatibility
   totalRecharge Float    @default(0)
   totalDeposit  Float    @default(0)
   status        String   @default("active")

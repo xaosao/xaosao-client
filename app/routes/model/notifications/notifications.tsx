@@ -118,6 +118,9 @@ function getNotificationIcon(type: string, isRead: boolean) {
       return <Wallet className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-green-500"}`} />;
     case "withdraw_rejected":
       return <Wallet className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-red-500"}`} />;
+    // Referral notifications
+    case "referral_bonus":
+      return <Sparkles className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-amber-500"}`} />;
     // System notifications
     case "welcome":
       return <Sparkles className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-amber-500"}`} />;

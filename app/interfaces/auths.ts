@@ -14,6 +14,7 @@ export interface ICustomerSignupCredentials {
   dob: string;
   password: string;
   profile: string;
+  referredByModelId?: string; // Model who referred this customer (for special/partner commission)
 }
 
 export interface ICustomerForgotCredentials {

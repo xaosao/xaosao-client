@@ -251,6 +251,10 @@
     "registering": "กำลังลงทะเบียน....",
     "alreadyHaveAccount": "มีบัญชีอยู่แล้ว?",
     "backLogin": "กลับไปเข้าสู่ระบบ",
+    "referredBy": "ได้รับการแนะนำจาก",
+    "invitedYou": "ได้เชิญคุณเข้าร่วม!",
+    "welcomeReferral": "ยินดีต้อนรับผู้ใช้ใหม่!",
+    "welcomeReferralSubtitle": "จะแสดงบนโปรไฟล์ของคุณและสามารถเปลี่ยนได้ในภายหลัง",
     "errors": {
       "invalidGender": "กรุณาเลือกเพศที่ถูกต้อง!",
       "profileRequired": "จำเป็นต้องมีรูปโปรไฟล์",
@@ -1937,20 +1941,55 @@
     "shareLink": "แชร์ลิงก์",
     "shareTitle": "เข้าร่วม XaoSao เป็นโมเดล!",
     "shareText": "ใช้รหัสแนะนำของฉันเพื่อลงทะเบียน: ",
+    "shareCustomerTitle": "เชิญลูกค้ามาที่ XaoSao",
+    "shareCustomerText": "เข้าร่วม XaoSao และพบกับโมเดลที่น่าทึ่ง!",
     "copied": "คัดลอกรหัสแล้ว!",
     "linkCopied": "คัดลอกลิงก์แล้ว!",
+    "modelReferralLink": "ลิงก์แนะนำโมเดล",
+    "customerReferralLink": "ลิงก์แนะนำลูกค้า",
+    "earnPerModel": "รับ 50,000 กีบ สำหรับโมเดลที่ได้รับการอนุมัติ",
+    "earnCommissionPerModel": "รับ {{rate}}% จากการจองของโมเดลที่แนะนำ",
+    "earnSubscriptionCommission": "รับ {{rate}}% จากการสมัครสมาชิกของลูกค้าที่แนะนำ",
+    "inviteCustomers": "เชิญลูกค้ามาเข้าร่วม XaoSao",
+    "eligibleForCommission": "มีสิทธิ์รับค่าคอมมิชชั่น",
+    "notEligibleYet": "ยังไม่มีสิทธิ์",
+    "earningCommissions": "คุณกำลังรับค่าคอมมิชชั่นจากการแนะนำของคุณ!",
     "stats": {
       "totalReferred": "แนะนำทั้งหมด",
       "approved": "อนุมัติแล้ว",
       "pending": "รอดำเนินการ",
-      "totalEarnings": "รายได้ทั้งหมด"
+      "totalEarnings": "รายได้ทั้งหมด",
+      "modelsReferred": "โมเดล",
+      "customersReferred": "ลูกค้า",
+      "commissions": "ค่าคอมมิชชั่น"
     },
     "rewardInfo": {
       "title": "รับ 50,000 กีบ ต่อการแนะนำ!",
-      "description": "เมื่อเพื่อนที่คุณแนะนำได้รับการอนุมัติ คุณจะได้รับ 50,000 กีบ ทันทีเข้ากระเป๋าเงิน"
+      "description": "เมื่อเพื่อนที่คุณแนะนำได้รับการอนุมัติ คุณจะได้รับ 50,000 กีบ ทันทีเข้ากระเป๋าเงิน",
+      "commissionDescription": "รับค่าคอมมิชชั่นจากการแนะนำของคุณ!"
     },
     "referredModels": "เพื่อนที่คุณแนะนำ",
+    "referredCustomers": "ลูกค้าที่แนะนำ",
+    "customer": "ลูกค้า",
+    "subscription": "สมัครสมาชิก",
     "noReferrals": "ยังไม่มีการแนะนำ แชร์รหัสเพื่อเริ่มรับรายได้!",
+    "earningsBreakdown": "รายละเอียดรายได้",
+    "bookingCommissions": "ค่าคอมมิชชั่นการจอง",
+    "ofBookings": "ของแต่ละการจอง",
+    "subscriptionCommissions": "ค่าคอมมิชชั่นสมัครสมาชิก",
+    "ofSubscriptions": "ของแต่ละการสมัครสมาชิก",
+    "upgradeTitle": "ต้องการรับรายได้เพิ่มหรือไม่?",
+    "upgradeDescription": "ติดต่อแอดมินเพื่อเป็นโมเดลพิเศษหรือพาร์ทเนอร์และรับค่าคอมมิชชั่นเปอร์เซ็นต์จากการแนะนำของคุณ!",
+    "upgradeSpecial": "แบบพิเศษ: 2% ต่อการจอง, 20% ต่อการสมัครสมาชิก",
+    "upgradePartner": "แบบคู่ค้า: 4% ต่อการจอง, 40% ต่อการสมัครสมาชิก",
+    "modelTypes": {
+      "normal": "แบบทั่วไป",
+      "special": "แบบพิเศษ",
+      "partner": "แบบคู่ค้า",
+      "normalDesc": "50,000 กีบ ต่อการแนะนำ",
+      "specialDesc": "2% ต่อการจอง, 20% ต่อการสมัครสมาชิก",
+      "partnerDesc": "4% ต่อการจอง, 40% ต่อการสมัครสมาชิก"
+    },
     "howItWorks": {
       "title": "วิธีการทำงาน",
       "step1": {
@@ -1963,7 +2002,8 @@
       },
       "step3": {
         "title": "รับรางวัล",
-        "description": "เมื่อเพื่อนของคุณได้รับการอนุมัติ คุณจะได้รับ 50,000 กีบ เข้ากระเป๋าเงิน!"
+        "description": "เมื่อเพื่อนของคุณได้รับการอนุมัติ คุณจะได้รับ 50,000 กีบ เข้ากระเป๋าเงิน!",
+        "commissionDescription": "รับค่าคอมมิชชั่นจากกิจกรรมของพวกเขา!"
       }
     }
   },
@@ -2269,6 +2309,8 @@
     "withdraw": "ถอนเงิน",
     "subscription": "แพ็กเกจสมาชิก",
     "referral": "แนะนำเพื่อน",
+    "subscription_referral": "ค่าสมาชิกลูกค้าที่คุณแนะนำ",
+    "booking_referral": "ค่าจองโมเดลที่คุณแนะนำ",
     "booking_hold": "กันเงินจอง",
     "booking_earning": "รายได้จากการจอง",
     "booking_refund": "คืนเงินจอง",

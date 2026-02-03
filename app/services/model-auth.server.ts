@@ -564,6 +564,7 @@ export async function modelRegister(
         longitude: +locationDetails.longitude,
         location: locationDetails,
         status: "pending", // Models start as pending approval
+        type: "normal", // Default model type for tiered commission system
         whatsapp: modelData.whatsapp,
         available_status: "unavailable",
         hourly_rate_talking: 0,

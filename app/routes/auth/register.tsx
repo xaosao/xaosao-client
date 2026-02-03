@@ -1,8 +1,8 @@
 import type { Route } from "./+types/register"
 import { useTranslation } from "react-i18next"
 import React, { useState, useEffect, useRef } from "react"
-import { AlertCircle, ArrowLeft, Camera, Eye, EyeOff, Loader, User, UserPlus } from "lucide-react"
-import { Form, Link, useActionData, useNavigate, useNavigation } from "react-router"
+import { AlertCircle, ArrowLeft, Camera, Eye, EyeOff, Gift, Loader, UserPlus } from "lucide-react"
+import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation } from "react-router"
 
 // components
 import { Input } from "~/components/ui/input"
@@ -27,9 +27,16 @@ const backgroundImages = [
     "https://images.pexels.com/photos/16838518/pexels-photo-16838518.jpeg",
 ]
 
-export async function loader({ request }: Route.LoaderArgs) {
+interface LoaderData {
+    referralCode: string | null;
+    referrerName: string | null;
+    referrerId: string | null;
+}
+
+export async function loader({ request }: Route.LoaderArgs): Promise<LoaderData> {
     const { getUserFromSession } = await import("~/services/auths.server");
     const { redirect } = await import("react-router");
+    const { findReferrerByCustomerCode } = await import("~/services/referral.server");
 
     const customerId = await getUserFromSession(request);
 
@@ -38,7 +45,26 @@ export async function loader({ request }: Route.LoaderArgs) {
         throw redirect("/customer");
     }
 
-    return null;
+    // Check for customer referral code (XSC...)
+    const url = new URL(request.url);
+    const referralCode = url.searchParams.get("ref");
+
+    if (!referralCode) {
+        return { referralCode: null, referrerName: null, referrerId: null };
+    }
+
+    // Find referrer by customer referral code
+    const referrer = await findReferrerByCustomerCode(referralCode);
+
+    if (!referrer) {
+        return { referralCode, referrerName: null, referrerId: null };
+    }
+
+    return {
+        referralCode,
+        referrerName: referrer.firstName,
+        referrerId: referrer.id,
+    };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -94,6 +120,9 @@ export async function action({ request }: Route.ActionArgs) {
         }
     }
 
+    // Get referrer ID from form (passed from loader via hidden input)
+    const referrerId = formData.get("referrerId") as string | null;
+
     const signUpData: ICustomerSignupCredentials = {
         firstName: formData.get("firstName") as string,
         lastName: formData.get("lastName") as string,
@@ -102,6 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
         dob: formData.get("dob") as string,
         password: formData.get("password") as string,
         profile: profileUrl,
+        referredByModelId: referrerId || undefined,
     };
 
     if (!signUpData.firstName) {
@@ -176,6 +206,7 @@ export default function SignUpPage() {
     const [isCompressing, setIsCompressing] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    const loaderData = useLoaderData<LoaderData>()
     const actionData = useActionData<typeof action>()
     const isSubmitting = navigation.state !== 'idle' && navigation.formMethod === "POST";
 
@@ -283,19 +314,35 @@ export default function SignUpPage() {
                 ))}
 
                 <div
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 h-auto rounded-sm
-                            bg-black/50 backdrop-blur-lg shadow-2xl py-8 px-4 sm:p-8 flex flex-col justify-start z-20
-                            lg:top-0 lg:right-0 lg:left-auto lg:translate-x-0 lg:translate-y-0 lg:w-2/5 lg:h-full lg:rounded-none  py-10 sm:py-0 my-10 sm:my-0">
-
-                    <div className="hidden sm:flex items-start justify-between">
-                        <div className="space-y-2 my-6">
+                    className="absolute top-4 left-1/2 transform -translate-x-1/2 w-11/12 max-h-[95vh] overflow-y-auto rounded-sm
+                            bg-black/50 backdrop-blur-lg shadow-2xl py-6 px-4 sm:p-8 flex flex-col justify-start z-20
+                            lg:top-0 lg:right-0 lg:left-auto lg:translate-x-0 lg:w-2/5 lg:h-full lg:max-h-full lg:rounded-none">
+                  
+                    {loaderData?.referrerName && (
+                        <div className="flex items-center gap-2 bg-rose-500 rounded-md p-2 mb-4 sm:mb-0">
+                            <div className="p-1.5 bg-white/20 rounded-full">
+                                <Gift className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-white font-medium text-xs">{t('register.referredBy', 'ໄດ້ຮັບການແນະນຳຈາກ')}</p>
+                                <p className="text-white text-sm">{loaderData.referrerName} {t('register.invitedYou', 'ໄດ້ເຊີນທ່ານເຂົ້າຮ່ວມ!')}</p>
+                            </div>
+                        </div>
+                    )}
+                  
+                    <div className={`${loaderData?.referrerName ? 'hidden sm:flex' : 'flex'} items-start justify-between`}>
+                        <div className="space-y-2 mb-4 sm:my-6">
                             <h1 className="flex items-center justify-start text-md sm:text-lg font-bold text-white uppercase">
                                 <UserPlus className="text-rose-500" />&nbsp;&nbsp;{t('register.title')}
                             </h1>
                             <p className="text-white text-xs sm:text-sm">{t('register.subtitle')}</p>
                         </div>
                     </div>
+
                     <Form method="post" encType="multipart/form-data" className="space-y-1 sm:space-y-4 ">
+                        {loaderData?.referrerId && (
+                            <input type="hidden" name="referrerId" value={loaderData.referrerId} />
+                        )}
                         <div className="flex flex-col items-center justify-center space-y-2">
 
                             <div className="flex items-center justify-center gap-2">

@@ -40,7 +40,14 @@ export async function hasPendingSubscription(customerId: string) {
 export async function getPackages(customerId: string) {
   try {
     const plans = await prisma.subscription_plan.findMany({
-      where: { status: "active" },
+      where: {
+        status: "active",
+        // Exclude 24-hour trial package from the packages listing
+        // The trial is shown separately via SubscriptionModal
+        NOT: {
+          durationDays: 1,
+        },
+      },
       select: {
         id: true,
         name: true,
@@ -446,6 +453,30 @@ export async function createSubscriptionWithWallet(
       status: "success",
       onSuccess: subscription,
     });
+
+    // Process referral commission for the model who referred this customer (if any)
+    // Commission is paid on subscription payment for special/partner models
+    // EXCEPT for 24-hour trial (10,000 Kip) - that's system revenue only, no commission
+    const isTrialPackage = plan.durationDays === 1;
+
+    if (!isTrialPackage) {
+      try {
+        const { processSubscriptionReferralCommission } = await import("./referral.server");
+        const commissionResult = await processSubscriptionReferralCommission(
+          customerId,
+          plan.price,
+          plan.name
+        );
+        if (commissionResult.success) {
+          console.log(`Subscription referral commission processed: ${commissionResult.commissionAmount} Kip to model ${commissionResult.referrerId}`);
+        }
+      } catch (commissionError) {
+        // Don't fail the subscription if commission processing fails
+        console.error("Subscription referral commission error (non-fatal):", commissionError);
+      }
+    } else {
+      console.log(`Subscription commission skipped: 24-hour trial package (${plan.name}) - system revenue only`);
+    }
 
     return subscription;
   } catch (error: any) {
