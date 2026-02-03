@@ -103,6 +103,140 @@ export function isWithinCheckInTimeWindow(
 }
 
 // ========================================
+// SECURITY: Price Verification Functions
+// ========================================
+
+/**
+ * SECURITY: Calculate and verify booking price from database
+ * Price should ALWAYS come from database, never trust frontend price
+ *
+ * Priority:
+ * 1. modelServiceVariant.pricePerHour (for massage variants)
+ * 2. modelService.customRate (model's custom rate)
+ * 3. service.baseRate / hourlyRate / oneTimePrice / oneNightPrice (default rates)
+ */
+export async function calculateAndVerifyBookingPrice(
+  modelServiceId: string,
+  frontendPrice: number,
+  bookingData: {
+    hours?: number | null;
+    dayAmount?: number | null;
+    sessionType?: string | null;
+    modelServiceVariantId?: string | null;
+  }
+): Promise<{
+  isValid: boolean;
+  calculatedPrice: number;
+  frontendPrice: number;
+  priceSource: string;
+  errorMessage?: string;
+}> {
+  // Get modelService with its service and variants
+  const modelService = await prisma.model_service.findUnique({
+    where: { id: modelServiceId },
+    include: {
+      service: {
+        select: {
+          id: true,
+          name: true,
+          baseRate: true,
+          hourlyRate: true,
+          oneTimePrice: true,
+          oneNightPrice: true,
+          minuteRate: true,
+          billingType: true,
+        },
+      },
+    },
+  });
+
+  if (!modelService || !modelService.service) {
+    return {
+      isValid: false,
+      calculatedPrice: 0,
+      frontendPrice,
+      priceSource: "none",
+      errorMessage: "Service not found in database",
+    };
+  }
+
+  const service = modelService.service;
+  let calculatedPrice = 0;
+  let priceSource = "";
+
+  // If modelServiceVariantId is provided (massage variant), use variant price
+  if (bookingData.modelServiceVariantId) {
+    const variant = await prisma.model_service_variant.findUnique({
+      where: { id: bookingData.modelServiceVariantId },
+      select: { pricePerHour: true, name: true },
+    });
+
+    if (variant && variant.pricePerHour) {
+      const hours = bookingData.hours || 1;
+      calculatedPrice = variant.pricePerHour * hours;
+      priceSource = `variant:${variant.name} (${variant.pricePerHour} × ${hours}h)`;
+    }
+  }
+
+  // If no variant price, calculate based on billing type
+  if (calculatedPrice === 0) {
+    switch (service.billingType) {
+      case "per_day":
+        // Use modelService.customRate if available, else service.baseRate
+        const dayRate = modelService.customRate || service.baseRate;
+        const days = bookingData.dayAmount || 1;
+        calculatedPrice = dayRate * days;
+        priceSource = modelService.customRate
+          ? `modelService.customRate (${dayRate} × ${days}d)`
+          : `service.baseRate (${dayRate} × ${days}d)`;
+        break;
+
+      case "per_hour":
+        // Use modelService.customRate if available, else service.hourlyRate
+        const hourRate = modelService.customRate || service.hourlyRate || 0;
+        const hours = bookingData.hours || 1;
+        calculatedPrice = hourRate * hours;
+        priceSource = modelService.customRate
+          ? `modelService.customRate (${hourRate} × ${hours}h)`
+          : `service.hourlyRate (${hourRate} × ${hours}h)`;
+        break;
+
+      case "per_session":
+        // Use oneTimePrice or oneNightPrice based on sessionType
+        if (bookingData.sessionType === "one_night") {
+          calculatedPrice = service.oneNightPrice || 0;
+          priceSource = `service.oneNightPrice (${calculatedPrice})`;
+        } else {
+          calculatedPrice = service.oneTimePrice || 0;
+          priceSource = `service.oneTimePrice (${calculatedPrice})`;
+        }
+        break;
+
+      default:
+        // Fallback to baseRate
+        calculatedPrice = modelService.customRate || service.baseRate;
+        priceSource = modelService.customRate
+          ? `modelService.customRate (${calculatedPrice})`
+          : `service.baseRate (${calculatedPrice})`;
+    }
+  }
+
+  // Allow small rounding differences (max 1 Kip difference)
+  const priceDifference = Math.abs(calculatedPrice - frontendPrice);
+  const isValid = priceDifference <= 1;
+
+  return {
+    isValid,
+    calculatedPrice,
+    frontendPrice,
+    priceSource,
+    errorMessage: isValid
+      ? undefined
+      : `Price mismatch! Frontend: ${frontendPrice.toLocaleString()}, Database: ${calculatedPrice.toLocaleString()} (${priceSource})`,
+  };
+}
+
+// ========================================
 // Escrow Payment Helper Functions
 // ========================================
 
@@ -767,13 +901,55 @@ export async function createServiceBooking(
       });
     }
 
-    // First, hold the payment from customer wallet
-    const holdTransaction = await holdPaymentFromCustomer(customerId, data.price, "pending");
+    // ========================================
+    // SECURITY: Verify price from database
+    // NEVER trust frontend price - always calculate from database
+    // ========================================
+    const priceVerification = await calculateAndVerifyBookingPrice(
+      modelServiceId,
+      data.price,
+      {
+        hours: data.hours,
+        dayAmount: data.dayAmount,
+        sessionType: data.sessionType,
+        modelServiceVariantId: data.modelServiceVariantId,
+      }
+    );
 
-    // Create booking with payment held
+    // Use the database-calculated price, not frontend price
+    const verifiedPrice = priceVerification.calculatedPrice;
+
+    // Log if there's a price mismatch (potential tampering attempt)
+    if (!priceVerification.isValid) {
+      await createAuditLogs({
+        ...auditBase,
+        action: "SECURITY_PRICE_MISMATCH",
+        description: `SECURITY ALERT: Price mismatch detected! Frontend sent ${data.price.toLocaleString()} but database calculated ${verifiedPrice.toLocaleString()} (${priceVerification.priceSource}). Using database price.`,
+        status: "warning",
+        onError: {
+          customerId,
+          modelId,
+          modelServiceId,
+          frontendPrice: data.price,
+          calculatedPrice: verifiedPrice,
+          priceSource: priceVerification.priceSource,
+          bookingData: {
+            hours: data.hours,
+            dayAmount: data.dayAmount,
+            sessionType: data.sessionType,
+          },
+        },
+      });
+      console.warn(`SECURITY: Price mismatch for customer ${customerId}. Frontend: ${data.price}, DB: ${verifiedPrice}`);
+    }
+
+    // First, hold the payment from customer wallet (using verified price)
+    const holdTransaction = await holdPaymentFromCustomer(customerId, verifiedPrice, "pending");
+
+    // Create booking with verified price from database
     const result = await prisma.service_booking.create({
       data: {
-        price: data.price,
+        price: verifiedPrice,
         dayAmount: data.dayAmount ?? null,
         hours: data.hours ?? null,
         minutes: data.minutes ?? null,
@@ -943,12 +1119,47 @@ export async function updateServiceBooking(
       }
     }
 
+    // ========================================
+    // SECURITY: Verify price from database for update
+    // ========================================
+    let verifiedPrice = data.price;
+    if (existingBooking.modelServiceId) {
+      const priceVerification = await calculateAndVerifyBookingPrice(
+        existingBooking.modelServiceId,
+        data.price,
+        {
+          hours: data.hours,
+          dayAmount: data.dayAmount,
+          sessionType: data.sessionType,
+          modelServiceVariantId: data.modelServiceVariantId,
+        }
+      );
+
+      verifiedPrice = priceVerification.calculatedPrice;
+
+      if (!priceVerification.isValid) {
+        await createAuditLogs({
+          ...auditBase,
+          action: "SECURITY_PRICE_MISMATCH_UPDATE",
+          description: `SECURITY ALERT: Price mismatch on update! Frontend: ${data.price.toLocaleString()}, Database: ${verifiedPrice.toLocaleString()} (${priceVerification.priceSource})`,
+          status: "warning",
+          onError: {
+            bookingId: id,
+            customerId,
+            frontendPrice: data.price,
+            calculatedPrice: verifiedPrice,
+            priceSource: priceVerification.priceSource,
+          },
+        });
+      }
+    }
+
     const result = await prisma.service_booking.update({
       where: {
         id,
       },
       data: {
-        price: data.price,
+        price: verifiedPrice,
         dayAmount: data.dayAmount ?? null,
         hours: data.hours ?? null,
         sessionType: data.sessionType ?? null,
