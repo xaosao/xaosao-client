@@ -25,6 +25,10 @@ export interface IWalletResponse {
   totalSpend: number;
   totalRefunded: number;
   totalPending: number;
+  // Calculated fields from getCustomerWalletSummary
+  totalRecharged?: number;  // Same as totalBalance (all approved recharges)
+  totalAvailable?: number;  // totalBalance - totalSpend + totalRefunded
+  totalSpent?: number;      // Same as totalSpend
   // Deprecated field (kept for backwards compatibility)
   totalDeposit?: number;
   status: string;

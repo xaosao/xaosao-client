@@ -149,15 +149,18 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
       navigation.state !== "idle" && navigation.formMethod === "POST";
 
    // Get the appropriate rate based on billing type
+   // Priority: specific custom rate -> customRate (fallback) -> service default rate
    const getRate = (): number => {
       if (billingType === 'per_hour') {
-         return service.customHourlyRate || service.service.hourlyRate || service.customRate || service.service.baseRate;
+         return service.customHourlyRate || service.customRate || service.service.hourlyRate || 0;
       } else if (billingType === 'per_session') {
          if (sessionType === 'one_time') {
-            return service.customOneTimePrice || service.service.oneTimePrice || service.customRate || service.service.baseRate;
+            return service.customOneTimePrice || service.customRate || service.service.oneTimePrice || 0;
          } else {
-            return service.customOneNightPrice || service.service.oneNightPrice || service.customRate || service.service.baseRate;
+            return service.customOneNightPrice || service.customRate || service.service.oneNightPrice || 0;
          }
+      } else if (billingType === 'per_minute') {
+         return service.customMinuteRate || service.customRate || service.service.minuteRate || 0;
       }
       return service.customRate || service.service.baseRate;
    };

@@ -404,6 +404,15 @@ export default function ModelWalletPage() {
     return matchesTab;
   });
 
+  // Booking-related transaction identifiers that cannot be edited/deleted by users
+  const BOOKING_TRANSACTION_IDENTIFIERS = ['booking_hold', 'booking_earning', 'booking_refund'];
+
+  // Helper function to check if transaction can be edited/deleted
+  const canEditOrDelete = (transaction: ITransactionResponse) => {
+    return transaction.status === 'pending' &&
+           !BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier);
+  };
+
   // Check if navigating to a child modal route (edit/delete/detail)
   const isNavigatingToModal = navigation.location?.pathname?.includes('/wallet/edit/') ||
     navigation.location?.pathname?.includes('/wallet/delete/') ||
@@ -563,7 +572,7 @@ export default function ModelWalletPage() {
                             <EyeIcon className="h-3 w-3" />
                             <span>{t("modelWallet.menu.viewDetails")}</span>
                           </Link>
-                          {transaction.status === "pending" && (
+                          {canEditOrDelete(transaction) && (
                             <Link
                               to={`/model/settings/wallet/edit/${transaction.id}`}
                               className="border border-blue-300 bg-blue-50 flex items-center gap-1 px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
@@ -572,7 +581,7 @@ export default function ModelWalletPage() {
                               <span>{t("modelWallet.menu.edit")}</span>
                             </Link>
                           )}
-                          {transaction.status === "pending" && (
+                          {canEditOrDelete(transaction) && (
                             <Link
                               to={`/model/settings/wallet/delete/${transaction.id}`}
                               className="border border-rose-300 bg-rose-50 flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
@@ -644,7 +653,7 @@ export default function ModelWalletPage() {
                           <EyeIcon className="h-3 w-3" />
                           <span>{t("modelWallet.menu.viewDetails")}</span>
                         </Link>
-                        {transaction.status === "pending" && (
+                        {canEditOrDelete(transaction) && (
                           <Link
                             to={`/model/settings/wallet/edit/${transaction.id}`}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded border border-blue-200 transition-colors"
@@ -653,7 +662,7 @@ export default function ModelWalletPage() {
                             <span>{t("modelWallet.menu.edit")}</span>
                           </Link>
                         )}
-                        {transaction.status === "pending" && (
+                        {canEditOrDelete(transaction) && (
                           <Link
                             to={`/model/settings/wallet/delete/${transaction.id}`}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"

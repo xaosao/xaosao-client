@@ -123,6 +123,7 @@ export async function calculateAndVerifyBookingPrice(
     dayAmount?: number | null;
     sessionType?: string | null;
     modelServiceVariantId?: string | null;
+    minutes?: number | null;
   }
 ): Promise<{
   isValid: boolean;
@@ -132,9 +133,16 @@ export async function calculateAndVerifyBookingPrice(
   errorMessage?: string;
 }> {
   // Get modelService with its service and variants
+  // IMPORTANT: Select custom rate fields for each billing type
   const modelService = await prisma.model_service.findUnique({
     where: { id: modelServiceId },
-    include: {
+    select: {
+      id: true,
+      customRate: true,           // For per_day services
+      customHourlyRate: true,     // For per_hour services
+      customOneTimePrice: true,   // For per_session (one_time)
+      customOneNightPrice: true,  // For per_session (one_night)
+      customMinuteRate: true,     // For per_minute services (call)
       service: {
         select: {
           id: true,
@@ -192,24 +200,46 @@ export async function calculateAndVerifyBookingPrice(
         break;
 
       case "per_hour":
-        // Use modelService.customRate if available, else service.hourlyRate
-        const hourRate = modelService.customRate || service.hourlyRate || 0;
+        // Use customHourlyRate first, then customRate as fallback, then service.hourlyRate
+        const hourRate = modelService.customHourlyRate || modelService.customRate || service.hourlyRate || 0;
         const hours = bookingData.hours || 1;
         calculatedPrice = hourRate * hours;
-        priceSource = modelService.customRate
-          ? `modelService.customRate (${hourRate} × ${hours}h)`
-          : `service.hourlyRate (${hourRate} × ${hours}h)`;
+        priceSource = modelService.customHourlyRate
+          ? `modelService.customHourlyRate (${hourRate} × ${hours}h)`
+          : modelService.customRate
+            ? `modelService.customRate (${hourRate} × ${hours}h)`
+            : `service.hourlyRate (${hourRate} × ${hours}h)`;
         break;
 
       case "per_session":
-        // Use oneTimePrice or oneNightPrice based on sessionType
+        // Use customOneTimePrice/customOneNightPrice, then customRate as fallback, then service defaults
         if (bookingData.sessionType === "one_night") {
-          calculatedPrice = service.oneNightPrice || 0;
-          priceSource = `service.oneNightPrice (${calculatedPrice})`;
+          calculatedPrice = modelService.customOneNightPrice || modelService.customRate || service.oneNightPrice || 0;
+          priceSource = modelService.customOneNightPrice
+            ? `modelService.customOneNightPrice (${calculatedPrice})`
+            : modelService.customRate
+              ? `modelService.customRate (${calculatedPrice})`
+              : `service.oneNightPrice (${calculatedPrice})`;
         } else {
-          calculatedPrice = service.oneTimePrice || 0;
-          priceSource = `service.oneTimePrice (${calculatedPrice})`;
+          calculatedPrice = modelService.customOneTimePrice || modelService.customRate || service.oneTimePrice || 0;
+          priceSource = modelService.customOneTimePrice
+            ? `modelService.customOneTimePrice (${calculatedPrice})`
+            : modelService.customRate
+              ? `modelService.customRate (${calculatedPrice})`
+              : `service.oneTimePrice (${calculatedPrice})`;
         }
+        break;
+
+      case "per_minute":
+        // Use customMinuteRate first, then customRate as fallback, then service.minuteRate
+        const minuteRate = modelService.customMinuteRate || modelService.customRate || service.minuteRate || 0;
+        const minutes = bookingData.minutes || 1;
+        calculatedPrice = minuteRate * minutes;
+        priceSource = modelService.customMinuteRate
+          ? `modelService.customMinuteRate (${minuteRate} × ${minutes}m)`
+          : modelService.customRate
+            ? `modelService.customRate (${minuteRate} × ${minutes}m)`
+            : `service.minuteRate (${minuteRate} × ${minutes}m)`;
         break;
 
       default:
@@ -913,6 +943,7 @@ export async function createServiceBooking(
         dayAmount: data.dayAmount,
         sessionType: data.sessionType,
         modelServiceVariantId: data.modelServiceVariantId,
+        minutes: data.minutes,
       }
     );
 
@@ -1132,6 +1163,7 @@ export async function updateServiceBooking(
           dayAmount: data.dayAmount,
           sessionType: data.sessionType,
           modelServiceVariantId: data.modelServiceVariantId,
+          minutes: data.minutes,
         }
       );
 

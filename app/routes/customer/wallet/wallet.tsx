@@ -47,7 +47,7 @@ import type { ITransactionResponse } from '~/interfaces/transaction';
 import { Button } from '~/components/ui/button';
 import Pagination from '~/components/ui/pagination';
 import { requireUserSession } from '~/services/auths.server';
-import { getCustomerTransactions, getWalletByCustomerId } from '~/services/wallet.server';
+import { getCustomerTransactions, getCustomerWalletSummary } from '~/services/wallet.server';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu';
 
 interface LoaderReturn {
@@ -66,7 +66,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     const page = Number(url.searchParams.get("page") || 1);
     const take = 10;
 
-    const wallet = await getWalletByCustomerId(customerId)
+    const wallet = await getCustomerWalletSummary(customerId)
 
     const { transactions, pagination } = await getCustomerTransactions(customerId, page, take);
     return { wallet, transactions, pagination }
@@ -116,6 +116,15 @@ export default function WalletPage({ loaderData }: TransactionProps) {
         return matchesTab;
     });
 
+    // Booking-related transaction identifiers that cannot be edited/deleted by users
+    const BOOKING_TRANSACTION_IDENTIFIERS = ['booking_hold', 'booking_earning', 'booking_refund'];
+
+    // Helper function to check if transaction can be edited/deleted
+    const canEditOrDelete = (transaction: ITransactionResponse) => {
+        return transaction.status === 'pending' &&
+               !BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier);
+    };
+
     if (isLoading) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
@@ -151,14 +160,14 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                             <div className="flex items-start justify-start gap-6">
                                 <div>
                                     <h2 className="text-lg">
-                                        {isBalanceVisible ? formatCurrency(wallet.totalBalance) : '******'}
+                                        {isBalanceVisible ? formatCurrency(wallet.totalRecharged) : '******'}
                                     </h2>
-                                    <p className="text-white/80 text-sm">{t('wallet.availableBalance')}</p>
+                                    <p className="text-white/80 text-sm">{t('wallet.totalRecharge')}</p>
                                 </div>
 
                                 <div className="">
-                                    <p className="text-lg">{isBalanceVisible ? formatCurrency(wallet.totalRecharge) : "******"}</p>
-                                    <p className="text-white/80 text-sm">{t('wallet.totalRecharge')}</p>
+                                    <p className="text-lg text-green-300 font-semibold">{isBalanceVisible ? formatCurrency(wallet.totalAvailable) : "******"}</p>
+                                    <p className="text-white/80 text-sm">{t('wallet.availableBalance')}</p>
                                 </div>
                             </div>
                         </div>
@@ -248,7 +257,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         <span>{t('wallet.menu.viewDetails')}</span>
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                {transaction.status === "pending" &&
+                                                {canEditOrDelete(transaction) &&
                                                     <DropdownMenuItem className="text-sm">
                                                         <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
                                                             <FilePenLine className="mr-2 h-3 w-3" />
@@ -256,7 +265,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 }
-                                                {transaction.status === "pending" &&
+                                                {canEditOrDelete(transaction) &&
                                                     <DropdownMenuItem className="text-sm">
                                                         <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
                                                             <Trash className="mr-2 h-3 w-3" />
@@ -315,7 +324,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         <span>{t('wallet.menu.viewDetails')}</span>
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                {transaction.status === "pending" &&
+                                                {canEditOrDelete(transaction) &&
                                                     <DropdownMenuItem className="text-sm">
                                                         <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
                                                             <FilePenLine className="mr-2 h-3 w-3" />
@@ -323,7 +332,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 }
-                                                {transaction.status === "pending" &&
+                                                {canEditOrDelete(transaction) &&
                                                     <DropdownMenuItem className="text-sm">
                                                         <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
                                                             <Trash className="mr-2 h-3 w-3" />

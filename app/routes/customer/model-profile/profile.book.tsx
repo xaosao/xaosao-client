@@ -144,6 +144,8 @@ export default function ServiceBooking() {
    }, [service, selectedMassageVariantId]);
 
    // Calculate price based on billing type
+   // IMPORTANT: Use same logic as server-side calculateAndVerifyBookingPrice
+   // Priority: specific custom rate -> customRate (fallback) -> service default rate
    const calculateTotalPrice = () => {
       if (billingType === 'per_hour') {
          // For massage service, use selected variant price
@@ -155,20 +157,23 @@ export default function ServiceBooking() {
             // Default to first variant if none selected
             return service.model_service_variant[0].pricePerHour * selectedHours;
          }
-         const hourlyRate = service.customHourlyRate || service.service.hourlyRate || 0;
+         // customHourlyRate -> customRate (fallback) -> service.hourlyRate
+         const hourlyRate = service.customHourlyRate || service.customRate || service.service.hourlyRate || 0;
          return hourlyRate * selectedHours;
       } else if (billingType === 'per_session') {
          if (selectedSessionType === 'one_time') {
-            return service.customOneTimePrice || service.service.oneTimePrice || 0;
+            // customOneTimePrice -> customRate (fallback) -> service.oneTimePrice
+            return service.customOneTimePrice || service.customRate || service.service.oneTimePrice || 0;
          } else {
-            return service.customOneNightPrice || service.service.oneNightPrice || 0;
+            // customOneNightPrice -> customRate (fallback) -> service.oneNightPrice
+            return service.customOneNightPrice || service.customRate || service.service.oneNightPrice || 0;
          }
       } else if (billingType === 'per_minute') {
-         // For call service, calculate price based on minutes
-         const minuteRate = service.customMinuteRate || service.service.minuteRate || 0;
+         // customMinuteRate -> customRate (fallback) -> service.minuteRate
+         const minuteRate = service.customMinuteRate || service.customRate || service.service.minuteRate || 0;
          return minuteRate * selectedMinutes;
       } else {
-         // per_day
+         // per_day: customRate -> service.baseRate
          const dailyRate = service.customRate || service.service.baseRate;
          const days = calculateDayAmount(String(startDate), endDate ? String(endDate) : "");
          return dailyRate * days;
@@ -629,7 +634,7 @@ export default function ServiceBooking() {
                               <>
                                  <div className="flex justify-between items-center text-sm">
                                     <span className="text-muted-foreground">{t('profileBook.pricePerHour')}</span>
-                                    <span className="font-medium">{formatCurrency(service.customHourlyRate || service.service.hourlyRate || 0)}</span>
+                                    <span className="font-medium">{formatCurrency(service.customHourlyRate || service.customRate || service.service.hourlyRate || 0)}</span>
                                  </div>
                                  <div className="flex justify-between items-center text-sm">
                                     <span className="text-muted-foreground">{t('profileBook.numberOfHours')}</span>
@@ -656,8 +661,8 @@ export default function ServiceBooking() {
                               <span className="font-medium">
                                  {formatCurrency(
                                     selectedSessionType === 'one_time'
-                                       ? (service.customOneTimePrice || service.service.oneTimePrice || 0)
-                                       : (service.customOneNightPrice || service.service.oneNightPrice || 0)
+                                       ? (service.customOneTimePrice || service.customRate || service.service.oneTimePrice || 0)
+                                       : (service.customOneNightPrice || service.customRate || service.service.oneNightPrice || 0)
                                  )}
                               </span>
                            </div>
@@ -669,7 +674,7 @@ export default function ServiceBooking() {
                         <>
                            <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">{t('profileBook.pricePerMinute', { defaultValue: 'Price per minute' })}</span>
-                              <span className="font-medium">{formatCurrency(service.customMinuteRate || service.service.minuteRate || 0)}</span>
+                              <span className="font-medium">{formatCurrency(service.customMinuteRate || service.customRate || service.service.minuteRate || 0)}</span>
                            </div>
                            <div className="flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">{t('profileBook.callDuration', { defaultValue: 'Call Duration' })}</span>

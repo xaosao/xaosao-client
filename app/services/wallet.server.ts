@@ -237,6 +237,13 @@ export async function getTransaction(id: string, customerId: string) {
   }
 }
 
+// Booking-related transaction identifiers that cannot be edited/deleted by users
+const BOOKING_TRANSACTION_IDENTIFIERS = [
+  "booking_hold",
+  "booking_earning",
+  "booking_refund",
+];
+
 // delete transaction by id
 export async function deleteTransaction(
   transactionId: string,
@@ -282,6 +289,16 @@ export async function deleteTransaction(
         error: true,
         message:
           "This transaction can't be deleted. Please contect admin to process!",
+      });
+    }
+
+    // Prevent deletion of booking-related transactions
+    if (BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Booking transactions cannot be deleted. Please contact admin for assistance.",
       });
     }
 
@@ -348,6 +365,16 @@ export async function updateTransaction(
         success: false,
         error: true,
         message: "Unauthorized to edit this transaction!",
+      });
+    }
+
+    // Prevent editing of booking-related transactions
+    if (BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Booking transactions cannot be edited. Please contact admin for assistance.",
       });
     }
 
@@ -616,6 +643,16 @@ export async function deleteModelTransaction(
       });
     }
 
+    // Prevent deletion of booking-related transactions
+    if (BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Booking transactions cannot be deleted. Please contact admin for assistance.",
+      });
+    }
+
     const deletedTransaction = await prisma.transaction_history.delete({
       where: { id: transactionId },
     });
@@ -679,6 +716,16 @@ export async function updateModelTransaction(
         success: false,
         error: true,
         message: "Unauthorized to edit this transaction!",
+      });
+    }
+
+    // Prevent editing of booking-related transactions
+    if (BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Booking transactions cannot be edited. Please contact admin for assistance.",
       });
     }
 
