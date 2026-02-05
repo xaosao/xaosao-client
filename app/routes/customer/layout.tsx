@@ -12,7 +12,7 @@ import {
     HandHeart,
 } from "lucide-react";
 import type { Notification } from "~/hooks/useNotifications";
-import { requireUserSession } from "~/services/auths.server";
+import { requireVerifiedUserSession } from "~/services/auths.server";
 import { getCustomerProfile } from "~/services/profile.server";
 import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
@@ -41,7 +41,7 @@ interface TransactionProps {
 }
 
 export const loader: LoaderFunction = async ({ request }) => {
-    const customerId = await requireUserSession(request);
+    const customerId = await requireVerifiedUserSession(request);
     const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { useLoaderData, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import type { LoaderFunctionArgs } from 'react-router';
-import { Copy, Share2, Users, Gift, CheckCircle, Sparkles, UserPlus, BadgeCheck, Wallet, Star, Crown, AlertCircle, TrendingUp, ArrowLeft, X } from 'lucide-react';
+import { Copy, Share2, Users, Gift, CheckCircle, Sparkles, UserPlus, BadgeCheck, Wallet, Star, Crown, AlertCircle, TrendingUp, ArrowLeft, X, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 import { formatCurrency } from '~/utils';
 import { Button } from '~/components/ui/button';
@@ -547,31 +547,63 @@ export default function ModelReferralPage() {
                             {referralStats.referredCustomers.map((customer) => (
                                 <div
                                     key={customer.id}
-                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                                    className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                                        customer.isPhoneVerified
+                                            ? 'bg-gray-50 hover:bg-gray-100'
+                                            : 'bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                                    }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <img
-                                            src={customer.profile || "https://xaosao.b-cdn.net/default-image.png"}
-                                            alt={customer.firstName}
-                                            className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
-                                        />
+                                        <div className="relative">
+                                            <img
+                                                src={customer.profile || "https://xaosao.b-cdn.net/default-image.png"}
+                                                alt={customer.firstName}
+                                                className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
+                                            />
+                                            {/* Verification indicator on avatar */}
+                                            <div className={`absolute -bottom-1 -right-1 p-0.5 rounded-full ${
+                                                customer.isPhoneVerified ? 'bg-green-500' : 'bg-amber-500'
+                                            }`}>
+                                                {customer.isPhoneVerified
+                                                    ? <ShieldCheck className="w-3 h-3 text-white" />
+                                                    : <ShieldAlert className="w-3 h-3 text-white" />
+                                                }
+                                            </div>
+                                        </div>
                                         <div>
                                             <div className="flex items-center gap-1">
                                                 <p className="font-medium text-gray-800">{customer.firstName} {customer.lastName}</p>
-                                                {customer.status === 'active' && (
+                                                {customer.isPhoneVerified && (
                                                     <BadgeCheck className="w-4 h-4 text-purple-500" />
                                                 )}
                                             </div>
-                                            <p className="text-xs text-gray-500">{t('modelReferral.customer', 'Customer')}</p>
+                                            <p className={`text-xs ${customer.isPhoneVerified ? 'text-gray-500' : 'text-amber-600'}`}>
+                                                {customer.isPhoneVerified
+                                                    ? t('modelReferral.phoneVerified', 'Phone Verified')
+                                                    : t('modelReferral.pendingVerification', 'Pending OTP Verification')
+                                                }
+                                            </p>
                                         </div>
                                     </div>
-                                    {isSpecialOrPartner && (
-                                        <div className="text-right">
-                                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                    <div className="text-right space-y-1">
+                                        {/* Verification status badge */}
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            customer.isPhoneVerified
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                            {customer.isPhoneVerified
+                                                ? t('modelReferral.verified', 'Verified')
+                                                : t('modelReferral.unverified', 'Unverified')
+                                            }
+                                        </span>
+                                        {/* Commission rate - only show for verified customers */}
+                                        {isSpecialOrPartner && customer.isPhoneVerified && (
+                                            <p className="text-xs text-purple-600 font-medium">
                                                 {referralStats.modelType === 'partner' ? '40%' : '20%'} {t('modelReferral.subscription', 'subscription')}
-                                            </span>
-                                        </div>
-                                    )}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

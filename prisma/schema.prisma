@@ -151,6 +151,12 @@ model customer {
   twofactorOTP       String? //@unique
   twofactorExpiry    DateTime? @default(now())
   twofactorEnabled   Boolean?  @default(false)
+
+  // Phone verification for registration
+  isPhoneVerified       Boolean   @default(false)
+  verificationOTP       String?
+  verificationOTPExpiry DateTime?
+
   location           Json?
   profile            String?
   interests          Json? // 2

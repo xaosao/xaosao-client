@@ -89,7 +89,7 @@ const tb = new Telbiz(
   process.env.TELBIZ_SECRETKEY as string
 );
 
-const sessionStorage = createCookieSessionStorage({
+export const sessionStorage = createCookieSessionStorage({
   cookie: {
     // secure: process.env.NODE_ENV === "production",
     secure: false,
@@ -124,6 +124,34 @@ export async function requireUserSession(request: Request) {
 
     if (!isPublic) {
       throw redirect("/login");
+    }
+  }
+
+  return customerId;
+}
+
+/**
+ * Require user session AND phone verification.
+ * Use this for protected routes that require verified users.
+ * Redirects to /verify-otp if user is logged in but not verified.
+ */
+export async function requireVerifiedUserSession(request: Request) {
+  const customerId = await getUserFromSession(request);
+
+  if (!customerId) {
+    throw redirect("/login");
+  }
+
+  // Check if phone is verified
+  const isVerified = await isCustomerPhoneVerified(customerId);
+
+  if (!isVerified) {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    // Don't redirect if already on verify-otp page (avoid infinite loop)
+    if (pathname !== "/verify-otp") {
+      throw redirect("/verify-otp");
     }
   }
 
@@ -381,6 +409,26 @@ export async function customerLogin({
   if (chatLogin.success) {
     // console.log("Chat login token:::", chatLogin.token);
 
+    // Check if customer's phone is verified
+    // If not verified, send OTP and redirect to verification page
+    if (!existingUser.isPhoneVerified) {
+      try {
+        await sendVerificationOTP(existingUser.id);
+      } catch (otpError) {
+        console.error("SEND_VERIFICATION_OTP_ON_LOGIN_FAILED", otpError);
+        // Don't fail login if OTP sending fails - they can resend later
+      }
+
+      // Redirect to OTP verification instead of customer dashboard
+      return createUserSession(
+        chatLogin.token,
+        existingUser.id,
+        rememberMe,
+        "/verify-otp"
+      );
+    }
+
+    // Phone is verified, proceed to requested page
     return createUserSession(
       chatLogin.token,
       existingUser.id,
@@ -674,12 +722,20 @@ export async function customerRegister(
     const chatLogin = await loginOnChat(userData);
 
     if (chatLogin.success) {
-      // Create session and redirect to customer dashboard
+      // Send verification OTP after successful registration
+      try {
+        await sendVerificationOTP(customer.id);
+      } catch (otpError) {
+        console.error("SEND_VERIFICATION_OTP_AFTER_REGISTER_FAILED", otpError);
+        // Don't fail registration if OTP sending fails - they can resend later
+      }
+
+      // Create session and redirect to OTP verification page
       return createUserSession(
         chatLogin.token,
         customer.id,
         false, // rememberMe = false for auto-login after registration
-        "/customer"
+        "/verify-otp" // Redirect to OTP verification instead of customer dashboard
       );
     } else {
       // If chat login fails, still return success but without auto-login
@@ -960,5 +1016,230 @@ export async function resetPassword(token: string, newPassword: string) {
       error: true,
       message: error.message || "Failed to reset password, please try again!",
     });
+  }
+}
+
+// ==================== PHONE VERIFICATION OTP ====================
+
+/**
+ * Generate and send verification OTP to customer's phone
+ * Used after registration and for unverified customers on login
+ */
+export async function sendVerificationOTP(customerId: string) {
+  try {
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      throw new Error("Customer not found!");
+    }
+
+    if (customer.isPhoneVerified) {
+      return {
+        success: true,
+        alreadyVerified: true,
+        message: "Phone is already verified!",
+      };
+    }
+
+    const auditBase = {
+      action: "SEND_VERIFICATION_OTP",
+      customer: customerId,
+    };
+
+    // Generate 6-character OTP
+    const verificationOTP = crypto.randomBytes(3).toString("hex").toUpperCase();
+    const verificationOTPExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        verificationOTP,
+        verificationOTPExpiry,
+      },
+    });
+
+    // Send SMS via Telbiz
+    const sendRes = await sendOtpTelbiz(String(customer.whatsapp), verificationOTP);
+    if (sendRes.success === false) {
+      await createAuditLogs({
+        ...auditBase,
+        description: `Send verification OTP to: ${customer.whatsapp} failed!`,
+        status: "failed",
+        onError: sendRes,
+      });
+      throw new Error("Failed to send OTP! Please try again later.");
+    }
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Verification OTP sent to: ${customer.whatsapp} successfully!`,
+      status: "success",
+      onSuccess: sendRes,
+    });
+
+    return {
+      success: true,
+      alreadyVerified: false,
+      message: "OTP sent successfully!",
+    };
+  } catch (error: any) {
+    console.error("SEND_VERIFICATION_OTP_ERROR", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: error.message || "Failed to send verification OTP!",
+    });
+  }
+}
+
+/**
+ * Resend verification OTP with cooldown check
+ */
+export async function resendVerificationOTP(customerId: string) {
+  try {
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      throw new Error("Customer not found!");
+    }
+
+    if (customer.isPhoneVerified) {
+      return {
+        success: true,
+        alreadyVerified: true,
+        message: "Phone is already verified!",
+      };
+    }
+
+    // Check cooldown (60 seconds from last OTP)
+    if (customer.verificationOTPExpiry) {
+      const lastSentTime = new Date(customer.verificationOTPExpiry.getTime() - 5 * 60 * 1000);
+      const cooldownEnd = new Date(lastSentTime.getTime() + 60 * 1000);
+      const now = new Date();
+
+      if (cooldownEnd > now) {
+        const remainingSeconds = Math.ceil((cooldownEnd.getTime() - now.getTime()) / 1000);
+        throw new Error(`Please wait ${remainingSeconds} seconds before resending OTP!`);
+      }
+    }
+
+    return await sendVerificationOTP(customerId);
+  } catch (error: any) {
+    console.error("RESEND_VERIFICATION_OTP_ERROR", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: error.message || "Failed to resend OTP!",
+    });
+  }
+}
+
+/**
+ * Verify the OTP code and mark phone as verified
+ */
+export async function verifyPhoneOTP(customerId: string, otp: string) {
+  try {
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      throw new Error("Customer not found!");
+    }
+
+    if (customer.isPhoneVerified) {
+      return {
+        success: true,
+        alreadyVerified: true,
+        message: "Phone is already verified!",
+      };
+    }
+
+    const auditBase = {
+      action: "VERIFY_PHONE_OTP",
+      customer: customerId,
+    };
+
+    // Check if OTP matches and not expired
+    if (!customer.verificationOTP || !customer.verificationOTPExpiry) {
+      await createAuditLogs({
+        ...auditBase,
+        description: "No OTP found for verification",
+        status: "failed",
+        onError: new Error("No OTP found"),
+      });
+      throw new Error("No OTP found. Please request a new OTP.");
+    }
+
+    if (new Date() > customer.verificationOTPExpiry) {
+      await createAuditLogs({
+        ...auditBase,
+        description: "OTP expired",
+        status: "failed",
+        onError: new Error("OTP expired"),
+      });
+      throw new Error("OTP has expired. Please request a new OTP.");
+    }
+
+    if (customer.verificationOTP.toUpperCase() !== otp.toUpperCase()) {
+      await createAuditLogs({
+        ...auditBase,
+        description: "Invalid OTP entered",
+        status: "failed",
+        onError: new Error("Invalid OTP"),
+      });
+      throw new Error("Invalid OTP. Please try again.");
+    }
+
+    // Mark phone as verified and clear OTP
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        isPhoneVerified: true,
+        verificationOTP: null,
+        verificationOTPExpiry: null,
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Phone verified successfully for customer: ${customerId}`,
+      status: "success",
+      onSuccess: { customerId },
+    });
+
+    return {
+      success: true,
+      alreadyVerified: false,
+      message: "Phone verified successfully!",
+    };
+  } catch (error: any) {
+    console.error("VERIFY_PHONE_OTP_ERROR", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: error.message || "Failed to verify OTP!",
+    });
+  }
+}
+
+/**
+ * Check if customer's phone is verified
+ */
+export async function isCustomerPhoneVerified(customerId: string): Promise<boolean> {
+  try {
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId },
+      select: { isPhoneVerified: true },
+    });
+
+    return customer?.isPhoneVerified ?? false;
+  } catch (error) {
+    console.error("CHECK_PHONE_VERIFIED_ERROR", error);
+    return false;
   }
 }

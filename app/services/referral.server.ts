@@ -513,6 +513,7 @@ export async function getReferralStats(modelId: string) {
       profile: true,
       status: true,
       createdAt: true,
+      isPhoneVerified: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -641,6 +642,7 @@ export async function getReferralStats(modelId: string) {
       profile: c.profile,
       status: c.status,
       createdAt: c.createdAt,
+      isPhoneVerified: c.isPhoneVerified,
     })),
   };
 }

@@ -49,6 +49,7 @@ export default [
   route("verify-otp", "./routes/auth/verify-otp.tsx"),
   route("logout", "./routes/logout.ts"),
   route("model-logout", "./routes/model-logout.ts"),
+  route("clear-session", "./routes/auth/clear-session.ts"),
 
   // Model authentication routes
   route("model-auth/login", "./routes/model-auth/login.tsx"),

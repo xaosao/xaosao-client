@@ -337,39 +337,43 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   // Log error for debugging
   console.error("[ErrorBoundary] Error occurred:", error);
 
-  // Handle reload action
+  // Handle reload action - clears all caches and session
   const handleReload = () => {
-    // 1. Clear all browser caches
-    if ("caches" in window) {
-      caches.keys().then((names) => {
-        names.forEach((name) => caches.delete(name));
+    try {
+      // 1. Clear localStorage
+      localStorage.clear();
+
+      // 2. Clear sessionStorage
+      sessionStorage.clear();
+
+      // 3. Clear non-HttpOnly cookies (HttpOnly cookies like __session will be cleared by the server)
+      document.cookie.split(";").forEach((cookie) => {
+        const name = cookie.split("=")[0].trim();
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        // Also clear with domain for production
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.xaosao.com;`;
       });
+
+      // 4. Clear browser caches (non-blocking)
+      if ("caches" in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        }).catch(() => {});
+      }
+
+      // 5. Unregister service workers (non-blocking)
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((reg) => reg.unregister());
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error("[ErrorBoundary] Error during cache clear:", e);
     }
 
-    // 2. Clear localStorage
-    localStorage.clear();
-
-    // 3. Clear sessionStorage
-    sessionStorage.clear();
-
-    // 4. Clear all cookies (including auth tokens)
-    document.cookie.split(";").forEach((cookie) => {
-      const name = cookie.split("=")[0].trim();
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      // Also clear with domain for production
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.xaosao.com;`;
-    });
-
-    // 5. Unregister service workers and navigate to home
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        Promise.all(registrations.map((reg) => reg.unregister())).then(() => {
-          window.location.href = "/"; // Force navigate to home
-        });
-      });
-    } else {
-      window.location.href = "/";
-    }
+    // 6. Navigate to clear-session route which clears HttpOnly cookies (__session) server-side
+    // This is necessary because HttpOnly cookies cannot be cleared via JavaScript
+    window.location.href = "/clear-session";
   };
 
   const handleGoHome = () => {
