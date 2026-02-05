@@ -334,8 +334,8 @@ export async function pushBookingCreated(
   bookingId: string
 ): Promise<void> {
   await sendPushToModel(modelId, {
-    title: "New Booking Request",
-    body: `${customerName} wants to book your "${serviceName}" service`,
+    title: "ມີການຈອງໃໝ່!",
+    body: `${customerName} ຕ້ອງການຈອງບໍລິການ "${serviceName}" ຂອງທ່ານ`,
     tag: `booking-${bookingId}`,
     data: {
       type: "booking_created",
@@ -343,7 +343,7 @@ export async function pushBookingCreated(
       url: "/model/dating",
     },
     actions: [
-      { action: "view", title: "View" },
+      { action: "view", title: "ເບິ່ງ" },
     ],
   });
 }
@@ -358,8 +358,8 @@ export async function pushBookingConfirmed(
   bookingId: string
 ): Promise<void> {
   await sendPushToCustomer(customerId, {
-    title: "Booking Confirmed!",
-    body: `${modelName} has accepted your "${serviceName}" booking`,
+    title: "ການຈອງໄດ້ຮັບການຢືນຢັນ!",
+    body: `${modelName} ຍອມຮັບການຈອງ "${serviceName}" ຂອງທ່ານແລ້ວ`,
     tag: `booking-${bookingId}`,
     data: {
       type: "booking_confirmed",
@@ -379,8 +379,8 @@ export async function pushBookingRejected(
   bookingId: string
 ): Promise<void> {
   await sendPushToCustomer(customerId, {
-    title: "Booking Declined",
-    body: `${modelName} couldn't accept your "${serviceName}" booking`,
+    title: "ການຈອງຖືກປະຕິເສດ",
+    body: `${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້`,
     tag: `booking-${bookingId}`,
     data: {
       type: "booking_rejected",
@@ -400,8 +400,8 @@ export async function pushBookingCancelled(
   bookingId: string
 ): Promise<void> {
   await sendPushToModel(modelId, {
-    title: "Booking Cancelled",
-    body: `${customerName} cancelled the "${serviceName}" booking`,
+    title: "ການຈອງຖືກຍົກເລີກ",
+    body: `${customerName} ຍົກເລີກການຈອງ "${serviceName}"`,
     tag: `booking-${bookingId}`,
     data: {
       type: "booking_cancelled",
@@ -421,8 +421,8 @@ export async function pushBookingCompleted(
   bookingId: string
 ): Promise<void> {
   await sendPushToCustomer(customerId, {
-    title: "Service Completed",
-    body: `${modelName} marked "${serviceName}" as complete. Please confirm.`,
+    title: "ບໍລິການສຳເລັດແລ້ວ",
+    body: `${modelName} ແຈ້ງວ່າ "${serviceName}" ສຳເລັດແລ້ວ. ກະລຸນາຢືນຢັນ.`,
     tag: `complete-${bookingId}`,
     data: {
       type: "booking_completed",
@@ -430,8 +430,8 @@ export async function pushBookingCompleted(
       url: "/customer/dates-history",
     },
     actions: [
-      { action: "confirm", title: "Confirm" },
-      { action: "dispute", title: "Dispute" },
+      { action: "confirm", title: "ຢືນຢັນ" },
+      { action: "dispute", title: "ຮ້ອງຮຽນ" },
     ],
   });
 }
@@ -445,8 +445,8 @@ export async function pushPaymentReleased(
   bookingId: string
 ): Promise<void> {
   await sendPushToModel(modelId, {
-    title: "Payment Released!",
-    body: `${amount.toLocaleString()} LAK has been added to your wallet`,
+    title: "ໄດ້ຮັບເງິນແລ້ວ!",
+    body: `${amount.toLocaleString()} LAK ໄດ້ຖືກເພີ່ມເຂົ້າ Wallet ຂອງທ່ານ`,
     tag: `payment-${bookingId}`,
     data: {
       type: "payment_released",
@@ -467,7 +467,7 @@ export async function pushNewMessage(
   conversationId?: string
 ): Promise<void> {
   const payload: PushPayload = {
-    title: "New Message",
+    title: "ຂໍ້ຄວາມໃໝ່",
     body: `${senderName}: ${messagePreview.substring(0, 100)}`,
     tag: `message-${conversationId || Date.now()}`,
     data: {
@@ -495,8 +495,8 @@ export async function pushNewMatch(
 ): Promise<void> {
   // Notify model
   await sendPushToModel(modelId, {
-    title: "New Match!",
-    body: `You and ${customerName} have matched!`,
+    title: "ແມັດໃໝ່!",
+    body: `ທ່ານແລະ ${customerName} ໄດ້ແມັດກັນ!`,
     tag: `match-${customerId}`,
     data: {
       type: "match_new",
@@ -507,8 +507,8 @@ export async function pushNewMatch(
 
   // Notify customer
   await sendPushToCustomer(customerId, {
-    title: "New Match!",
-    body: `You and ${modelName} have matched!`,
+    title: "ແມັດໃໝ່!",
+    body: `ທ່ານແລະ ${modelName} ໄດ້ແມັດກັນ!`,
     tag: `match-${modelId}`,
     data: {
       type: "match_new",
@@ -526,8 +526,8 @@ export async function pushDepositApproved(
   amount: number
 ): Promise<void> {
   await sendPushToCustomer(customerId, {
-    title: "Deposit Approved!",
-    body: `${amount.toLocaleString()} LAK has been added to your wallet`,
+    title: "ເງິນຝາກໄດ້ຮັບການອະນຸມັດ!",
+    body: `${amount.toLocaleString()} LAK ໄດ້ຖືກເພີ່ມເຂົ້າ Wallet ຂອງທ່ານ`,
     tag: `deposit-${Date.now()}`,
     data: {
       type: "deposit_approved",
@@ -544,8 +544,8 @@ export async function pushWithdrawApproved(
   amount: number
 ): Promise<void> {
   await sendPushToModel(modelId, {
-    title: "Withdrawal Approved!",
-    body: `${amount.toLocaleString()} LAK withdrawal has been processed`,
+    title: "ການຖອນເງິນໄດ້ຮັບການອະນຸມັດ!",
+    body: `ການຖອນເງິນ ${amount.toLocaleString()} LAK ໄດ້ຮັບການດຳເນີນການແລ້ວ`,
     tag: `withdraw-${Date.now()}`,
     data: {
       type: "withdraw_approved",

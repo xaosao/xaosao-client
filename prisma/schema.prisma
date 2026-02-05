@@ -160,7 +160,7 @@ model customer {
   education          String? // 6
   sendMailNoti       Boolean   @default(true) // 7
   sendSMSNoti        Boolean   @default(true) // 8 - default ON for new users
-  sendPushNoti       Boolean   @default(true) // 9 - default ON for new users
+  sendPushNoti       Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
   defaultLanguage    String    @default("en") // 10
   defaultTheme       String    @default("light") // 11
 
@@ -227,7 +227,7 @@ model model {
   education           String? // 6
   sendMailNoti        Boolean   @default(true) // 7
   sendSMSNoti         Boolean   @default(true) // 8 - default ON for new users
-  sendPushNoti        Boolean   @default(true) // 9 - default ON for new users
+  sendPushNoti        Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
   defaultLanguage     String    @default("en") // 10
   defaultTheme        String    @default("light") // 11
 

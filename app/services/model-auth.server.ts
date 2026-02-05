@@ -11,6 +11,7 @@ import type { TelbizError, TelbizResponse } from "~/interfaces";
 import { createCookieSessionStorage, redirect } from "react-router";
 import { FieldValidationError, getLocationDetails } from "./base.server";
 import { notifyAdminNewPendingModel } from "./email.server";
+import { notifyReferralRegistered } from "./unified-notification.server";
 
 const { compare, hash } = bcrypt;
 const MODEL_SESSION_SECRET =
@@ -611,6 +612,20 @@ export async function modelRegister(
         lastName: model.lastName,
         tel: modelData.whatsapp,
       });
+
+      // Notify referrer model about new model registration (if referred)
+      if (modelData.referrerId) {
+        try {
+          await notifyReferralRegistered(
+            modelData.referrerId,
+            model.firstName,
+            "model"
+          );
+        } catch (notifyError) {
+          // Don't fail registration if notification fails
+          console.error("REFERRER_NOTIFICATION_FAILED", notifyError);
+        }
+      }
 
       const modelChatData: ModelRegistrationData = {
         user_id: model.id,

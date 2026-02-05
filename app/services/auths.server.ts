@@ -8,6 +8,10 @@ import { createAuditLogs } from "./log.server";
 import { UserStatus } from "~/interfaces/base";
 import { createWallet } from "./wallet.server";
 import { notifyAdminNewCustomer } from "./email.server";
+import {
+  notifyCustomerWelcome,
+  notifyReferralRegistered,
+} from "./unified-notification.server";
 import type {
   ICustomerSigninCredentials,
   ICustomerSignupCredentials,
@@ -558,6 +562,13 @@ export async function customerRegister(
           },
         });
         console.log(`Incremented totalReferredCustomers for model ${customerData.referredByModelId}`);
+
+        // Notify referrer model about new customer registration
+        await notifyReferralRegistered(
+          customerData.referredByModelId,
+          customer.firstName,
+          "customer"
+        );
       } catch (refError) {
         // Don't fail registration if referral count update fails
         console.error("Failed to update referrer's customer count:", refError);
@@ -645,6 +656,13 @@ export async function customerRegister(
       });
     } catch (notifyError) {
       console.error("NOTIFY_ADMIN_NEW_CUSTOMER_FAILED", notifyError);
+    }
+
+    // Send welcome notification to new customer (SMS, Push, In-App)
+    try {
+      await notifyCustomerWelcome(customer.id, customer.firstName);
+    } catch (welcomeError) {
+      console.error("WELCOME_NOTIFICATION_FAILED", welcomeError);
     }
 
     // Auto-login: Log the customer into the chat system

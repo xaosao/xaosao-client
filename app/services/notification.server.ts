@@ -115,7 +115,7 @@ async function getCustomerSMSInfo(customerId: string): Promise<{ phone: number |
 /**
  * Send SMS to model (only if SMS notifications are enabled)
  */
-async function sendSMSToModel(modelId: string, message: string): Promise<void> {
+export async function sendSMSToModel(modelId: string, message: string): Promise<void> {
   const { phone, sendSMSNoti } = await getModelSMSInfo(modelId);
 
   if (!sendSMSNoti) {
@@ -133,7 +133,7 @@ async function sendSMSToModel(modelId: string, message: string): Promise<void> {
 /**
  * Send SMS to customer (only if SMS notifications are enabled)
  */
-async function sendSMSToCustomer(customerId: string, message: string): Promise<void> {
+export async function sendSMSToCustomer(customerId: string, message: string): Promise<void> {
   const { phone, sendSMSNoti } = await getCustomerSMSInfo(customerId);
 
   if (!sendSMSNoti) {
@@ -183,6 +183,11 @@ export type NotificationType =
   | "withdraw_rejected"
   // System notifications
   | "welcome"
+  // Referral notifications
+  | "referral_registered"
+  | "referral_approved"
+  | "referral_bonus"
+  | "commission_earned"
   // Call notifications
   | "incoming_call"
   | "call_missed"
@@ -539,8 +544,8 @@ export async function notifyBookingCreated(
 ) {
   await createModelNotification(modelId, {
     type: "booking_created",
-    title: "New Booking Request",
-    message: `${customerName} has requested to book your "${serviceName}" service.`,
+    title: "ມີການຈອງໃໝ່!",
+    message: `${customerName} ໄດ້ຂໍຈອງບໍລິການ "${serviceName}" ຂອງທ່ານ.`,
     data: { bookingId, customerId },
   });
 
@@ -570,8 +575,8 @@ export async function notifyBookingConfirmed(
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_confirmed",
-    title: "Booking Confirmed",
-    message: `${modelName} has accepted your booking for "${serviceName}".`,
+    title: "ການຈອງໄດ້ຮັບການຢືນຢັນ",
+    message: `${modelName} ຍອມຮັບການຈອງ "${serviceName}" ຂອງທ່ານແລ້ວ.`,
     data: { bookingId, modelId },
   });
 
@@ -599,8 +604,8 @@ export async function notifyBookingRejected(
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_rejected",
-    title: "Booking Rejected",
-    message: `${modelName} has declined your booking for "${serviceName}".${reason ? ` Reason: ${reason}` : ""}`,
+    title: "ການຈອງຖືກປະຕິເສດ",
+    message: `${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, modelId, reason },
   });
 
@@ -627,8 +632,8 @@ export async function notifyBookingCancelled(
 ) {
   await createModelNotification(modelId, {
     type: "booking_cancelled",
-    title: "Booking Cancelled",
-    message: `${customerName} has cancelled the booking for "${serviceName}".`,
+    title: "ການຈອງຖືກຍົກເລີກ",
+    message: `${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${serviceName}".`,
     data: { bookingId, customerId },
   });
 
@@ -656,8 +661,8 @@ export async function notifyBookingCompleted(
 ) {
   await createCustomerNotification(customerId, {
     type: "booking_completed",
-    title: "Service Completed",
-    message: `${modelName} has marked the "${serviceName}" service as complete. Please confirm within 48 hours.`,
+    title: "ບໍລິການສຳເລັດແລ້ວ",
+    message: `${modelName} ແຈ້ງວ່າບໍລິການ "${serviceName}" ສຳເລັດແລ້ວ. ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ.`,
     data: { bookingId, modelId },
   });
 
@@ -685,8 +690,8 @@ export async function notifyBookingDisputed(
 ) {
   await createModelNotification(modelId, {
     type: "booking_disputed",
-    title: "Booking Disputed",
-    message: `${customerName} has disputed the "${serviceName}" booking. Reason: ${reason}`,
+    title: "ມີການຮ້ອງຮຽນ",
+    message: `${customerName} ຮ້ອງຮຽນການຈອງ "${serviceName}". ເຫດຜົນ: ${reason}`,
     data: { bookingId, customerId, reason },
   });
 
@@ -706,8 +711,8 @@ export async function notifyPaymentRefunded(
 ) {
   await createCustomerNotification(customerId, {
     type: "payment_refunded",
-    title: "Payment Refunded",
-    message: `${amount.toLocaleString()} LAK has been refunded to your wallet. Reason: ${reason}`,
+    title: "ຄືນເງິນແລ້ວ",
+    message: `${amount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານແລ້ວ. ເຫດຜົນ: ${reason}`,
     data: { bookingId, amount, reason },
   });
 }
@@ -725,16 +730,16 @@ export async function notifyAutoReleasePayment(
   // Notify model
   await createModelNotification(modelId, {
     type: "payment_released",
-    title: "Payment Auto-Released",
-    message: `${amount.toLocaleString()} LAK has been automatically released to your wallet (48h confirmation window expired).`,
+    title: "ເງິນຖືກໂອນອັດຕະໂນມັດ",
+    message: `${amount.toLocaleString()} LAK ໄດ້ຖືກໂອນອັດຕະໂນມັດເຂົ້າ Wallet ຂອງທ່ານແລ້ວ (ໝົດເວລາຢືນຢັນ 24 ຊົ່ວໂມງ).`,
     data: { bookingId, amount },
   });
 
   // Notify customer
   await createCustomerNotification(customerId, {
     type: "booking_confirmed_completion",
-    title: "Booking Auto-Completed",
-    message: `Your booking has been automatically completed after the 48-hour confirmation window.`,
+    title: "ການຈອງສຳເລັດອັດຕະໂນມັດ",
+    message: `ການຈອງຂອງທ່ານໄດ້ສຳເລັດອັດຕະໂນມັດຫຼັງຈາກໝົດເວລາຢືນຢັນ 24 ຊົ່ວໂມງ.`,
     data: { bookingId },
   });
 
@@ -763,8 +768,8 @@ export async function notifyBookingEdited(
 ) {
   await createModelNotification(modelId, {
     type: "booking_created", // Reuse type for edit notification
-    title: "Booking Updated",
-    message: `${customerName} has updated the booking for "${serviceName}".`,
+    title: "ການຈອງຖືກແກ້ໄຂ",
+    message: `${customerName} ແກ້ໄຂການຈອງ "${serviceName}".`,
     data: { bookingId, customerId },
   });
 
@@ -789,8 +794,8 @@ export async function notifyModelLikeReceived(
 ) {
   await createModelNotification(modelId, {
     type: "like_received",
-    title: "New Like",
-    message: `${customerName} liked your profile.`,
+    title: "ມີຄົນຖືກໃຈໃໝ່",
+    message: `${customerName} ຖືກໃຈໂປຣໄຟລ໌ຂອງທ່ານ.`,
     data: { customerId },
   });
 }
@@ -805,8 +810,8 @@ export async function notifyCustomerLikeReceived(
 ) {
   await createCustomerNotification(customerId, {
     type: "like_received",
-    title: "New Like",
-    message: `${modelName} liked your profile.`,
+    title: "ມີຄົນຖືກໃຈໃໝ່",
+    message: `${modelName} ຖືກໃຈໂປຣໄຟລ໌ຂອງທ່ານ.`,
     data: { modelId },
   });
 }
@@ -823,16 +828,16 @@ export async function notifyNewMatch(
   // Notify model
   await createModelNotification(modelId, {
     type: "match_new",
-    title: "New Match!",
-    message: `You and ${customerName} have matched! Start a conversation now.`,
+    title: "ແມັດໃໝ່!",
+    message: `ທ່ານແລະ ${customerName} ໄດ້ແມັດກັນ! ເລີ່ມສົນທະນາໄດ້ເລີຍ.`,
     data: { customerId },
   });
 
   // Notify customer
   await createCustomerNotification(customerId, {
     type: "match_new",
-    title: "New Match!",
-    message: `You and ${modelName} have matched! Start a conversation now.`,
+    title: "ແມັດໃໝ່!",
+    message: `ທ່ານແລະ ${modelName} ໄດ້ແມັດກັນ! ເລີ່ມສົນທະນາໄດ້ເລີຍ.`,
     data: { modelId },
   });
 
@@ -852,8 +857,8 @@ export async function notifyModelFriendRequest(
 ) {
   await createModelNotification(modelId, {
     type: "friend_request",
-    title: "Friend Request",
-    message: `${customerName} sent you a friend request.`,
+    title: "ຄຳຂໍເປັນເພື່ອນ",
+    message: `${customerName} ສົ່ງຄຳຂໍເປັນເພື່ອນຫາທ່ານ.`,
     data: { customerId },
   });
 }
@@ -868,8 +873,8 @@ export async function notifyCustomerFriendRequest(
 ) {
   await createCustomerNotification(customerId, {
     type: "friend_request",
-    title: "Friend Request",
-    message: `${modelName} sent you a friend request.`,
+    title: "ຄຳຂໍເປັນເພື່ອນ",
+    message: `${modelName} ສົ່ງຄຳຂໍເປັນເພື່ອນຫາທ່ານ.`,
     data: { modelId },
   });
 }
@@ -884,8 +889,8 @@ export async function notifyModelFriendAccepted(
 ) {
   await createModelNotification(modelId, {
     type: "friend_accepted",
-    title: "Friend Request Accepted",
-    message: `${customerName} accepted your friend request.`,
+    title: "ຍອມຮັບເປັນເພື່ອນແລ້ວ",
+    message: `${customerName} ຍອມຮັບຄຳຂໍເປັນເພື່ອນຂອງທ່ານແລ້ວ.`,
     data: { customerId },
   });
 }
@@ -900,8 +905,8 @@ export async function notifyCustomerFriendAccepted(
 ) {
   await createCustomerNotification(customerId, {
     type: "friend_accepted",
-    title: "Friend Request Accepted",
-    message: `${modelName} accepted your friend request.`,
+    title: "ຍອມຮັບເປັນເພື່ອນແລ້ວ",
+    message: `${modelName} ຍອມຮັບຄຳຂໍເປັນເພື່ອນຂອງທ່ານແລ້ວ.`,
     data: { modelId },
   });
 }
@@ -922,7 +927,7 @@ export async function notifyModelNewMessage(
 ) {
   await createModelNotification(modelId, {
     type: "new_message",
-    title: "New Message",
+    title: "ຂໍ້ຄວາມໃໝ່",
     message: `${customerName}: ${messagePreview.substring(0, 50)}${messagePreview.length > 50 ? "..." : ""}`,
     data: { customerId, conversationId },
   });
@@ -945,7 +950,7 @@ export async function notifyCustomerNewMessage(
 ) {
   await createCustomerNotification(customerId, {
     type: "new_message",
-    title: "New Message",
+    title: "ຂໍ້ຄວາມໃໝ່",
     message: `${modelName}: ${messagePreview.substring(0, 50)}${messagePreview.length > 50 ? "..." : ""}`,
     data: { modelId, conversationId },
   });
@@ -970,8 +975,8 @@ export async function notifyModelProfileViewed(
 ) {
   await createModelNotification(modelId, {
     type: "profile_viewed",
-    title: "Profile Viewed",
-    message: `${customerName} viewed your profile.`,
+    title: "ໂປຣໄຟລ໌ຖືກເບິ່ງ",
+    message: `${customerName} ເບິ່ງໂປຣໄຟລ໌ຂອງທ່ານ.`,
     data: { customerId },
   });
 }
@@ -986,8 +991,8 @@ export async function notifyCustomerProfileViewed(
 ) {
   await createCustomerNotification(customerId, {
     type: "profile_viewed",
-    title: "Profile Viewed",
-    message: `${modelName} viewed your profile.`,
+    title: "ໂປຣໄຟລ໌ຖືກເບິ່ງ",
+    message: `${modelName} ເບິ່ງໂປຣໄຟລ໌ຂອງທ່ານ.`,
     data: { modelId },
   });
 }
@@ -998,8 +1003,8 @@ export async function notifyCustomerProfileViewed(
 export async function notifyModelProfileApproved(modelId: string) {
   await createModelNotification(modelId, {
     type: "profile_approved",
-    title: "Profile Approved",
-    message: "Your profile has been approved! You can now receive booking requests.",
+    title: "ໂປຣໄຟລ໌ໄດ້ຮັບການອະນຸມັດ",
+    message: "ໂປຣໄຟລ໌ຂອງທ່ານໄດ້ຮັບການອະນຸມັດແລ້ວ! ທ່ານສາມາດຮັບການຈອງໄດ້ແລ້ວ.",
     data: {},
   });
 }
@@ -1010,8 +1015,8 @@ export async function notifyModelProfileApproved(modelId: string) {
 export async function notifyModelProfileVerified(modelId: string) {
   await createModelNotification(modelId, {
     type: "profile_verified",
-    title: "Profile Verified",
-    message: "Your identity has been verified! Your profile now shows a verification badge.",
+    title: "ໂປຣໄຟລ໌ໄດ້ຮັບການຢືນຢັນ",
+    message: "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
     data: {},
   });
 }
@@ -1022,8 +1027,8 @@ export async function notifyModelProfileVerified(modelId: string) {
 export async function notifyCustomerProfileVerified(customerId: string) {
   await createCustomerNotification(customerId, {
     type: "profile_verified",
-    title: "Profile Verified",
-    message: "Your identity has been verified! Your profile now shows a verification badge.",
+    title: "ໂປຣໄຟລ໌ໄດ້ຮັບການຢືນຢັນ",
+    message: "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
     data: {},
   });
 }
@@ -1042,8 +1047,8 @@ export async function notifyCustomerDepositApproved(
 ) {
   await createCustomerNotification(customerId, {
     type: "deposit_approved",
-    title: "Deposit Approved",
-    message: `Your deposit of ${amount.toLocaleString()} LAK has been approved and added to your wallet.`,
+    title: "ເງິນຝາກໄດ້ຮັບການອະນຸມັດ",
+    message: `ເງິນຝາກ ${amount.toLocaleString()} LAK ຂອງທ່ານໄດ້ຮັບການອະນຸມັດແລະເພີ່ມເຂົ້າ Wallet ແລ້ວ.`,
     data: { amount, transactionId },
   });
 
@@ -1064,8 +1069,8 @@ export async function notifyCustomerDepositRejected(
 ) {
   await createCustomerNotification(customerId, {
     type: "deposit_rejected",
-    title: "Deposit Rejected",
-    message: `Your deposit of ${amount.toLocaleString()} LAK has been rejected.${reason ? ` Reason: ${reason}` : ""}`,
+    title: "ເງິນຝາກຖືກປະຕິເສດ",
+    message: `ເງິນຝາກ ${amount.toLocaleString()} LAK ຂອງທ່ານຖືກປະຕິເສດ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { amount, reason, transactionId },
   });
 }
@@ -1080,8 +1085,8 @@ export async function notifyModelWithdrawApproved(
 ) {
   await createModelNotification(modelId, {
     type: "withdraw_approved",
-    title: "Withdrawal Approved",
-    message: `Your withdrawal of ${amount.toLocaleString()} LAK has been approved and processed.`,
+    title: "ການຖອນເງິນໄດ້ຮັບການອະນຸມັດ",
+    message: `ການຖອນເງິນ ${amount.toLocaleString()} LAK ຂອງທ່ານໄດ້ຮັບການອະນຸມັດແລະດຳເນີນການແລ້ວ.`,
     data: { amount, transactionId },
   });
 
@@ -1102,8 +1107,8 @@ export async function notifyModelWithdrawRejected(
 ) {
   await createModelNotification(modelId, {
     type: "withdraw_rejected",
-    title: "Withdrawal Rejected",
-    message: `Your withdrawal request of ${amount.toLocaleString()} LAK has been rejected.${reason ? ` Reason: ${reason}` : ""} The amount has been returned to your wallet.`,
+    title: "ການຖອນເງິນຖືກປະຕິເສດ",
+    message: `ຄຳຂໍຖອນເງິນ ${amount.toLocaleString()} LAK ຂອງທ່ານຖືກປະຕິເສດ.${reason ? ` ເຫດຜົນ: ${reason}` : ""} ເງິນໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານແລ້ວ.`,
     data: { amount, reason, transactionId },
   });
 }
@@ -1118,8 +1123,8 @@ export async function notifyModelWithdrawRejected(
 export async function notifyModelWelcome(modelId: string, modelName: string) {
   await createModelNotification(modelId, {
     type: "welcome",
-    title: "Welcome to XaoSao!",
-    message: `Hi ${modelName}! Welcome to XaoSao. Complete your profile to start receiving booking requests.`,
+    title: "ຍິນດີຕ້ອນຮັບສູ່ XaoSao!",
+    message: `ສະບາຍດີ ${modelName}! ຍິນດີຕ້ອນຮັບສູ່ XaoSao. ກະລຸນາສ້າງໂປຣໄຟລ໌ເພື່ອເລີ່ມຮັບການຈອງ.`,
     data: {},
   });
 }
@@ -1130,8 +1135,8 @@ export async function notifyModelWelcome(modelId: string, modelName: string) {
 export async function notifyCustomerWelcome(customerId: string, customerName: string) {
   await createCustomerNotification(customerId, {
     type: "welcome",
-    title: "Welcome to XaoSao!",
-    message: `Hi ${customerName}! Welcome to XaoSao. Explore and discover amazing models near you.`,
+    title: "ຍິນດີຕ້ອນຮັບສູ່ XaoSao!",
+    message: `ສະບາຍດີ ${customerName}! ຍິນດີຕ້ອນຮັບສູ່ XaoSao. ສຳຫຼວດແລະຄົ້ນຫາໂມເດວທີ່ໜ້າອັດສະຈັນໃກ້ທ່ານ.`,
     data: {},
   });
 }
@@ -1178,8 +1183,8 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
   // 1. Notify Customer - Payment has been released
   await createCustomerNotification(customerId, {
     type: "payment_released",
-    title: "Booking Completed",
-    message: `Your booking for "${serviceName}" with ${modelName} has been completed. Payment of ${totalAmount.toLocaleString()} LAK has been released.`,
+    title: "ການຈອງສຳເລັດ",
+    message: `ການຈອງ "${serviceName}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`,
     data: { bookingId, modelId },
   });
 
@@ -1189,8 +1194,8 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
 
   // Send push to customer
   sendPushToCustomer(customerId, {
-    title: "Booking Completed",
-    body: `Your "${serviceName}" booking with ${modelName} is complete`,
+    title: "ການຈອງສຳເລັດ",
+    body: `ການຈອງ "${serviceName}" ກັບ ${modelName} ສຳເລັດແລ້ວ`,
     tag: `booking-complete-${bookingId}`,
     data: {
       type: "payment_released",
@@ -1202,8 +1207,8 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
   // 2. Notify Model - Payment has been received
   await createModelNotification(modelId, {
     type: "payment_released",
-    title: "Payment Received!",
-    message: `You received ${netAmount.toLocaleString()} LAK from "${serviceName}" booking with ${customerName}.`,
+    title: "ໄດ້ຮັບເງິນແລ້ວ!",
+    message: `ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${serviceName}" ກັບ ${customerName}.`,
     data: { bookingId, customerId, amount: netAmount },
   });
 
@@ -1220,8 +1225,8 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
   if (referrer && referrer.commissionAmount > 0) {
     await createModelNotification(referrer.id, {
       type: "referral_bonus",
-      title: "Referral Commission Received!",
-      message: `You earned ${referrer.commissionAmount.toLocaleString()} LAK referral commission from ${modelName}'s booking.`,
+      title: "ໄດ້ຮັບຄ່ານາຍໜ້າແນະນຳ!",
+      message: `ທ່ານໄດ້ຮັບ ${referrer.commissionAmount.toLocaleString()} LAK ຄ່ານາຍໜ້າແນະນຳຈາກການຈອງຂອງ ${modelName}.`,
       data: { bookingId, modelId, amount: referrer.commissionAmount },
     });
 
@@ -1235,8 +1240,8 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
 
     // Send push to referrer
     sendPushToModel(referrer.id, {
-      title: "Referral Commission! 🎉",
-      body: `You earned ${referrer.commissionAmount.toLocaleString()} LAK from ${modelName}'s booking`,
+      title: "ໄດ້ຮັບຄ່ານາຍໜ້າແນະນຳ!",
+      body: `ທ່ານໄດ້ຮັບ ${referrer.commissionAmount.toLocaleString()} LAK ຈາກການຈອງຂອງ ${modelName}`,
       tag: `referral-commission-${bookingId}`,
       data: {
         type: "referral_bonus",
@@ -1279,8 +1284,8 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
   // 1. Notify Customer - Payment has been refunded
   await createCustomerNotification(customerId, {
     type: "payment_refunded",
-    title: "Booking Refunded",
-    message: `Your booking for "${serviceName}" has been refunded. ${refundAmount.toLocaleString()} LAK has been returned to your wallet.${reason ? ` Reason: ${reason}` : ""}`,
+    title: "ການຈອງຖືກຄືນເງິນ",
+    message: `ການຈອງ "${serviceName}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, modelId, amount: refundAmount },
   });
 
@@ -1290,8 +1295,8 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
 
   // Send push to customer
   sendPushToCustomer(customerId, {
-    title: "Booking Refunded",
-    body: `${refundAmount.toLocaleString()} LAK refunded for "${serviceName}"`,
+    title: "ການຈອງຖືກຄືນເງິນ",
+    body: `${refundAmount.toLocaleString()} LAK ໄດ້ຖືກຄືນໃຫ້ "${serviceName}"`,
     tag: `booking-refund-${bookingId}`,
     data: {
       type: "payment_refunded",
@@ -1303,8 +1308,8 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
   // 2. Notify Model - Booking has been refunded
   await createModelNotification(modelId, {
     type: "booking_cancelled",
-    title: "Booking Refunded",
-    message: `The booking for "${serviceName}" with ${customerName} has been refunded to the customer.${reason ? ` Reason: ${reason}` : ""}`,
+    title: "ການຈອງຖືກຄືນເງິນ",
+    message: `ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, customerId },
   });
 
@@ -1314,8 +1319,8 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
 
   // Send push to model
   sendPushToModel(modelId, {
-    title: "Booking Refunded",
-    body: `"${serviceName}" booking with ${customerName} was refunded`,
+    title: "ການຈອງຖືກຄືນເງິນ",
+    body: `ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນແລ້ວ`,
     tag: `booking-refund-model-${bookingId}`,
     data: {
       type: "booking_cancelled",
@@ -1352,8 +1357,8 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
   // Notify Customer - Model has received the payment
   await createCustomerNotification(customerId, {
     type: "payment_released",
-    title: "Payment Completed",
-    message: `${modelName} has received the payment of ${amount.toLocaleString()} LAK for "${serviceName}". Thank you for using XaoSao!`,
+    title: "ການຊຳລະເງິນສຳເລັດ",
+    message: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
     data: { bookingId, amount },
   });
 
@@ -1363,8 +1368,8 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
 
   // Send push to customer
   sendPushToCustomer(customerId, {
-    title: "Payment Completed",
-    body: `${modelName} received ${amount.toLocaleString()} LAK for "${serviceName}"`,
+    title: "ການຊຳລະເງິນສຳເລັດ",
+    body: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}"`,
     tag: `payment-complete-${bookingId}`,
     data: {
       type: "payment_released",

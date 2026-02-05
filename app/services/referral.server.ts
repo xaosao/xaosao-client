@@ -1,20 +1,21 @@
 import { prisma } from "./database.server";
 import { createAuditLogs } from "./log.server";
+import { notifyCommissionEarned } from "./unified-notification.server";
 
 // Referral reward amount in Kip (for normal model type only)
 export const REFERRAL_REWARD_AMOUNT = 50000;
 
 // Minimum referred models required for commission eligibility
-// Read from environment variable (dev: 2, production: 20)
+// Local: 2, Production: 20
 export const MIN_REFERRED_MODELS_FOR_COMMISSION = parseInt(
   process.env.MIN_REFERRED_MODELS_FOR_COMMISSION || "2",
   10
 );
 
 // Minimum earnings required for partner-level commission
-// Read from environment variable (dev: 100,000 Kip, production: 10,000,000 Kip)
+// Local: 10,000 Kip, Production: 1,000,000 Kip
 export const MIN_EARNINGS_FOR_PARTNER_COMMISSION = parseInt(
-  process.env.MIN_EARNINGS_FOR_PARTNER_COMMISSION || "100000",
+  process.env.MIN_EARNINGS_FOR_PARTNER_COMMISSION || "10000",
   10
 );
 
@@ -375,7 +376,7 @@ export async function processReferralReward(approvedModelId: string) {
     }
 
     // Update wallet balance and create transaction in a transaction
-    const [updatedWallet, transaction, updatedModel] = await prisma.$transaction([
+    const [updatedWallet, transaction, updatedModel, updatedReferrer] = await prisma.$transaction([
       // Add reward to referrer's wallet
       prisma.wallet.update({
         where: { id: referrerWallet.id },
@@ -400,6 +401,13 @@ export async function processReferralReward(approvedModelId: string) {
       prisma.model.update({
         where: { id: approvedModelId },
         data: { referralRewardPaid: true },
+      }),
+      // Update referrer's total referral earnings (for partner commission eligibility)
+      prisma.model.update({
+        where: { id: referrer.id },
+        data: {
+          totalReferralEarnings: (referrer.totalReferralEarnings || 0) + REFERRAL_REWARD_AMOUNT,
+        },
       }),
     ]);
 
@@ -766,6 +774,20 @@ export async function processSubscriptionReferralCommission(
 
     console.log(`Subscription commission paid: ${commissionAmount.toLocaleString()} Kip to ${referrer.type} model ${referrer.id}`);
 
+    // Notify referrer about commission earned
+    try {
+      await notifyCommissionEarned(
+        referrer.id,
+        commissionAmount,
+        "subscription",
+        customer.firstName,
+        { subscriptionPlanName, subscriptionAmount, commissionRate }
+      );
+    } catch (notifyError) {
+      // Don't fail commission processing if notification fails
+      console.error("COMMISSION_NOTIFICATION_FAILED", notifyError);
+    }
+
     return {
       success: true,
       referrerId: referrer.id,
@@ -919,6 +941,20 @@ export async function processBookingReferralCommission(
     });
 
     console.log(`Booking commission paid: ${commissionAmount.toLocaleString()} Kip to ${referrer.type} model ${referrer.id}`);
+
+    // Notify referrer about commission earned
+    try {
+      await notifyCommissionEarned(
+        referrer.id,
+        commissionAmount,
+        "booking",
+        bookedModel.firstName,
+        { bookingId, bookingPrice, commissionRate }
+      );
+    } catch (notifyError) {
+      // Don't fail commission processing if notification fails
+      console.error("COMMISSION_NOTIFICATION_FAILED", notifyError);
+    }
 
     return {
       success: true,
