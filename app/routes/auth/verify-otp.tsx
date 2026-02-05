@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/verify-otp";
-import { AlertCircle, CheckCircle2, Loader, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader, ShieldCheck, LogOut } from "lucide-react";
 import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation } from "react-router";
 
 // components
@@ -343,10 +343,20 @@ export default function VerifyOtpPage() {
                         )}
                     </div>
 
-                    <div className="text-center pt-4 border-t border-gray-700">
+                    <div className="text-center pt-4 border-t border-gray-700 space-y-3">
                         <p className="text-xs text-gray-500">
                             {t('verifyOtp.helpText', 'Having trouble? Contact support for assistance.')}
                         </p>
+                        <Form method="post" action="/logout">
+                            <Button
+                                type="submit"
+                                variant="ghost"
+                                className="text-gray-400 hover:bg-rose-500 hover:text-white text-xs"
+                            >
+                                <LogOut className="w-3 h-3 mr-1" />
+                                {t('verifyOtp.logout', 'Logout and go back')}
+                            </Button>
+                        </Form>
                     </div>
                 </div>
             </div>

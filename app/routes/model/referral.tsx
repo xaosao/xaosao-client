@@ -227,25 +227,25 @@ export default function ModelReferralPage() {
                         {!referralStats.commissionEligible && (
                             <div className="mt-3 space-y-2">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-600">Models referred:</span>
-                                    <span className="font-medium">{referralStats.stats.totalReferredModels} / 2</span>
+                                    <span className="text-gray-600">{t('modelReferral.modelsReferred', 'Models referred')}:</span>
+                                    <span className="font-medium">{referralStats.upgradeProgress?.currentApprovedModels || 0} / {referralStats.upgradeProgress?.modelThreshold || 20}</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div
                                         className="bg-amber-500 h-2 rounded-full transition-all"
-                                        style={{ width: `${Math.min(100, (referralStats.stats.totalReferredModels / 2) * 100)}%` }}
+                                        style={{ width: `${Math.min(100, ((referralStats.upgradeProgress?.currentApprovedModels || 0) / (referralStats.upgradeProgress?.modelThreshold || 20)) * 100)}%` }}
                                     />
                                 </div>
                                 {referralStats.modelType === 'partner' && (
                                     <>
                                         <div className="flex items-center justify-between text-sm mt-2">
-                                            <span className="text-gray-600">Referral earnings:</span>
-                                            <span className="font-medium">{formatCurrency(referralStats.stats.modelReferralEarnings)} / 100,000 Kip</span>
+                                            <span className="text-gray-600">{t('modelReferral.commissionEarnings', 'Commission earnings')}:</span>
+                                            <span className="font-medium">{formatCurrency(referralStats.upgradeProgress?.currentCommissionEarnings || 0)} / {formatCurrency(referralStats.upgradeProgress?.earningsThreshold || 2000000)}</span>
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-2">
                                             <div
                                                 className="bg-purple-500 h-2 rounded-full transition-all"
-                                                style={{ width: `${Math.min(100, (referralStats.stats.modelReferralEarnings / 100000) * 100)}%` }}
+                                                style={{ width: `${Math.min(100, referralStats.upgradeProgress?.partnerEarningsProgress || 0)}%` }}
                                             />
                                         </div>
                                     </>
@@ -627,26 +627,115 @@ export default function ModelReferralPage() {
                     </div>
                 )}
 
-                {/* Upgrade Info for Normal Models */}
+                {/* Upgrade Progress for Normal Models */}
                 {referralStats.modelType === 'normal' && (
-                    <div className="bg-gradient-to-r from-purple-50 to-amber-50 rounded-md p-5 border border-purple-100">
+                    <div className="bg-gradient-to-r from-amber-50 to-purple-50 rounded-md p-5 border border-amber-200">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-amber-100 rounded-lg">
+                                <Star className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-semibold text-gray-800">
+                                    {t('modelReferral.upgradeToSpecial', 'Upgrade to Special')}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    {t('modelReferral.upgradeToSpecialDesc', 'Refer {{count}} more models to automatically become a Special model and earn commissions!', {
+                                        count: referralStats.upgradeProgress?.modelsUntilSpecial || 0
+                                    })}
+                                </p>
+
+                                {/* Progress Bar */}
+                                <div className="mt-3">
+                                    <div className="flex items-center justify-between text-sm mb-1">
+                                        <span className="text-gray-600">{t('modelReferral.modelsReferred', 'Models referred')}</span>
+                                        <span className="font-medium text-amber-700">
+                                            {referralStats.upgradeProgress?.currentApprovedModels || 0} / {referralStats.upgradeProgress?.modelThreshold || 20}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div
+                                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-2.5 rounded-full transition-all"
+                                            style={{ width: `${Math.min(100, referralStats.upgradeProgress?.specialProgress || 0)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Benefits Preview */}
+                                <div className="mt-4 p-3 bg-white/60 rounded-lg border border-amber-100">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">{t('modelReferral.specialBenefits', 'Special benefits:')}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+                                            2% {t('modelReferral.perBooking', 'per booking')}
+                                        </span>
+                                        <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+                                            20% {t('modelReferral.perSubscription', 'per subscription')}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Upgrade Progress for Special Models */}
+                {referralStats.modelType === 'special' && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-md p-5 border border-purple-200">
                         <div className="flex items-start gap-3">
                             <div className="p-2 bg-purple-100 rounded-lg">
                                 <Crown className="w-5 h-5 text-purple-600" />
                             </div>
-                            <div>
-                                <p className="font-semibold text-gray-800">{t('modelReferral.upgradeTitle', 'Want to earn more?')}</p>
-                                <p className="text-sm text-gray-600 mt-1">
-                                    {t('modelReferral.upgradeDescription', 'Contact admin to become a Special or Partner model and earn percentage commissions from your referrals!')}
+                            <div className="flex-1">
+                                <p className="font-semibold text-gray-800">
+                                    {t('modelReferral.upgradeToPartner', 'Upgrade to Partner')}
                                 </p>
-                                <div className="flex flex-wrap gap-3 mt-3">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Star className="w-4 h-4 text-amber-500" />
-                                        <span className="text-gray-700">{t('modelReferral.upgradeSpecial', 'Special: 2% per booking, 20% per subscription')}</span>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    {t('modelReferral.upgradeToPartnerDesc', 'Meet both requirements below to automatically become a Partner!')}
+                                </p>
+
+                                {/* Models Progress */}
+                                <div className="mt-3">
+                                    <div className="flex items-center justify-between text-sm mb-1">
+                                        <span className="text-gray-600">{t('modelReferral.modelsReferred', 'Models referred')}</span>
+                                        <span className={`font-medium ${(referralStats.upgradeProgress?.partnerModelProgress || 0) >= 100 ? 'text-green-600' : 'text-purple-700'}`}>
+                                            {referralStats.upgradeProgress?.currentApprovedModels || 0} / {referralStats.upgradeProgress?.modelThreshold || 20}
+                                            {(referralStats.upgradeProgress?.partnerModelProgress || 0) >= 100 && ' ✓'}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Crown className="w-4 h-4 text-purple-500" />
-                                        <span className="text-gray-700">{t('modelReferral.upgradePartner', 'Partner: 4% per booking, 40% per subscription')}</span>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className={`h-2 rounded-full transition-all ${(referralStats.upgradeProgress?.partnerModelProgress || 0) >= 100 ? 'bg-green-500' : 'bg-purple-500'}`}
+                                            style={{ width: `${Math.min(100, referralStats.upgradeProgress?.partnerModelProgress || 0)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Earnings Progress */}
+                                <div className="mt-3">
+                                    <div className="flex items-center justify-between text-sm mb-1">
+                                        <span className="text-gray-600">{t('modelReferral.commissionEarnings', 'Commission earnings')}</span>
+                                        <span className={`font-medium ${(referralStats.upgradeProgress?.partnerEarningsProgress || 0) >= 100 ? 'text-green-600' : 'text-purple-700'}`}>
+                                            {formatCurrency(referralStats.upgradeProgress?.currentCommissionEarnings || 0)} / {formatCurrency(referralStats.upgradeProgress?.earningsThreshold || 2000000)}
+                                            {(referralStats.upgradeProgress?.partnerEarningsProgress || 0) >= 100 && ' ✓'}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className={`h-2 rounded-full transition-all ${(referralStats.upgradeProgress?.partnerEarningsProgress || 0) >= 100 ? 'bg-green-500' : 'bg-purple-500'}`}
+                                            style={{ width: `${Math.min(100, referralStats.upgradeProgress?.partnerEarningsProgress || 0)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Benefits Preview */}
+                                <div className="mt-4 p-3 bg-white/60 rounded-lg border border-purple-100">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">{t('modelReferral.partnerBenefits', 'Partner benefits:')}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                            4% {t('modelReferral.perBooking', 'per booking')}
+                                        </span>
+                                        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                            40% {t('modelReferral.perSubscription', 'per subscription')}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

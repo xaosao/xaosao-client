@@ -254,3 +254,37 @@ export async function notifyCommissionEarned(
     url: "/model/settings/wallet",
   });
 }
+
+/**
+ * Notify model when they are auto-upgraded to a new type
+ */
+export async function notifyModelTypeUpgrade(
+  modelId: string,
+  newType: "special" | "partner",
+  modelName: string
+): Promise<NotifyUserResult> {
+  const isPartner = newType === "partner";
+
+  const titleLao = isPartner
+    ? "ຍິນດີດ້ວຍ! ທ່ານໄດ້ຮັບການອັບເກຣດເປັນ Partner!"
+    : "ຍິນດີດ້ວຍ! ທ່ານໄດ້ຮັບການອັບເກຣດເປັນ Special!";
+
+  const messageLao = isPartner
+    ? `${modelName}, ທ່ານໄດ້ບັນລຸເປົ້າໝາຍແລ້ວ! ຕອນນີ້ທ່ານຈະໄດ້ຮັບ 40% ຈາກການສະໝັກສະມາຊິກ ແລະ 4% ຈາກການຈອງຂອງໂມເດວທີ່ທ່ານແນະນຳ.`
+    : `${modelName}, ທ່ານໄດ້ແນະນຳໂມເດວຄົບຕາມເປົ້າໝາຍແລ້ວ! ຕອນນີ້ທ່ານຈະໄດ້ຮັບ 20% ຈາກການສະໝັກສະມາຊິກ ແລະ 2% ຈາກການຈອງຂອງໂມເດວທີ່ທ່ານແນະນຳ.`;
+
+  const smsMessageLao = isPartner
+    ? `XaoSao: ຍິນດີດ້ວຍ ${modelName}! ທ່ານໄດ້ອັບເກຣດເປັນ Partner ແລ້ວ! ໄດ້ຮັບ 40% subscription + 4% booking.`
+    : `XaoSao: ຍິນດີດ້ວຍ ${modelName}! ທ່ານໄດ້ອັບເກຣດເປັນ Special ແລ້ວ! ໄດ້ຮັບ 20% subscription + 2% booking.`;
+
+  return notifyUser({
+    userType: "model",
+    userId: modelId,
+    notificationType: "model_type_upgrade",
+    title: titleLao,
+    message: messageLao,
+    smsMessage: smsMessageLao,
+    data: { newType, previousType: isPartner ? "special" : "normal" },
+    url: "/model/referral",
+  });
+}
