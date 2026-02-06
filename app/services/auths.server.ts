@@ -749,6 +749,11 @@ export async function customerRegister(
   } catch (error: any) {
     console.log("INSERT_CUSTOMER_DATA_FAILED", error);
 
+    // If it's already a FieldValidationError with a messageKey, re-throw it as-is
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
     if (error.code === "P2002") {
       const target = error.meta?.target;
       if (target === "customer_number_key") {
@@ -756,6 +761,7 @@ export async function customerRegister(
           success: false,
           error: true,
           message: "This number is already exist! Try to create new!",
+          messageKey: "register.errors.numberAlreadyExists",
         });
       }
     }
@@ -776,6 +782,7 @@ export async function customerRegister(
       success: false,
       error: true,
       message: error.message || "Failed to add customer, Try again later!",
+      messageKey: "register.errors.somethingWentWrong",
     });
   }
 }

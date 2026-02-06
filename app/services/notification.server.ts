@@ -17,6 +17,26 @@ import {
 } from "./push.server";
 
 // ========================================
+// Service Name Translations (Lao)
+// ========================================
+
+const SERVICE_NAME_TRANSLATIONS: Record<string, string> = {
+  hmongNewYear: "ຄູ່ປີໃໝ່ມົ້ງ 2025",
+  drinkingFriend: "ເພື່ອນດື່ມ",
+  travelingFriend: "ເພື່ອນທ່ອງທ່ຽວ",
+  sleepPartner: "ຄູ່ນອນ",
+  massage: "ບໍລິການນວດ",
+};
+
+/**
+ * Translate service name to Lao
+ * Falls back to original name if translation not found
+ */
+function translateServiceName(serviceName: string): string {
+  return SERVICE_NAME_TRANSLATIONS[serviceName] || serviceName;
+}
+
+// ========================================
 // SMS Configuration
 // ========================================
 
@@ -542,21 +562,23 @@ export async function notifyBookingCreated(
   location?: string,
   price?: number
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createModelNotification(modelId, {
     type: "booking_created",
     title: "ມີການຈອງໃໝ່!",
-    message: `${customerName} ໄດ້ຂໍຈອງບໍລິການ "${serviceName}" ຂອງທ່ານ.`,
+    message: `${customerName} ໄດ້ຂໍຈອງບໍລິການ "${translatedService}" ຂອງທ່ານ.`,
     data: { bookingId, customerId },
   });
 
   // Send SMS to model
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
-  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
+  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model
-  pushBookingCreated(modelId, customerName, serviceName, bookingId).catch((err) =>
+  pushBookingCreated(modelId, customerName, translatedService, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking created push:", err)
   );
 }
@@ -573,20 +595,22 @@ export async function notifyBookingConfirmed(
   startDate?: Date,
   location?: string
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createCustomerNotification(customerId, {
     type: "booking_confirmed",
     title: "ການຈອງໄດ້ຮັບການຢືນຢັນ",
-    message: `${modelName} ຍອມຮັບການຈອງ "${serviceName}" ຂອງທ່ານແລ້ວ.`,
+    message: `${modelName} ຍອມຮັບການຈອງ "${translatedService}" ຂອງທ່ານແລ້ວ.`,
     data: { bookingId, modelId },
   });
 
   // Send SMS to customer
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
-  const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາ Check-in ເມື່ອຮອດເວລານັດໝາຍ.`;
+  const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາ Check-in ເມື່ອຮອດເວລານັດໝາຍ.`;
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingConfirmed(customerId, modelName, serviceName, bookingId).catch((err) =>
+  pushBookingConfirmed(customerId, modelName, translatedService, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking confirmed push:", err)
   );
 }
@@ -602,19 +626,21 @@ export async function notifyBookingRejected(
   modelName: string,
   reason?: string
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createCustomerNotification(customerId, {
     type: "booking_rejected",
     title: "ການຈອງຖືກປະຕິເສດ",
-    message: `${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
+    message: `${modelName} ບໍ່ສາມາດຮັບການຈອງ "${translatedService}" ໄດ້.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, modelId, reason },
   });
 
   // Send SMS to customer
-  const smsMessage = `XaoSao: ການຈອງຖືກປະຕິເສດ. ${modelName} ບໍ່ສາມາດຮັບການຈອງ "${serviceName}" ໄດ້${reason ? `. ເຫດຜົນ: ${reason}` : ""}. ເງິນໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ແລ້ວ.`;
+  const smsMessage = `XaoSao: ການຈອງຖືກປະຕິເສດ. ${modelName} ບໍ່ສາມາດຮັບການຈອງ "${translatedService}" ໄດ້${reason ? `. ເຫດຜົນ: ${reason}` : ""}. ເງິນໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ແລ້ວ.`;
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingRejected(customerId, modelName, serviceName, bookingId).catch((err) =>
+  pushBookingRejected(customerId, modelName, translatedService, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking rejected push:", err)
   );
 }
@@ -630,20 +656,22 @@ export async function notifyBookingCancelled(
   customerName: string,
   startDate?: Date
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createModelNotification(modelId, {
     type: "booking_cancelled",
     title: "ການຈອງຖືກຍົກເລີກ",
-    message: `${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${serviceName}".`,
+    message: `${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${translatedService}".`,
     data: { bookingId, customerId },
   });
 
   // Send SMS to model
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
-  const smsMessage = `XaoSao: ການຈອງຖືກຍົກເລີກ! ${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${serviceName}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}.`;
+  const smsMessage = `XaoSao: ການຈອງຖືກຍົກເລີກ! ${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}.`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model
-  pushBookingCancelled(modelId, customerName, serviceName, bookingId).catch((err) =>
+  pushBookingCancelled(modelId, customerName, translatedService, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking cancelled push:", err)
   );
 }
@@ -659,20 +687,22 @@ export async function notifyBookingCompleted(
   modelName: string,
   price?: number
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createCustomerNotification(customerId, {
     type: "booking_completed",
     title: "ບໍລິການສຳເລັດແລ້ວ",
-    message: `${modelName} ແຈ້ງວ່າບໍລິການ "${serviceName}" ສຳເລັດແລ້ວ. ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ.`,
+    message: `${modelName} ແຈ້ງວ່າບໍລິການ "${translatedService}" ສຳເລັດແລ້ວ. ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ.`,
     data: { bookingId, modelId },
   });
 
   // Send SMS to customer
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
-  const smsMessage = `XaoSao: ${modelName} ແຈ້ງວ່າບໍລິການ "${serviceName}"${priceStr ? ` (${priceStr})` : ""} ສຳເລັດແລ້ວ! ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ ຫຼື ເງິນຈະຖືກໂອນອັດຕະໂນມັດ.`;
+  const smsMessage = `XaoSao: ${modelName} ແຈ້ງວ່າບໍລິການ "${translatedService}"${priceStr ? ` (${priceStr})` : ""} ສຳເລັດແລ້ວ! ກະລຸນາຢືນຢັນພາຍໃນ 24 ຊົ່ວໂມງ ຫຼື ເງິນຈະຖືກໂອນອັດຕະໂນມັດ.`;
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingCompleted(customerId, modelName, serviceName, bookingId).catch((err) =>
+  pushBookingCompleted(customerId, modelName, translatedService, bookingId).catch((err) =>
     console.error("[Push] Failed to send booking completed push:", err)
   );
 }
@@ -688,15 +718,17 @@ export async function notifyBookingDisputed(
   customerName: string,
   reason: string
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createModelNotification(modelId, {
     type: "booking_disputed",
     title: "ມີການຮ້ອງຮຽນ",
-    message: `${customerName} ຮ້ອງຮຽນການຈອງ "${serviceName}". ເຫດຜົນ: ${reason}`,
+    message: `${customerName} ຮ້ອງຮຽນການຈອງ "${translatedService}". ເຫດຜົນ: ${reason}`,
     data: { bookingId, customerId, reason },
   });
 
   // Send SMS to model
-  const smsMessage = `XaoSao: ມີການຮ້ອງຮຽນ! ${customerName} ຮ້ອງຮຽນການຈອງ "${serviceName}". ເຫດຜົນ: ${reason}. ກະລຸນາຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ.`;
+  const smsMessage = `XaoSao: ມີການຮ້ອງຮຽນ! ${customerName} ຮ້ອງຮຽນການຈອງ "${translatedService}". ເຫດຜົນ: ${reason}. ກະລຸນາຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ.`;
   sendSMSToModel(modelId, smsMessage);
 }
 
@@ -727,6 +759,8 @@ export async function notifyAutoReleasePayment(
   amount: number,
   serviceName?: string
 ) {
+  const translatedService = serviceName ? translateServiceName(serviceName) : undefined;
+
   // Notify model
   await createModelNotification(modelId, {
     type: "payment_released",
@@ -744,7 +778,7 @@ export async function notifyAutoReleasePayment(
   });
 
   // Send SMS to model
-  const smsMessage = `XaoSao: ເງິນ ${amount.toLocaleString()} LAK${serviceName ? ` ຈາກບໍລິການ "${serviceName}"` : ""} ໄດ້ຖືກໂອນອັດຕະໂນມັດເຂົ້າ Wallet ຂອງທ່ານແລ້ວ (ໝົດເວລາ 24 ຊົ່ວໂມງ).`;
+  const smsMessage = `XaoSao: ເງິນ ${amount.toLocaleString()} LAK${translatedService ? ` ຈາກບໍລິການ "${translatedService}"` : ""} ໄດ້ຖືກໂອນອັດຕະໂນມັດເຂົ້າ Wallet ຂອງທ່ານແລ້ວ (ໝົດເວລາ 24 ຊົ່ວໂມງ).`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model
@@ -766,17 +800,19 @@ export async function notifyBookingEdited(
   location?: string,
   price?: number
 ) {
+  const translatedService = translateServiceName(serviceName);
+
   await createModelNotification(modelId, {
     type: "booking_created", // Reuse type for edit notification
     title: "ການຈອງຖືກແກ້ໄຂ",
-    message: `${customerName} ແກ້ໄຂການຈອງ "${serviceName}".`,
+    message: `${customerName} ແກ້ໄຂການຈອງ "${translatedService}".`,
     data: { bookingId, customerId },
   });
 
   // Send SMS to model
   const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
-  const smsMessage = `XaoSao: ການຈອງຖືກແກ້ໄຂ! ${customerName} ແກ້ໄຂການຈອງ "${serviceName}"${dateStr ? ` ວັນທີໃໝ່: ${dateStr}` : ""}${location ? ` ສະຖານທີ່: ${location}` : ""}${priceStr ? ` ລາຄາ: ${priceStr}` : ""}. ກະລຸນາກວດສອບໃນແອັບ.`;
+  const smsMessage = `XaoSao: ການຈອງຖືກແກ້ໄຂ! ${customerName} ແກ້ໄຂການຈອງ "${translatedService}"${dateStr ? ` ວັນທີໃໝ່: ${dateStr}` : ""}${location ? ` ສະຖານທີ່: ${location}` : ""}${priceStr ? ` ລາຄາ: ${priceStr}` : ""}. ກະລຸນາກວດສອບໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
 }
 
@@ -1180,22 +1216,24 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
     referrer,
   } = data;
 
+  const translatedService = translateServiceName(serviceName);
+
   // 1. Notify Customer - Payment has been released
   await createCustomerNotification(customerId, {
     type: "payment_released",
     title: "ການຈອງສຳເລັດ",
-    message: `ການຈອງ "${serviceName}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`,
+    message: `ການຈອງ "${translatedService}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`,
     data: { bookingId, modelId },
   });
 
   // Send SMS to customer
-  const customerSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`;
+  const customerSmsMessage = `XaoSao: ການຈອງ "${translatedService}" ຂອງທ່ານກັບ ${modelName} ສຳເລັດແລ້ວ. ການຊຳລະເງິນ ${totalAmount.toLocaleString()} LAK ໄດ້ຖືກປ່ອຍແລ້ວ.`;
   sendSMSToCustomer(customerId, customerSmsMessage);
 
   // Send push to customer
   sendPushToCustomer(customerId, {
     title: "ການຈອງສຳເລັດ",
-    body: `ການຈອງ "${serviceName}" ກັບ ${modelName} ສຳເລັດແລ້ວ`,
+    body: `ການຈອງ "${translatedService}" ກັບ ${modelName} ສຳເລັດແລ້ວ`,
     tag: `booking-complete-${bookingId}`,
     data: {
       type: "payment_released",
@@ -1208,12 +1246,12 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
   await createModelNotification(modelId, {
     type: "payment_released",
     title: "ໄດ້ຮັບເງິນແລ້ວ!",
-    message: `ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${serviceName}" ກັບ ${customerName}.`,
+    message: `ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${translatedService}" ກັບ ${customerName}.`,
     data: { bookingId, customerId, amount: netAmount },
   });
 
   // Send SMS to model
-  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${serviceName}" ກັບ ${customerName}. ກວດເບິ່ງ Wallet ຂອງທ່ານ.`;
+  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຮັບ ${netAmount.toLocaleString()} LAK ຈາກການຈອງ "${translatedService}" ກັບ ${customerName}. ກວດເບິ່ງ Wallet ຂອງທ່ານ.`;
   sendSMSToModel(modelId, modelSmsMessage);
 
   // Send push to model
@@ -1281,22 +1319,24 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
     reason,
   } = data;
 
+  const translatedService = translateServiceName(serviceName);
+
   // 1. Notify Customer - Payment has been refunded
   await createCustomerNotification(customerId, {
     type: "payment_refunded",
     title: "ການຈອງຖືກຄືນເງິນ",
-    message: `ການຈອງ "${serviceName}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
+    message: `ການຈອງ "${translatedService}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, modelId, amount: refundAmount },
   });
 
   // Send SMS to customer
-  const customerSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
+  const customerSmsMessage = `XaoSao: ການຈອງ "${translatedService}" ຂອງທ່ານໄດ້ຖືກຄືນເງິນແລ້ວ. ${refundAmount.toLocaleString()} LAK ໄດ້ຖືກສົ່ງຄືນໃສ່ Wallet ຂອງທ່ານ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
   sendSMSToCustomer(customerId, customerSmsMessage);
 
   // Send push to customer
   sendPushToCustomer(customerId, {
     title: "ການຈອງຖືກຄືນເງິນ",
-    body: `${refundAmount.toLocaleString()} LAK ໄດ້ຖືກຄືນໃຫ້ "${serviceName}"`,
+    body: `${refundAmount.toLocaleString()} LAK ໄດ້ຖືກຄືນໃຫ້ "${translatedService}"`,
     tag: `booking-refund-${bookingId}`,
     data: {
       type: "payment_refunded",
@@ -1309,18 +1349,18 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
   await createModelNotification(modelId, {
     type: "booking_cancelled",
     title: "ການຈອງຖືກຄືນເງິນ",
-    message: `ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
+    message: `ການຈອງ "${translatedService}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`,
     data: { bookingId, customerId },
   });
 
   // Send SMS to model
-  const modelSmsMessage = `XaoSao: ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
+  const modelSmsMessage = `XaoSao: ການຈອງ "${translatedService}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນໃຫ້ລູກຄ້າແລ້ວ.${reason ? ` ເຫດຜົນ: ${reason}` : ""}`;
   sendSMSToModel(modelId, modelSmsMessage);
 
   // Send push to model
   sendPushToModel(modelId, {
     title: "ການຈອງຖືກຄືນເງິນ",
-    body: `ການຈອງ "${serviceName}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນແລ້ວ`,
+    body: `ການຈອງ "${translatedService}" ກັບ ${customerName} ໄດ້ຖືກຄືນເງິນແລ້ວ`,
     tag: `booking-refund-model-${bookingId}`,
     data: {
       type: "booking_cancelled",
@@ -1354,22 +1394,24 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
     amount,
   } = data;
 
+  const translatedService = translateServiceName(serviceName);
+
   // Notify Customer - Model has received the payment
   await createCustomerNotification(customerId, {
     type: "payment_released",
     title: "ການຊຳລະເງິນສຳເລັດ",
-    message: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
+    message: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
     data: { bookingId, amount },
   });
 
   // Send SMS to customer
-  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
+  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
   sendSMSToCustomer(customerId, customerSmsMessage);
 
   // Send push to customer
   sendPushToCustomer(customerId, {
     title: "ການຊຳລະເງິນສຳເລັດ",
-    body: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}"`,
+    body: `${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}"`,
     tag: `payment-complete-${bookingId}`,
     data: {
       type: "payment_released",
@@ -1408,11 +1450,13 @@ export async function notifyCustomerReleasedPayment(data: CustomerReleasePayment
     amount,
   } = data;
 
+  const translatedService = translateServiceName(serviceName);
+
   // Notify Model - Customer has released the payment
   await createModelNotification(modelId, {
     type: "payment_released",
     title: "ເງິນຖືກໂອນແລ້ວ",
-    message: `${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`,
+    message: `${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`,
     data: { bookingId, amount, customerId },
   });
 
@@ -1420,16 +1464,16 @@ export async function notifyCustomerReleasedPayment(data: CustomerReleasePayment
   await createCustomerNotification(customerId, {
     type: "payment_released",
     title: "ປ່ອຍເງິນສຳເລັດ",
-    message: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
+    message: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
     data: { bookingId, amount },
   });
 
   // Send SMS to model
-  const modelSmsMessage = `XaoSao: ${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`;
+  const modelSmsMessage = `XaoSao: ${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`;
   sendSMSToModel(modelId, modelSmsMessage);
 
   // Send SMS to customer
-  const customerSmsMessage = `XaoSao: ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
+  const customerSmsMessage = `XaoSao: ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
   sendSMSToCustomer(customerId, customerSmsMessage);
 
   // Send push notification to model
@@ -1440,7 +1484,7 @@ export async function notifyCustomerReleasedPayment(data: CustomerReleasePayment
   // Send push to customer
   sendPushToCustomer(customerId, {
     title: "ປ່ອຍເງິນສຳເລັດ",
-    body: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ`,
+    body: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ສຳເລັດແລ້ວ`,
     tag: `payment-released-${bookingId}`,
     data: {
       type: "payment_released",
@@ -1481,13 +1525,14 @@ export async function notifyModelRefundedDispute(data: ModelRefundDisputedData):
     reason,
   } = data;
 
+  const translatedService = translateServiceName(serviceName);
   const refundReason = reason || "Model accepted the dispute";
 
   // Notify Customer - Model has refunded the payment
   await createCustomerNotification(customerId, {
     type: "payment_refunded",
     title: "ຄືນເງິນແລ້ວ",
-    message: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`,
+    message: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`,
     data: { bookingId, amount, reason: refundReason },
   });
 
@@ -1495,22 +1540,22 @@ export async function notifyModelRefundedDispute(data: ModelRefundDisputedData):
   await createModelNotification(modelId, {
     type: "payment_refunded",
     title: "ຄືນເງິນສຳເລັດ",
-    message: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ໃຫ້ລູກຄ້າແລ້ວ.`,
+    message: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ໃຫ້ລູກຄ້າແລ້ວ.`,
     data: { bookingId, amount },
   });
 
   // Send SMS to customer
-  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
+  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
   sendSMSToCustomer(customerId, customerSmsMessage);
 
   // Send SMS to model
-  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ໃຫ້ລູກຄ້າສຳເລັດແລ້ວ.`;
+  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ໃຫ້ລູກຄ້າສຳເລັດແລ້ວ.`;
   sendSMSToModel(modelId, modelSmsMessage);
 
   // Send push to customer
   sendPushToCustomer(customerId, {
     title: "ຄືນເງິນແລ້ວ",
-    body: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}"`,
+    body: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}"`,
     tag: `payment-refunded-${bookingId}`,
     data: {
       type: "payment_refunded",
@@ -1522,7 +1567,7 @@ export async function notifyModelRefundedDispute(data: ModelRefundDisputedData):
   // Send push to model
   sendPushToModel(modelId, {
     title: "ຄືນເງິນສຳເລັດ",
-    body: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ`,
+    body: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ສຳເລັດແລ້ວ`,
     tag: `refund-complete-${bookingId}`,
     data: {
       type: "payment_refunded",

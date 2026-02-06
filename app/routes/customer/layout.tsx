@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
@@ -21,6 +21,8 @@ import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt"
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useSubscriptionSSE } from "~/hooks/useSubscriptionSSE";
+import { useAutoLocation } from "~/hooks/useAutoLocation";
+import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -94,6 +96,37 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Only show modal on mount when on dashboard page
     const isDashboardPage = location.pathname === "/customer";
+
+    // Location prompt modal state
+    const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+    // Auto-location tracking - updates server silently when location is available
+    const { requestLocation, hasLocation, permissionState } = useAutoLocation({
+        userType: "customer",
+        enabled: true,
+        onNeedPermission: useCallback(() => {
+            // Only show prompt on dashboard page, not on every navigation
+            if (isDashboardPage) {
+                // Check if user has already dismissed the prompt this session
+                const dismissed = sessionStorage.getItem("locationPromptDismissed");
+                if (!dismissed) {
+                    setShowLocationPrompt(true);
+                }
+            }
+        }, [isDashboardPage]),
+    });
+
+    // Close location prompt and remember dismissal for this session
+    const closeLocationPrompt = useCallback(() => {
+        setShowLocationPrompt(false);
+        sessionStorage.setItem("locationPromptDismissed", "true");
+    }, []);
+
+    // Handle location request from prompt
+    const handleLocationRequest = useCallback(() => {
+        requestLocation();
+        setShowLocationPrompt(false);
+    }, [requestLocation]);
 
     // Subscription modal management
     const {
@@ -297,6 +330,13 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     hasPendingSubscription={hasPendingSubscription}
                 />
             )}
+
+            {/* Location Permission Prompt Modal */}
+            <LocationPromptModal
+                isOpen={showLocationPrompt}
+                onClose={closeLocationPrompt}
+                onRequestLocation={handleLocationRequest}
+            />
         </div>
     );
 }

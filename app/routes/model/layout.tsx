@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
@@ -23,6 +23,8 @@ import { Button } from "~/components/ui/button";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
+import { useAutoLocation } from "~/hooks/useAutoLocation";
+import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 
 // services
 import { capitalize } from "~/utils/functions/textFormat";
@@ -90,6 +92,40 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const revalidator = useRevalidator();
     const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Only show location prompt on main model page
+    const isModelMainPage = location.pathname === "/model";
+
+    // Location prompt modal state
+    const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+    // Auto-location tracking - updates server silently when location is available
+    const { requestLocation, hasLocation, permissionState } = useAutoLocation({
+        userType: "model",
+        enabled: true,
+        onNeedPermission: useCallback(() => {
+            // Only show prompt on main model page, not on every navigation
+            if (isModelMainPage) {
+                // Check if user has already dismissed the prompt this session
+                const dismissed = sessionStorage.getItem("modelLocationPromptDismissed");
+                if (!dismissed) {
+                    setShowLocationPrompt(true);
+                }
+            }
+        }, [isModelMainPage]),
+    });
+
+    // Close location prompt and remember dismissal for this session
+    const closeLocationPrompt = useCallback(() => {
+        setShowLocationPrompt(false);
+        sessionStorage.setItem("modelLocationPromptDismissed", "true");
+    }, []);
+
+    // Handle location request from prompt
+    const handleLocationRequest = useCallback(() => {
+        requestLocation();
+        setShowLocationPrompt(false);
+    }, [requestLocation]);
 
     // Booking notification types that should trigger a layout refresh (for pending count)
     const bookingNotificationTypes = [
@@ -338,6 +374,13 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     </div>
                 </DialogPortal>
             </Dialog>
+
+            {/* Location Permission Prompt Modal */}
+            <LocationPromptModal
+                isOpen={showLocationPrompt}
+                onClose={closeLocationPrompt}
+                onRequestLocation={handleLocationRequest}
+            />
         </div>
     );
 }
