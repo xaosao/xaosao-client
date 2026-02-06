@@ -1576,7 +1576,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </div>
                                         <div className="flex items-center text-sm opacity-90 mb-3">
                                             <MapPin className="h-4 w-4 mr-1" />
-                                            {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
+                                            {formatDistance(model.distance)}
                                         </div>
                                     </div>
                                 </div>
@@ -1621,8 +1621,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </p>
                                         <div className="flex items-center text-sm opacity-90">
                                             <MapPin className="h-3 w-3 mr-1 text-rose-500" />
-                                            {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}
-
+                                            {formatDistance(model.distance)}
                                         </div>
                                     </div>
                                     <div className="flex items-start justify-start gap-2 mt-4">

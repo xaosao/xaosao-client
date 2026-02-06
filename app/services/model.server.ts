@@ -258,8 +258,20 @@ export async function getNearbyModels(
     },
   });
 
-  if (!customer?.latitude || !customer?.longitude)
-    throw new Error("Customer location missing");
+  // If customer location is missing or invalid, return empty results
+  // This allows the page to load and prompt the user to enable location
+  if (!customer?.latitude || !customer?.longitude ||
+      (customer.latitude === 0 && customer.longitude === 0)) {
+    return {
+      models: [],
+      pagination: {
+        page,
+        limit,
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
+  }
 
   // Build where clause with filters
   const whereClause: any = {

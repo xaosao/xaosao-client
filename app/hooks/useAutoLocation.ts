@@ -62,6 +62,7 @@ async function updateLocationOnServer(
     const response = await fetch("/api/location/update", {
       method: "POST",
       body: formData,
+      credentials: "same-origin", // Include cookies for session authentication
     });
 
     return response.ok;
