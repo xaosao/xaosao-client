@@ -470,15 +470,15 @@ export async function getCustomerWalletSummary(customerId: string) {
     }
 
     // Customer wallet fields:
-    // - totalBalance: All approved recharges
+    // - totalBalance: All approved recharges (top-ups)
     // - totalSpend: All spent on bookings/subscriptions
-    // - totalRefunded: All refunded amount
-    // - totalAvailable: totalBalance - totalSpend + totalRefunded
+    // - totalRefunded: All refunded amount (for reference only)
+    // - totalAvailable: totalBalance - totalSpend (refunds NOT added back)
 
     const totalBalance = wallet.totalBalance || 0;
     const totalSpend = wallet.totalSpend || 0;
     const totalRefunded = wallet.totalRefunded || 0;
-    const totalAvailable = totalBalance - totalSpend + totalRefunded;
+    const totalAvailable = totalBalance - totalSpend;
 
     return {
       ...wallet,
@@ -975,11 +975,10 @@ export async function deductFromWallet(
       });
     }
 
-    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    // Calculate available balance: totalBalance - totalSpend (refunds NOT added back)
     const totalBalance = wallet.totalBalance || 0;
     const totalSpend = wallet.totalSpend || 0;
-    const totalRefunded = wallet.totalRefunded || 0;
-    const availableBalance = totalBalance - totalSpend + totalRefunded;
+    const availableBalance = totalBalance - totalSpend;
 
     if (availableBalance < amount) {
       throw new FieldValidationError({
@@ -993,7 +992,7 @@ export async function deductFromWallet(
     // Customer wallet fields:
     // - totalBalance: all recharged (unchanged)
     // - totalSpend: all spent (incremented here)
-    // - totalAvailable = totalBalance - totalSpend + totalRefunded
+    // - totalAvailable = totalBalance - totalSpend
     const updatedWallet = await prisma.wallet.update({
       where: { id: wallet.id },
       data: {
