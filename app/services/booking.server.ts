@@ -3020,6 +3020,25 @@ export async function receiveMoneyFromBooking(id: string, modelId: string) {
       console.error("Model receive money notification error (non-fatal):", notificationError);
     }
 
+    // Process referral commission for the model who referred this booked model (if any)
+    // Special models get 2%, Partner models get 4% of the booking price
+    try {
+      const { processBookingReferralCommission } = await import("./referral.server");
+      const referralCommissionResult = await processBookingReferralCommission(
+        booking.modelId || "",
+        booking.price,
+        id
+      );
+      if (referralCommissionResult.success) {
+        console.log(`[ReceiveMoney] Booking referral commission processed: ${referralCommissionResult.commissionAmount} Kip to model ${referralCommissionResult.referrerId}`);
+      } else {
+        console.log(`[ReceiveMoney] Booking referral commission skipped: ${referralCommissionResult.reason}`);
+      }
+    } catch (commissionError) {
+      // Don't fail the booking completion if commission processing fails
+      console.error("[ReceiveMoney] Booking referral commission error (non-fatal):", commissionError);
+    }
+
     return completedBooking;
   } catch (error) {
     console.error("RECEIVE_MONEY_FROM_BOOKING_FAILED", error);

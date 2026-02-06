@@ -118,9 +118,9 @@ export async function autoUpgradeModelType(
 
     // Check for Normal → Special upgrade
     if (model.type === "normal") {
-      // Upgrade when they exceed the threshold (> not >=)
-      // This means: first 20 models get 50K each, 21st model triggers upgrade (no 50K)
-      if (totalReferredModels > MIN_REFERRED_MODELS_FOR_COMMISSION) {
+      // Upgrade when they reach or exceed the threshold (>= not >)
+      // This means: when count reaches threshold, model gets 50K AND upgrades to special
+      if (totalReferredModels >= MIN_REFERRED_MODELS_FOR_COMMISSION) {
         // Upgrade to Special!
         await prisma.model.update({
           where: { id: modelId },
@@ -434,8 +434,24 @@ export async function processReferralReward(approvedModelId: string) {
       return { success: false, reason: "Referrer not found" };
     }
 
-    // Always increment the referrer's totalReferredModels count
-    const newTotalReferred = (referrer.totalReferredModels || 0) + 1;
+    // Count ACTUAL active referred models from database (more accurate than cached field)
+    // This includes the current model being approved since it's already active
+    const actualReferredCount = await prisma.model.count({
+      where: {
+        referredById: referrer.id,
+        status: "active",
+      },
+    });
+
+    // Use actual count for upgrade logic
+    const newTotalReferred = actualReferredCount;
+
+    // Log important values for debugging
+    console.log(`[Referral] Processing referral for model ${approvedModelId}`);
+    console.log(`[Referral] Referrer: ${referrer.id}, Type: ${referrer.type}`);
+    console.log(`[Referral] Actual referred count: ${newTotalReferred}, Threshold: ${MIN_REFERRED_MODELS_FOR_COMMISSION}`);
+
+    // Update the cached field to match actual count
     await prisma.model.update({
       where: { id: referrer.id },
       data: {
@@ -444,92 +460,95 @@ export async function processReferralReward(approvedModelId: string) {
     });
 
     // ==========================================
-    // NEW REWARD LOGIC WITH AUTO-UPGRADE
+    // REWARD LOGIC WITH AUTO-UPGRADE
     // ==========================================
     //
     // Normal model:
-    //   - newTotalReferred <= threshold (20 prod, 2 local): pay 50K
-    //   - newTotalReferred > threshold: auto-upgrade to special + NO 50K
+    //   - count <= threshold: pay 50K AND upgrade if count >= threshold
+    //   - count > threshold: no 50K (referrer should already be special)
     //
     // Special/Partner model:
     //   - No 50K reward (they earn commission instead)
     // ==========================================
 
-    const isSpecialOrPartner = referrer.type === "special" || referrer.type === "partner";
+    // FIRST: Check if referrer needs to be upgraded (even if they're still showing as "normal")
+    // This handles cases where previous upgrade might have failed
+    let currentReferrerType = referrer.type;
+    if (currentReferrerType === "normal" && newTotalReferred >= MIN_REFERRED_MODELS_FOR_COMMISSION) {
+      console.log(`[Referral] Referrer ${referrer.id} should be upgraded. Count: ${newTotalReferred}, Threshold: ${MIN_REFERRED_MODELS_FOR_COMMISSION}`);
 
-    // For SPECIAL or PARTNER: no flat bonus (they earn commission instead)
-    if (isSpecialOrPartner) {
-      // Mark as processed (no bonus paid, but counted)
+      // Upgrade the referrer to special
       await prisma.model.update({
-        where: { id: approvedModelId },
-        data: { referralRewardPaid: true },
+        where: { id: referrer.id },
+        data: { type: "special" },
       });
+
+      // Send notification
+      const referrerData = await prisma.model.findUnique({
+        where: { id: referrer.id },
+        select: { firstName: true },
+      });
+      await notifyModelTypeUpgrade(referrer.id, "special", referrerData?.firstName || "");
+
+      console.log(`[Referral] Referrer ${referrer.id} upgraded from normal to special!`);
 
       await createAuditLogs({
         ...auditBase,
-        description: `Model referral tracked for ${referrer.type} referrer ${referrer.id}. No flat bonus (earns commission instead). Total referred: ${newTotalReferred}`,
+        action: "AUTO_UPGRADE_MODEL_TYPE",
+        description: `Model ${referrer.id} auto-upgraded from normal to special. Total referred: ${newTotalReferred} (threshold: ${MIN_REFERRED_MODELS_FOR_COMMISSION})`,
         status: "success",
         onSuccess: {
           referrerId: referrer.id,
-          referredId: approvedModelId,
-          referrerType: referrer.type,
-          newTotalReferred,
+          previousType: "normal",
+          newType: "special",
+          totalReferredModels: newTotalReferred,
+          threshold: MIN_REFERRED_MODELS_FOR_COMMISSION,
         },
       });
 
-      console.log(`Referral tracked for ${referrer.type} model ${referrer.id}. No flat bonus (earns commission).`);
-
-      return {
-        success: true,
-        referrerId: referrer.id,
-        amount: 0,
-        referrerType: referrer.type,
-        message: "Referral counted (no flat bonus - special/partner earns commission instead)",
-      };
+      currentReferrerType = "special";
     }
 
-    // For NORMAL model: check if this referral triggers upgrade
-    // If newTotalReferred > threshold, this is the model that triggers upgrade (no 50K)
-    const triggersUpgrade = newTotalReferred > MIN_REFERRED_MODELS_FOR_COMMISSION;
+    // Now check if referrer is special/partner (either originally or just upgraded)
+    const isSpecialOrPartner = currentReferrerType === "special" || currentReferrerType === "partner";
 
-    if (triggersUpgrade) {
-      // This referral triggers the upgrade to SPECIAL
-      // DO NOT pay 50K for this model - instead, upgrade the referrer
+    // Determine if this specific model should get 50K bonus
+    // Only the first N models (where N = threshold) get the bonus
+    const shouldPayBonus = newTotalReferred <= MIN_REFERRED_MODELS_FOR_COMMISSION;
 
+    console.log(`[Referral] isSpecialOrPartner: ${isSpecialOrPartner}, shouldPayBonus: ${shouldPayBonus}`);
+
+    // If referrer is special/partner AND this model is past the bonus threshold, no bonus
+    if (isSpecialOrPartner && !shouldPayBonus) {
       // Mark as processed (no bonus paid)
       await prisma.model.update({
         where: { id: approvedModelId },
         data: { referralRewardPaid: true },
       });
 
-      // Auto-upgrade to special
-      const upgradeResult = await autoUpgradeModelType(referrer.id, "referral");
-
       await createAuditLogs({
         ...auditBase,
-        description: `Model referral triggered upgrade for normal referrer ${referrer.id}. No flat bonus for model #${newTotalReferred} (triggers upgrade). Total referred: ${newTotalReferred}, threshold: ${MIN_REFERRED_MODELS_FOR_COMMISSION}`,
+        description: `Model referral tracked for ${currentReferrerType} referrer ${referrer.id}. No flat bonus for model #${newTotalReferred} (past threshold). Total referred: ${newTotalReferred}`,
         status: "success",
         onSuccess: {
           referrerId: referrer.id,
           referredId: approvedModelId,
-          referrerType: "normal",
+          referrerType: currentReferrerType,
           newTotalReferred,
           threshold: MIN_REFERRED_MODELS_FOR_COMMISSION,
-          triggeredUpgrade: upgradeResult.upgraded,
-          newType: upgradeResult.newType,
         },
       });
 
-      console.log(`Normal model ${referrer.id} upgraded to special! Model #${newTotalReferred} triggered upgrade (no 50K reward).`);
+      console.log(`[Referral] No 50K bonus for model #${newTotalReferred} (referrer is ${currentReferrerType}, past threshold of ${MIN_REFERRED_MODELS_FOR_COMMISSION}).`);
 
       return {
         success: true,
         referrerId: referrer.id,
         amount: 0,
-        referrerType: "normal",
-        message: `Referral triggered upgrade to special (no 50K for model #${newTotalReferred})`,
-        upgraded: upgradeResult.upgraded,
-        newType: upgradeResult.newType,
+        referrerType: currentReferrerType,
+        message: `No bonus - model #${newTotalReferred} is past threshold`,
+        upgraded: currentReferrerType !== referrer.type,
+        newType: currentReferrerType !== referrer.type ? currentReferrerType : undefined,
       };
     }
 
@@ -588,23 +607,28 @@ export async function processReferralReward(approvedModelId: string) {
       }),
     ]);
 
+    // Check if upgrade happened (already done earlier in the function)
+    const wasUpgraded = currentReferrerType !== referrer.type;
+
     await createAuditLogs({
       ...auditBase,
-      description: `Referral reward of ${REFERRAL_REWARD_AMOUNT} Kip paid to normal model ${approvedModel.referredById} for referring ${approvedModelId}. Model #${newTotalReferred}/${MIN_REFERRED_MODELS_FOR_COMMISSION} until upgrade.`,
+      description: `Referral reward of ${REFERRAL_REWARD_AMOUNT} Kip paid to model ${approvedModel.referredById} for referring ${approvedModelId}. Model #${newTotalReferred}/${MIN_REFERRED_MODELS_FOR_COMMISSION}.${wasUpgraded ? ` Upgraded to ${currentReferrerType}!` : ''}`,
       status: "success",
       onSuccess: {
         referrerId: approvedModel.referredById,
         referredId: approvedModelId,
-        referrerType: referrer.type,
+        referrerType: currentReferrerType,
         amount: REFERRAL_REWARD_AMOUNT,
         transactionId: transaction.id,
         newBalance: updatedWallet.totalBalance,
         totalReferred: newTotalReferred,
         thresholdForUpgrade: MIN_REFERRED_MODELS_FOR_COMMISSION,
+        upgraded: wasUpgraded,
+        newType: wasUpgraded ? currentReferrerType : undefined,
       },
     });
 
-    console.log(`Referral reward paid: ${REFERRAL_REWARD_AMOUNT} Kip to normal model ${approvedModel.referredById}. Model #${newTotalReferred}/${MIN_REFERRED_MODELS_FOR_COMMISSION}`);
+    console.log(`[Referral] Reward paid: ${REFERRAL_REWARD_AMOUNT} Kip to model ${approvedModel.referredById}. Model #${newTotalReferred}/${MIN_REFERRED_MODELS_FOR_COMMISSION}${wasUpgraded ? ` (upgraded to ${currentReferrerType})` : ''}`);
 
     return {
       success: true,
@@ -612,7 +636,9 @@ export async function processReferralReward(approvedModelId: string) {
       amount: REFERRAL_REWARD_AMOUNT,
       transactionId: transaction.id,
       totalReferred: newTotalReferred,
-      modelsUntilUpgrade: Math.max(0, MIN_REFERRED_MODELS_FOR_COMMISSION - newTotalReferred + 1),
+      modelsUntilUpgrade: Math.max(0, MIN_REFERRED_MODELS_FOR_COMMISSION - newTotalReferred),
+      upgraded: wasUpgraded,
+      newType: wasUpgraded ? currentReferrerType : undefined,
     };
   } catch (error) {
     console.error("Error processing referral reward:", error);

@@ -19,8 +19,9 @@ interface LoaderData {
    wallet: {
       id: string;
       totalBalance: number;
-      totalRecharge: number;
-      totalDeposit: number;
+      totalAvailable: number;
+      totalSpent: number;
+      totalRefunded: number;
    } | null;
    currentSubscription: {
       planName: string;
@@ -33,15 +34,15 @@ interface LoaderData {
 export const loader: LoaderFunction = async ({ params, request }) => {
    const packageId = await params.id;
    const customerId = await requireUserSession(request);
-   const { getWalletByCustomerId } = await import("~/services/wallet.server");
+   const { getCustomerWalletSummary } = await import("~/services/wallet.server");
    const { prisma } = await import("~/services/database.server");
 
    const plan = await getPackage(packageId!, customerId);
 
-   // Get user's wallet balance
+   // Get user's wallet balance with available balance calculation
    let wallet = null;
    try {
-      wallet = await getWalletByCustomerId(customerId);
+      wallet = await getCustomerWalletSummary(customerId);
    } catch (error) {
       console.error("Error fetching wallet:", error);
    }
@@ -139,8 +140,8 @@ export default function SubscriptionPaymentPage() {
 
    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
 
-   const hasInsufficientBalance = wallet && wallet.totalBalance < plan.price;
-   const hasSufficientBalance = wallet && wallet.totalBalance >= plan.price;
+   const hasInsufficientBalance = wallet && wallet.totalAvailable < plan.price;
+   const hasSufficientBalance = wallet && wallet.totalAvailable >= plan.price;
    const isUpgrade = currentSubscription !== null;
    const totalDays = plan.durationDays + remainingDays;
 
@@ -149,8 +150,8 @@ export default function SubscriptionPaymentPage() {
    }
 
    function handleTopUpRedirect() {
-      // Calculate deficit amount (package price - current balance)
-      const deficit = Math.max(plan.price - wallet.totalBalance, 10000);
+      // Calculate deficit amount (package price - available balance)
+      const deficit = Math.max(plan.price - wallet.totalAvailable, 10000);
       navigate(`/customer/wallet-topup?amount=${deficit}`);
    }
 
@@ -202,11 +203,11 @@ export default function SubscriptionPaymentPage() {
                         <h2 className="text-sm font-semibold text-gray-700">{t('packages.payment.walletBalance')}</h2>
                      </div>
                      <div className="text-xl font-bold">
-                        {wallet ? formatCurrency(wallet.totalBalance) : 'N/A'}
+                        {wallet ? formatCurrency(wallet.totalAvailable) : 'N/A'}
                      </div>
                      {hasInsufficientBalance && (
                         <p className="text-sm text-red-600">
-                           {t('packages.payment.insufficientBalance', { amount: formatCurrency(plan.price - wallet.totalBalance) })}
+                           {t('packages.payment.insufficientBalance', { amount: formatCurrency(plan.price - wallet.totalAvailable) })}
                         </p>
                      )}
                      {hasSufficientBalance && (
@@ -304,10 +305,10 @@ export default function SubscriptionPaymentPage() {
                            {t('packages.payment.amountDeducted')}: <span className="font-semibold text-black">{formatCurrency(plan.price)}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                           {t('packages.payment.currentBalance')}: <span className="font-semibold text-black">{wallet && formatCurrency(wallet.totalBalance)}</span>
+                           {t('packages.payment.currentBalance')}: <span className="font-semibold text-black">{wallet && formatCurrency(wallet.totalAvailable)}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                           {t('packages.payment.balanceAfter')}: <span className="font-semibold text-black">{wallet && formatCurrency(wallet.totalBalance - plan.price)}</span>
+                           {t('packages.payment.balanceAfter')}: <span className="font-semibold text-black">{wallet && formatCurrency(wallet.totalAvailable - plan.price)}</span>
                         </p>
                      </div>
                   </div>
