@@ -1380,3 +1380,156 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
 
   console.log(`[Notification] Model received money notification sent to customer for booking ${bookingId}`);
 }
+
+// ========================================
+// Customer Release Payment Notifications
+// ========================================
+
+interface CustomerReleasePaymentData {
+  bookingId: string;
+  customerId: string;
+  modelId: string;
+  serviceName: string;
+  customerName: string;
+  amount: number;
+}
+
+/**
+ * Send notification when customer releases payment to model
+ * Notifies model that payment has been released
+ */
+export async function notifyCustomerReleasedPayment(data: CustomerReleasePaymentData): Promise<void> {
+  const {
+    bookingId,
+    customerId,
+    modelId,
+    serviceName,
+    customerName,
+    amount,
+  } = data;
+
+  // Notify Model - Customer has released the payment
+  await createModelNotification(modelId, {
+    type: "payment_released",
+    title: "ເງິນຖືກໂອນແລ້ວ",
+    message: `${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`,
+    data: { bookingId, amount, customerId },
+  });
+
+  // Notify Customer - Confirmation of release
+  await createCustomerNotification(customerId, {
+    type: "payment_released",
+    title: "ປ່ອຍເງິນສຳເລັດ",
+    message: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`,
+    data: { bookingId, amount },
+  });
+
+  // Send SMS to model
+  const modelSmsMessage = `XaoSao: ${customerName} ໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`;
+  sendSMSToModel(modelId, modelSmsMessage);
+
+  // Send SMS to customer
+  const customerSmsMessage = `XaoSao: ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ສຳເລັດແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
+  sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send push notification to model
+  pushPaymentReleased(modelId, amount, bookingId).catch((err) =>
+    console.error("[Push] Failed to send customer release payment push to model:", err)
+  );
+
+  // Send push to customer
+  sendPushToCustomer(customerId, {
+    title: "ປ່ອຍເງິນສຳເລັດ",
+    body: `ທ່ານໄດ້ປ່ອຍເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ`,
+    tag: `payment-released-${bookingId}`,
+    data: {
+      type: "payment_released",
+      bookingId,
+      url: "/customer/dates-history",
+    },
+  }).catch((err) => console.error("[Push] Failed to send release payment push to customer:", err));
+
+  console.log(`[Notification] Customer released payment notification sent for booking ${bookingId}`);
+}
+
+// ========================================
+// Model Refund Disputed Booking Notifications
+// ========================================
+
+interface ModelRefundDisputedData {
+  bookingId: string;
+  customerId: string;
+  modelId: string;
+  serviceName: string;
+  modelName: string;
+  amount: number;
+  reason?: string;
+}
+
+/**
+ * Send notification when model refunds a disputed booking
+ * Notifies customer that refund has been processed
+ */
+export async function notifyModelRefundedDispute(data: ModelRefundDisputedData): Promise<void> {
+  const {
+    bookingId,
+    customerId,
+    modelId,
+    serviceName,
+    modelName,
+    amount,
+    reason,
+  } = data;
+
+  const refundReason = reason || "Model accepted the dispute";
+
+  // Notify Customer - Model has refunded the payment
+  await createCustomerNotification(customerId, {
+    type: "payment_refunded",
+    title: "ຄືນເງິນແລ້ວ",
+    message: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`,
+    data: { bookingId, amount, reason: refundReason },
+  });
+
+  // Notify Model - Confirmation of refund
+  await createModelNotification(modelId, {
+    type: "payment_refunded",
+    title: "ຄືນເງິນສຳເລັດ",
+    message: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ໃຫ້ລູກຄ້າແລ້ວ.`,
+    data: { bookingId, amount },
+  });
+
+  // Send SMS to customer
+  const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ.`;
+  sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send SMS to model
+  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${serviceName}" ໃຫ້ລູກຄ້າສຳເລັດແລ້ວ.`;
+  sendSMSToModel(modelId, modelSmsMessage);
+
+  // Send push to customer
+  sendPushToCustomer(customerId, {
+    title: "ຄືນເງິນແລ້ວ",
+    body: `${modelName} ໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}"`,
+    tag: `payment-refunded-${bookingId}`,
+    data: {
+      type: "payment_refunded",
+      bookingId,
+      url: "/customer/dates-history",
+    },
+  }).catch((err) => console.error("[Push] Failed to send refund push to customer:", err));
+
+  // Send push to model
+  sendPushToModel(modelId, {
+    title: "ຄືນເງິນສຳເລັດ",
+    body: `ທ່ານໄດ້ຄືນເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${serviceName}" ສຳເລັດແລ້ວ`,
+    tag: `refund-complete-${bookingId}`,
+    data: {
+      type: "payment_refunded",
+      bookingId,
+      url: "/model/dating",
+    },
+  }).catch((err) => console.error("[Push] Failed to send refund push to model:", err));
+
+  console.log(`[Notification] Model refunded dispute notification sent for booking ${bookingId}`);
+}

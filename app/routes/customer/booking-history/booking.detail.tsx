@@ -1,4 +1,4 @@
-import { Clock, Check, X, BadgeCheck, User, AlertTriangle } from "lucide-react"
+import { Clock, Check, X, BadgeCheck, User, AlertTriangle, DollarSign } from "lucide-react"
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
 
@@ -15,6 +15,7 @@ interface LoaderData {
    booking: IServiceBooking;
    canDispute: boolean;
    canCancel: boolean;
+   canRelease: boolean;
 }
 
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -47,13 +48,22 @@ export async function loader({ params }: LoaderFunctionArgs) {
       }
    }
 
-   return { booking, canDispute, canCancel };
+   // Check release eligibility (server-side)
+   // Customer can release if booking is confirmed and booking time has passed
+   let canRelease = false;
+   if (booking && booking.status === "confirmed") {
+      const now = new Date();
+      const bookingEndTime = booking.endDate ? new Date(booking.endDate) : new Date(booking.startDate);
+      canRelease = now >= bookingEndTime;
+   }
+
+   return { booking, canDispute, canCancel, canRelease };
 }
 
 export default function BookingServiceDetails() {
    const { t } = useTranslation()
    const navigate = useNavigate();
-   const { booking: data, canDispute, canCancel } = useLoaderData<LoaderData>();
+   const { booking: data, canDispute, canCancel, canRelease } = useLoaderData<LoaderData>();
 
    const getServiceName = (): string => {
       const serviceName = data?.modelService?.service?.name;
@@ -147,6 +157,30 @@ export default function BookingServiceDetails() {
                                  </p>
                               </div>
                            </div>
+                           {canRelease && (
+                              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                 <div className="flex items-start space-x-3">
+                                    <DollarSign className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                                    <div className="flex-1">
+                                       <p className="font-medium text-sm text-emerald-800">
+                                          {t('booking.detail.status.releaseAvailableTitle', { defaultValue: 'Release Payment' })}
+                                       </p>
+                                       <p className="text-xs text-emerald-600 mt-1">
+                                          {t('booking.detail.status.releaseAvailableMessage', { defaultValue: 'The booking time has ended. Release payment to complete this booking and pay the model.' })}
+                                       </p>
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/customer/book-service/release/${data.id}`)}
+                                          className="mt-2 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
+                                       >
+                                          <DollarSign className="h-4 w-4 mr-1" />
+                                          {t('booking.release.button', { defaultValue: 'Release Payment' })}
+                                       </Button>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
                            {canDispute && (
                               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                                  <div className="flex items-start space-x-3">

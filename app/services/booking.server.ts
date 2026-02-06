@@ -12,6 +12,8 @@ import {
   notifyPaymentRefunded,
   notifyAutoReleasePayment,
   notifyBookingEdited,
+  notifyCustomerReleasedPayment,
+  notifyModelRefundedDispute,
 } from "./notification.server";
 import { notifyAdminNewBooking } from "./email.server";
 
@@ -1443,6 +1445,8 @@ export async function getMyServiceBookingDetail(id: string) {
             lastName: true,
             dob: true,
             profile: true,
+            type: true,
+            referredById: true,
           },
         },
         modelService: {
@@ -1455,6 +1459,7 @@ export async function getMyServiceBookingDetail(id: string) {
                 description: true,
                 baseRate: true,
                 billingType: true,
+                commission: true,
               },
             },
           },
@@ -3304,6 +3309,461 @@ export async function adminResolveDispute(
       success: false,
       error: true,
       message: "Failed to resolve dispute!",
+    });
+  }
+}
+
+// ========================================
+// Customer Release Payment
+// ========================================
+
+/**
+ * Customer releases payment to model after booking is confirmed and time has passed
+ * This auto-completes the booking and pays the model immediately
+ */
+export async function customerReleasePayment(id: string, customerId: string) {
+  if (!id) throw new Error("Missing booking id!");
+  if (!customerId) throw new Error("Missing customer id!");
+
+  const auditBase = {
+    action: "CUSTOMER_RELEASE_PAYMENT",
+    customer: customerId,
+  };
+
+  try {
+    const booking = await prisma.service_booking.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        startDate: true,
+        endDate: true,
+        hours: true,
+        modelId: true,
+        customerId: true,
+        holdTransactionId: true,
+        releaseTransactionId: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        model: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The booking does not exist!",
+      });
+    }
+
+    if (booking.customerId !== customerId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Unauthorized to release payment for this booking!",
+      });
+    }
+
+    // Only confirmed bookings can be released
+    if (booking.status !== "confirmed") {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Only confirmed bookings can be released!",
+      });
+    }
+
+    // Check if booking time has passed
+    const now = new Date();
+    const bookingEndTime = booking.endDate || booking.startDate;
+
+    if (bookingEndTime && now < bookingEndTime) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Cannot release payment before the booking time has ended!",
+      });
+    }
+
+    if (!booking.modelId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Booking missing model information!",
+      });
+    }
+
+    // Get model's wallet
+    const modelWallet = await prisma.wallet.findFirst({
+      where: { modelId: booking.modelId, status: "active" },
+    });
+
+    if (!modelWallet) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Model wallet not found!",
+      });
+    }
+
+    // Calculate net amount (after commission)
+    const commissionRate = booking.modelService?.service?.commission || 0;
+    const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+    const netAmount = booking.price - commissionAmount;
+
+    // Update or create earning transaction
+    let earningTransaction;
+    if (booking.releaseTransactionId) {
+      // Update the existing pending transaction to approved
+      earningTransaction = await prisma.transaction_history.update({
+        where: { id: booking.releaseTransactionId },
+        data: {
+          status: "approved",
+          reason: `Earning from customer-released booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+        },
+      });
+    } else {
+      // Create new transaction
+      earningTransaction = await prisma.transaction_history.create({
+        data: {
+          identifier: "booking_earning",
+          amount: netAmount,
+          status: "approved",
+          comission: commissionAmount,
+          fee: 0,
+          modelId: booking.modelId,
+          reason: `Earning from customer-released booking #${booking.id} (${commissionRate}% commission: ${commissionAmount.toLocaleString()} LAK)`,
+        },
+      });
+    }
+
+    // Update hold transaction status to released
+    if (booking.holdTransactionId) {
+      await prisma.transaction_history.update({
+        where: { id: booking.holdTransactionId },
+        data: { status: "released" },
+      });
+    }
+
+    // Move from pending to available: decrease pending, increase balance
+    await prisma.wallet.update({
+      where: { id: modelWallet.id },
+      data: {
+        totalPending: {
+          decrement: netAmount,
+        },
+        totalBalance: {
+          increment: netAmount,
+        },
+      },
+    });
+
+    // Update booking status to completed
+    const completedBooking = await prisma.service_booking.update({
+      where: { id },
+      data: {
+        status: "completed",
+        paymentStatus: "released",
+        completedAt: new Date(),
+        releaseTransactionId: earningTransaction.id,
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Customer released ${netAmount.toLocaleString()} LAK to model for booking ${id}. Commission: ${commissionAmount.toLocaleString()} LAK.`,
+      status: "success",
+      onSuccess: { booking: completedBooking, transaction: earningTransaction },
+    });
+
+    // Send notifications (SMS, in-app, push)
+    try {
+      await notifyCustomerReleasedPayment({
+        bookingId: id,
+        customerId: booking.customerId || "",
+        modelId: booking.modelId || "",
+        serviceName: booking.modelService?.service?.name || "Service",
+        customerName: booking.customer
+          ? `${booking.customer.firstName} ${booking.customer.lastName || ""}`.trim()
+          : "Customer",
+        amount: netAmount,
+      });
+    } catch (notificationError) {
+      console.error("Customer release payment notification error (non-fatal):", notificationError);
+    }
+
+    // Process referral commission for the model who referred this booked model (if any)
+    // Special models get 2%, Partner models get 4% of the booking price
+    try {
+      const { processBookingReferralCommission } = await import("./referral.server");
+      const referralCommissionResult = await processBookingReferralCommission(
+        booking.modelId || "",
+        booking.price,
+        id
+      );
+      if (referralCommissionResult.success) {
+        console.log(`[CustomerRelease] Booking referral commission processed: ${referralCommissionResult.commissionAmount} Kip to model ${referralCommissionResult.referrerId}`);
+      } else {
+        console.log(`[CustomerRelease] Booking referral commission skipped: ${referralCommissionResult.reason}`);
+      }
+    } catch (commissionError) {
+      console.error("[CustomerRelease] Booking referral commission error (non-fatal):", commissionError);
+    }
+
+    return completedBooking;
+  } catch (error) {
+    console.error("CUSTOMER_RELEASE_PAYMENT_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Customer release payment failed!`,
+      status: "failed",
+      onError: error,
+    });
+
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to release payment!",
+    });
+  }
+}
+
+// ========================================
+// Model Refund Disputed Booking
+// ========================================
+
+/**
+ * Model refunds a disputed booking back to customer
+ * This cancels the booking and returns the full amount to customer
+ */
+export async function modelRefundDisputedBooking(id: string, modelId: string) {
+  if (!id) throw new Error("Missing booking id!");
+  if (!modelId) throw new Error("Missing model id!");
+
+  const auditBase = {
+    action: "MODEL_REFUND_DISPUTED_BOOKING",
+    model: modelId,
+  };
+
+  try {
+    const booking = await prisma.service_booking.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        modelId: true,
+        customerId: true,
+        holdTransactionId: true,
+        releaseTransactionId: true,
+        disputeReason: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        model: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        modelService: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "The booking does not exist!",
+      });
+    }
+
+    if (booking.modelId !== modelId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Unauthorized to refund this booking!",
+      });
+    }
+
+    // Only disputed bookings can be refunded by model
+    if (booking.status !== "disputed") {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Only disputed bookings can be refunded!",
+      });
+    }
+
+    if (!booking.customerId) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Booking missing customer information!",
+      });
+    }
+
+    // Get customer's wallet
+    const customerWallet = await prisma.wallet.findFirst({
+      where: { customerId: booking.customerId, status: "active" },
+    });
+
+    if (!customerWallet) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Customer wallet not found!",
+      });
+    }
+
+    // Get model's wallet to decrement pending
+    const modelWallet = await prisma.wallet.findFirst({
+      where: { modelId: booking.modelId, status: "active" },
+    });
+
+    // Calculate net amount that was pending (after commission)
+    const commissionRate = booking.modelService?.service?.commission || 0;
+    const commissionAmount = Math.floor((booking.price * commissionRate) / 100);
+    const netAmount = booking.price - commissionAmount;
+
+    // Update hold transaction status to refunded
+    if (booking.holdTransactionId) {
+      await prisma.transaction_history.update({
+        where: { id: booking.holdTransactionId },
+        data: { status: "refunded" },
+      });
+    }
+
+    // Update or delete pending earning transaction
+    if (booking.releaseTransactionId) {
+      await prisma.transaction_history.update({
+        where: { id: booking.releaseTransactionId },
+        data: {
+          status: "cancelled",
+          reason: `Cancelled - Model refunded disputed booking #${booking.id}`,
+        },
+      });
+    }
+
+    // Create refund transaction for customer
+    const refundTransaction = await prisma.transaction_history.create({
+      data: {
+        identifier: "booking_refund",
+        amount: booking.price,
+        status: "approved",
+        comission: 0,
+        fee: 0,
+        customerId: booking.customerId,
+        reason: `Refund for disputed booking #${booking.id} - Model accepted dispute`,
+      },
+    });
+
+    // Refund to customer wallet: decrement totalSpend (money is returned)
+    await prisma.wallet.update({
+      where: { id: customerWallet.id },
+      data: {
+        totalRefunded: {
+          increment: booking.price,
+        },
+      },
+    });
+
+    // Decrement model's pending balance
+    if (modelWallet) {
+      await prisma.wallet.update({
+        where: { id: modelWallet.id },
+        data: {
+          totalPending: {
+            decrement: netAmount,
+          },
+        },
+      });
+    }
+
+    // Update booking status to cancelled/refunded
+    const refundedBooking = await prisma.service_booking.update({
+      where: { id },
+      data: {
+        status: "cancelled",
+        paymentStatus: "refunded",
+        disputeResolvedAt: new Date(),
+        disputeResolution: "refunded",
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `Model refunded ${booking.price.toLocaleString()} LAK to customer for disputed booking ${id}.`,
+      status: "success",
+      onSuccess: { booking: refundedBooking, transaction: refundTransaction },
+    });
+
+    // Send notifications (SMS, in-app, push)
+    try {
+      await notifyModelRefundedDispute({
+        bookingId: id,
+        customerId: booking.customerId || "",
+        modelId: booking.modelId || "",
+        serviceName: booking.modelService?.service?.name || "Service",
+        modelName: booking.model
+          ? `${booking.model.firstName} ${booking.model.lastName || ""}`.trim()
+          : "Model",
+        amount: booking.price,
+        reason: booking.disputeReason || undefined,
+      });
+    } catch (notificationError) {
+      console.error("Model refund dispute notification error (non-fatal):", notificationError);
+    }
+
+    return refundedBooking;
+  } catch (error) {
+    console.error("MODEL_REFUND_DISPUTED_BOOKING_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `Model refund disputed booking failed!`,
+      status: "failed",
+      onError: error,
+    });
+
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to refund booking!",
     });
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Video, Banknote } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Video, Banknote, RefreshCcw } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -456,6 +456,18 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        >
                                           <Trash2 className="h-3 w-3" />
                                           {t("modelDating.actions.delete")}
+                                       </Button>
+                                    )}
+
+                                    {booking.status === "disputed" && (
+                                       <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/model/dating/refund/${booking.id}`)}
+                                          className="text-xs h-8 text-orange-600 border-orange-600 hover:bg-orange-50"
+                                       >
+                                          <RefreshCcw className="h-3 w-3" />
+                                          {t("modelDating.actions.refund", { defaultValue: "Refund" })}
                                        </Button>
                                     )}
                                  </>

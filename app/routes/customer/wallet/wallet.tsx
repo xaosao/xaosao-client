@@ -122,7 +122,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
     // Helper function to check if transaction can be edited/deleted
     const canEditOrDelete = (transaction: ITransactionResponse) => {
         return transaction.status === 'pending' &&
-               !BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier);
+            !BOOKING_TRANSACTION_IDENTIFIERS.includes(transaction.identifier);
     };
 
     if (isLoading) {

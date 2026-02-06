@@ -82,6 +82,7 @@ export default [
       route("reject/:id", "./routes/model/dating/dating.reject.tsx"),
       route("delete/:id", "./routes/model/dating/dating.delete.tsx"),
       route("receive-money/:id", "./routes/model/dating/dating.receive-money.tsx"),
+      route("refund/:id", "./routes/model/dating/dating.refund.tsx"),
     ]),
 
     // Referral program
@@ -170,6 +171,10 @@ export default [
     route(
       "book-service/dispute/:id",
       "./routes/customer/booking-history/booking.dispute.tsx"
+    ),
+    route(
+      "book-service/release/:id",
+      "./routes/customer/booking-history/booking.release.tsx"
     ),
 
     // setting

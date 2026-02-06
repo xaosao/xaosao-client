@@ -1,6 +1,6 @@
-import { Clock, Check, X, User, DollarSign } from "lucide-react"
-import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
+import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
+import { Clock, Check, X, User, DollarSign, AlertTriangle, RefreshCcw } from "lucide-react"
 
 // components
 import Modal from "~/components/ui/model"
@@ -218,6 +218,20 @@ export default function DatingDetailModal() {
                            </div>
                         </div>
                      )}
+
+                     {data?.status === "disputed" && (
+                        <div className="flex items-start space-x-3">
+                           <div className="p-2 rounded-lg bg-orange-50 border border-orange-300">
+                              <AlertTriangle className="h-4 w-4 text-orange-600" />
+                           </div>
+                           <div>
+                              <p className="font-medium text-sm">{t("modelDating.detail.statusMessages.disputed.title", { defaultValue: "Booking Disputed" })}</p>
+                              <p className="text-xs text-gray-500">
+                                 {t("modelDating.detail.statusMessages.disputed.description", { defaultValue: "The customer has filed a dispute for this booking." })}
+                              </p>
+                           </div>
+                        </div>
+                     )}
                   </div>
                   <hr />
                   <div className="flex items-start justiy-start gap-4">
@@ -255,7 +269,7 @@ export default function DatingDetailModal() {
                <Button
                   variant="outline"
                   onClick={closeHandler}
-                  className={`${data?.status === "pending" || canReceive ? "w-auto" : "w-full"} sm:w-auto bg-rose-500 text-white hover:bg-rose-600 hover:text-white`}
+                  className={`${data?.status === "pending" || canReceive ? "w-auto" : "w-auto"} sm:w-auto bg-rose-500 text-white hover:bg-rose-600 hover:text-white`}
                >
                   {t("modelDating.detail.close")}
                </Button>
@@ -302,8 +316,27 @@ export default function DatingDetailModal() {
                   </div>
                )}
                {data?.status === "disputed" && (
-                  <div className="text-sm text-orange-600 font-medium">
-                     {t("modelDating.detail.disputedStatus", { defaultValue: "Under dispute - Admin review required" })}
+                  <div className="w-full bg-orange-50 border border-orange-200 rounded-lg p-3">
+                     <div className="flex items-start space-x-3">
+                        <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                        <div className="flex-1">
+                           <p className="font-medium text-sm text-orange-800">
+                              {t("modelDating.detail.disputeRefundTitle", { defaultValue: "Dispute Filed" })}
+                           </p>
+                           <p className="text-xs text-orange-600 mt-1">
+                              {t("modelDating.detail.disputeRefundDescription", { defaultValue: "The customer has disputed this booking. You can accept the dispute and refund the customer, or wait for admin review." })}
+                           </p>
+                           <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/model/dating/refund/${data?.id}`)}
+                              className="text-sm mt-2 bg-orange-500 text-white hover:bg-orange-600 hover:text-white"
+                           >
+                              <RefreshCcw className="h-4 w-4 mr-1" />
+                              {t("modelDating.detail.refundCustomer", { defaultValue: "Refund Customer" })}
+                           </Button>
+                        </div>
+                     </div>
                   </div>
                )}
             </div>

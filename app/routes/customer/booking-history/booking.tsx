@@ -150,6 +150,14 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       return false;
    };
 
+   // Check if release button should be shown (confirmed and booking time has passed)
+   const canRelease = (booking: IServiceBooking): boolean => {
+      if (booking.status !== "confirmed") return false;
+      const now = new Date();
+      const bookingEndTime = booking.endDate ? new Date(booking.endDate) : new Date(booking.startDate);
+      return now >= bookingEndTime;
+   };
+
    if (isLoading) {
       return (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
@@ -193,19 +201,19 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
             <div className={`mt-3 pl-8 ${isPolicyOpen ? 'block' : 'hidden'}`}>
                <ul className="text-xs text-amber-800 space-y-2">
                   <li className="flex items-center gap-2">
-                     <Wallet className="h-3 w-3" />
+                     <Wallet className="h-2 w-2" />
                      <span>{t('booking.policy.paymentHeld')}</span>
                   </li>
                   <li className="flex items-center gap-2">
-                     <Clock className="h-3 w-3" />
+                     <Clock className="h-2 w-2" />
                      <span>{t('booking.policy.cancellationNotice')}</span>
                   </li>
                   <li className="flex items-center gap-2">
-                     <AlertTriangle className="h-3 w-3" />
+                     <AlertTriangle className="h-2 w-2" />
                      <span>{t('booking.policy.disputeWindow')}</span>
                   </li>
                   <li className="flex items-center gap-2">
-                     <Info className="h-3 w-3" />
+                     <Info className="h-2 w-2" />
                      <span>{t('booking.policy.autoRelease')}</span>
                   </li>
                </ul>
@@ -322,7 +330,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/call/start/${booking.id}`)}
                                        className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
                                     >
-                                       <Video className="h-3 w-3" />
+                                       <Video className="h-2 w-2" />
                                        {t('booking.startCall')}
                                     </Button>
                                  )}
@@ -333,7 +341,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
                                        className="text-xs h-8"
                                     >
-                                       <SquarePen className="h-3 w-3" />
+                                       <SquarePen className="h-2 w-2" />
                                        {t('booking.editBooking')}
                                     </Button>
                                  )}
@@ -344,11 +352,11 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
                                        className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
                                     >
-                                       <X className="h-3 w-3" />
+                                       <X className="h-2 w-2" />
                                        {t('booking.cancelBooking')}
                                     </Button>
                                  )}
-                                
+
                                  {["cancelled", "completed"].includes(booking.status) && (
                                     <Button
                                        variant="outline"
@@ -356,7 +364,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/delete/${booking.id}`)}
                                        className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
                                     >
-                                       <Trash2 className="h-3 w-3" />
+                                       <Trash2 className="h-2 w-2" />
                                        {t('booking.deleteBooking')}
                                     </Button>
                                  )}
@@ -370,7 +378,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/edit/${booking.id}`)}
                                        className="text-xs h-8"
                                     >
-                                       <SquarePen className="h-3 w-3" />
+                                       <SquarePen className="h-2 w-2" />
                                        {t('booking.editBooking')}
                                     </Button>
                                  )}
@@ -381,7 +389,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/cancel/${booking.id}`)}
                                        className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
                                     >
-                                       <X className="h-3 w-3" />
+                                       <X className="h-2 w-2" />
                                        {t('booking.cancelBooking')}
                                     </Button>
                                  )}
@@ -402,13 +410,24 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        }}
                                        className="text-xs h-8 text-green-600 border-green-600 hover:bg-green-50"
                                     >
-                                       <MessageCircleMore className="h-3 w-3" />
+                                       <MessageCircleMore className="h-2 w-2" />
                                        {t('booking.messageModel')}
                                     </Button>
                                  )}
 
                                  {booking.status === "confirmed" && (
                                     <>
+                                       {canRelease(booking) && (
+                                          <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => navigate(`/customer/book-service/release/${booking.id}`)}
+                                             className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+                                          >
+                                             <DollarSign className="h-2 w-2" />
+                                             {t('booking.release.button', { defaultValue: 'Release Payment' })}
+                                          </Button>
+                                       )}
                                        {booking.model?.whatsapp && (
                                           <Button
                                              variant="outline"
@@ -416,7 +435,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                              onClick={() => window.open(`tel:${booking.model.whatsapp}`, "_self")}
                                              className="text-xs h-8 text-blue-600 border-blue-600 hover:bg-blue-50"
                                           >
-                                             <Phone className="h-3 w-3" />
+                                             <Phone className="h-2 w-2" />
                                              {t('booking.callModel')}
                                           </Button>
                                        )}
@@ -427,7 +446,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                              onClick={() => navigate(`/customer/book-service/dispute/${booking.id}`)}
                                              className="text-xs h-8 text-orange-600 border-orange-600 hover:bg-orange-50"
                                           >
-                                             <AlertTriangle className="h-3 w-3" />
+                                             <AlertTriangle className="h-2 w-2" />
                                              {t('booking.dispute')}
                                           </Button>
                                        )}
@@ -442,7 +461,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           onClick={() => navigate(`/customer/confirm-booking/${booking.completionToken}`)}
                                           className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
                                        >
-                                          <CheckCircle2 className="h-3 w-3" />
+                                          <CheckCircle2 className="h-2 w-2" />
                                           {t('booking.confirmRelease')}
                                        </Button>
                                        <Button
@@ -451,7 +470,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                           onClick={() => navigate(`/customer/book-service/dispute/${booking.id}`)}
                                           className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
                                        >
-                                          <AlertTriangle className="h-3 w-3" />
+                                          <AlertTriangle className="h-2 w-2" />
                                           {t('booking.dispute')}
                                        </Button>
                                     </>
@@ -464,7 +483,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                        onClick={() => navigate(`/customer/book-service/delete/${booking.id}`)}
                                        className="text-xs h-8 text-red-600 border-red-600 hover:bg-red-50"
                                     >
-                                       <Trash2 className="h-3 w-3" />
+                                       <Trash2 className="h-2 w-2" />
                                        {t('booking.deleteBooking')}
                                     </Button>
                                  )}
