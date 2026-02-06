@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef } from "react";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Calendar, ChevronLeft, ChevronRight, Flame, Mouse } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Calendar, ChevronLeft, ChevronRight, Flame, Mouse, Crown, Star, Check, TrendingUp, Infinity } from "lucide-react";
 
 // Swiper
 import "swiper/css";
@@ -352,7 +352,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                                 </p>
                               )}
                             </div>
-                            
+
                             <div className="absolute top-4 right-4">
                               <Badge className="bg-rose-500 text-white hover:bg-rose-600 cursor-pointer">
                                 {t('home.hotModels.viewProfile', { defaultValue: 'View Profile' })}
@@ -385,7 +385,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                               {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld', { defaultValue: 'years old' })}
                             </p>
                           </div>
-                         
+
                           <div className="absolute top-4 right-4">
                             <Badge className="bg-rose-500 text-white hover:bg-rose-600 cursor-pointer">
                               {t('home.hotModels.viewProfile', { defaultValue: 'View Profile' })}
@@ -398,7 +398,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     <button className="home-next hidden"><ChevronRight className="h-5 w-5" /></button>
                   </Swiper>
                 </div>
-               
+
                 <div className="hidden sm:block w-1/2 rounded-lg p-6 bg-rose-50 space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-gray-800">
@@ -460,136 +460,242 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </section>
       )}
 
-      {/* Referral Benefits Section */}
+      {/* Model Types & Referral Benefits Section */}
       <section className="relative py-16 sm:py-24 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
           <div className="text-center mb-12 sm:mb-16">
             <div className="inline-flex items-center gap-2 bg-rose-500/20 border border-rose-500/30 rounded-full px-4 py-2 mb-4">
               <Sparkles className="w-4 h-4 text-rose-400" />
-              <span className="text-rose-300 text-sm font-medium">{t('home.benefits.badge')}</span>
+              <span className="text-rose-300 text-sm font-medium">{t('home.modelTypes.badge', { defaultValue: 'Companion Tiers' })}</span>
             </div>
             <h2 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-              {t('home.benefits.title')}
+              {t('home.modelTypes.title', { defaultValue: 'Grow Your Earnings' })}
             </h2>
             <p className="text-gray-400 text-md max-w-2xl mx-auto">
-              {t('home.benefits.subtitle')}
+              {t('home.modelTypes.subtitle', { defaultValue: 'Start as a Normal companion and unlock higher commissions by referring friends. The more you refer, the more you earn!' })}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-4">
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-rose-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1">
-              <div className="border border-red-500 absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl group-hover:bg-rose-500/20 transition-all duration-500" />
-              <div className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-600 rounded-sm flex items-center justify-center mb-6 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <Gift className="w-5 h-5 text-white" />
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier1.label')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white">
-                      50,000 <span className="text-rose-400 text-lg">KIP</span>
-                    </h3>
-                  </div>
-                </div>
-
-                <p className="text-gray-400 leading-relaxed">
-                  {t('home.benefits.tier1.description')}
-                </p>
-
-                <div className="mt-6 pt-6 border-t border-gray-700/50">
-                  <div className="flex items-center gap-2 text-rose-400">
-                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-                    <span className="text-sm font-medium">{t('home.benefits.tier1.hint')}</span>
-                  </div>
-                </div>
+          {/* Progression Arrow (Desktop) */}
+          <div className="hidden md:flex items-center justify-center mb-8">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-rose-500" />
+                <span className="text-gray-400 text-sm">{t('home.modelTypes.normal.name', { defaultValue: 'Normal' })}</span>
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <span className="text-gray-400 text-sm">{t('home.modelTypes.special.name', { defaultValue: 'Special' })}</span>
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <span className="text-gray-400 text-sm">{t('home.modelTypes.partner.name', { defaultValue: 'Partner' })}</span>
               </div>
             </div>
+          </div>
 
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-amber-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all duration-500" />
-
-              <div className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-md flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-
-                  <div className="mb-4">
-                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier2.label')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white">
-                      1,000,000 <span className="text-amber-400 text-lg">KIP</span>
-                    </h3>
-                  </div>
-                </div>
-
-                <p className="text-gray-400 leading-relaxed">
-                  {t('home.benefits.tier2.description')}
-                </p>
-
-                <div className="mt-6 pt-6 border-t border-gray-700/50">
-                  <div className="flex items-center gap-2 text-amber-400">
-                    <div className="flex -space-x-1">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="w-5 h-5 bg-amber-500/30 rounded-full border-2 border-gray-800 flex items-center justify-center">
-                          <User className="w-3 h-3 text-amber-400" />
-                        </div>
-                      ))}
+          {/* Model Type Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Normal Model */}
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-rose-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-sm font-medium">{t('home.benefits.tier2.hint')}</span>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{t('home.modelTypes.normal.name', { defaultValue: 'Normal' })}</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-5">
+                {/* Condition */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.condition', { defaultValue: 'Condition' })}</p>
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Check className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                    <span className="text-sm">{t('home.modelTypes.normal.condition', { defaultValue: 'Register as a companion' })}</span>
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.benefits', { defaultValue: 'Benefits' })}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Gift className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">
+                        <span className="text-rose-400 font-bold">50,000 KIP</span> {t('home.modelTypes.normal.bonus', { defaultValue: 'per referral (up to 20 people)' })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-500">{t('home.modelTypes.normal.noCommission', { defaultValue: 'No booking commission' })}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upgrade hint */}
+                <div className="pt-4 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-rose-400">
+                    <ArrowRight className="w-4 h-4" />
+                    <span className="text-xs">{t('home.modelTypes.normal.upgradeHint', { defaultValue: 'Refer 20 companions to upgrade to Special' })}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md p-6 sm:p-8 hover:border-emerald-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500" />
-
-              <div className="relative">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-md flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <Trophy className="w-5 h-5 text-white" />
+            {/* Special Model */}
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-amber-500/30 rounded-xl overflow-hidden hover:border-amber-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Star className="w-6 h-6 text-white" />
                   </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{t('home.modelTypes.special.name', { defaultValue: 'Special' })}</h3>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="mb-4">
-                    <span className="text-gray-400 text-sm uppercase tracking-wider">{t('home.benefits.tier3.label')}</span>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white mt-1">
-                      {t('home.benefits.tier3.prize')}
-                    </h3>
+              {/* Content */}
+              <div className="p-6 space-y-5">
+                {/* Condition */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.condition', { defaultValue: 'Condition' })}</p>
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Check className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <span className="text-sm">{t('home.modelTypes.special.condition', { defaultValue: 'Refer 20 companions successfully' })}</span>
                   </div>
                 </div>
 
-                <p className="text-gray-400 leading-relaxed">
-                  {t('home.benefits.tier3.description')}
-                </p>
+                {/* Benefits */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.benefits', { defaultValue: 'Benefits' })}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">
+                        <span className="text-amber-400 font-bold">2%</span> {t('home.modelTypes.special.bookingCommission', { defaultValue: 'commission from referred companions\' bookings' })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Gift className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">
+                        <span className="text-amber-400 font-bold">20%</span> {t('home.modelTypes.special.subscriptionCommission', { defaultValue: 'from referred customers\' subscriptions' })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Users className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">{t('home.modelTypes.special.customerReferral', { defaultValue: 'Can refer customers with referral code' })}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Infinity className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">{t('home.modelTypes.commissionForever', { defaultValue: 'Commission forever when conditions are met' })}</span>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-700/50">
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm font-medium">{t('home.benefits.tier3.hint')}</span>
+                {/* Upgrade hint */}
+                <div className="pt-4 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <ArrowRight className="w-4 h-4" />
+                    <span className="text-xs">{t('home.modelTypes.special.upgradeHint', { defaultValue: 'Earn 2,000,000 KIP from referrals to become Partner' })}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Partner Model */}
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-purple-500/30 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-500 to-violet-600 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Crown className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{t('home.modelTypes.partner.name', { defaultValue: 'Partner' })}</h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-5">
+                {/* Condition */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.condition', { defaultValue: 'Condition' })}</p>
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-sm">{t('home.modelTypes.partner.condition', { defaultValue: 'Earn 2,000,000 KIP from referral commissions' })}</span>
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{t('home.modelTypes.benefits', { defaultValue: 'Benefits' })}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">
+                        <span className="text-purple-400 font-bold">4%</span> {t('home.modelTypes.partner.bookingCommission', { defaultValue: 'commission from referred companions\' bookings' })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Gift className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">
+                        <span className="text-purple-400 font-bold">40%</span> {t('home.modelTypes.partner.subscriptionCommission', { defaultValue: 'from referred customers\' subscriptions' })}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Trophy className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">{t('home.modelTypes.partner.vipBenefits', { defaultValue: 'VIP support & priority features' })}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Infinity className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-300">{t('home.modelTypes.commissionForever', { defaultValue: 'Commission forever when conditions are met' })}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Elite badge */}
+                <div className="pt-4 border-t border-gray-700/50">
+                  <div className="flex items-center gap-2 text-purple-400">
+                    <Crown className="w-4 h-4" />
+                    <span className="text-xs">{t('home.modelTypes.partner.eliteHint', { defaultValue: 'Highest earning potential on the platform' })}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* CTA */}
           <div className="text-center mt-12 sm:mt-16">
             <Button
               size="lg"
               className="cursor-pointer bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white px-8 py-4 text-sm shadow-xl shadow-rose-500/25 hover:shadow-rose-500/40 transition-all duration-300 transform hover:scale-105 border-0 rounded-xl"
-              onClick={() => navigate("/model-auth/login?redirect=/model/referral")}
+              onClick={() => navigate("/model-auth/register")}
             >
               <Gift className="w-4 h-4" />
-              {t('home.benefits.cta')}
+              {t('home.modelTypes.cta', { defaultValue: 'Start Earning Now' })}
             </Button>
             <p className="text-gray-500 text-sm mt-4">
-              {t('home.benefits.ctaHint')}
+              {t('home.modelTypes.ctaHint', { defaultValue: 'Join as a companion and start your referral journey today' })}
             </p>
           </div>
         </div>

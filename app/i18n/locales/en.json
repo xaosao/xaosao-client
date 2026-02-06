@@ -65,6 +65,43 @@
       "viewAll": "View All",
       "viewProfile": "View Profile",
       "loginPrompt": "Login to view full profile and connect"
+    },
+    "modelTypes": {
+      "badge": "Companion Tiers",
+      "title": "Grow Your Earnings",
+      "subtitle": "Start as a Normal companion and unlock higher commissions by referring friends. The more you refer, the more you earn!",
+      "condition": "Condition",
+      "benefits": "Benefits",
+      "popular": "POPULAR",
+      "normal": {
+        "name": "Normal",
+        "subtitle": "Starting Tier",
+        "condition": "Register as a companion",
+        "bonus": "per referral (up to 20 people)",
+        "noCommission": "No booking commission",
+        "upgradeHint": "Refer 20 companions to upgrade to Special"
+      },
+      "special": {
+        "name": "Special",
+        "subtitle": "Commission Tier",
+        "condition": "Refer 20 companions successfully",
+        "bookingCommission": "commission from referred companions' bookings",
+        "subscriptionCommission": "from referred customers' subscriptions",
+        "customerReferral": "Can refer customers with referral code",
+        "upgradeHint": "Earn 2,000,000 KIP from referrals to become Partner"
+      },
+      "partner": {
+        "name": "Partner",
+        "subtitle": "Elite Tier",
+        "condition": "Earn 2,000,000 KIP from referral commissions",
+        "bookingCommission": "commission from referred companions' bookings",
+        "subscriptionCommission": "from referred customers' subscriptions",
+        "vipBenefits": "VIP support & priority features",
+        "eliteHint": "Highest earning potential on the platform"
+      },
+      "commissionForever": "Commission forever when conditions are met",
+      "cta": "Start Earning Now",
+      "ctaHint": "Join as a companion and start your referral journey today"
     }
   },
   "videoTutorials": {
