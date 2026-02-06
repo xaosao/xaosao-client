@@ -49,6 +49,13 @@ import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
+interface NearbyPagination {
+    page: number;
+    limit: number;
+    totalCount: number;
+    hasMore: boolean;
+}
+
 interface LoaderReturn {
     latitude: number;
     longitude: number;
@@ -56,6 +63,7 @@ interface LoaderReturn {
     hasActiveSubscription: boolean;
     hasPendingSubscription: boolean;
     nearbyModels: INearbyModelResponse[];
+    nearbyPagination: NearbyPagination;
     trialPackage: {
         id: string;
         price: number;
@@ -141,7 +149,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         minRating: url.searchParams.get("rating") ? Number(url.searchParams.get("rating")) : undefined,
     };
 
-    // Get models for this customer with filters
+    // Get models for this customer with filters (online models)
     const response = await getModelsForCustomer(customerId, filters);
     const models: ImodelsResponse[] = response.map((model) => ({
         ...model,
@@ -150,19 +158,22 @@ export const loader: LoaderFunction = async ({ request }) => {
         bio: model.bio || "", // Ensure bio is always a string, not null
     }));
 
-    // Get nearby models with same filters
-    const nearbyModels = await getNearbyModels(customerId as string, filters);
+    // Get nearby models with pagination (initial page = 1, limit = 50)
+    const nearbyResult = await getNearbyModels(customerId as string, filters, 50, { page: 1, limit: 50 });
 
     // Generate seed based on customer ID and current hour
     const seed = generateSeed(customerId);
 
-    // Shuffle both arrays with the same seed for consistent personalized order
-    const shuffledModels = shuffleWithSeed(models, seed);
-    const shuffledNearbyModels = shuffleWithSeed(nearbyModels, seed);
+    // Shuffle online models and limit to 50
+    const shuffledModels = shuffleWithSeed(models, seed).slice(0, 50);
+
+    // Keep nearby models sorted by distance (nearest first, farthest last)
+    // Don't shuffle - preserve the distance-based ordering from getNearbyModels
 
     return {
         models: shuffledModels,
-        nearbyModels: shuffledNearbyModels,
+        nearbyModels: nearbyResult.models as INearbyModelResponse[],
+        nearbyPagination: nearbyResult.pagination,
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
@@ -257,7 +268,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
+    const { models, nearbyModels, nearbyPagination, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -299,6 +310,13 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const [cachedModels, setCachedModels] = useState<ImodelsResponse[]>(models);
     const [cachedNearbyModels, setCachedNearbyModels] = useState<INearbyModelResponse[]>(nearbyModels);
 
+    // Infinite scroll state for nearby models
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(nearbyPagination.hasMore);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+    const loadMoreFetcher = useFetcher<{ models: INearbyModelResponse[]; pagination: NearbyPagination }>();
+
     // Update cached models only on initial load or when not from fetcher action
     useEffect(() => {
         // If fetcher just completed, don't update cache (keep current order)
@@ -309,7 +327,48 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         // Update cache with new data from loader (initial load or explicit refresh)
         setCachedModels(models);
         setCachedNearbyModels(nearbyModels);
-    }, [models, nearbyModels, fetcher.state]);
+        // Reset pagination state on filter change
+        setCurrentPage(1);
+        setHasMore(nearbyPagination.hasMore);
+    }, [models, nearbyModels, nearbyPagination.hasMore, fetcher.state]);
+
+    // Handle load more fetcher response
+    useEffect(() => {
+        if (loadMoreFetcher.state === "idle" && loadMoreFetcher.data) {
+            const { models: newModels, pagination } = loadMoreFetcher.data;
+            setCachedNearbyModels(prev => [...prev, ...newModels]);
+            setHasMore(pagination.hasMore);
+            setIsLoadingMore(false);
+        }
+    }, [loadMoreFetcher.state, loadMoreFetcher.data]);
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+        const sentinel = loadMoreSentinelRef.current;
+        if (!sentinel || !hasMore) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (entry.isIntersecting && hasMore && !isLoadingMore && loadMoreFetcher.state === "idle") {
+                    setIsLoadingMore(true);
+                    const nextPage = currentPage + 1;
+                    setCurrentPage(nextPage);
+
+                    // Build URL with current filters
+                    const params = new URLSearchParams(searchParams);
+                    params.set("page", nextPage.toString());
+                    params.set("limit", "50");
+
+                    loadMoreFetcher.load(`/customer/discover/load-more?${params.toString()}`);
+                }
+            },
+            { threshold: 0.1, rootMargin: "100px" }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, currentPage, searchParams, loadMoreFetcher]);
 
     // Handle fetcher response
     useEffect(() => {
@@ -1692,6 +1751,28 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         </div>
                         );
                     })}
+                </div>
+
+                {/* Infinite Scroll: Loading Spinner and Sentinel */}
+                <div className="flex flex-col items-center justify-center py-8">
+                    {isLoadingMore && (
+                        <div className="flex items-center gap-2 text-rose-500">
+                            <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-sm">{t('discover.loadingMore', { defaultValue: 'Loading more...' })}</span>
+                        </div>
+                    )}
+
+                    {/* Sentinel element for intersection observer */}
+                    {hasMore && !isLoadingMore && (
+                        <div ref={loadMoreSentinelRef} className="h-4 w-full" />
+                    )}
+
+                    {/* No more models message */}
+                    {!hasMore && cachedNearbyModels.length > 0 && (
+                        <div className="text-center text-gray-500 py-4">
+                            <p className="text-sm">{t('discover.noMoreModels', { defaultValue: 'No more companions nearby' })}</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

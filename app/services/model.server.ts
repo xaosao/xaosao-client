@@ -235,12 +235,20 @@ function calculateDistance(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Get nearby models based on geolocation distance
+// Pagination options for nearby models
+interface NearbyModelsPaginationOptions {
+  page?: number;
+  limit?: number;
+}
+
+// Get nearby models based on geolocation distance with pagination support
 export async function getNearbyModels(
   customerId: string,
   filters: DiscoverFilters = {},
-  maxDistanceKm: number = 50
+  maxDistanceKm: number = 50,
+  pagination: NearbyModelsPaginationOptions = {}
 ) {
+  const { page = 1, limit = 50 } = pagination;
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },
     select: {
@@ -371,7 +379,7 @@ export async function getNearbyModels(
   }
 
   // Calculate distance and filter by maxDistance
-  const modelsWithDistance = filteredModels
+  const allModelsWithDistance = filteredModels
     .map((m) => {
       const distance = calculateDistance(
         customer.latitude!,
@@ -399,10 +407,23 @@ export async function getNearbyModels(
         return a.distance - b.distance;
       }
       return b.rating - a.rating;
-    })
-    .slice(0, 20); // Return top 20 nearest
+    });
 
-  return modelsWithDistance;
+  // Apply pagination
+  const totalCount = allModelsWithDistance.length;
+  const skip = (page - 1) * limit;
+  const paginatedModels = allModelsWithDistance.slice(skip, skip + limit);
+  const hasMore = skip + limit < totalCount;
+
+  return {
+    models: paginatedModels,
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      hasMore,
+    },
+  };
 }
 
 // Get hot/trending models based on popularity and recent activity
