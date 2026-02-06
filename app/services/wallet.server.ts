@@ -472,13 +472,13 @@ export async function getCustomerWalletSummary(customerId: string) {
     // Customer wallet fields:
     // - totalBalance: All approved recharges (top-ups)
     // - totalSpend: All spent on bookings/subscriptions
-    // - totalRefunded: All refunded amount (for reference only)
-    // - totalAvailable: totalBalance - totalSpend (refunds NOT added back)
+    // - totalRefunded: All approved refunded amount
+    // - totalAvailable: totalBalance - totalSpend + totalRefunded
 
     const totalBalance = wallet.totalBalance || 0;
     const totalSpend = wallet.totalSpend || 0;
     const totalRefunded = wallet.totalRefunded || 0;
-    const totalAvailable = totalBalance - totalSpend;
+    const totalAvailable = totalBalance - totalSpend + totalRefunded;
 
     return {
       ...wallet,
@@ -975,10 +975,12 @@ export async function deductFromWallet(
       });
     }
 
-    // Calculate available balance: totalBalance - totalSpend (refunds NOT added back)
+    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    // Refunds are added back because they restore previously spent funds
     const totalBalance = wallet.totalBalance || 0;
     const totalSpend = wallet.totalSpend || 0;
-    const availableBalance = totalBalance - totalSpend;
+    const totalRefunded = wallet.totalRefunded || 0;
+    const availableBalance = totalBalance - totalSpend + totalRefunded;
 
     if (availableBalance < amount) {
       throw new FieldValidationError({
