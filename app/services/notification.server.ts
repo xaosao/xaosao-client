@@ -74,7 +74,10 @@ function formatPhoneNumber(phone: string | number | null): string | null {
 /**
  * Send SMS to a phone number
  */
-async function sendSMS(phone: string | number | null, message: string): Promise<boolean> {
+async function sendSMS(
+  phone: string | number | null,
+  message: string
+): Promise<boolean> {
   try {
     if (!process.env.TELBIZ_CLIENT_ID || !process.env.TELBIZ_SECRETKEY) {
       console.warn("Telbiz credentials not configured. SMS not sent.");
@@ -99,7 +102,9 @@ async function sendSMS(phone: string | number | null, message: string): Promise<
 /**
  * Get model's WhatsApp number and SMS preference
  */
-async function getModelSMSInfo(modelId: string): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
+async function getModelSMSInfo(
+  modelId: string
+): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
   try {
     const model = await prisma.model.findUnique({
       where: { id: modelId },
@@ -117,7 +122,9 @@ async function getModelSMSInfo(modelId: string): Promise<{ phone: number | null;
 /**
  * Get customer's WhatsApp number and SMS preference
  */
-async function getCustomerSMSInfo(customerId: string): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
+async function getCustomerSMSInfo(
+  customerId: string
+): Promise<{ phone: number | null; sendSMSNoti: boolean }> {
   try {
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
@@ -135,11 +142,16 @@ async function getCustomerSMSInfo(customerId: string): Promise<{ phone: number |
 /**
  * Send SMS to model (only if SMS notifications are enabled)
  */
-export async function sendSMSToModel(modelId: string, message: string): Promise<void> {
+export async function sendSMSToModel(
+  modelId: string,
+  message: string
+): Promise<void> {
   const { phone, sendSMSNoti } = await getModelSMSInfo(modelId);
 
   if (!sendSMSNoti) {
-    console.log(`[SMS] Model ${modelId} has SMS notifications disabled, skipping`);
+    console.log(
+      `[SMS] Model ${modelId} has SMS notifications disabled, skipping`
+    );
     return;
   }
 
@@ -153,11 +165,16 @@ export async function sendSMSToModel(modelId: string, message: string): Promise<
 /**
  * Send SMS to customer (only if SMS notifications are enabled)
  */
-export async function sendSMSToCustomer(customerId: string, message: string): Promise<void> {
+export async function sendSMSToCustomer(
+  customerId: string,
+  message: string
+): Promise<void> {
   const { phone, sendSMSNoti } = await getCustomerSMSInfo(customerId);
 
   if (!sendSMSNoti) {
-    console.log(`[SMS] Customer ${customerId} has SMS notifications disabled, skipping`);
+    console.log(
+      `[SMS] Customer ${customerId} has SMS notifications disabled, skipping`
+    );
     return;
   }
 
@@ -278,7 +295,9 @@ export async function createModelNotification(
 
     const channel = getModelChannel(modelId);
     const listenerCount = notificationEmitter.listenerCount(channel);
-    console.log(`[Notification] Emitting ${payload.type} to ${channel}, listeners: ${listenerCount}`);
+    console.log(
+      `[Notification] Emitting ${payload.type} to ${channel}, listeners: ${listenerCount}`
+    );
 
     // Emit real-time event
     notificationEmitter.emit(channel, {
@@ -572,14 +591,16 @@ export async function notifyBookingCreated(
   });
 
   // Send SMS to model
-  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const dateStr = startDate
+    ? new Date(startDate).toLocaleDateString("lo-LA")
+    : "";
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
   const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model
-  pushBookingCreated(modelId, customerName, translatedService, bookingId).catch((err) =>
-    console.error("[Push] Failed to send booking created push:", err)
+  pushBookingCreated(modelId, customerName, translatedService, bookingId).catch(
+    (err) => console.error("[Push] Failed to send booking created push:", err)
   );
 }
 
@@ -605,12 +626,19 @@ export async function notifyBookingConfirmed(
   });
 
   // Send SMS to customer
-  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
-  const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາ Check-in ເມື່ອຮອດເວລານັດໝາຍ.`;
+  const dateStr = startDate
+    ? new Date(startDate).toLocaleDateString("lo-LA")
+    : "";
+  const smsMessage = `XaoSao: ການຈອງຂອງທ່ານໄດ້ຮັບການຢືນຢັນ! ${modelName} ຕອບຮັບການຈອງ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}. ກະລຸນາໂທຫາລາວ ເມື່ອຮອດເວລານັດໝາຍ.`;
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingConfirmed(customerId, modelName, translatedService, bookingId).catch((err) =>
+  pushBookingConfirmed(
+    customerId,
+    modelName,
+    translatedService,
+    bookingId
+  ).catch((err) =>
     console.error("[Push] Failed to send booking confirmed push:", err)
   );
 }
@@ -640,7 +668,12 @@ export async function notifyBookingRejected(
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingRejected(customerId, modelName, translatedService, bookingId).catch((err) =>
+  pushBookingRejected(
+    customerId,
+    modelName,
+    translatedService,
+    bookingId
+  ).catch((err) =>
     console.error("[Push] Failed to send booking rejected push:", err)
   );
 }
@@ -666,12 +699,19 @@ export async function notifyBookingCancelled(
   });
 
   // Send SMS to model
-  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const dateStr = startDate
+    ? new Date(startDate).toLocaleDateString("lo-LA")
+    : "";
   const smsMessage = `XaoSao: ການຈອງຖືກຍົກເລີກ! ${customerName} ໄດ້ຍົກເລີກການຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}.`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model
-  pushBookingCancelled(modelId, customerName, translatedService, bookingId).catch((err) =>
+  pushBookingCancelled(
+    modelId,
+    customerName,
+    translatedService,
+    bookingId
+  ).catch((err) =>
     console.error("[Push] Failed to send booking cancelled push:", err)
   );
 }
@@ -702,7 +742,12 @@ export async function notifyBookingCompleted(
   sendSMSToCustomer(customerId, smsMessage);
 
   // Send push notification to customer
-  pushBookingCompleted(customerId, modelName, translatedService, bookingId).catch((err) =>
+  pushBookingCompleted(
+    customerId,
+    modelName,
+    translatedService,
+    bookingId
+  ).catch((err) =>
     console.error("[Push] Failed to send booking completed push:", err)
   );
 }
@@ -759,7 +804,9 @@ export async function notifyAutoReleasePayment(
   amount: number,
   serviceName?: string
 ) {
-  const translatedService = serviceName ? translateServiceName(serviceName) : undefined;
+  const translatedService = serviceName
+    ? translateServiceName(serviceName)
+    : undefined;
 
   // Notify model
   await createModelNotification(modelId, {
@@ -810,7 +857,9 @@ export async function notifyBookingEdited(
   });
 
   // Send SMS to model
-  const dateStr = startDate ? new Date(startDate).toLocaleDateString("lo-LA") : "";
+  const dateStr = startDate
+    ? new Date(startDate).toLocaleDateString("lo-LA")
+    : "";
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
   const smsMessage = `XaoSao: ການຈອງຖືກແກ້ໄຂ! ${customerName} ແກ້ໄຂການຈອງ "${translatedService}"${dateStr ? ` ວັນທີໃໝ່: ${dateStr}` : ""}${location ? ` ສະຖານທີ່: ${location}` : ""}${priceStr ? ` ລາຄາ: ${priceStr}` : ""}. ກະລຸນາກວດສອບໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
@@ -969,7 +1018,13 @@ export async function notifyModelNewMessage(
   });
 
   // Send push notification to model
-  pushNewMessage("model", modelId, customerName, messagePreview, conversationId).catch((err) =>
+  pushNewMessage(
+    "model",
+    modelId,
+    customerName,
+    messagePreview,
+    conversationId
+  ).catch((err) =>
     console.error("[Push] Failed to send new message push to model:", err)
   );
 }
@@ -992,7 +1047,13 @@ export async function notifyCustomerNewMessage(
   });
 
   // Send push notification to customer
-  pushNewMessage("customer", customerId, modelName, messagePreview, conversationId).catch((err) =>
+  pushNewMessage(
+    "customer",
+    customerId,
+    modelName,
+    messagePreview,
+    conversationId
+  ).catch((err) =>
     console.error("[Push] Failed to send new message push to customer:", err)
   );
 }
@@ -1052,7 +1113,8 @@ export async function notifyModelProfileVerified(modelId: string) {
   await createModelNotification(modelId, {
     type: "profile_verified",
     title: "ໂປຣໄຟລ໌ໄດ້ຮັບການຢືນຢັນ",
-    message: "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
+    message:
+      "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
     data: {},
   });
 }
@@ -1064,7 +1126,8 @@ export async function notifyCustomerProfileVerified(customerId: string) {
   await createCustomerNotification(customerId, {
     type: "profile_verified",
     title: "ໂປຣໄຟລ໌ໄດ້ຮັບການຢືນຢັນ",
-    message: "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
+    message:
+      "ຕົວຕົນຂອງທ່ານໄດ້ຮັບການຢືນຢັນແລ້ວ! ໂປຣໄຟລ໌ຂອງທ່ານຈະສະແດງປ້າຍຢືນຢັນ.",
     data: {},
   });
 }
@@ -1168,7 +1231,10 @@ export async function notifyModelWelcome(modelId: string, modelName: string) {
 /**
  * Send welcome notification to new customer
  */
-export async function notifyCustomerWelcome(customerId: string, customerName: string) {
+export async function notifyCustomerWelcome(
+  customerId: string,
+  customerName: string
+) {
   await createCustomerNotification(customerId, {
     type: "welcome",
     title: "ຍິນດີຕ້ອນຮັບສູ່ XaoSao!",
@@ -1203,7 +1269,9 @@ interface AdminBookingCompleteData {
  * Send notifications when admin completes a booking
  * Notifies: Customer, Model, and Referrer (if eligible)
  */
-export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData): Promise<void> {
+export async function notifyAdminBookingCompleted(
+  data: AdminBookingCompleteData
+): Promise<void> {
   const {
     bookingId,
     customerId,
@@ -1240,7 +1308,12 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
       bookingId,
       url: "/customer/dates-history",
     },
-  }).catch((err) => console.error("[Push] Failed to send booking complete push to customer:", err));
+  }).catch((err) =>
+    console.error(
+      "[Push] Failed to send booking complete push to customer:",
+      err
+    )
+  );
 
   // 2. Notify Model - Payment has been received
   await createModelNotification(modelId, {
@@ -1286,10 +1359,14 @@ export async function notifyAdminBookingCompleted(data: AdminBookingCompleteData
         bookingId,
         url: "/model/settings/wallet",
       },
-    }).catch((err) => console.error("[Push] Failed to send referral commission push:", err));
+    }).catch((err) =>
+      console.error("[Push] Failed to send referral commission push:", err)
+    );
   }
 
-  console.log(`[Notification] Admin booking complete notifications sent for booking ${bookingId}`);
+  console.log(
+    `[Notification] Admin booking complete notifications sent for booking ${bookingId}`
+  );
 }
 
 interface AdminBookingRefundData {
@@ -1307,7 +1384,9 @@ interface AdminBookingRefundData {
  * Send notifications when admin refunds a booking
  * Notifies: Customer and Model
  */
-export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): Promise<void> {
+export async function notifyAdminBookingRefunded(
+  data: AdminBookingRefundData
+): Promise<void> {
   const {
     bookingId,
     customerId,
@@ -1343,7 +1422,9 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
       bookingId,
       url: "/customer/wallets",
     },
-  }).catch((err) => console.error("[Push] Failed to send refund push to customer:", err));
+  }).catch((err) =>
+    console.error("[Push] Failed to send refund push to customer:", err)
+  );
 
   // 2. Notify Model - Booking has been refunded
   await createModelNotification(modelId, {
@@ -1367,9 +1448,13 @@ export async function notifyAdminBookingRefunded(data: AdminBookingRefundData): 
       bookingId,
       url: "/model/dating",
     },
-  }).catch((err) => console.error("[Push] Failed to send refund push to model:", err));
+  }).catch((err) =>
+    console.error("[Push] Failed to send refund push to model:", err)
+  );
 
-  console.log(`[Notification] Admin booking refund notifications sent for booking ${bookingId}`);
+  console.log(
+    `[Notification] Admin booking refund notifications sent for booking ${bookingId}`
+  );
 }
 
 interface ModelReceivedMoneyData {
@@ -1385,16 +1470,21 @@ interface ModelReceivedMoneyData {
  * Send notification to customer when model clicks "Receive Money"
  * This lets the customer know the model has received the payment
  */
-export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Promise<void> {
-  const {
-    bookingId,
-    customerId,
-    serviceName,
-    modelName,
-    amount,
-  } = data;
+export async function notifyModelReceivedMoney(
+  data: ModelReceivedMoneyData
+): Promise<void> {
+  const { bookingId, customerId, modelId, serviceName, modelName, amount } =
+    data;
 
   const translatedService = translateServiceName(serviceName);
+
+  // Notify Model - Confirmation that money was received
+  await createModelNotification(modelId, {
+    type: "payment_released",
+    title: "ຮັບເງິນສຳເລັດ",
+    message: `ທ່ານໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}" ແລ້ວ. ເງິນໄດ້ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`,
+    data: { bookingId, amount },
+  });
 
   // Notify Customer - Model has received the payment
   await createCustomerNotification(customerId, {
@@ -1404,9 +1494,27 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
     data: { bookingId, amount },
   });
 
+  // Send SMS to model - confirmation
+  const modelSmsMessage = `XaoSao: ທ່ານໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ແລ້ວ. ເງິນໄດ້ເຂົ້າ Wallet ຂອງທ່ານແລ້ວ!`;
+  sendSMSToModel(modelId, modelSmsMessage);
+
   // Send SMS to customer
   const customerSmsMessage = `XaoSao: ${modelName} ໄດ້ຮັບເງິນ ${amount.toLocaleString()} LAK ສຳລັບບໍລິການ "${translatedService}" ແລ້ວ. ຂອບໃຈທີ່ໃຊ້ XaoSao!`;
   sendSMSToCustomer(customerId, customerSmsMessage);
+
+  // Send push to model
+  sendPushToModel(modelId, {
+    title: "ຮັບເງິນສຳເລັດ 💰",
+    body: `ທ່ານໄດ້ຮັບ ${amount.toLocaleString()} LAK ສຳລັບ "${translatedService}"`,
+    tag: `payment-received-${bookingId}`,
+    data: {
+      type: "payment_released",
+      bookingId,
+      url: "/model/settings/wallet",
+    },
+  }).catch((err) =>
+    console.error("[Push] Failed to send payment received push to model:", err)
+  );
 
   // Send push to customer
   sendPushToCustomer(customerId, {
@@ -1418,9 +1526,16 @@ export async function notifyModelReceivedMoney(data: ModelReceivedMoneyData): Pr
       bookingId,
       url: "/customer/dates-history",
     },
-  }).catch((err) => console.error("[Push] Failed to send payment complete push to customer:", err));
+  }).catch((err) =>
+    console.error(
+      "[Push] Failed to send payment complete push to customer:",
+      err
+    )
+  );
 
-  console.log(`[Notification] Model received money notification sent to customer for booking ${bookingId}`);
+  console.log(
+    `[Notification] Model received money notification sent to both parties for booking ${bookingId}`
+  );
 }
 
 // ========================================
@@ -1440,15 +1555,11 @@ interface CustomerReleasePaymentData {
  * Send notification when customer releases payment to model
  * Notifies model that payment has been released
  */
-export async function notifyCustomerReleasedPayment(data: CustomerReleasePaymentData): Promise<void> {
-  const {
-    bookingId,
-    customerId,
-    modelId,
-    serviceName,
-    customerName,
-    amount,
-  } = data;
+export async function notifyCustomerReleasedPayment(
+  data: CustomerReleasePaymentData
+): Promise<void> {
+  const { bookingId, customerId, modelId, serviceName, customerName, amount } =
+    data;
 
   const translatedService = translateServiceName(serviceName);
 
@@ -1478,7 +1589,10 @@ export async function notifyCustomerReleasedPayment(data: CustomerReleasePayment
 
   // Send push notification to model
   pushPaymentReleased(modelId, amount, bookingId).catch((err) =>
-    console.error("[Push] Failed to send customer release payment push to model:", err)
+    console.error(
+      "[Push] Failed to send customer release payment push to model:",
+      err
+    )
   );
 
   // Send push to customer
@@ -1491,9 +1605,16 @@ export async function notifyCustomerReleasedPayment(data: CustomerReleasePayment
       bookingId,
       url: "/customer/dates-history",
     },
-  }).catch((err) => console.error("[Push] Failed to send release payment push to customer:", err));
+  }).catch((err) =>
+    console.error(
+      "[Push] Failed to send release payment push to customer:",
+      err
+    )
+  );
 
-  console.log(`[Notification] Customer released payment notification sent for booking ${bookingId}`);
+  console.log(
+    `[Notification] Customer released payment notification sent for booking ${bookingId}`
+  );
 }
 
 // ========================================
@@ -1514,7 +1635,9 @@ interface ModelRefundDisputedData {
  * Send notification when model refunds a disputed booking
  * Notifies customer that refund has been processed
  */
-export async function notifyModelRefundedDispute(data: ModelRefundDisputedData): Promise<void> {
+export async function notifyModelRefundedDispute(
+  data: ModelRefundDisputedData
+): Promise<void> {
   const {
     bookingId,
     customerId,
@@ -1562,7 +1685,9 @@ export async function notifyModelRefundedDispute(data: ModelRefundDisputedData):
       bookingId,
       url: "/customer/dates-history",
     },
-  }).catch((err) => console.error("[Push] Failed to send refund push to customer:", err));
+  }).catch((err) =>
+    console.error("[Push] Failed to send refund push to customer:", err)
+  );
 
   // Send push to model
   sendPushToModel(modelId, {
@@ -1574,7 +1699,11 @@ export async function notifyModelRefundedDispute(data: ModelRefundDisputedData):
       bookingId,
       url: "/model/dating",
     },
-  }).catch((err) => console.error("[Push] Failed to send refund push to model:", err));
+  }).catch((err) =>
+    console.error("[Push] Failed to send refund push to model:", err)
+  );
 
-  console.log(`[Notification] Model refunded dispute notification sent for booking ${bookingId}`);
+  console.log(
+    `[Notification] Model refunded dispute notification sent for booking ${bookingId}`
+  );
 }

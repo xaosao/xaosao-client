@@ -85,6 +85,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
       "booking_confirmed",
       "booking_rejected",
       "booking_completed",
+      "payment_released",
    ];
 
    // Handle new notifications - refresh bookings when booking-related

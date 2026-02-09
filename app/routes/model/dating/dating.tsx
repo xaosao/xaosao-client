@@ -112,6 +112,8 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
       "booking_created",
       "booking_cancelled",
       "booking_disputed",
+      "payment_released",
+      "booking_completed",
    ];
 
    // Handle new notifications - refresh bookings when booking-related

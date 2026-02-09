@@ -88,7 +88,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
 
     // Listen for real-time notifications - refresh wallet instantly when admin approves/rejects recharge
     const handleNewNotification = React.useCallback((notification: Notification) => {
-        if (["deposit_approved", "deposit_rejected"].includes(notification.type)) {
+        if (["deposit_approved", "deposit_rejected", "payment_released"].includes(notification.type)) {
             console.log("[Wallet] Transaction notification received, refreshing...", notification.type);
             revalidator.revalidate();
         }

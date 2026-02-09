@@ -16,6 +16,7 @@ import {
   Form,
   Outlet,
   useNavigation,
+  useRevalidator,
   useSearchParams,
   useLoaderData,
   useActionData,
@@ -28,6 +29,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 import { formatCurrency, formatCurrency1 } from "~/utils";
 import type { IWalletResponse } from "~/interfaces";
 import { capitalize } from "~/utils/functions/textFormat";
+import { useNotifications, type Notification } from "~/hooks/useNotifications";
 
 const statusConfig: Record<string, { className: string }> = {
   pending: {
@@ -247,6 +249,7 @@ export async function action({ request }: ActionFunctionArgs): Promise<ActionRes
 export default function ModelWalletPage() {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const [searchParams] = useSearchParams();
   const actionData = useActionData<ActionResponse>();
 
@@ -254,6 +257,20 @@ export default function ModelWalletPage() {
   const isSubmitting = navigation.state === "submitting";
   const isLoading = navigation.state === "loading";
   const { wallet, transactions, pagination, banks } = useLoaderData<LoaderReturn>();
+
+  // Listen for real-time notifications - refresh wallet when payment is released or withdrawal approved
+  const handleNewNotification = React.useCallback((notification: Notification) => {
+    if (["payment_released", "withdrawal_approved", "withdrawal_rejected"].includes(notification.type)) {
+      console.log("[ModelWallet] Wallet notification received, refreshing...", notification.type);
+      revalidator.revalidate();
+    }
+  }, [revalidator]);
+
+  useNotifications({
+    userType: "model",
+    onNewNotification: handleNewNotification,
+    playSound: false,
+  });
 
   // Toast state - managed locally instead of URL params
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
