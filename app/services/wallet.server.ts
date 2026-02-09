@@ -187,13 +187,13 @@ export async function getCustomerTransactions(
   try {
     const [transactions, totalCount] = await Promise.all([
       prisma.transaction_history.findMany({
-        where: { customerId },
+        where: { customerId, customerHidden: { not: true } },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
       prisma.transaction_history.count({
-        where: { customerId },
+        where: { customerId, customerHidden: { not: true } },
       }),
     ]);
 
@@ -302,24 +302,27 @@ export async function deleteTransaction(
       });
     }
 
-    const deletedTransaction = await prisma.transaction_history.delete({
+    const hiddenTransaction = await prisma.transaction_history.update({
       where: { id: transactionId },
+      data: {
+        customerHidden: true,
+      },
     });
 
-    if (deletedTransaction.id) {
+    if (hiddenTransaction.id) {
       await createAuditLogs({
         ...auditBase,
-        description: `Delete transaction: ${deletedTransaction.id} successfully.`,
+        description: `Hide transaction: ${hiddenTransaction.id} from customer successfully.`,
         status: "success",
-        onSuccess: deletedTransaction,
+        onSuccess: hiddenTransaction,
       });
     }
-    return deletedTransaction;
+    return hiddenTransaction;
   } catch (error) {
     console.error("DELETE_TRANSACTION_FAILED", error);
     await createAuditLogs({
       ...auditBase,
-      description: `Delete transaction failed!`,
+      description: `Hide transaction failed!`,
       status: "failed",
       onError: error,
     });
@@ -516,13 +519,13 @@ export async function getModelTransactions(
   try {
     const [transactions, totalCount] = await Promise.all([
       prisma.transaction_history.findMany({
-        where: { modelId },
+        where: { modelId, modelHidden: { not: true } },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
       prisma.transaction_history.count({
-        where: { modelId },
+        where: { modelId, modelHidden: { not: true } },
       }),
     ]);
 
@@ -653,24 +656,27 @@ export async function deleteModelTransaction(
       });
     }
 
-    const deletedTransaction = await prisma.transaction_history.delete({
+    const hiddenTransaction = await prisma.transaction_history.update({
       where: { id: transactionId },
+      data: {
+        modelHidden: true,
+      },
     });
 
-    if (deletedTransaction.id) {
+    if (hiddenTransaction.id) {
       await createAuditLogs({
         ...auditBase,
-        description: `Delete transaction: ${deletedTransaction.id} successfully.`,
+        description: `Hide transaction: ${hiddenTransaction.id} from model successfully.`,
         status: "success",
-        onSuccess: deletedTransaction,
+        onSuccess: hiddenTransaction,
       });
     }
-    return deletedTransaction;
+    return hiddenTransaction;
   } catch (error) {
     console.error("DELETE_TRANSACTION_FAILED", error);
     await createAuditLogs({
       ...auditBase,
-      description: `Delete transaction failed!`,
+      description: `Hide transaction failed!`,
       status: "failed",
       onError: error,
     });

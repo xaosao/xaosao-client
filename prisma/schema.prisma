@@ -484,6 +484,10 @@ model transaction_history {
   rejectReason String?
   reason       String?
 
+  // Soft delete fields
+  customerHidden Boolean @default(false) // Hidden from customer's transaction history
+  modelHidden    Boolean @default(false) // Hidden from model's transaction history
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -628,6 +632,10 @@ model service_booking {
   callLastHeartbeat DateTime?   // Last heartbeat timestamp for duration tracking
   customerPeerId    String?     // Customer's PeerJS peer ID
   modelPeerId       String?     // Model's PeerJS peer ID
+
+  // Soft delete fields
+  customerHidden Boolean @default(false) // Hidden from customer's booking history
+  modelHidden    Boolean @default(false) // Hidden from model's booking history
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

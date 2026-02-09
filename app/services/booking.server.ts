@@ -1324,6 +1324,7 @@ export async function getAllMyServiceBookings(customerId: string) {
     const bookings = await prisma.service_booking.findMany({
       where: {
         customerId,
+        customerHidden: { not: true },
       },
       orderBy: {
         createdAt: "desc",
@@ -1513,22 +1514,25 @@ export async function deleteServiceBooking(id: string, customerId: string) {
       });
     }
 
-    const deletedServiceBooking = await prisma.service_booking.delete({
+    const hiddenBooking = await prisma.service_booking.update({
       where: {
         id,
         customerId: customerId,
       },
+      data: {
+        customerHidden: true,
+      },
     });
 
-    if (deletedServiceBooking.id) {
+    if (hiddenBooking.id) {
       await createAuditLogs({
         ...auditBase,
-        description: `Delete service booking: ${deletedServiceBooking.id} successfully.`,
+        description: `Hide service booking: ${hiddenBooking.id} from customer successfully.`,
         status: "success",
-        onSuccess: deletedServiceBooking,
+        onSuccess: hiddenBooking,
       });
     }
-    return deletedServiceBooking;
+    return hiddenBooking;
   } catch (error) {
     console.error("DELETE_SERVICE_BOOKING_FAILED", error);
     await createAuditLogs({
@@ -1734,6 +1738,7 @@ export async function getAllModelBookings(modelId: string) {
     const bookings = await prisma.service_booking.findMany({
       where: {
         modelId,
+        modelHidden: { not: true },
       },
       orderBy: {
         createdAt: "desc",
@@ -2172,20 +2177,23 @@ export async function deleteModelBooking(id: string, modelId: string) {
       });
     }
 
-    const deletedBooking = await prisma.service_booking.delete({
+    const hiddenBooking = await prisma.service_booking.update({
       where: { id },
+      data: {
+        modelHidden: true,
+      },
     });
 
-    if (deletedBooking.id) {
+    if (hiddenBooking.id) {
       await createAuditLogs({
         ...auditBase,
-        description: `Delete booking: ${deletedBooking.id} successfully.`,
+        description: `Hide booking: ${hiddenBooking.id} from model successfully.`,
         status: "success",
-        onSuccess: deletedBooking,
+        onSuccess: hiddenBooking,
       });
     }
 
-    return deletedBooking;
+    return hiddenBooking;
   } catch (error) {
     console.error("DELETE_MODEL_BOOKING_FAILED", error);
     await createAuditLogs({
