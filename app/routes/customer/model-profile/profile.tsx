@@ -2,7 +2,7 @@ import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
-import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle } from 'lucide-react';
+import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
 
 // components
 import {
@@ -44,6 +44,7 @@ interface LoaderReturn {
         price: number;
     } | null;
     customerBalance: number;
+    hasPendingDeposit: boolean;
 }
 
 interface ProfilePageProps {
@@ -57,8 +58,8 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     const { prisma } = await import("~/services/database.server");
     const model = await getModelProfile(modelId, customerId)
 
-    // Fetch review data, subscription status, trial package, and wallet balance
-    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
+    // Fetch review data, subscription status, trial package, wallet balance, and pending deposits
+    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet, pendingDeposit] = await Promise.all([
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
         getCustomerReviewForModel(customerId, modelId),
@@ -71,6 +72,10 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         prisma.wallet.findFirst({
             where: { customerId },
             select: { totalBalance: true, totalSpend: true, totalRefunded: true },
+        }),
+        prisma.transaction_history.findFirst({
+            where: { customerId, identifier: "recharge", status: "pending" },
+            select: { id: true },
         }),
     ]);
 
@@ -96,6 +101,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         hasPendingSubscription: hasPending,
         trialPackage,
         customerBalance: availableBalance,
+        hasPendingDeposit: !!pendingDeposit,
     }
 }
 
@@ -195,7 +201,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const revalidator = useRevalidator()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData
+    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, hasPendingDeposit } = loaderData
 
     // Listen for real-time notifications - refresh balance instantly when admin approves recharge
     const handleNewNotification = React.useCallback((notification: Notification) => {
@@ -1181,6 +1187,17 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         </div>
                                     </div>
                                 </div>
+
+                                {hasPendingDeposit && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="flex items-center gap-3">
+                                            <Loader className="w-4 h-4 text-blue-600 animate-spin" />
+                                            <p className="text-sm text-blue-800">
+                                                {t("profile.insufficientBalance.pendingDeposit", { defaultValue: "You have a pending top-up waiting for admin approval. Click reload to check the latest balance." })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center justify-end gap-3 p-6">
@@ -1191,20 +1208,33 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                 >
                                     {t("profile.insufficientBalance.close", { defaultValue: "Close" })}
                                 </Button>
-                                <Button
-                                    onClick={() => {
-                                        // Calculate deficit amount
-                                        const deficit = Math.max(insufficientBalanceData.servicePrice - customerBalance, 10000);
-                                        // Store return URL for after top-up
-                                        sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`);
-                                        navigate(`/customer/wallet-topup?amount=${deficit}`);
-                                        setShowInsufficientBalanceModal(false);
-                                    }}
-                                    className="w-auto bg-rose-500 hover:bg-rose-600 text-white"
-                                >
-                                    <CreditCard className="w-4 h-4" />
-                                    {t("profile.insufficientBalance.topUp", { defaultValue: "Top Up" })}
-                                </Button>
+                                {hasPendingDeposit ? (
+                                    <Button
+                                        onClick={() => {
+                                            revalidator.revalidate();
+                                            setShowInsufficientBalanceModal(false);
+                                        }}
+                                        className="w-auto bg-blue-500 hover:bg-blue-600 text-white"
+                                    >
+                                        <RefreshCcw className="w-4 h-4" />
+                                        {t("profile.insufficientBalance.reload", { defaultValue: "Reload Balance" })}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={() => {
+                                            // Calculate deficit amount
+                                            const deficit = Math.max(insufficientBalanceData.servicePrice - customerBalance, 10000);
+                                            // Store return URL for after top-up
+                                            sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`);
+                                            navigate(`/customer/wallet-topup?amount=${deficit}`);
+                                            setShowInsufficientBalanceModal(false);
+                                        }}
+                                        className="w-auto bg-rose-500 hover:bg-rose-600 text-white"
+                                    >
+                                        <CreditCard className="w-4 h-4" />
+                                        {t("profile.insufficientBalance.topUp", { defaultValue: "Top Up" })}
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </div>

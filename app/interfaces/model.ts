@@ -148,6 +148,7 @@ export interface IForYouModelResponse {
   status: string;
   bio: string | null;
   whatsapp?: number | null;
+  address?: string | null;
   available_status: IAvailableStatus;
   Images: IUserImages[];
   model_interactions?: ICustomerInteraction[] | null;

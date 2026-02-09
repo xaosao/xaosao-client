@@ -232,7 +232,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                             <div key={transaction.id} className="p-4 hover:bg-gray-50 transition-colors group">
                                 {/* Mobile Card Layout */}
                                 <div className="sm:hidden">
-                                    <div className="flex items-start justify-between gap-3">
+                                    <Link to={`detail/${transaction.id}`} className="flex items-start justify-between gap-3">
                                         <div className="flex items-start gap-3 flex-1">
                                             <div className={`p-2.5 rounded-lg ${statusConfig[transaction.status]?.className.split(' ')[0] || 'bg-gray-100'}`}>
                                                 <DollarSign
@@ -259,39 +259,33 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                    <span className="sr-only">More</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent className="w-48" align="end" forceMount>
-                                                <DropdownMenuItem className="text-gray-500 text-sm">
-                                                    <Link to={`detail/${transaction.id}`} className="flex space-x-2 w-full">
-                                                        <EyeIcon className="mr-2 h-3 w-3" />
-                                                        <span>{t('wallet.menu.viewDetails')}</span>
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                {canEditOrDelete(transaction) &&
-                                                    <DropdownMenuItem className="text-sm">
-                                                        <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                            <FilePenLine className="mr-2 h-3 w-3" />
-                                                            <span>{t('wallet.menu.edit')}</span>
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                }
-                                                {canEditOrDelete(transaction) &&
-                                                    <DropdownMenuItem className="text-sm">
-                                                        <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                            <Trash className="mr-2 h-3 w-3" />
-                                                            <span>{t('wallet.menu.delete')}</span>
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                }
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
+                                        {canEditOrDelete(transaction) && (
+                                            <div onClick={(e) => e.preventDefault()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                            <span className="sr-only">More</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent className="w-48" align="end" forceMount>
+                                                        <DropdownMenuItem className="text-sm">
+                                                            <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                <FilePenLine className="mr-2 h-3 w-3" />
+                                                                <span>{t('wallet.menu.edit')}</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-sm">
+                                                            <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                <Trash className="mr-2 h-3 w-3" />
+                                                                <span>{t('wallet.menu.delete')}</span>
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        )}
+                                    </Link>
                                 </div>
 
                                 {/* Desktop Table Layout */}

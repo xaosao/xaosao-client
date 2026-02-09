@@ -1576,7 +1576,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         </div>
                                         <div className="flex items-center text-sm opacity-90 mb-3">
                                             <MapPin className="h-4 w-4 mr-1" />
-                                            {formatDistance(model.distance)}
+                                            {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
                                         </div>
                                     </div>
                                 </div>
@@ -1624,6 +1624,12 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             {formatDistance(model.distance)}
                                         </div>
                                     </div>
+                                    {model.address && (
+                                        <p className="text-xs text-gray-400 truncate max-w-[220px]">
+                                            <MapPin className="h-3 w-3 mr-1 text-gray-400 inline" />
+                                            {model.address}
+                                        </p>
+                                    )}
                                     <div className="flex items-start justify-start gap-2 mt-4">
                                         {model.Images && model.Images.length > 0 ? (
                                             model.Images.map((image, index) => (

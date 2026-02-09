@@ -1111,7 +1111,9 @@
       "yourBalance": "Your Balance",
       "needMore": "You need",
       "close": "Close",
-      "topUp": "Top Up"
+      "topUp": "Top Up",
+      "pendingDeposit": "You have a pending top-up waiting for admin approval. Click reload to check the latest balance.",
+      "reload": "Reload Balance"
     }
   },
   "profileEdit": {

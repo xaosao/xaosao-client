@@ -153,6 +153,7 @@ export default function ModelCard({
                 <div className="flex items-center gap-1 mt-1">
                     <MapPin size={14} className="text-rose-500 text-shadow-lg" />
                     <span className="text-sm font-medium text-shadow-lg">
+                        {model.address && <>{model.address} · </>}
                         {customerLatitude && customerLongitude && model?.latitude && model?.longitude
                             ? formatDistance(calculateDistance(
                                 Number(model.latitude),

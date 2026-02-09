@@ -551,7 +551,7 @@ export default function ModelWalletPage() {
                   >
                     {/* Mobile Card Layout */}
                     <div className="sm:hidden">
-                      <div className="flex flex-col gap-3">
+                      <Link to={`/model/settings/wallet/detail/${transaction.id}`} className="flex flex-col gap-3">
                         {/* Top row: Icon, Info, Status */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1">
@@ -580,16 +580,9 @@ export default function ModelWalletPage() {
                             {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
                           </span>
                         </div>
-                        {/* Bottom row: Action buttons */}
-                        <div className="flex items-center justify-end gap-2">
-                          <Link
-                            to={`/model/settings/wallet/detail/${transaction.id}`}
-                            className="border bg-gray-100 flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                          >
-                            <EyeIcon className="h-3 w-3" />
-                            <span>{t("modelWallet.menu.viewDetails")}</span>
-                          </Link>
-                          {canEditOrDelete(transaction) && (
+                        {/* Bottom row: Action buttons (only edit/delete) */}
+                        {canEditOrDelete(transaction) && (
+                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.preventDefault()}>
                             <Link
                               to={`/model/settings/wallet/edit/${transaction.id}`}
                               className="border border-blue-300 bg-blue-50 flex items-center gap-1 px-2 py-1 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
@@ -597,8 +590,6 @@ export default function ModelWalletPage() {
                               <FilePenLine className="h-3 w-3" />
                               <span>{t("modelWallet.menu.edit")}</span>
                             </Link>
-                          )}
-                          {canEditOrDelete(transaction) && (
                             <Link
                               to={`/model/settings/wallet/delete/${transaction.id}`}
                               className="border border-rose-300 bg-rose-50 flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
@@ -606,9 +597,9 @@ export default function ModelWalletPage() {
                               <Trash className="h-3 w-3" />
                               <span>{t("modelWallet.menu.delete")}</span>
                             </Link>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        )}
+                      </Link>
                     </div>
 
                     {/* Desktop Table Layout */}
