@@ -80,7 +80,9 @@ export interface NotifyUserResult {
  * All channels are executed in parallel for performance.
  * Errors in one channel don't affect others.
  */
-export async function notifyUser(params: NotifyUserParams): Promise<NotifyUserResult> {
+export async function notifyUser(
+  params: NotifyUserParams
+): Promise<NotifyUserResult> {
   const {
     userType,
     userId,
@@ -118,7 +120,11 @@ export async function notifyUser(params: NotifyUserParams): Promise<NotifyUserRe
     data: {
       type: notificationType,
       ...data,
-      url: url || (userType === "customer" ? "/customer/notifications" : "/model/notifications"),
+      url:
+        url ||
+        (userType === "customer"
+          ? "/customer/notifications"
+          : "/model/notifications"),
     },
     actions,
   };
@@ -143,19 +149,28 @@ export async function notifyUser(params: NotifyUserParams): Promise<NotifyUserRe
   if (inAppResult.status === "fulfilled") {
     result.inApp = true;
   } else {
-    console.error(`[UnifiedNotification] In-app notification failed for ${userType}:${userId}:`, inAppResult.reason);
+    console.error(
+      `[UnifiedNotification] In-app notification failed for ${userType}:${userId}:`,
+      inAppResult.reason
+    );
   }
 
   if (smsResult.status === "fulfilled") {
     result.sms = true;
   } else {
-    console.error(`[UnifiedNotification] SMS failed for ${userType}:${userId}:`, smsResult.reason);
+    console.error(
+      `[UnifiedNotification] SMS failed for ${userType}:${userId}:`,
+      smsResult.reason
+    );
   }
 
   if (pushResult.status === "fulfilled") {
     result.push = pushResult.value;
   } else {
-    console.error(`[UnifiedNotification] Push notification failed for ${userType}:${userId}:`, pushResult.reason);
+    console.error(
+      `[UnifiedNotification] Push notification failed for ${userType}:${userId}:`,
+      pushResult.reason
+    );
   }
 
   console.log(
@@ -181,8 +196,8 @@ export async function notifyCustomerWelcome(
     userId: customerId,
     notificationType: "welcome",
     title: "ຍິນດີຕ້ອນຮັບສູ່ XaoSao!",
-    message: `ສະບາຍດີ ${customerName}! ຍິນດີຕ້ອນຮັບສູ່ XaoSao. ສຳຫຼວດແລະຄົ້ນຫາໂມເດວທີ່ໜ້າອັດສະຈັນໃກ້ທ່ານ.`,
-    smsMessage: `XaoSao: ຍິນດີຕ້ອນຮັບ ${customerName}! ສຳຫຼວດແລະຄົ້ນຫາໂມເດວທີ່ໜ້າອັດສະຈັນໃກ້ທ່ານ.`,
+    message: `ສະບາຍດີ ${customerName}! ຍິນດີຕ້ອນຮັບສູ່ XaoSao. ທ່ານສະມາດເລີ່ມຕົ້ນສົນທະນາ ແລະ ຈອງຄູ່ທີ່ທ່ານມັກໄດ້ເລີຍ.`,
+    smsMessage: `XaoSao: ຍິນດີຕ້ອນຮັບ ${customerName}! ທ່ານສະມາດເລີ່ມຕົ້ນສົນທະນາ ແລະ ຈອງຄູ່ທີ່ທ່ານມັກໄດ້ເລີຍ.`,
     url: "/customer",
   });
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
-import { Form, redirect, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
+import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
 import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle } from 'lucide-react';
 
 // components
@@ -33,6 +33,7 @@ import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative }
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
+import { useNotifications, type Notification } from "~/hooks/useNotifications";
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
@@ -69,7 +70,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         }),
         prisma.wallet.findFirst({
             where: { customerId },
-            select: { totalBalance: true },
+            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
         }),
     ]);
 
@@ -83,12 +84,18 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         customerReview: customerReview as any
     };
 
+    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    const totalBalance = wallet?.totalBalance || 0;
+    const totalSpend = wallet?.totalSpend || 0;
+    const totalRefunded = wallet?.totalRefunded || 0;
+    const availableBalance = totalBalance - totalSpend + totalRefunded;
+
     return {
         model: { ...model, reviewData },
         hasActiveSubscription: hasSubscription,
         hasPendingSubscription: hasPending,
         trialPackage,
-        customerBalance: wallet?.totalBalance || 0,
+        customerBalance: availableBalance,
     }
 }
 
@@ -185,9 +192,25 @@ export async function action({
 export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const navigate = useNavigate()
     const navigation = useNavigation()
+    const revalidator = useRevalidator()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
     const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData
+
+    // Listen for real-time notifications - refresh balance instantly when admin approves recharge
+    const handleNewNotification = React.useCallback((notification: Notification) => {
+        if (notification.type === "deposit_approved") {
+            console.log("[ModelProfile] Deposit approved notification received, refreshing balance...");
+            revalidator.revalidate();
+        }
+    }, [revalidator]);
+
+    useNotifications({
+        userType: "customer",
+        onNewNotification: handleNewNotification,
+        playSound: false,
+    });
+
     const images = model.Images
     const isSubmitting =
         navigation.state !== "idle" && navigation.formMethod === "POST"
@@ -635,9 +658,21 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                             className="w-full hover:border hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500"
                                                             onClick={() => {
                                                                 const serviceName = getServiceName(service.service.name);
-                                                                const servicePrice = service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0
-                                                                    ? Math.min(...service.model_service_variant.map(v => v.pricePerHour))
-                                                                    : Number(service.customHourlyRate || service.service.hourlyRate || service.customOneTimePrice || service.service.oneTimePrice || 0);
+                                                                // Get minimum price based on billing type
+                                                                let servicePrice = 0;
+                                                                if (service.service.name.toLowerCase() === 'massage' && service.model_service_variant && service.model_service_variant.length > 0) {
+                                                                    servicePrice = Math.min(...service.model_service_variant.map(v => v.pricePerHour));
+                                                                } else if (billingType === "per_day") {
+                                                                    servicePrice = Number(service.customRate || service.service.baseRate || 0);
+                                                                } else if (billingType === "per_hour" || billingType === "per_minute") {
+                                                                    servicePrice = Number(service.customHourlyRate || service.service.hourlyRate || 0);
+                                                                } else if (billingType === "per_session") {
+                                                                    // Use the lower of one-time and one-night prices
+                                                                    const oneTime = Number(service.customOneTimePrice || service.service.oneTimePrice || 0);
+                                                                    const oneNight = Number(service.customOneNightPrice || service.service.oneNightPrice || 0);
+                                                                    servicePrice = Math.min(oneTime || Infinity, oneNight || Infinity);
+                                                                    if (!isFinite(servicePrice)) servicePrice = 0;
+                                                                }
                                                                 handleBookClick(model.id, service.id, serviceName, servicePrice);
                                                             }}
                                                         >

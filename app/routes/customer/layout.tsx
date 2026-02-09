@@ -59,7 +59,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         }),
         prisma.wallet.findFirst({
             where: { customerId },
-            select: { totalBalance: true },
+            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
         }),
     ]);
 
@@ -76,6 +76,9 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Check if customer has enabled notifications (either push or SMS)
     const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
 
+    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+
     return {
         customerData,
         unreadNotifications,
@@ -84,7 +87,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         hasPendingSubscription: hasPending,
         hasEnabledNotifications,
         trialPackage,
-        customerBalance: wallet?.totalBalance || 0,
+        customerBalance: availableBalance,
     };
 }
 

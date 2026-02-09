@@ -132,7 +132,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         }),
         prisma.wallet.findFirst({
             where: { customerId },
-            select: { totalBalance: true },
+            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
         }),
     ]);
 
@@ -179,7 +179,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         hasActiveSubscription: hasSubscription,
         hasPendingSubscription: hasPending,
         trialPackage,
-        customerBalance: wallet?.totalBalance || 0,
+        customerBalance: (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0),
     };
 };
 

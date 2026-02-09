@@ -793,7 +793,7 @@ async function sendOtpTelbiz(
   otp: string
 ): Promise<TelbizResult> {
   try {
-    const msg = `Your OTP: ${otp}`;
+    const msg = `ລະຫັດ OTP ແມ່ນ: ${otp}`;
     const phone = phoneNumber;
 
     const res = await tb.SendSMSAsync("OTP", phone, msg);

@@ -13,12 +13,13 @@ import {
     MoreVertical,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from 'react-router';
+import { Link, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
 
 // Services and Utils
 import { formatCurrency } from '~/utils';
 import type { IWalletResponse } from '~/interfaces';
 import { capitalize } from '~/utils/functions/textFormat';
+import { useNotifications, type Notification } from '~/hooks/useNotifications';
 
 const statusConfig: Record<string, { className: string }> = {
     pending: {
@@ -76,6 +77,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
     const { t } = useTranslation();
     const navigate = useNavigate()
     const navigation = useNavigation()
+    const revalidator = useRevalidator()
     const [searchParams] = useSearchParams();
     const {
         wallet,
@@ -83,6 +85,20 @@ export default function WalletPage({ loaderData }: TransactionProps) {
         pagination
     } = loaderData;
     const isLoading = navigation.state === "loading";
+
+    // Listen for real-time notifications - refresh wallet instantly when admin approves/rejects recharge
+    const handleNewNotification = React.useCallback((notification: Notification) => {
+        if (["deposit_approved", "deposit_rejected"].includes(notification.type)) {
+            console.log("[Wallet] Transaction notification received, refreshing...", notification.type);
+            revalidator.revalidate();
+        }
+    }, [revalidator]);
+
+    useNotifications({
+        userType: "customer",
+        onNewNotification: handleNewNotification,
+        playSound: false,
+    });
 
     // For toast messages
     const toastMessage = searchParams.get("toastMessage");

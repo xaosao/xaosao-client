@@ -109,11 +109,14 @@ export const loader: LoaderFunction = async ({ request }) => {
         }),
         prisma.wallet.findFirst({
             where: { customerId },
-            select: { totalBalance: true },
+            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
         }),
     ]);
     const customerLatitude = customer?.latitude || 0;
     const customerLongitude = customer?.longitude || 0;
+
+    // Calculate available balance: totalBalance - totalSpend + totalRefunded
+    const customerAvailableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -192,7 +195,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasActiveSubscription: hasSubscription,
             hasPendingSubscription: hasPending,
             trialPackage,
-            customerBalance: wallet?.totalBalance || 0,
+            customerBalance: customerAvailableBalance,
         } as LoaderReturn;
     }
 
@@ -214,7 +217,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasActiveSubscription: hasSubscription,
             hasPendingSubscription: hasPending,
             trialPackage,
-            customerBalance: wallet?.totalBalance || 0,
+            customerBalance: customerAvailableBalance,
         } as LoaderReturn;
     }
 
@@ -238,7 +241,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasActiveSubscription: hasSubscription,
             hasPendingSubscription: hasPending,
             trialPackage,
-            customerBalance: wallet?.totalBalance || 0,
+            customerBalance: customerAvailableBalance,
         } as LoaderReturn;
     }
 
@@ -260,7 +263,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasActiveSubscription: hasSubscription,
             hasPendingSubscription: hasPending,
             trialPackage,
-            customerBalance: wallet?.totalBalance || 0,
+            customerBalance: customerAvailableBalance,
         } as LoaderReturn;
     }
 
@@ -278,7 +281,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         hasActiveSubscription: hasSubscription,
         hasPendingSubscription: hasPending,
         trialPackage,
-        customerBalance: wallet?.totalBalance || 0,
+        customerBalance: customerAvailableBalance,
     } as LoaderReturn;
 };
 
