@@ -77,7 +77,7 @@ export async function createWallet(data: IWalletCredentials, userId: string) {
 
 // top-up money to user wallet
 export async function topUpWallet(
-  paymentSlip: string,
+  paymentSlip: string[],
   amount: number,
   userId: string
 ) {
@@ -805,12 +805,24 @@ export async function withdrawFunds(
     const totalWithdraw = wallet.totalWithdraw || 0;
     const totalAvailable = totalBalance - totalWithdraw;
 
-    // Check if sufficient available balance (not totalBalance)
-    if (totalAvailable < amount) {
+    // Sum pending withdrawal requests to prevent over-withdrawal
+    const pendingWithdrawals = await prisma.transaction_history.aggregate({
+      where: {
+        modelId,
+        identifier: "withdrawal",
+        status: "pending",
+      },
+      _sum: { amount: true },
+    });
+    const totalPendingWithdrawals = pendingWithdrawals._sum.amount || 0;
+    const withdrawableBalance = Math.max(0, totalAvailable - totalPendingWithdrawals);
+
+    // Check if sufficient withdrawable balance (accounting for pending requests)
+    if (withdrawableBalance < amount) {
       throw new FieldValidationError({
         success: false,
         error: true,
-        message: `Insufficient balance! Available: ${totalAvailable.toLocaleString()} LAK`,
+        message: `Insufficient balance! Available to withdraw: ${withdrawableBalance.toLocaleString()} LAK`,
       });
     }
 
@@ -819,7 +831,7 @@ export async function withdrawFunds(
       data: {
         identifier: "withdrawal",
         amount,
-        paymentSlip: null,
+        paymentSlip: [],
         status: "pending",
         comission: 0,
         fee: 0,
@@ -921,6 +933,18 @@ export async function getModelWalletSummary(modelId: string) {
     const totalWithdraw = wallet.totalWithdraw || 0;
     const totalAvailable = totalBalance - totalWithdraw;
 
+    // Sum of pending withdrawal requests (not yet approved)
+    const pendingWithdrawals = await prisma.transaction_history.aggregate({
+      where: {
+        modelId,
+        identifier: "withdrawal",
+        status: "pending",
+      },
+      _sum: { amount: true },
+    });
+    const totalPendingWithdrawals = pendingWithdrawals._sum.amount || 0;
+    const withdrawableBalance = Math.max(0, totalAvailable - totalPendingWithdrawals);
+
     return {
       ...wallet,
       // Total income: all approved earnings (same as totalBalance for models)
@@ -931,6 +955,8 @@ export async function getModelWalletSummary(modelId: string) {
       pendingBalance: Math.round(totalPending),
       // Total withdrawn: all approved withdrawals
       totalWithdrawn: totalWithdraw,
+      // Withdrawable: available minus pending withdrawal requests
+      withdrawableBalance,
     };
   } catch (error: any) {
     console.error("GET_MODEL_WALLET_SUMMARY_FAILED", error);
@@ -1015,7 +1041,7 @@ export async function deductFromWallet(
       data: {
         identifier: "subscription",
         amount: amount,
-        paymentSlip: null, // No payment slip needed for wallet payment
+        paymentSlip: [], // No payment slip needed for wallet payment
         status: "approved",
         comission: 0,
         fee: 0,

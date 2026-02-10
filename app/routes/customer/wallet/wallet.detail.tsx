@@ -26,10 +26,8 @@ export default function TransactionDetails() {
    const transaction = useLoaderData<ITransactionResponse>();
 
 
-   const handleDownloadSlip = async () => {
-      if (transaction?.paymentSlip) {
-         downloadImage(transaction.paymentSlip, `payment-slip-${transaction.identifier}.jpg`);
-      }
+   const handleDownloadSlip = async (slipUrl: string, index: number) => {
+      downloadImage(slipUrl, `payment-slip-${transaction.identifier}-${index + 1}.jpg`);
    };
 
    function closeHandler() {
@@ -151,19 +149,37 @@ export default function TransactionDetails() {
                      )}
                   </div>
                   <hr />
-                  <div className="flex sm:items-center justify-between sm:space-x-3 space-y-2 sm:space-y-0">
-                     <div className="flex items-center space-x-3">
-                        <FileText className="h-8 w-8 text-blue-600" />
-                        <div>
-                           <p className="text-sm font-medium">{t('wallet.detail.paymentSlip.available')}</p>
-                           <p className="text-sm text-gray-500">{t('wallet.detail.paymentSlip.uploaded')}</p>
+                  {transaction?.paymentSlip && transaction.paymentSlip.length > 0 ? (
+                     <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                           <FileText className="h-8 w-8 text-blue-600" />
+                           <div>
+                              <p className="text-sm font-medium">{t('wallet.detail.paymentSlip.available')} ({transaction.paymentSlip.length})</p>
+                              <p className="text-sm text-gray-500">{t('wallet.detail.paymentSlip.uploaded')}</p>
+                           </div>
+                        </div>
+                        <div className={`grid gap-3 ${transaction.paymentSlip.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                           {transaction.paymentSlip.map((slip: string, index: number) => (
+                              <div key={index} className="rounded-lg bg-gray-50 p-3 space-y-2">
+                                 <img
+                                    src={slip}
+                                    alt={`${t('wallet.detail.paymentSlip.available')} ${index + 1}`}
+                                    className="mx-auto rounded-md max-h-48 object-contain"
+                                 />
+                                 <Button variant="outline" size="sm" className="w-full flex" onClick={() => handleDownloadSlip(slip, index)}>
+                                    <Download className="h-4 w-4" />
+                                    {t('wallet.detail.download')} {transaction.paymentSlip.length > 1 ? `#${index + 1}` : ''}
+                                 </Button>
+                              </div>
+                           ))}
                         </div>
                      </div>
-                     <Button variant="outline" size="sm" className="flex" onClick={handleDownloadSlip}>
-                        <Download className="h-4 w-4" />
-                        {t('wallet.detail.download')}
-                     </Button>
-                  </div>
+                  ) : (
+                     <div className="text-center py-4">
+                        <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">{t('wallet.detail.paymentSlip.noSlip', { defaultValue: 'No payment slip provided' })}</p>
+                     </div>
+                  )}
                </div>
             </div>
 

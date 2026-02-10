@@ -11,6 +11,7 @@ import {
     DollarSign,
     FilePenLine,
     MoreVertical,
+    XCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
@@ -261,28 +262,37 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                         </div>
                                         {canEditOrDelete(transaction) && (
                                             <div onClick={(e) => e.preventDefault()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
-                                                            <MoreVertical className="h-4 w-4" />
-                                                            <span className="sr-only">More</span>
+                                                {transaction.identifier === 'recharge' ? (
+                                                    <Link to={`delete/${transaction.id}`}>
+                                                        <Button variant="ghost" size="sm" className="text-red-500 h-8 px-2 gap-1">
+                                                            <XCircle className="h-3.5 w-3.5" />
+                                                            <span className="text-xs">{t('wallet.menu.cancel', { defaultValue: 'Cancel' })}</span>
                                                         </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent className="w-48" align="end" forceMount>
-                                                        <DropdownMenuItem className="text-sm">
-                                                            <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                                <FilePenLine className="mr-2 h-3 w-3" />
-                                                                <span>{t('wallet.menu.edit')}</span>
-                                                            </Link>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-sm">
-                                                            <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                                <Trash className="mr-2 h-3 w-3" />
-                                                                <span>{t('wallet.menu.delete')}</span>
-                                                            </Link>
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                    </Link>
+                                                ) : (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                                <span className="sr-only">More</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent className="w-48" align="end" forceMount>
+                                                            <DropdownMenuItem className="text-sm">
+                                                                <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                    <FilePenLine className="mr-2 h-3 w-3" />
+                                                                    <span>{t('wallet.menu.edit')}</span>
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-sm">
+                                                                <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                    <Trash className="mr-2 h-3 w-3" />
+                                                                    <span>{t('wallet.menu.delete')}</span>
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
                                             </div>
                                         )}
                                     </Link>
@@ -334,22 +344,33 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         <span>{t('wallet.menu.viewDetails')}</span>
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                {canEditOrDelete(transaction) &&
+                                                {canEditOrDelete(transaction) && transaction.identifier === 'recharge' ? (
                                                     <DropdownMenuItem className="text-sm">
-                                                        <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                            <FilePenLine className="mr-2 h-3 w-3" />
-                                                            <span>{t('wallet.menu.edit')}</span>
+                                                        <Link to={`delete/${transaction.id}`} className="text-red-500 flex space-x-2 w-full">
+                                                            <XCircle className="mr-2 h-3 w-3" />
+                                                            <span>{t('wallet.menu.cancel', { defaultValue: 'Cancel' })}</span>
                                                         </Link>
                                                     </DropdownMenuItem>
-                                                }
-                                                {canEditOrDelete(transaction) &&
-                                                    <DropdownMenuItem className="text-sm">
-                                                        <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                            <Trash className="mr-2 h-3 w-3" />
-                                                            <span>{t('wallet.menu.delete')}</span>
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                }
+                                                ) : (
+                                                    <>
+                                                        {canEditOrDelete(transaction) &&
+                                                            <DropdownMenuItem className="text-sm">
+                                                                <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                    <FilePenLine className="mr-2 h-3 w-3" />
+                                                                    <span>{t('wallet.menu.edit')}</span>
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        }
+                                                        {canEditOrDelete(transaction) &&
+                                                            <DropdownMenuItem className="text-sm">
+                                                                <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                    <Trash className="mr-2 h-3 w-3" />
+                                                                    <span>{t('wallet.menu.delete')}</span>
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        }
+                                                    </>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>

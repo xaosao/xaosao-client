@@ -477,7 +477,7 @@ model transaction_history {
   id           String  @id @default(auto()) @map("_id") @db.ObjectId
   identifier   String
   amount       Float
-  paymentSlip  String?
+  paymentSlip  String[] // Array of payment slip image URLs (up to 3)
   status       String  @default("pending")
   comission    Float
   fee          Float

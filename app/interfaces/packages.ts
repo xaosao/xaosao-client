@@ -14,5 +14,5 @@ export interface ISubscriptionPlanWithCurrentResponse {
 export interface ISubscriptionCredentials {
   planId: string;
   amount: number;
-  paymentSlip: string;
+  paymentSlip: string[];
 }

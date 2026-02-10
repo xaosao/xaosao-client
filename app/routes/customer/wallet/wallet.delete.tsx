@@ -1,5 +1,5 @@
-import { AlertCircle, AlertTriangle, Loader } from "lucide-react";
-import { Form, redirect, useActionData, useNavigate, useNavigation, useParams, type ActionFunctionArgs } from "react-router";
+import { AlertCircle, AlertTriangle, Info, Loader } from "lucide-react";
+import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { useTranslation } from "react-i18next";
 
 // components
@@ -7,7 +7,13 @@ import Modal from "~/components/ui/model";
 import { Button } from "~/components/ui/button";
 import { capitalize } from "~/utils/functions/textFormat";
 import { requireUserSession } from "~/services/auths.server";
-import { deleteTransaction } from "~/services/wallet.server";
+import { deleteTransaction, getTransaction } from "~/services/wallet.server";
+
+export async function loader({ params, request }: LoaderFunctionArgs) {
+   const customerId = await requireUserSession(request);
+   const transaction = await getTransaction(params.transactionId!, customerId);
+   return { transaction };
+}
 
 export async function action({ params, request }: ActionFunctionArgs) {
    const customerId = await requireUserSession(request);
@@ -42,10 +48,13 @@ export async function action({ params, request }: ActionFunctionArgs) {
 export default function CustomersDeleted() {
    const { t } = useTranslation();
    const { transactionId } = useParams();
+   const { transaction } = useLoaderData<typeof loader>();
    const navigate = useNavigate();
    const navigation = useNavigation();
    const actionData = useActionData<typeof action>()
    const isSubmitting = navigation.state !== 'idle' && navigation.formMethod === "DELETE";
+
+   const isRecharge = transaction?.identifier === "recharge";
 
    function closeHandler() {
       navigate("/customer/wallets");
@@ -53,15 +62,29 @@ export default function CustomersDeleted() {
 
    return (
       <Modal onClose={closeHandler} className="w-11/12 sm:w-2/5 rounded-xl border">
-         <h1 className="text-xl font-bold">{t('wallet.delete.title')}</h1>
-         <p className="hidden sm:block text-sm text-gray-500 my-2">{t('wallet.delete.description')}&nbsp; <span className="font-bold text-primary">" {transactionId} "</span></p>
+         <h1 className="text-xl font-bold">{isRecharge ? t('wallet.cancel.title') : t('wallet.delete.title')}</h1>
+         <p className="hidden sm:block text-sm text-gray-500 my-2">
+            {isRecharge ? t('wallet.cancel.description') : t('wallet.delete.description')}&nbsp;
+            <span className="font-bold text-primary">" {transactionId} "</span>
+         </p>
          <Form method="delete" className="space-y-4 mt-4">
+            {isRecharge && (
+               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                     <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                     <div className="text-sm text-blue-800">
+                        <p className="font-medium">{t('wallet.cancel.securityTitle')}</p>
+                        <p className="mt-1">{t('wallet.cancel.securityMessage')}</p>
+                     </div>
+                  </div>
+               </div>
+            )}
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                <div className="flex items-start space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-red-800">
-                     <p className="font-medium">{t('wallet.delete.warningTitle')}</p>
-                     <p>{t('wallet.delete.warningMessage')}</p>
+                     <p className="font-medium">{isRecharge ? t('wallet.cancel.warningTitle') : t('wallet.delete.warningTitle')}</p>
+                     <p>{isRecharge ? t('wallet.cancel.warningMessage') : t('wallet.delete.warningMessage')}</p>
                   </div>
                </div>
             </div>
@@ -77,11 +100,14 @@ export default function CustomersDeleted() {
             </div>
             <div className="flex justify-end space-x-2 pt-4">
                <Button type="button" variant="outline" onClick={closeHandler}>
-                  {t('wallet.delete.cancel')}
+                  {isRecharge ? t('wallet.cancel.goBack') : t('wallet.delete.cancel')}
                </Button>
                <Button type="submit" variant="destructive" disabled={isSubmitting} className="text-white bg-rose-500">
                   {isSubmitting && <Loader className="h-4 w-4 mr-2 animate-spin" />}
-                  {isSubmitting ? t('wallet.delete.deleting') : t('wallet.delete.delete')}
+                  {isRecharge
+                     ? (isSubmitting ? t('wallet.cancel.cancelling') : t('wallet.cancel.confirmCancel'))
+                     : (isSubmitting ? t('wallet.delete.deleting') : t('wallet.delete.delete'))
+                  }
                </Button>
             </div>
          </Form>

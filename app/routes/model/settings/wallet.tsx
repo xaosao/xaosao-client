@@ -327,10 +327,10 @@ export default function ModelWalletPage() {
     }
   }, [withdrawModal]);
 
-  // Validate withdrawal amount against available balance
+  // Validate withdrawal amount against withdrawable balance (accounts for pending requests)
   const validateWithdrawAmount = (formattedAmount: string) => {
     const rawAmount = parseFloat(formattedAmount.replace(/,/g, "")) || 0;
-    if (rawAmount > wallet.totalAvailable) {
+    if (rawAmount > wallet.withdrawableBalance) {
       setWithdrawError(t("modelWallet.errors.insufficientBalance", {
         defaultValue: "Withdrawal amount exceeds available balance"
       }));
@@ -785,6 +785,9 @@ export default function ModelWalletPage() {
                 <Label htmlFor="amount">
                   {t("modelWallet.modal.withdrawalAmount")} <span className="text-rose-500">*</span>
                 </Label>
+                <p className="text-xs text-gray-500">
+                  {t("modelWallet.modal.availableToWithdraw", { defaultValue: "Available to withdraw" })}: <span className="font-semibold text-emerald-600">{formatCurrency(wallet.withdrawableBalance)}</span>
+                </p>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
                   <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />
@@ -897,6 +900,9 @@ export default function ModelWalletPage() {
                 <Label htmlFor="amount">
                   {t("modelWallet.modal.withdrawalAmount")} <span className="text-rose-500">*</span>
                 </Label>
+                <p className="text-xs text-gray-500">
+                  {t("modelWallet.modal.availableToWithdraw", { defaultValue: "Available to withdraw" })}: <span className="font-semibold text-emerald-600">{formatCurrency(wallet.withdrawableBalance)}</span>
+                </p>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">Kip</span>
                   <input type="hidden" name="amount" value={getRawAmount(withdrawAmount)} />

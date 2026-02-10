@@ -21,6 +21,7 @@ import type { ISubscriptionPlanWithCurrentResponse } from "~/interfaces/packages
 // Helper function to get package translation key from database name
 const getPackageKey = (name: string): string => {
    const nameMap: Record<string, string> = {
+      '24-hour trial': '24HourTrial',
       '1 week': '1Week',
       '1 month': '1Month',
       '3 months': '3Months',
@@ -42,6 +43,7 @@ const featureKeyMap: Record<string, string> = {
 
 interface LoaderReturn {
    plans: ISubscriptionPlanWithCurrentResponse[];
+   currentSubscriptionPlan: { id: string; name: string } | null;
 }
 
 interface TransactionProps {
@@ -50,17 +52,24 @@ interface TransactionProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
    const customerId = await requireUserSession(request)
-   const plans = await getPackages(customerId)
-   return { plans }
+   const data = await getPackages(customerId)
+   return data
 }
 
 
 export default function PricingPage({ loaderData }: TransactionProps) {
-   const { plans } = loaderData
-   // console.log("Plans:::", plans);
+   const { plans, currentSubscriptionPlan } = loaderData
    const { t } = useTranslation();
 
    const navigate = useNavigate()
+
+   // Find the customer's current active plan from listed plans, or use the subscription plan name (covers trial)
+   const currentPlan = plans.find(p => p.current);
+   const currentPlanName = currentPlan
+      ? t(`packages.items.${getPackageKey(currentPlan.name)}.name`, { defaultValue: currentPlan.name })
+      : currentSubscriptionPlan
+         ? t(`packages.items.${getPackageKey(currentSubscriptionPlan.name)}.name`, { defaultValue: currentSubscriptionPlan.name })
+         : null;
 
    // Find the first non-current plan or popular plan for mobile default selection
    const defaultSelectedPlan = plans.find(p => !p.current && p.isPopular) || plans.find(p => !p.current) || plans[0];
@@ -93,7 +102,9 @@ export default function PricingPage({ loaderData }: TransactionProps) {
             <div className="text-center mb-4 sm:mb-12">
                <div className="inline-flex items-center justify-center p-1 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full mb-3">
                   <span className="text-sm font-light text-rose-600 px-4 py-1 bg-white rounded-full shadow-sm">
-                     {t('packages.list.chooseYourPlan')}
+                     {currentPlanName
+                        ? `${t('packages.list.yourCurrentPlan')}: ${currentPlanName}`
+                        : t('packages.list.chooseYourPlan')}
                   </span>
                </div>
                <p className="hidden sm:block text-md font-light text-gray-600 max-w-3xl mx-auto mb-8">
@@ -106,7 +117,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                   <Card
                      key={plan.name}
                      className={`py-2 cursor-pointer relative bg-white/80 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 
-                        ${plan.current ? "ring-1 ring-rose-500" : !plans.some((p) => p.current) && plan.isPopular ? "ring-1 ring-rose-500" : ""}`}
+                        ${plan.current ? "ring-1 ring-rose-500" : plan.isPopular ? "ring-1 ring-rose-500" : ""}`}
                   >
                      {plan.current ? (
                         <div className="absolute -top-3 right-1/2 -translate-x-1/2">
@@ -114,7 +125,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                               {t('packages.list.currentPlan')}
                            </span>
                         </div>
-                     ) : !plans.some((p) => p.current) && plan.isPopular ? (
+                     ) : plan.isPopular ? (
                         <div className="absolute -top-3 right-1/2 -translate-x-1/2">
                            <span className="bg-rose-500 text-white px-4 py-1 rounded-full text-sm font-medium">
                               {t('packages.list.mostPopular')}
@@ -155,7 +166,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                         <Button
                            className={`w-full font-light py-3 rounded-md transition-all duration-300 ${plan.current
                               ? "bg-rose-500 text-white cursor-not-allowed opacity-75"
-                              : !plans.some((p) => p.current) && plan.isPopular ? "bg-rose-500 text-white hover:shadow-lg hover:bg-rose-600 hover:text-white"
+                              : plan.isPopular ? "bg-rose-500 text-white hover:shadow-lg hover:bg-rose-600 hover:text-white"
                                  : "bg-white text-black border hover:border-rose-500 hover:bg-rose-500 hover:text-white"
                               }`}
                            variant={plan.isPopular ? "default" : "outline"}
@@ -174,7 +185,9 @@ export default function PricingPage({ loaderData }: TransactionProps) {
             <div className="text-center">
                <div className="inline-flex items-center justify-center p-1 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full mb-3">
                   <span className="text-sm font-light text-rose-600 px-4 py-1 bg-white rounded-full shadow-sm">
-                     {t('packages.list.chooseYourPlan')}
+                     {currentPlanName
+                        ? `${t('packages.list.yourCurrentPlan')}: ${currentPlanName}`
+                        : t('packages.list.chooseYourPlan')}
                   </span>
                </div>
                <p className="text-sm font-light text-gray-600 max-w-3xl mx-auto mb-4">
@@ -199,16 +212,22 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                            onClick={() => setSelectedPlan(plan)}
                            className={`py-2 cursor-pointer relative backdrop-blur-xl transition-all duration-300 border-2
                               ${plan.current
-                                 ? "bg-rose-500 text-white border-rose-600 ring-2 ring-rose-300"
+                                 ? "bg-white border-rose-500 ring-2 ring-rose-300"
                                  : selectedPlan.id === plan.id
-                                    ? "bg-rose-100 border-rose-400 ring-1 ring-rose-200"
-                                    : "bg-white/80 border-gray-200 hover:border-rose-300"
+                                    ? "bg-white border-rose-400 ring-1 ring-rose-200"
+                                    : "bg-white border-gray-200 hover:border-rose-300"
                               }`}
                         >
                            {plan.current ? (
                               <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                                 <span className="bg-white text-rose-500 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                                 <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                                     {t('packages.list.currentPlan')}
+                                 </span>
+                              </div>
+                           ) : plan.isPopular ? (
+                              <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                                 <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                                    {t('packages.list.mostPopular')}
                                  </span>
                               </div>
                            ) : selectedPlan.id === plan.id ? (
@@ -218,13 +237,13 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                            ) : null}
                            <CardContent className="p-1">
                               <div className="text-center mb-4 space-y-2">
-                                 <h3 className={`text-lg font-bold ${plan.current ? "text-white" : "text-gray-800"}`}>
+                                 <h3 className="text-lg font-bold text-gray-800">
                                     {t(`packages.items.${getPackageKey(plan.name)}.name`, { defaultValue: plan.name })}
                                  </h3>
-                                 <p className={`text-md font-light ${plan.current ? "text-white" : "text-gray-900"}`}>
+                                 <p className="text-md font-light text-gray-900">
                                     {formatCurrency(plan.price)}
                                  </p>
-                                 <span className={`text-sm ${plan.current ? "text-white" : "text-rose-500"}`}>
+                                 <span className="text-sm text-rose-500">
                                     ({t('packages.list.save')} {calculateDiscountPercent(30000, 7, plan.price, plan.durationDays)}%)
                                  </span>
                               </div>

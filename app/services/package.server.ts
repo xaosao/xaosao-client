@@ -39,6 +39,22 @@ export async function hasPendingSubscription(customerId: string) {
 
 export async function getPackages(customerId: string) {
   try {
+    // Fetch the customer's current subscription (including trial plans)
+    const currentSubscription = await prisma.subscription.findFirst({
+      where: {
+        customerId,
+        status: { in: ["active", "pending", "pending_payment"] },
+      },
+      select: {
+        plan: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
     const plans = await prisma.subscription_plan.findMany({
       where: {
         status: "active",
@@ -61,8 +77,7 @@ export async function getPackages(customerId: string) {
         subscriptions: {
           where: {
             customerId,
-            status: "active",
-            endDate: { gte: new Date() },
+            status: { in: ["active", "pending", "pending_payment"] },
           },
           select: {
             id: true,
@@ -76,7 +91,10 @@ export async function getPackages(customerId: string) {
       current: plan.subscriptions.length > 0,
     }));
 
-    return result;
+    return {
+      plans: result,
+      currentSubscriptionPlan: currentSubscription?.plan ?? null,
+    };
   } catch (error) {
     console.error("GET_ALL_PACKAGES_FAILED", error);
     throw new Error("Failed to get all packages!");
@@ -187,7 +205,7 @@ export async function createSubscription(
   customerId: string,
   planId: string,
   amount: number,
-  paymentSlip: string
+  paymentSlip: string[]
 ) {
   const auditBase = {
     action: "CUSTOMER_SUBSCRIPTION",

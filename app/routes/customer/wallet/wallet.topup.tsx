@@ -54,25 +54,31 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (request.method === "POST") {
         try {
-            if (voucher && voucher instanceof File && voucher.size > 0) {
-                // Check if file is too large (Vercel limit is ~4.5MB for body)
-                const fileSizeMB = voucher.size / (1024 * 1024);
-                if (fileSizeMB > 4) {
-                    return {
-                        success: false,
-                        error: true,
-                        message: `File is too large (${fileSizeMB.toFixed(1)}MB). Please compress the image or use a smaller file.`,
-                    };
-                }
+            // Handle multiple payment slip uploads (up to 3)
+            const vouchers = formData.getAll("voucher");
+            const paymentSlipUrls: string[] = [];
 
-                const buffer = Buffer.from(await voucher.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type);
-                transactionData.paymentSlip = url;
+            for (const voucher of vouchers) {
+                if (voucher && voucher instanceof File && voucher.size > 0) {
+                    const fileSizeMB = voucher.size / (1024 * 1024);
+                    if (fileSizeMB > 4) {
+                        return {
+                            success: false,
+                            error: true,
+                            message: `File is too large (${fileSizeMB.toFixed(1)}MB). Please compress the image or use a smaller file.`,
+                        };
+                    }
+
+                    const buffer = Buffer.from(await voucher.arrayBuffer());
+                    const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type);
+                    paymentSlipUrls.push(url);
+                }
             }
 
             transactionData.amount = Number(transactionData.amount);
+            transactionData.paymentSlip = paymentSlipUrls;
             await validateTopUpInputs(transactionData as ITransactionCredentials);
-            const res = await topUpWallet(transactionData.paymentSlip as string, Number(amount), customerId);
+            const res = await topUpWallet(paymentSlipUrls, Number(amount), customerId);
             if (res.id) {
                 // If planId exists, create a pending subscription linked to this transaction
                 if (planId) {
@@ -148,9 +154,10 @@ export default function WalletTopUpPage() {
     const [amount, setAmount] = React.useState<number>(suggestedAmount || 0);
     const [paymentMethod, setPaymentMethod] = React.useState<string>("qr");
     const [copiedAccount, setCopiedAccount] = React.useState<boolean>(false);
-    const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
-    const [previewSlip, setPreviewSlip] = React.useState<string | null>(null);
+    const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
+    const [previewSlips, setPreviewSlips] = React.useState<string[]>([]);
     const [isCompressing, setIsCompressing] = React.useState<boolean>(false);
+    const MAX_SLIPS = 3;
     const [returnUrl, setReturnUrl] = React.useState<string>("");
 
     // Get return URL from sessionStorage on mount
@@ -213,9 +220,12 @@ export default function WalletTopUpPage() {
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         setDragOver(false);
-        const file = e.dataTransfer.files[0];
-        if (file && (file.type.startsWith("image/") || file.type === "application/pdf")) {
-            handleFileUpload(file);
+        if (uploadedFiles.length >= MAX_SLIPS) return;
+        const droppedFiles = Array.from(e.dataTransfer.files).filter(
+            file => file.type.startsWith("image/") || file.type === "application/pdf"
+        );
+        if (droppedFiles.length > 0) {
+            handleFileUpload(droppedFiles);
         }
     };
 
@@ -228,115 +238,122 @@ export default function WalletTopUpPage() {
         return type === 'image/webp' || name.endsWith('.webp');
     };
 
-    const handleFileUpload = async (file: File) => {
+    const handleFileUpload = async (files: File[]) => {
         setUploadError(null);
 
-        // Block WebP files
-        if (isWebpFile(file)) {
-            setUploadError(t('wallet.topup.webpNotSupported', { defaultValue: 'WebP format is not supported. Please use JPG or PNG instead.' }));
-            setUploadedFile(null);
-            setPreviewSlip(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+        const remaining = MAX_SLIPS - uploadedFiles.length;
+        if (remaining <= 0) {
+            setUploadError(t('wallet.topup.maxSlipsReached', { defaultValue: `Maximum ${MAX_SLIPS} payment slips allowed.` }));
             return;
         }
 
-        // Check file size limit (before compression)
-        const fileSizeMB = file.size / (1024 * 1024);
-        if (fileSizeMB > MAX_FILE_SIZE_MB) {
-            setUploadError(t('wallet.topup.fileTooLarge', {
-                defaultValue: `File is too large (${fileSizeMB.toFixed(1)}MB). Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.`,
-                size: fileSizeMB.toFixed(1),
-                maxSize: MAX_FILE_SIZE_MB
-            }));
-            setUploadedFile(null);
-            setPreviewSlip(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
-            return;
+        // Trim to remaining slots
+        const filesToProcess = files.slice(0, remaining);
+        if (files.length > remaining) {
+            setUploadError(t('wallet.topup.someFilesSkipped', { defaultValue: `Only ${remaining} more slip(s) allowed. Extra files were skipped.` }));
         }
 
-        // For images, compress if needed
-        let processedFile = file;
-        if (file.type.startsWith("image/") && file.type !== "application/pdf") {
-            try {
-                setIsCompressing(true);
-                console.log('[TopUp] Original file size:', (file.size / (1024 * 1024)).toFixed(2), 'MB');
+        const processedFiles: File[] = [];
+        const newPreviews: string[] = [];
 
-                // Compress the image with target size
-                processedFile = await compressImage(file, {
-                    maxWidth: 1920,
-                    maxHeight: 1920,
-                    quality: 0.8,
-                    maxSizeMB: COMPRESSED_MAX_SIZE_MB,
-                });
+        for (const file of filesToProcess) {
+            // Block WebP files
+            if (isWebpFile(file)) {
+                setUploadError(t('wallet.topup.webpNotSupported', { defaultValue: 'WebP format is not supported. Please use JPG or PNG instead.' }));
+                continue;
+            }
 
-                console.log('[TopUp] Compressed file size:', (processedFile.size / (1024 * 1024)).toFixed(2), 'MB');
-            } catch (compressionError: any) {
-                console.error('[TopUp] Compression error:', compressionError);
-                setUploadError(compressionError.message || t('wallet.topup.compressionFailed', { defaultValue: 'Failed to process image. Please try a different file.' }));
-                setUploadedFile(null);
-                setPreviewSlip(null);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
+            // Check file size limit (before compression)
+            const fileSizeMB = file.size / (1024 * 1024);
+            if (fileSizeMB > MAX_FILE_SIZE_MB) {
+                setUploadError(t('wallet.topup.fileTooLarge', {
+                    defaultValue: `File is too large (${fileSizeMB.toFixed(1)}MB). Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.`,
+                    size: fileSizeMB.toFixed(1),
+                    maxSize: MAX_FILE_SIZE_MB
+                }));
+                continue;
+            }
+
+            // For images, compress if needed
+            let processedFile = file;
+            if (file.type.startsWith("image/") && file.type !== "application/pdf") {
+                try {
+                    setIsCompressing(true);
+                    processedFile = await compressImage(file, {
+                        maxWidth: 1920,
+                        maxHeight: 1920,
+                        quality: 0.8,
+                        maxSizeMB: COMPRESSED_MAX_SIZE_MB,
+                    });
+                } catch (compressionError: any) {
+                    console.error('[TopUp] Compression error:', compressionError);
+                    setUploadError(compressionError.message || t('wallet.topup.compressionFailed', { defaultValue: 'Failed to process image. Please try a different file.' }));
+                    continue;
+                } finally {
+                    setIsCompressing(false);
                 }
-                setIsCompressing(false);
-                return;
-            } finally {
-                setIsCompressing(false);
+            }
+
+            // Final size check after compression
+            const finalSizeMB = processedFile.size / (1024 * 1024);
+            if (finalSizeMB > 4) {
+                setUploadError(t('wallet.topup.fileTooLargeAfterCompression', {
+                    defaultValue: `File is still too large after compression (${finalSizeMB.toFixed(1)}MB). Please use a smaller image.`,
+                    size: finalSizeMB.toFixed(1)
+                }));
+                continue;
+            }
+
+            processedFiles.push(processedFile);
+
+            // Create preview
+            if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
+                const preview = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(processedFile);
+                });
+                newPreviews.push(preview);
+            } else {
+                newPreviews.push(URL.createObjectURL(processedFile));
             }
         }
 
-        // Final size check after compression
-        const finalSizeMB = processedFile.size / (1024 * 1024);
-        if (finalSizeMB > 4) {
-            setUploadError(t('wallet.topup.fileTooLargeAfterCompression', {
-                defaultValue: `File is still too large after compression (${finalSizeMB.toFixed(1)}MB). Please use a smaller image.`,
-                size: finalSizeMB.toFixed(1)
-            }));
-            setUploadedFile(null);
-            setPreviewSlip(null);
+        if (processedFiles.length > 0) {
+            const allFiles = [...uploadedFiles, ...processedFiles];
+            setUploadedFiles(allFiles);
+            setPreviewSlips(prev => [...prev, ...newPreviews]);
+
+            // Sync all files with the hidden input for form submission
             if (fileInputRef.current) {
-                fileInputRef.current.value = "";
+                const dt = new DataTransfer();
+                allFiles.forEach(f => dt.items.add(f));
+                fileInputRef.current.files = dt.files;
             }
-            return;
-        }
-
-        setUploadedFile(processedFile);
-
-        // Create preview (check for browser support)
-        if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewSlip(reader.result as string);
-            };
-            reader.readAsDataURL(processedFile);
-        } else {
-            // Fallback: Use object URL
-            const objectUrl = URL.createObjectURL(processedFile);
-            setPreviewSlip(objectUrl);
-        }
-
-        // sync with actual input for form submission
-        if (fileInputRef.current) {
-            const dt = new DataTransfer();
-            dt.items.add(processedFile);
-            fileInputRef.current.files = dt.files;
         }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) handleFileUpload(file);
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            handleFileUpload(Array.from(files));
+        }
+        // Reset input value so the same files can be selected again
+        if (e.target) e.target.value = "";
     };
 
-    const removeFile = () => {
-        setUploadedFile(null);
-        setPreviewSlip(null);
+    const removeFile = (index: number) => {
+        const newFiles = uploadedFiles.filter((_, i) => i !== index);
+        const newPreviews = previewSlips.filter((_, i) => i !== index);
+        setUploadedFiles(newFiles);
+        setPreviewSlips(newPreviews);
+        setUploadError(null);
+
+        // Sync remaining files with the hidden input
         if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            const dt = new DataTransfer();
+            newFiles.forEach(f => dt.items.add(f));
+            fileInputRef.current.files = dt.files;
         }
     };
 
@@ -357,7 +374,7 @@ export default function WalletTopUpPage() {
             case 2:
                 return paymentMethod;
             case 3:
-                return uploadedFile && !uploadError && !isCompressing;
+                return uploadedFiles.length > 0 && !uploadError && !isCompressing;
             default:
                 return false;
         }
@@ -518,6 +535,28 @@ export default function WalletTopUpPage() {
                                 {t('wallet.topup.paymentVoucher')} <span className="text-rose-500">*</span>
                             </label>
                             <input type="text" name="amount" value={amount ?? 0} className="hidden" readOnly />
+                            {/* Uploaded slips grid */}
+                            {uploadedFiles.length > 0 && (
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                    {uploadedFiles.map((file, index) => (
+                                        <div key={index} className="relative border border-green-300 bg-green-50 rounded-lg p-2 text-center">
+                                            {previewSlips[index] && (
+                                                <img src={previewSlips[index]} alt={`Slip ${index + 1}`} className="h-20 w-full object-contain rounded" />
+                                            )}
+                                            <p className="text-[10px] text-green-700 mt-1 truncate">{file.name}</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFile(index)}
+                                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                            >
+                                                x
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Drop zone / Add more area */}
                             <div
                                 onDrop={handleDrop}
                                 onDragOver={handleDragOver}
@@ -526,8 +565,8 @@ export default function WalletTopUpPage() {
                                     ? "border-rose-500 bg-rose-50"
                                     : isCompressing
                                         ? "border-blue-500 bg-blue-50"
-                                        : uploadedFile
-                                            ? "border-green-500 bg-green-50"
+                                        : uploadedFiles.length >= MAX_SLIPS
+                                            ? "border-gray-200 bg-gray-50"
                                             : "border-gray-300 hover:border-gray-400"
                                     }`}
                             >
@@ -539,37 +578,29 @@ export default function WalletTopUpPage() {
                                             <div className="text-sm text-blue-500 mt-1">{t('wallet.topup.pleaseWait', { defaultValue: 'Please wait' })}</div>
                                         </div>
                                     </div>
-                                ) : uploadedFile ? (
-                                    <div className="space-y-4">
-                                        {previewSlip && (
-                                            <div className="w-full flex items-center justify-center">
-                                                <img
-                                                    src={previewSlip}
-                                                    alt="New slip preview"
-                                                    className="mt-2 h-28 rounded-md border"
-                                                />
-                                            </div>
-                                        )}
-                                        <div>
-                                            <div className="font-medium text-green-700">{uploadedFile.name}</div>
-                                            <div className="text-sm text-green-600">
-                                                {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={removeFile}
-                                            className="border border-gray-500 text-sm text-gray-500 hover:text-gray-700 py-1 px-3 rounded-md cursor-pointer"
-                                        >
-                                            {t('wallet.topup.removeFile')}
-                                        </button>
+                                ) : uploadedFiles.length >= MAX_SLIPS ? (
+                                    <div className="py-3">
+                                        <p className="text-sm text-gray-500">
+                                            {t('wallet.topup.maxSlipsReached', { defaultValue: `Maximum ${MAX_SLIPS} payment slips uploaded.` })}
+                                        </p>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
                                         <Upload className="h-6 w-6 text-gray-400 mx-auto" />
                                         <div>
-                                            <div className="font-medium text-gray-700">{t('wallet.topup.dropVoucherHere')}</div>
-                                            <div className="text-sm text-gray-500 mt-1">{t('wallet.topup.orClickToBrowse')}</div>
+                                            <div className="font-medium text-gray-700">
+                                                {uploadedFiles.length > 0
+                                                    ? t('wallet.topup.addMoreSlips', { defaultValue: 'Add more payment slips' })
+                                                    : t('wallet.topup.dropVoucherHere')
+                                                }
+                                            </div>
+                                            <div className="text-sm text-gray-500 mt-1">
+                                                {t('wallet.topup.slipCount', {
+                                                    defaultValue: `${uploadedFiles.length}/${MAX_SLIPS} slips uploaded`,
+                                                    current: uploadedFiles.length,
+                                                    max: MAX_SLIPS
+                                                })}
+                                            </div>
                                         </div>
                                         <label
                                             htmlFor="file-upload"
@@ -584,6 +615,7 @@ export default function WalletTopUpPage() {
                                     accept="image/*,application/pdf"
                                     ref={fileInputRef}
                                     name="voucher"
+                                    multiple
                                     onChange={handleFileChange}
                                     className="hidden"
                                     id="file-upload"

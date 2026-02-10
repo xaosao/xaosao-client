@@ -584,9 +584,14 @@
       "save": "Save",
       "selectPlan": "Select Plan",
       "continue": "Countinue",
-      "features": "Features"
+      "features": "Features",
+      "yourCurrentPlan": "Your current plan"
     },
     "items": {
+      "24HourTrial": {
+        "name": "24-Hour Trial",
+        "description": "Try our service for 24 hours with unlimited chat and booking access."
+      },
       "1Week": {
         "name": "1 Week",
         "description": "Explore all premium features and start connecting right away."
@@ -673,7 +678,8 @@
     "menu": {
       "viewDetails": "Details",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "cancel": "Cancel"
     },
     "emptyTitle": "No transactions yet",
     "emptyMessage": "You haven't made any wallet transactions yet. Top up your wallet to get started!",
@@ -810,6 +816,17 @@
       "cancel": "Cancel",
       "delete": "Delete",
       "deleting": "Deleting..."
+    },
+    "cancel": {
+      "title": "Cancel Transaction",
+      "description": "Are you sure you want to cancel this transaction?",
+      "securityTitle": "Why can't I edit?",
+      "securityMessage": "For security reasons, editing pending transactions is not allowed. If there is any mistake, please cancel this transaction and create a new one with the correct information.",
+      "warningTitle": "This transaction will be cancelled!",
+      "warningMessage": "The transaction will be removed from your wallet history. You can create a new top-up request afterwards.",
+      "goBack": "Go Back",
+      "confirmCancel": "Cancel Transaction",
+      "cancelling": "Cancelling..."
     },
     "topUp": {
       "title": "Top Up Wallet",

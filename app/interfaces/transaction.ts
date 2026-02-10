@@ -2,7 +2,7 @@ export interface ITransactionResponse {
   id: string;
   identifier: string;
   amount: number;
-  paymentSlip: string;
+  paymentSlip: string[];
   status: string;
   comission: number;
   fee: number;
@@ -19,5 +19,5 @@ export interface ITransactionResponse {
 
 export interface ITransactionCredentials {
   amount: number;
-  paymentSlip: string;
+  paymentSlip: string[];
 }

@@ -55,7 +55,7 @@ export async function loader({ params, request }: LoaderFunctionArgs): Promise<L
 
   return {
     transaction: transaction as unknown as ITransactionResponse,
-    availableBalance: walletSummary.totalAvailable,
+    availableBalance: walletSummary.withdrawableBalance,
   };
 }
 
@@ -80,11 +80,10 @@ export async function action({ params, request }: Route.ActionArgs) {
         }
         const buffer = Buffer.from(await file.arrayBuffer());
         const url = await uploadFileToBunnyServer(buffer, file.name, file.type);
-        transactionData.paymentSlip = url;
+        transactionData.paymentSlip = [url];
       } else {
-        transactionData.paymentSlip = formData.get(
-          "originPaymentSlip"
-        ) as string;
+        const origin = formData.get("originPaymentSlip") as string;
+        transactionData.paymentSlip = origin ? [origin] : [];
       }
 
       transactionData.amount = parseFormattedNumber(transactionData.amount);

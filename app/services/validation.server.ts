@@ -342,7 +342,7 @@ export function validateServiceBookingInputs(
 const subscriptionSchema = z.object({
   amount: z.number().max(7, "Base rate should be at least 5 digits."),
   planId: refineSafe(z.string()),
-  paymentSlip: z.string(),
+  paymentSlip: z.array(z.string()),
 });
 
 export function validateSubscriptionInputs(input: ISubscriptionCredentials) {
