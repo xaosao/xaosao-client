@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, useNavigation, useSearchParams, redirect, useFetcher } from 'react-router';
-import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Plus, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight } from 'lucide-react';
+import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Plus, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight, EyeOff, Eye } from 'lucide-react';
 
 // components
 import {
@@ -42,7 +42,7 @@ import { calculateAgeFromDOB, formatCurrency, formatNumber } from '~/utils';
 import type { IModelOwnProfileResponse, IModelBank } from '~/interfaces/model-profile';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
 import { capitalize, getFirstWord, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
-import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank, setDefaultBank } from '~/services/model-profile.server';
+import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank, setDefaultBank, toggleProfileVisibility } from '~/services/model-profile.server';
 
 const MAX_IMAGES = 6;
 
@@ -153,6 +153,17 @@ export async function action({ request }: ActionFunctionArgs) {
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.bankSetAsDefault")}&tab=banks`);
         } catch (error: any) {
             return redirect(`/model/profile?error=${encodeURIComponent(error.message || "modelProfile.errors.setDefaultFailed")}&tab=banks`);
+        }
+    }
+
+    // Handle profile visibility toggle
+    if (actionType === "toggleVisibility") {
+        const isHidden = formData.get("isHidden") === "true";
+        try {
+            await toggleProfileVisibility(modelId, isHidden);
+            return redirect(`/model/profile?success=${encodeURIComponent("Profile visibility updated")}`);
+        } catch (error: any) {
+            return redirect(`/model/profile?error=${encodeURIComponent(error.message || "Failed to update visibility")}`);
         }
     }
 
@@ -639,6 +650,43 @@ export default function ModelProfilePage() {
                             <div className="text-md text-gray-500">{t("modelProfile.reviews")}</div>
                         </div>
                     </div>
+                </div>
+
+                {/* Profile Visibility Toggle */}
+                <div className={`mx-2 sm:mx-0 mb-4 px-4 py-3 rounded-lg border flex items-center justify-between ${model.isProfileHidden ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+                    <div className="flex items-center gap-3">
+                        {/* {model.isProfileHidden ? (
+                            <EyeOff className="w-5 h-5 text-amber-600" />
+                        ) : (
+                            <Eye className="w-5 h-5 text-green-600" />
+                        )} */}
+                        <div>
+                            <p className={`text-sm ${model.isProfileHidden ? 'text-amber-800' : 'text-green-800'}`}>
+                                {model.isProfileHidden
+                                    ? t("modelSettings.profileVisibility.hiddenStatus", { defaultValue: "Your profile is hidden from customers" })
+                                    : t("modelSettings.profileVisibility.visibleStatus", { defaultValue: "Your profile is visible to customers" })}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className={`text-xs ${model.isProfileHidden
+                            ? 'border-amber-400 text-amber-700 hover:bg-amber-100'
+                            : 'border-green-400 text-green-700 hover:bg-green-100'
+                            }`}
+                        onClick={() => {
+                            const formData = new FormData();
+                            formData.append("actionType", "toggleVisibility");
+                            formData.append("isHidden", model.isProfileHidden ? "false" : "true");
+                            fetcher.submit(formData, { method: "post" });
+                        }}
+                        disabled={fetcher.state !== "idle"}
+                    >
+                        {model.isProfileHidden
+                            ? t("modelSettings.profileVisibility.showProfile", { defaultValue: "Show Profile" })
+                            : t("modelSettings.profileVisibility.hideProfile", { defaultValue: "Hide Profile" })}
+                    </Button>
                 </div>
 
                 <div className="pb-4">

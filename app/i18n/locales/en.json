@@ -1838,7 +1838,9 @@
       "deleteDesc": "Permanently delete account",
       "logoutDesc": "Sign out of your account",
       "notifications": "Notifications",
-      "notificationsDesc": "Manage your notification preferences"
+      "notificationsDesc": "Manage your notification preferences",
+      "profileVisibility": "Profile Visibility",
+      "profileVisibilityDesc": "Hide or show your profile to customers"
     },
     "serviceRequired": {
       "title": "Service Setup Required",
@@ -1848,6 +1850,21 @@
     "notifications": {
       "title": "Notification Preferences",
       "subtitle": "Choose how you want to receive notifications"
+    },
+    "profileVisibility": {
+      "title": "Profile Visibility",
+      "description": "Control whether customers can see your profile",
+      "showProfile": "Show Profile",
+      "hideProfile": "Hide Profile",
+      "visibleStatus": "Your profile is visible to customers",
+      "hiddenStatus": "Your profile is hidden from customers",
+      "hiddenWarningTitle": "Profile Hidden",
+      "hiddenWarningDesc": "While your profile is hidden, customers cannot find you in search, nearby, or any listings. You can still use the app normally."
+    },
+    "profileHidden": {
+      "popupTitle": "Your Profile is Hidden",
+      "popupDescription": "Customers cannot see your profile right now. When you're ready to receive bookings again, show your profile.",
+      "showButton": "Show My Profile"
     }
   },
   "modelProfile": {

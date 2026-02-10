@@ -28,6 +28,10 @@ export default [
   // API routes for Subscription SSE
   route("api/subscription-events", "./routes/api/subscription-events.ts"),
   route("api/trigger-subscription-event", "./routes/api/trigger-subscription-event.ts"),
+  route("api/trigger-notification", "./routes/api/trigger-notification.ts"),
+
+  // API route for Location
+  route("api/location/update", "./routes/api/location/update.ts"),
 
   // API routes for Call service
   route("api/call/initiate", "./routes/api/call/initiate.ts"),
@@ -106,6 +110,7 @@ export default [
         ),
       ]),
       route("notifications", "./routes/model/settings/notifications.tsx"),
+      route("profile-visibility", "./routes/model/settings/profile-visibility.tsx"),
       route("password", "./routes/model/settings/password.tsx"),
       route("report", "./routes/model/settings/report.tsx"),
       route("delete-account", "./routes/model/settings/delete-account.tsx"),

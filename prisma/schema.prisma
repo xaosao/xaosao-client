@@ -236,6 +236,7 @@ model model {
   sendPushNoti        Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
   defaultLanguage     String    @default("en") // 10
   defaultTheme        String    @default("light") // 11
+  isProfileHidden     Boolean   @default(false) // Self-service profile visibility toggle
 
   // Model type for tiered commission system
   type                     String  @default("normal") // "normal", "special", "partner"

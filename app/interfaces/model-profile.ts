@@ -77,6 +77,7 @@ export interface IModelOwnProfileResponse {
   }[];
   totalLikes: number;
   totalFriends: number;
+  isProfileHidden: boolean;
 }
 
 export interface IModelBank {

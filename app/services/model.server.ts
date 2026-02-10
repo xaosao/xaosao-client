@@ -43,6 +43,7 @@ export async function getModelsForCustomer(
     // Build where clause with filters
     const whereClause: any = {
       status: "active",
+      isProfileHidden: { not: true },
       customer_interactions: {
         none: {
           customerId,
@@ -278,6 +279,7 @@ export async function getNearbyModels(
     latitude: { not: null },
     longitude: { not: null },
     status: "active",
+    isProfileHidden: { not: true },
     // Exclude models the customer has passed
     customer_interactions: {
       none: {
@@ -460,6 +462,7 @@ export async function getHotModels(customerId: string, limit: number = 10) {
     const hotModels = await prisma.model.findMany({
       where: {
         status: "active",
+        isProfileHidden: { not: true },
         // Exclude models the customer has passed
         customer_interactions: {
           none: {
@@ -622,6 +625,7 @@ export async function getPublicHotModels(limit: number = 12) {
     const hotModels = await prisma.model.findMany({
       where: {
         status: "active",
+        isProfileHidden: { not: true },
       },
       select: {
         id: true,
@@ -699,6 +703,7 @@ export async function getModelProfile(modelId: string, customerId: string) {
       where: {
         id: modelId,
         status: "active",
+        isProfileHidden: { not: true },
       },
       select: {
         id: true,
@@ -906,6 +911,7 @@ export async function getForyouModels(
     const allModels = await prisma.model.findMany({
       where: {
         status: "active",
+        isProfileHidden: { not: true },
         ...(filters.gender ? { gender: filters.gender } : {}),
         ...(filters.location
           ? { address: { contains: filters.location } }
@@ -1041,6 +1047,7 @@ export async function getLikeMeModels(
         take: limit,
         where: {
           status: "active",
+          isProfileHidden: { not: true },
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -1096,6 +1103,7 @@ export async function getLikeMeModels(
       prisma.model.count({
         where: {
           status: "active",
+          isProfileHidden: { not: true },
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -1144,6 +1152,7 @@ export async function getModelsByInteraction(
         take: limit,
         where: {
           status: "active",
+          isProfileHidden: { not: true },
           customer_interactions: {
             some: {
               customerId,
@@ -1192,6 +1201,7 @@ export async function getModelsByInteraction(
       prisma.model.count({
         where: {
           status: "active",
+          isProfileHidden: { not: true },
           customer_interactions: {
             some: {
               customerId: customerId.toString(),

@@ -1,8 +1,9 @@
 import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, useFetcher, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     Briefcase,
+    EyeOff,
     HandHeart,
     Heart,
     LogOut,
@@ -52,6 +53,7 @@ interface LoaderReturn {
     pendingBookingCount: number;
     hasServices: boolean;
     hasEnabledNotifications: boolean;
+    isProfileHidden: boolean;
 }
 
 interface LayoutProps {
@@ -83,14 +85,17 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Check if model has enabled notifications (either push or SMS)
     const hasEnabledNotifications = modelData?.sendPushNoti || modelData?.sendSMSNoti || false;
 
-    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications };
+    const isProfileHidden = modelData?.isProfileHidden === true;
+
+    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden };
 }
 
 export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications } = loaderData;
+    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden } = loaderData;
+    const profileHiddenFetcher = useFetcher();
     const { t, i18n } = useTranslation();
 
     // Only show location prompt on main model page
@@ -369,6 +374,42 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                 className="w-full bg-rose-500 hover:bg-rose-600 text-white"
                             >
                                 {t('modelSettings.serviceRequired.button', { defaultValue: 'Set Up Services' })}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogPortal>
+            </Dialog>
+
+            {/* Profile Hidden Warning Modal */}
+            <Dialog open={isProfileHidden} modal={true}>
+                <DialogPortal>
+                    <DialogOverlay className="bg-black/80" />
+                    <div className="fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-sm bg-white">
+                        <DialogHeader className="text-center">
+                            <div className="mx-auto mb-4 p-4 bg-amber-100 rounded-full w-fit">
+                                <EyeOff className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <DialogTitle className="text-center text-lg">
+                                {t('modelSettings.profileHidden.popupTitle', { defaultValue: 'Your Profile is Hidden' })}
+                            </DialogTitle>
+                            <DialogDescription className="text-center pt-2">
+                                {t('modelSettings.profileHidden.popupDescription', {
+                                    defaultValue: 'Customers cannot see your profile right now. When you\'re ready to receive bookings again, show your profile.'
+                                })}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-4">
+                            <Button
+                                onClick={() => profileHiddenFetcher.submit(
+                                    { actionType: "toggleVisibility", isHidden: "false" },
+                                    { method: "post", action: "/model/profile" }
+                                )}
+                                disabled={profileHiddenFetcher.state !== "idle"}
+                                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                            >
+                                {profileHiddenFetcher.state !== "idle"
+                                    ? t('modelSettings.profileHidden.showButton', { defaultValue: 'Show My Profile' }) + "..."
+                                    : t('modelSettings.profileHidden.showButton', { defaultValue: 'Show My Profile' })}
                             </Button>
                         </div>
                     </div>

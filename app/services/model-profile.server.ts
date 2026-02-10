@@ -46,6 +46,7 @@ export async function getModelOwnProfile(modelId: string) {
         sendPushNoti: true,
         defaultLanguage: true,
         defaultTheme: true,
+        isProfileHidden: true,
         twofactorEnabled: true,
         status: true,
         createdAt: true,
@@ -875,6 +876,25 @@ export async function setDefaultBank(id: string, modelId: string) {
       success: false,
       error: true,
       message: "Failed to set default bank!",
+    });
+  }
+}
+
+// Toggle model profile visibility (hide/show from customers)
+export async function toggleProfileVisibility(modelId: string, isHidden: boolean) {
+  try {
+    const updated = await prisma.model.update({
+      where: { id: modelId },
+      data: { isProfileHidden: isHidden },
+      select: { id: true, isProfileHidden: true },
+    });
+    return updated;
+  } catch (error) {
+    console.error("TOGGLE_PROFILE_VISIBILITY_FAILED", error);
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to update profile visibility!",
     });
   }
 }

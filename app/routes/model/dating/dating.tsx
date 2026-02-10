@@ -69,7 +69,7 @@ interface BookingData {
       profile: string;
       dob: string;
       whatsapp: number;
-   };
+   } | null;
    modelService: {
       id: string;
       customRate: number;
@@ -321,8 +321,9 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                            <div className="flex items-center gap-2">
                               <UserRoundCheck className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm text-muted-foreground font-semibold">
-                                 {booking.customer.firstName + " " + booking.customer.lastName} (
-                                 {calculateAgeFromDOB(String(booking.customer.dob))} {t("modelDating.card.years")})
+                                 {booking.customer
+                                    ? `${booking.customer.firstName} ${booking.customer.lastName} (${calculateAgeFromDOB(String(booking.customer.dob))} ${t("modelDating.card.years")})`
+                                    : t("modelDating.card.deletedCustomer", { defaultValue: "Deleted Customer" })}
                               </span>
                            </div>
 
@@ -401,19 +402,19 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        </>
                                     )}
 
-                                    {booking.status === "confirmed" && booking.isContact && booking.customer.whatsapp && (
+                                    {booking.status === "confirmed" && booking.isContact && booking.customer?.whatsapp && (
                                        <Button
                                           variant="outline"
                                           size="sm"
                                           onClick={() => {
                                              const bookingUrl = `${window.location.origin}/customer/book-service/detail/${booking.id}`;
                                              const message = t("modelDating.whatsappMessage", {
-                                                customerName: booking.customer.firstName,
+                                                customerName: booking.customer?.firstName ?? "",
                                                 serviceName: getServiceName(booking),
                                                 date: formatDate(String(booking.startDate)),
                                                 bookingUrl
                                              });
-                                             window.open(`https://wa.me/${booking.customer.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                             window.open(`https://wa.me/${booking.customer?.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
                                           }}
                                           className="text-xs text-green-600 border-green-600 hover:bg-green-50"
                                        >
@@ -424,11 +425,11 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
 
                                     {booking.status === "confirmed" && (
                                        <>
-                                          {booking.customer.whatsapp && (
+                                          {booking.customer?.whatsapp && (
                                              <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => window.open(`tel:${booking.customer.whatsapp}`, "_self")}
+                                                onClick={() => window.open(`tel:${booking.customer?.whatsapp}`, "_self")}
                                                 className="text-xs h-8 text-blue-600 border-blue-600 hover:bg-blue-50"
                                              >
                                                 <Phone className="h-3 w-3" />
