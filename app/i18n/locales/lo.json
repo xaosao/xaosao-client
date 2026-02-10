@@ -1726,7 +1726,8 @@
       "uploading": "ກຳລັງອັບໂຫຼດ...",
       "saveQrCode": "ບັນທຶກ QR Code",
       "processing": "ກຳລັງດຳເນີນການ...",
-      "withdrawAndUpload": "ຖອນເງິນ"
+      "withdrawAndUpload": "ຖອນເງິນ",
+      "availableToWithdraw": "ຕອນນີ້ທ່ານສາມາດຖອນໄດ້ສູງສຸດ"
     },
     "detail": {
       "title": "ລາຍລະອຽດທຸລະກຳ",

@@ -1204,9 +1204,9 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                     }`}
                             >
                                 <div
-                                    className={`border-3 ${selectedProfile?.id === data.id
+                                    className={`border-2 ${selectedProfile?.id === data.id
                                         ? "border-rose-500"
-                                        : "border-gray-600"
+                                        : "border-green-500"
                                         } rounded-full w-20 h-20 flex items-center justify-center hover:border-rose-500 overflow-hidden`}
                                 >
                                     {data?.profile ? (
@@ -1255,7 +1255,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <div className="block sm:hidden absolute bottom-8 left-4 text-white gap-4">
                                                 <h3 className="flex items-center justify-start text-md mb-1 text-shadow-lg"><User size={16} />&nbsp;{selectedProfile.firstName}&nbsp;{selectedProfile.lastName}</h3>
                                                 <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
-                                                <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
+                                                <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{selectedProfile.address ? `${selectedProfile.address} · ` : ''}{formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                             </div>
                                             <div>
                                                 <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
@@ -1352,7 +1352,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         <div className="block sm:hidden absolute bottom-8 left-4 text-white gap-4">
                                             <h3 className="flex items-center justify-start text-md mb-1 text-shadow-lg"><User size={16} />&nbsp;{selectedProfile.firstName}&nbsp;{selectedProfile.lastName}</h3>
                                             <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><Calendar size={16} />&nbsp;{t('discover.age')} {calculateAgeFromDOB(selectedProfile.dob)} {t('discover.yearsOld')}</h3>
-                                            <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{t('discover.location')} {formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
+                                            <h3 className="flex items-center justify-start text-sm mb-1 text-shadow-lg"><MapPin size={16} />&nbsp;{selectedProfile.address ? `${selectedProfile.address} · ` : ''}{formatDistance(calculateDistance(Number(selectedProfile?.latitude), Number(selectedProfile?.longitude), Number(latitude), Number(longitude)))}</h3>
                                         </div>
                                         <div>
                                             <div className="absolute top-4 right-4 flex sm:hidden space-x-3">
@@ -1504,84 +1504,84 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         {cachedNearbyModels?.map((model) => {
                             const modelDisplayState = getModelState(model);
                             return (
-                            <div
-                                key={model.id}
-                                className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden h-auto w-full group"
-                            >
-                                <div>
-                                    <div className="absolute top-4 right-4 flex space-x-2 z-10">
-                                        {model?.whatsapp && (
-                                            <button
-                                                type="button"
-                                                className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
-                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                            >
-                                                <MessageSquareText className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        {modelDisplayState.isContact ? (
-                                            <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
-                                                <UserCheck className="w-4 h-4" />
-                                            </div>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
-                                                onClick={() => handleAddFriend(model)}
-                                                disabled={fetcher.state !== "idle"}
-                                            >
-                                                <UserPlus className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="relative h-full overflow-hidden">
-                                    <div
-                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                        className="w-full h-[30vh]"
-                                    >
-                                        {model.Images[0]?.name ? (
-                                            <img
-                                                src={model.Images[0].name}
-                                                alt={model.firstName}
-                                                className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                            />
-                                        ) : model.profile ? (
-                                            <img
-                                                src={model.profile}
-                                                alt={model.firstName}
-                                                className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                            />
-                                        ) : (
-                                            <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
-                                                <User className="w-16 h-16 text-white" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                                    <div className="absolute bottom-4 left-4 right-4 text-white sm:opacity-0 sm:group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 space-y-1">
-                                        <div className="flex items-start gap-2 justify-start flex-col">
-                                            <h2
-                                                className="flex items-center justify-start text-md"
-                                                style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
-                                            >
-                                                <User size={16} />&nbsp;{model.firstName}&nbsp;{model.lastName},
-                                            </h2>
-                                            <p
-                                                className="flex items-center justify-start gap-2 text-sm text-white"
-                                                style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
-                                            >
-                                                <Calendar size={16} /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center text-sm opacity-90 mb-3">
-                                            <MapPin className="h-4 w-4 mr-1" />
-                                            {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                <div
+                                    key={model.id}
+                                    className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden h-auto w-full group"
+                                >
+                                    <div>
+                                        <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                                            {model?.whatsapp && (
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                >
+                                                    <MessageSquareText className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            {modelDisplayState.isContact ? (
+                                                <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                                    <UserCheck className="w-4 h-4" />
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
+                                                    onClick={() => handleAddFriend(model)}
+                                                    disabled={fetcher.state !== "idle"}
+                                                >
+                                                    <UserPlus className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
+                                    <div className="relative h-full overflow-hidden">
+                                        <div
+                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            className="w-full h-[30vh]"
+                                        >
+                                            {model.Images[0]?.name ? (
+                                                <img
+                                                    src={model.Images[0].name}
+                                                    alt={model.firstName}
+                                                    className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                />
+                                            ) : model.profile ? (
+                                                <img
+                                                    src={model.profile}
+                                                    alt={model.firstName}
+                                                    className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                />
+                                            ) : (
+                                                <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                                                    <User className="w-16 h-16 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                                        <div className="absolute bottom-4 left-4 right-4 text-white sm:opacity-0 sm:group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 space-y-1">
+                                            <div className="flex items-start gap-2 justify-start flex-col">
+                                                <h2
+                                                    className="flex items-center justify-start text-md"
+                                                    style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
+                                                >
+                                                    <User size={16} />&nbsp;{model.firstName}&nbsp;{model.lastName},
+                                                </h2>
+                                                <p
+                                                    className="flex items-center justify-start gap-2 text-sm text-white"
+                                                    style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
+                                                >
+                                                    <Calendar size={16} /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center text-sm opacity-90 mb-3">
+                                                <MapPin className="h-4 w-4 mr-1" />
+                                                {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        );
+                            );
                         })}
                     </div>
                 </div>
@@ -1590,170 +1590,164 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     {cachedNearbyModels?.map((model) => {
                         const modelDisplayState = getModelState(model);
                         return (
-                        <div key={model.id} className="flex items-start justify-between pb-4 border-b">
-                            <div className="flex items-start justify-start gap-2">
-                                {model.profile ? (
-                                    <img
-                                        src={model.profile}
-                                        alt="Profile"
-                                        className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
-                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                    />
-                                ) : (
-                                    <div
-                                        className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer"
-                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                    >
-                                        <User className="w-7 h-7 text-gray-400" />
-                                    </div>
-                                )}
-                                <div className="space-y-0.5 text-gray-500">
-                                    <h2
-                                        className="flex items-center justify-start text-sm sm:text-md text-black"
-                                    >
-                                        <User size={14} />&nbsp;{model.firstName}&nbsp;{model.lastName}
-                                    </h2>
-                                    <div className="flex items-start justify-start gap-2">
-                                        <p
-                                            className="text-sm flex items-center "
+                            <div key={model.id} className="flex items-start justify-between pb-4 border-b">
+                                <div className="flex items-start justify-start gap-2">
+                                    {model.profile ? (
+                                        <img
+                                            src={model.profile}
+                                            alt="Profile"
+                                            className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
+                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                        />
+                                    ) : (
+                                        <div
+                                            className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer"
+                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                         >
-                                            <Calendar size={12} />&nbsp; {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')},
-                                        </p>
-                                        <div className="flex items-center text-sm opacity-90">
-                                            <MapPin className="h-3 w-3 mr-1 text-rose-500" />
-                                            {formatDistance(model.distance)}
+                                            <User className="w-7 h-7 text-gray-400" />
                                         </div>
-                                    </div>
-                                    {model.address && (
-                                        <p className="text-xs text-gray-400 truncate max-w-[220px]">
-                                            <MapPin className="h-3 w-3 mr-1 text-gray-400 inline" />
-                                            {model.address}
-                                        </p>
                                     )}
-                                    <div className="flex items-start justify-start gap-2 mt-4">
-                                        {model.Images && model.Images.length > 0 ? (
-                                            model.Images.map((image, index) => (
-                                                image.name ? (
-                                                    <img
-                                                        key={image.name + index}
-                                                        src={image.name}
-                                                        alt="Profile"
-                                                        className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
-                                                        onClick={() => { setImages(model.Images), setSelectedIndex(index) }}
-                                                    />
-                                                ) : model.profile ? (
-                                                    <img
-                                                        key={`profile-${index}`}
-                                                        src={model.profile}
-                                                        alt="Profile"
-                                                        className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
-                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                                    />
-                                                ) : (
-                                                    <div
-                                                        key={`placeholder-${index}`}
-                                                        className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
-                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                                    >
-                                                        <User className="w-8 h-8 text-white" />
-                                                    </div>
-                                                )
-                                            ))
-                                        ) : model.profile ? (
-                                            <img
-                                                src={model.profile}
-                                                alt="Profile"
-                                                className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
-                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
-                                            />
-                                        ) : (
-                                            <div
-                                                className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
-                                                onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                    <div className="space-y-0.5 text-gray-500">
+                                        <h2
+                                            className="flex items-center justify-start text-sm sm:text-md text-black"
+                                        >
+                                            <User size={14} />&nbsp;{model.firstName}&nbsp;{model.lastName}
+                                        </h2>
+                                        <div className="flex items-start justify-start gap-2">
+                                            <p
+                                                className="text-sm flex items-center "
                                             >
-                                                <User className="w-8 h-8 text-white" />
-                                            </div>
-                                        )}
-
-                                        {selectedIndex !== null && (
-                                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
-                                                <button
-                                                    className="absolute top-4 right-4 text-white z-50 hover:text-gray-300 transition-colors"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedIndex(null);
-                                                    }}
-                                                    onTouchEnd={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        setSelectedIndex(null);
-                                                    }}
-                                                    type="button"
-                                                    aria-label="Close"
-                                                >
-                                                    <X size={32} />
-                                                </button>
-
-                                                <button
-                                                    className="absolute left-4 text-white hidden sm:block"
-                                                    onClick={handlePrev}
-                                                >
-                                                    <ChevronLeft size={40} />
-                                                </button>
-
+                                                <Calendar size={12} />&nbsp; {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')},
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center text-sm opacity-90 truncate max-w-[220px]">
+                                            <MapPin className="h-3 w-3 mr-1 text-rose-500 flex-shrink-0" />
+                                            {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                        </div>
+                                        <div className="flex items-start justify-start gap-2 mt-4">
+                                            {model.Images && model.Images.length > 0 ? (
+                                                model.Images.map((image, index) => (
+                                                    image.name ? (
+                                                        <img
+                                                            key={image.name + index}
+                                                            src={image.name}
+                                                            alt="Profile"
+                                                            className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                            onClick={() => { setImages(model.Images), setSelectedIndex(index) }}
+                                                        />
+                                                    ) : model.profile ? (
+                                                        <img
+                                                            key={`profile-${index}`}
+                                                            src={model.profile}
+                                                            alt="Profile"
+                                                            className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            key={`placeholder-${index}`}
+                                                            className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
+                                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        >
+                                                            <User className="w-8 h-8 text-white" />
+                                                        </div>
+                                                    )
+                                                ))
+                                            ) : model.profile ? (
                                                 <img
-                                                    src={images[selectedIndex].name}
-                                                    alt="Selected"
-                                                    className="h-full sm:max-h-[80vh] w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
-                                                    onTouchStart={handleTouchStart}
-                                                    onTouchMove={handleTouchMove}
-                                                    onTouchEnd={handleTouchEnd}
+                                                    src={model.profile}
+                                                    alt="Profile"
+                                                    className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
+                                                    onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                                 />
-
-                                                <button
-                                                    className="absolute right-4 text-white hidden sm:block"
-                                                    onClick={handleNext}
+                                            ) : (
+                                                <div
+                                                    className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer"
+                                                    onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                                 >
-                                                    <ChevronRight size={40} />
-                                                </button>
+                                                    <User className="w-8 h-8 text-white" />
+                                                </div>
+                                            )}
 
-                                                <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
-                                                    <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-                                                        {selectedIndex + 1} / {images.length}
+                                            {selectedIndex !== null && (
+                                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+                                                    <button
+                                                        className="absolute top-4 right-4 text-white z-50 hover:text-gray-300 transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedIndex(null);
+                                                        }}
+                                                        onTouchEnd={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            setSelectedIndex(null);
+                                                        }}
+                                                        type="button"
+                                                        aria-label="Close"
+                                                    >
+                                                        <X size={32} />
+                                                    </button>
+
+                                                    <button
+                                                        className="absolute left-4 text-white hidden sm:block"
+                                                        onClick={handlePrev}
+                                                    >
+                                                        <ChevronLeft size={40} />
+                                                    </button>
+
+                                                    <img
+                                                        src={images[selectedIndex].name}
+                                                        alt="Selected"
+                                                        className="h-full sm:max-h-[80vh] w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
+                                                        onTouchStart={handleTouchStart}
+                                                        onTouchMove={handleTouchMove}
+                                                        onTouchEnd={handleTouchEnd}
+                                                    />
+
+                                                    <button
+                                                        className="absolute right-4 text-white hidden sm:block"
+                                                        onClick={handleNext}
+                                                    >
+                                                        <ChevronRight size={40} />
+                                                    </button>
+
+                                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
+                                                        <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                                            {selectedIndex + 1} / {images.length}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="flex space-x-2">
-                                {model?.whatsapp && (
-                                    <button
-                                        type="button"
-                                        className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                    >
-                                        <MessageSquareText className="w-4 h-4" />
-                                    </button>
-                                )}
-                                {modelDisplayState.isContact ? (
-                                    <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
-                                        <UserCheck className="w-4 h-4" />
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
-                                        onClick={() => handleAddFriend(model)}
-                                        disabled={fetcher.state !== "idle"}
-                                    >
-                                        <UserPlus className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <div className="flex space-x-2">
+                                    {model?.whatsapp && (
+                                        <button
+                                            type="button"
+                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
+                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                        >
+                                            <MessageSquareText className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {modelDisplayState.isContact ? (
+                                        <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
+                                            <UserCheck className="w-4 h-4" />
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500"
+                                            onClick={() => handleAddFriend(model)}
+                                            disabled={fetcher.state !== "idle"}
+                                        >
+                                            <UserPlus className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
                         );
                     })}
                 </div>

@@ -811,6 +811,7 @@ export async function withdrawFunds(
         modelId,
         identifier: "withdrawal",
         status: "pending",
+        modelHidden: { not: true },
       },
       _sum: { amount: true },
     });
@@ -939,6 +940,7 @@ export async function getModelWalletSummary(modelId: string) {
         modelId,
         identifier: "withdrawal",
         status: "pending",
+        modelHidden: { not: true },
       },
       _sum: { amount: true },
     });

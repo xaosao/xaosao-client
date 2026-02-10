@@ -1660,7 +1660,8 @@
       "uploading": "Uploading...",
       "saveQrCode": "Save QR Code",
       "processing": "Processing...",
-      "withdrawAndUpload": "Withdraw"
+      "withdrawAndUpload": "Withdraw",
+      "availableToWithdraw": "Available to withdraw"
     },
     "detail": {
       "title": "Transaction Details",

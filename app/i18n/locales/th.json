@@ -1724,7 +1724,8 @@
       "uploading": "กำลังอัปโหลด...",
       "saveQrCode": "บันทึก QR Code",
       "processing": "กำลังดำเนินการ...",
-      "withdrawAndUpload": "ถอนเงิน"
+      "withdrawAndUpload": "ถอนเงิน",
+      "availableToWithdraw": "ยอดเงินที่ถอนได้"
     },
     "detail": {
       "title": "รายละเอียดธุรกรรม",
