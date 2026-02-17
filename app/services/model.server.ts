@@ -440,6 +440,110 @@ export async function getNearbyModels(
   };
 }
 
+// Search ALL active models by firstName, lastName, or whatsapp number
+export async function searchModels(customerId: string, query: string) {
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { latitude: true, longitude: true },
+  });
+
+  const orConditions: any[] = [
+    { firstName: { contains: query, mode: "insensitive" } },
+    { lastName: { contains: query, mode: "insensitive" } },
+  ];
+
+  // If query looks like a number, also search by whatsapp
+  const numericQuery = query.replace(/\D/g, "");
+  if (numericQuery.length >= 2) {
+    orConditions.push({
+      whatsapp: { equals: parseInt(numericQuery, 10) },
+    });
+  }
+
+  const models = await prisma.model.findMany({
+    where: {
+      status: "active",
+      isProfileHidden: { not: true },
+      OR: orConditions,
+    },
+    take: 20,
+    orderBy: [{ rating: "desc" }, { updatedAt: "desc" }],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      dob: true,
+      gender: true,
+      bio: true,
+      whatsapp: true,
+      profile: true,
+      latitude: true,
+      longitude: true,
+      address: true,
+      status: true,
+      rating: true,
+      total_review: true,
+      available_status: true,
+      updatedAt: true,
+      Images: {
+        take: 3,
+        where: { status: "active" },
+        select: { id: true, name: true },
+        orderBy: { createdAt: "desc" },
+      },
+      customer_interactions: {
+        where: { customerId },
+        select: { action: true },
+      },
+      friend_contacts: {
+        where: {
+          adderType: "CUSTOMER",
+          customerId,
+          contactType: "MODEL",
+        },
+        select: { id: true, modelId: true, contactType: true },
+      },
+      ModelService: {
+        where: { status: "active", isAvailable: true },
+        select: { service: { select: { name: true } } },
+      },
+      _count: {
+        select: {
+          customer_interactions: { where: { action: "LIKE" } },
+        },
+      },
+    },
+  });
+
+  return models.map((m) => {
+    const distance =
+      customer?.latitude && customer?.longitude && m.latitude && m.longitude
+        ? Number(
+            calculateDistance(
+              customer.latitude,
+              customer.longitude,
+              m.latitude,
+              m.longitude
+            ).toFixed(2)
+          )
+        : 0;
+
+    return {
+      ...m,
+      distance,
+      isContact: m.friend_contacts.length > 0,
+      customerAction:
+        m.customer_interactions.length > 0
+          ? m.customer_interactions[0].action
+          : null,
+      totalLikes: m._count.customer_interactions,
+      services: m.ModelService.filter((ms) => ms.service).map(
+        (ms) => ms.service!.name
+      ),
+    };
+  });
+}
+
 // Get hot/trending models based on popularity and recent activity
 export async function getHotModels(customerId: string, limit: number = 10) {
   try {

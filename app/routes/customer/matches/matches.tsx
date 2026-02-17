@@ -2,13 +2,13 @@ import React from "react";
 import type { Route } from "./+types/matches";
 import {
     X,
-    Loader,
     BadgeCheck,
     SlidersHorizontal,
+    Search,
+    Loader2,
 } from "lucide-react";
 import {
     Form,
-    redirect,
     useFetcher,
     useActionData,
     useNavigate,
@@ -399,6 +399,38 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         showOnMount: false,
     });
 
+    // Search state
+    const [searchQuery, setSearchQuery] = React.useState("");
+    const [searchResults, setSearchResults] = React.useState<IForYouModelResponse[] | null>(null);
+    const searchFetcher = useFetcher<{ models: IForYouModelResponse[] }>();
+    const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isSearching = searchQuery.length >= 2;
+    const isSearchLoading = searchFetcher.state === "loading";
+
+    // Debounced search effect
+    React.useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        if (searchQuery.length >= 2) {
+            searchTimeoutRef.current = setTimeout(() => {
+                searchFetcher.load(`/customer/matches/search?q=${encodeURIComponent(searchQuery)}`);
+            }, 300);
+        } else {
+            setSearchResults(null);
+        }
+        return () => {
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        };
+    }, [searchQuery]);
+
+    // Handle search results
+    React.useEffect(() => {
+        if (searchFetcher.state === "idle" && searchFetcher.data) {
+            setSearchResults(searchFetcher.data.models || []);
+        }
+    }, [searchFetcher.state, searchFetcher.data]);
+
     // Optimistic UI with useFetcher
     const fetcher = useFetcher<typeof action>();
 
@@ -428,6 +460,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
     React.useEffect(() => {
         if (fetcher.state === "idle" && fetcher.data) {
             const { success, action, modelId } = fetcher.data;
+            if (!modelId) return;
             const optimisticState = optimisticInteractions[modelId];
 
             if (success && optimisticState) {
@@ -475,8 +508,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
             };
         }
         return {
-            customerAction: model.customerAction,
-            isContact: model.isContact,
+            customerAction: model.customerAction ?? null,
+            isContact: model.isContact ?? false,
         };
     };
 
@@ -659,8 +692,29 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     )}
 
                     <TabsContent value="foryou">
-                        <div className="flex items-center justify-between mb-4 px-4">
-                            <p className="text-sm sm:text-md font-bold text-gray-700">{t('matches.filter')}</p>
+                        <div className="flex items-center justify-end gap-2 mb-4">
+                            <div className="w-full sm:w-2/5 relative items-center justify-end">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder={t('discover.searchPlaceholder')}
+                                    className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setSearchResults(null);
+                                        }}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
+                                    >
+                                        <X className="w-3.5 h-3.5 text-gray-400" />
+                                    </button>
+                                )}
+                            </div>
                             <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
                                 <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
                                     <SlidersHorizontal className="w-4 h-4" />
@@ -867,10 +921,48 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                             </Drawer>
                         </div>
 
-                        {isLoading ? (
+                        {/* Search Results */}
+                        {isSearching ? (
+                            <div className="px-2">
+                                <p className="text-xs text-gray-500 mb-3">
+                                    {t('discover.searchResultsFor', { defaultValue: 'Results for' })}: "<span className="font-semibold text-gray-700">{searchQuery}</span>"
+                                </p>
+                                {isSearchLoading ? (
+                                    <div className="flex justify-center items-center min-h-[200px]">
+                                        <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                ) : searchResults && searchResults.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                                        {searchResults.map((model) => {
+                                            const displayState = getModelState(model);
+                                            return (
+                                                <ModelCard
+                                                    key={model.id}
+                                                    model={model}
+                                                    displayState={displayState}
+                                                    customerLatitude={customerLatitude}
+                                                    customerLongitude={customerLongitude}
+                                                    hasActiveSubscription={hasActiveSubscription}
+                                                    onOpenSubscriptionModal={openSubscriptionModal}
+                                                    onLike={() => handleLike(model)}
+                                                    onPass={() => handlePass(model)}
+                                                    onAddFriend={() => handleAddFriend(model)}
+                                                    isFetching={fetcher.state !== "idle"}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                        <Search className="w-10 h-10 mb-3" />
+                                        <p className="text-sm font-medium">{t('matches.notFound')}</p>
+                                        <p className="text-xs mt-1">{t('matches.noResults')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
-                                {/* &nbsp; {t('matches.loading')} */}
+                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
                             </div>
                         ) : cachedForyou.length > 0 ? (
                             <div className="space-y-4">
@@ -918,7 +1010,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="likeme">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : cachedLikeMe.length > 0 ? (
@@ -968,7 +1060,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="favourite">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : cachedFavourite.length > 0 ? (
@@ -1018,7 +1110,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     <TabsContent value="passed">
                         {isLoading ? (
                             <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-8 h-8 animate-spin text-rose-500" />
+                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
                                 {/* &nbsp; {t('matches.loading')} */}
                             </div>
                         ) : cachedPassed.length > 0 ? (

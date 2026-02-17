@@ -154,6 +154,7 @@ export interface IForYouModelResponse {
   model_interactions?: ICustomerInteraction[] | null;
   customer_interactions?: ICustomerInteraction[] | null;
   isContact?: boolean;
+  customerAction?: "LIKE" | "PASS" | null;
 }
 
 // ======== For you model:

@@ -18,7 +18,7 @@ import {
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
 import React, { useState, useRef, useEffect } from "react";
-import { Form, redirect, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
+import { Form, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
 
 // swiper
 import "swiper/css";
@@ -316,6 +316,43 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
     const loadMoreFetcher = useFetcher<{ models: INearbyModelResponse[]; pagination: NearbyPagination }>();
+
+    // Real-time search state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<INearbyModelResponse[] | null>(null);
+    const searchFetcher = useFetcher<{ models: INearbyModelResponse[] }>();
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isSearching = searchQuery.length >= 2;
+    const isSearchLoading = searchFetcher.state === "loading";
+
+    // Debounced search effect
+    useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (searchQuery.length < 2) {
+            setSearchResults(null);
+            return;
+        }
+
+        searchTimeoutRef.current = setTimeout(() => {
+            searchFetcher.load(`/customer/discover/search?q=${encodeURIComponent(searchQuery)}`);
+        }, 300);
+
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, [searchQuery]);
+
+    // Handle search fetcher response
+    useEffect(() => {
+        if (searchFetcher.state === "idle" && searchFetcher.data) {
+            setSearchResults(searchFetcher.data.models || []);
+        }
+    }, [searchFetcher.state, searchFetcher.data]);
 
     // Update cached models only on initial load or when not from fetcher action
     useEffect(() => {
@@ -643,232 +680,306 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         return (
             <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
                 <div>
-                    <div className="flex items-start justify-between sm:bg-white w-full p-3 sm:px-0">
-                        <div className="space-y-1 sm:space-y-2">
-                            <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
-                                {t("modelDashboard.title")}
-                            </h1>
-                        </div>
+                    <div className="flex flex-col gap-2 sm:bg-white w-full p-3 sm:px-0">
+                        <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
+                            {t("modelDashboard.title")}
+                        </h1>
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder={t('discover.searchPlaceholder')}
+                                    className="w-1/2 pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setSearchResults(null);
+                                        }}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
+                                    >
+                                        <X className="w-3.5 h-3.5 text-gray-400" />
+                                    </button>
+                                )}
+                            </div>
 
-                        {/* Filter Button */}
-                        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                            <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
-                                <SlidersHorizontal className="w-4 h-4" />
-                            </DrawerTrigger>
-                            <DrawerContent className="space-y-2 sm:space-y-4">
-                                <Form
-                                    method="get"
-                                    className="flex flex-col h-full"
-                                    onSubmit={(e) => {
-                                        const formData = new FormData(e.currentTarget);
-                                        const newParams = new URLSearchParams();
+                            {/* Filter Button */}
+                            <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                                <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
+                                    <SlidersHorizontal className="w-4 h-4" />
+                                </DrawerTrigger>
+                                <DrawerContent className="space-y-2 sm:space-y-4">
+                                    <Form
+                                        method="get"
+                                        className="flex flex-col h-full"
+                                        onSubmit={(e) => {
+                                            const formData = new FormData(e.currentTarget);
+                                            const newParams = new URLSearchParams();
 
-                                        const search = formData.get("search");
-                                        const distance = formData.get("distance");
-                                        const ageMin = formData.get("ageMin");
-                                        const ageMax = formData.get("ageMax");
-                                        const rating = formData.get("rating");
-                                        const gender = formData.get("gender");
-                                        const services = formData.getAll("services");
+                                            const distance = formData.get("distance");
+                                            const ageMin = formData.get("ageMin");
+                                            const ageMax = formData.get("ageMax");
+                                            const rating = formData.get("rating");
+                                            const gender = formData.get("gender");
+                                            const services = formData.getAll("services");
 
-                                        if (search) newParams.set("search", search.toString());
-                                        if (distance) newParams.set("distance", distance.toString());
-                                        if (ageMin) newParams.set("ageMin", ageMin.toString());
-                                        if (ageMax) newParams.set("ageMax", ageMax.toString());
-                                        if (rating) newParams.set("rating", rating.toString());
-                                        if (gender) newParams.set("gender", gender.toString());
-                                        services.forEach(service => {
-                                            if (service) newParams.append("services", service.toString());
-                                        });
+                                            if (distance) newParams.set("distance", distance.toString());
+                                            if (ageMin) newParams.set("ageMin", ageMin.toString());
+                                            if (ageMax) newParams.set("ageMax", ageMax.toString());
+                                            if (rating) newParams.set("rating", rating.toString());
+                                            if (gender) newParams.set("gender", gender.toString());
+                                            services.forEach(service => {
+                                                if (service) newParams.append("services", service.toString());
+                                            });
 
-                                        navigate(`?${newParams.toString()}`, { replace: true });
-                                        setDrawerOpen(false);
-                                        e.preventDefault();
-                                    }}
-                                >
-                                    <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
-                                        <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
-                                        <DrawerClose>
+                                            navigate(`?${newParams.toString()}`, { replace: true });
+                                            setDrawerOpen(false);
+                                            e.preventDefault();
+                                        }}
+                                    >
+                                        <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
+                                            <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
+                                            <DrawerClose>
+                                                <button
+                                                    type="button"
+                                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            </DrawerClose>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                            {/* Services Filter */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
+                                                <div className="space-y-2">
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="massage"
+                                                            defaultChecked={searchParams.getAll("services").includes("massage")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.massage')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="drinkingFriend"
+                                                            defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.drinkingFriend')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="travelingPartner"
+                                                            defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.travelingPartner')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="talkingPartner"
+                                                            defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.talkingPartner')}
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Max Distance */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
+                                                <input
+                                                    type="number"
+                                                    name="distance"
+                                                    min={1}
+                                                    max={500}
+                                                    defaultValue={searchParams.get("distance") || ""}
+                                                    placeholder="50 km"
+                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                />
+                                            </div>
+
+                                            {/* Age Range */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
+                                                <div className="flex gap-2 mt-2">
+                                                    <input
+                                                        type="number"
+                                                        name="ageMin"
+                                                        min={18}
+                                                        max={100}
+                                                        defaultValue={searchParams.get("ageMin") || ""}
+                                                        className="w-1/2 p-2 border rounded-md"
+                                                        placeholder={t('discover.minAge')}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        name="ageMax"
+                                                        min={18}
+                                                        max={100}
+                                                        defaultValue={searchParams.get("ageMax") || ""}
+                                                        className="w-1/2 p-2 border rounded-md"
+                                                        placeholder={t('discover.maxAge')}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Min Rating */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.minRating')}111</label>
+                                                <select
+                                                    name="rating"
+                                                    className="w-full mt-2 p-2 border rounded-md"
+                                                    defaultValue={searchParams.get("rating") || ""}
+                                                >
+                                                    <option value="">{t('discover.selectRating')}</option>
+                                                    {[1, 2, 3, 4, 5].map((r) => (
+                                                        <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Gender */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
+                                                <select
+                                                    name="gender"
+                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                    defaultValue={searchParams.get("gender") || ""}
+                                                >
+                                                    <option value="">{t('discover.allGenders')}</option>
+                                                    <option value="female">{t('discover.female')}</option>
+                                                    <option value="male">{t('discover.male')}</option>
+                                                    <option value="other">{t('discover.other')}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-6 space-x-3 border-t">
                                             <button
                                                 type="button"
-                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                onClick={() => {
+                                                    navigate(`/customer`, { replace: true });
+                                                    setDrawerOpen(false);
+                                                }}
+                                                className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
                                             >
-                                                <X className="w-5 h-5" />
+                                                {t('discover.resetFilters')}
                                             </button>
-                                        </DrawerClose>
-                                    </div>
 
-                                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                        {/* Search */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.searchByName')}</label>
-                                            <div className="relative mt-2">
-                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="text"
-                                                    name="search"
-                                                    defaultValue={searchParams.get("search") || ""}
-                                                    placeholder={t('discover.searchPlaceholder')}
-                                                    className="w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                                />
-                                            </div>
+                                            <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
+                                                {t('discover.applyFilters')}
+                                            </button>
                                         </div>
-
-                                        {/* Services Filter */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
-                                            <div className="space-y-2">
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="massage"
-                                                        defaultChecked={searchParams.getAll("services").includes("massage")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.massage')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="drinkingFriend"
-                                                        defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.drinkingFriend')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="travelingPartner"
-                                                        defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.travelingPartner')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="talkingPartner"
-                                                        defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.talkingPartner')}
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        {/* Max Distance */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
-                                            <input
-                                                type="number"
-                                                name="distance"
-                                                min={1}
-                                                max={500}
-                                                defaultValue={searchParams.get("distance") || ""}
-                                                placeholder="50 km"
-                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                            />
-                                        </div>
-
-                                        {/* Age Range */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
-                                            <div className="flex gap-2 mt-2">
-                                                <input
-                                                    type="number"
-                                                    name="ageMin"
-                                                    min={18}
-                                                    max={100}
-                                                    defaultValue={searchParams.get("ageMin") || ""}
-                                                    className="w-1/2 p-2 border rounded-md"
-                                                    placeholder={t('discover.minAge')}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    name="ageMax"
-                                                    min={18}
-                                                    max={100}
-                                                    defaultValue={searchParams.get("ageMax") || ""}
-                                                    className="w-1/2 p-2 border rounded-md"
-                                                    placeholder={t('discover.maxAge')}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Min Rating */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.minRating')}111</label>
-                                            <select
-                                                name="rating"
-                                                className="w-full mt-2 p-2 border rounded-md"
-                                                defaultValue={searchParams.get("rating") || ""}
-                                            >
-                                                <option value="">{t('discover.selectRating')}</option>
-                                                {[1, 2, 3, 4, 5].map((r) => (
-                                                    <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* Gender */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
-                                            <select
-                                                name="gender"
-                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                                defaultValue={searchParams.get("gender") || ""}
-                                            >
-                                                <option value="">{t('discover.allGenders')}</option>
-                                                <option value="female">{t('discover.female')}</option>
-                                                <option value="male">{t('discover.male')}</option>
-                                                <option value="other">{t('discover.other')}</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-6 space-x-3 border-t">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                navigate(`/customer`, { replace: true });
-                                                setDrawerOpen(false);
-                                            }}
-                                            className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                        >
-                                            {t('discover.resetFilters')}
-                                        </button>
-
-                                        <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
-                                            {t('discover.applyFilters')}
-                                        </button>
-                                    </div>
-                                </Form>
-                            </DrawerContent>
-                        </Drawer>
-                    </div>
-
-                    {/* Empty state message */}
-                    <div className="flex items-center justify-center min-h-[40vh] ">
-                        <div className="text-center">
-                            <Heart className="h-8 w-8 text-rose-400 mx-auto mb-4" />
-                            <h2 className="text-2xl font-bold mb-2">{t('discover.noMoreProfiles')}</h2>
-                            <p className="text-muted-foreground mb-4">
-                                {t('discover.checkBackLater')}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/customer`, { replace: true })}
-                                className="text-sm px-6 py-2 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition-colors"
-                            >
-                                {t('discover.resetFilters')}
-                            </button>
+                                    </Form>
+                                </DrawerContent>
+                            </Drawer>
                         </div>
                     </div>
+
+                    {/* Search results or empty state */}
+                    {isSearching ? (
+                        <div className="p-3 sm:p-0">
+                            <p className="text-xs text-gray-500 mb-3">
+                                {t('discover.searchResultsFor', { defaultValue: 'Results for' })}: "<span className="font-semibold text-gray-700">{searchQuery}</span>"
+                            </p>
+                            {isSearchLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            ) : searchResults && searchResults.length > 0 ? (
+                                <div className="space-y-4">
+                                    {searchResults.map((model) => (
+                                        <div key={model.id} className="flex items-start justify-between pb-4 border-b">
+                                            <div className="flex items-start justify-start gap-2">
+                                                {model.profile ? (
+                                                    <img
+                                                        src={model.profile}
+                                                        alt="Profile"
+                                                        className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                    />
+                                                ) : (
+                                                    <div
+                                                        className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer"
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                    >
+                                                        <User className="w-7 h-7 text-gray-400" />
+                                                    </div>
+                                                )}
+                                                <div className="space-y-0.5">
+                                                    <h2
+                                                        className="text-sm font-semibold text-gray-900 cursor-pointer"
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                    >
+                                                        {model.firstName} {model.lastName}
+                                                    </h2>
+                                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3" />
+                                                        {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                {model?.whatsapp && (
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                    >
+                                                        <MessageSquareText className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : searchResults && searchResults.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                    <Search className="w-12 h-12 text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-medium">{t('discover.noSearchResults', { defaultValue: 'No results found' })}</p>
+                                    <p className="text-xs text-gray-400 mt-1">{t('discover.tryDifferentSearch', { defaultValue: 'Try a different name or WhatsApp number' })}</p>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center min-h-[40vh] ">
+                            <div className="text-center">
+                                <Heart className="h-8 w-8 text-rose-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold mb-2">{t('discover.noMoreProfiles')}</h2>
+                                <p className="text-muted-foreground mb-4">
+                                    {t('discover.checkBackLater')}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/customer`, { replace: true })}
+                                    className="text-sm px-6 py-2 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition-colors"
+                                >
+                                    {t('discover.resetFilters')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -970,219 +1081,400 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
     return (
         <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
-            <div>
-                <div className="flex items-start justify-between bg-gray-100 sm:bg-white w-full p-3 sm:px-0">
-                    <div className="space-y-1 sm:space-y-2">
-                        <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
-                            {t("modelDashboard.title")}
-                        </h1>
-                    </div>
+            <div className="w-full">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-2 bg-gray-100 sm:bg-white w-full p-3 sm:px-0">
+                    <h1 className="text-sm sm:text-xl text-rose-500 text-shadow-sm">
+                        {t("modelDashboard.title")}
+                    </h1>
+                    <div className="w-full sm:w-2/5 flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder={t('discover.searchPlaceholder')}
+                                className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setSearchResults(null);
+                                    }}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
+                                >
+                                    <X className="w-3.5 h-3.5 text-gray-400" />
+                                </button>
+                            )}
+                        </div>
 
-                    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                        <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
-                            <SlidersHorizontal className="w-4 h-4" />
-                        </DrawerTrigger>
-                        <DrawerContent className="space-y-2 sm:space-y-4">
-                            <Form
-                                method="get"
-                                className="flex flex-col h-full"
-                                onSubmit={(e) => {
-                                    const formData = new FormData(e.currentTarget);
-                                    const newParams = new URLSearchParams();
+                        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                            <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
+                                <SlidersHorizontal className="w-4 h-4" />
+                            </DrawerTrigger>
+                            <DrawerContent className="space-y-2 sm:space-y-4">
+                                <Form
+                                    method="get"
+                                    className="flex flex-col h-full"
+                                    onSubmit={(e) => {
+                                        const formData = new FormData(e.currentTarget);
+                                        const newParams = new URLSearchParams();
 
-                                    // Add filter values only if they have values
-                                    const search = formData.get("search");
-                                    const distance = formData.get("distance");
-                                    const ageMin = formData.get("ageMin");
-                                    const ageMax = formData.get("ageMax");
-                                    const rating = formData.get("rating");
-                                    const gender = formData.get("gender");
-                                    const services = formData.getAll("services");
+                                        // Add filter values only if they have values
+                                        const distance = formData.get("distance");
+                                        const ageMin = formData.get("ageMin");
+                                        const ageMax = formData.get("ageMax");
+                                        const rating = formData.get("rating");
+                                        const gender = formData.get("gender");
+                                        const services = formData.getAll("services");
 
-                                    if (search) newParams.set("search", search.toString());
-                                    if (distance) newParams.set("distance", distance.toString());
-                                    if (ageMin) newParams.set("ageMin", ageMin.toString());
-                                    if (ageMax) newParams.set("ageMax", ageMax.toString());
-                                    if (rating) newParams.set("rating", rating.toString());
-                                    if (gender) newParams.set("gender", gender.toString());
-                                    services.forEach(service => {
-                                        if (service) newParams.append("services", service.toString());
-                                    });
+                                        if (distance) newParams.set("distance", distance.toString());
+                                        if (ageMin) newParams.set("ageMin", ageMin.toString());
+                                        if (ageMax) newParams.set("ageMax", ageMax.toString());
+                                        if (rating) newParams.set("rating", rating.toString());
+                                        if (gender) newParams.set("gender", gender.toString());
+                                        services.forEach(service => {
+                                            if (service) newParams.append("services", service.toString());
+                                        });
 
-                                    navigate(`?${newParams.toString()}`, { replace: true });
-                                    setDrawerOpen(false);
-                                    e.preventDefault();
-                                }}
-                            >
-                                <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
-                                    <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
-                                    <DrawerClose>
+                                        navigate(`?${newParams.toString()}`, { replace: true });
+                                        setDrawerOpen(false);
+                                        e.preventDefault();
+                                    }}
+                                >
+                                    <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
+                                        <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
+                                        <DrawerClose>
+                                            <button
+                                                type="button"
+                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </DrawerClose>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-6 space-y-4 font-sm">
+                                        {/* Services Filter */}
+                                        <div>
+                                            <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="services"
+                                                        value="massage"
+                                                        defaultChecked={searchParams.getAll("services").includes("massage")}
+                                                        className="mr-2 cursor-pointer accent-rose-500"
+                                                    />
+                                                    {t('discover.services.massage')}
+                                                </label>
+                                                <label className="flex items-center text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="services"
+                                                        value="drinkingFriend"
+                                                        defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
+                                                        className="mr-2 cursor-pointer accent-rose-500"
+                                                    />
+                                                    {t('discover.services.drinkingFriend')}
+                                                </label>
+                                                <label className="flex items-center text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="services"
+                                                        value="travelingPartner"
+                                                        defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
+                                                        className="mr-2 cursor-pointer accent-rose-500"
+                                                    />
+                                                    {t('discover.services.travelingPartner')}
+                                                </label>
+                                                <label className="flex items-center text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="services"
+                                                        value="talkingPartner"
+                                                        defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
+                                                        className="mr-2 cursor-pointer accent-rose-500"
+                                                    />
+                                                    {t('discover.services.talkingPartner')}
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {/* Max Distance */}
+                                        <div>
+                                            <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
+                                            <input
+                                                type="number"
+                                                name="distance"
+                                                min={1}
+                                                max={500}
+                                                defaultValue={searchParams.get("distance") || ""}
+                                                placeholder="50 km"
+                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                            />
+                                        </div>
+
+                                        {/* Age Range */}
+                                        <div>
+                                            <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
+                                            <div className="flex gap-2 mt-2">
+                                                <input
+                                                    type="number"
+                                                    name="ageMin"
+                                                    min={18}
+                                                    max={100}
+                                                    defaultValue={searchParams.get("ageMin") || ""}
+                                                    className="w-1/2 p-2 border rounded-md"
+                                                    placeholder={t('discover.minAge')}
+                                                />
+                                                <input
+                                                    type="number"
+                                                    name="ageMax"
+                                                    min={18}
+                                                    max={100}
+                                                    defaultValue={searchParams.get("ageMax") || ""}
+                                                    className="w-1/2 p-2 border rounded-md"
+                                                    placeholder={t('discover.maxAge')}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Min Rating */}
+                                        <div>
+                                            <label className="block text-gray-700 font-medium">{t('discover.minRating')}</label>
+                                            <select
+                                                name="rating"
+                                                className="w-full mt-2 p-2 border rounded-md"
+                                                defaultValue={searchParams.get("rating") || ""}
+                                            >
+                                                <option value="">{t('discover.selectRating')}</option>
+                                                {[1, 2, 3, 4, 5].map((r) => (
+                                                    <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Gender */}
+                                        <div>
+                                            <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
+                                            <select
+                                                name="gender"
+                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                defaultValue={searchParams.get("gender") || ""}
+                                            >
+                                                <option value="">{t('discover.allGenders')}</option>
+                                                <option value="female">{t('discover.female')}</option>
+                                                <option value="male">{t('discover.male')}</option>
+                                                <option value="other">{t('discover.other')}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-6 space-x-3 border-t">
                                         <button
                                             type="button"
-                                            className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                navigate(`/customer`, { replace: true });
+                                                setDrawerOpen(false);
+                                            }}
+                                            className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
                                         >
-                                            <X className="w-5 h-5" />
+                                            {t('discover.resetFilters')}
                                         </button>
-                                    </DrawerClose>
-                                </div>
 
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 font-sm">
-                                    {/* Search */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium">{t('discover.searchByName')}</label>
-                                        <div className="relative mt-2">
-                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                name="search"
-                                                defaultValue={searchParams.get("search") || ""}
-                                                placeholder={t('discover.searchPlaceholder')}
-                                                className="w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                            />
-                                        </div>
+                                        <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
+                                            {t('discover.applyFilters')}
+                                        </button>
                                     </div>
-
-                                    {/* Services Filter */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
-                                        <div className="space-y-2">
-                                            <label className="flex items-center text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    name="services"
-                                                    value="massage"
-                                                    defaultChecked={searchParams.getAll("services").includes("massage")}
-                                                    className="mr-2 cursor-pointer accent-rose-500"
-                                                />
-                                                {t('discover.services.massage')}
-                                            </label>
-                                            <label className="flex items-center text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    name="services"
-                                                    value="drinkingFriend"
-                                                    defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
-                                                    className="mr-2 cursor-pointer accent-rose-500"
-                                                />
-                                                {t('discover.services.drinkingFriend')}
-                                            </label>
-                                            <label className="flex items-center text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    name="services"
-                                                    value="travelingPartner"
-                                                    defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
-                                                    className="mr-2 cursor-pointer accent-rose-500"
-                                                />
-                                                {t('discover.services.travelingPartner')}
-                                            </label>
-                                            <label className="flex items-center text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    name="services"
-                                                    value="talkingPartner"
-                                                    defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
-                                                    className="mr-2 cursor-pointer accent-rose-500"
-                                                />
-                                                {t('discover.services.talkingPartner')}
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* Max Distance */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
-                                        <input
-                                            type="number"
-                                            name="distance"
-                                            min={1}
-                                            max={500}
-                                            defaultValue={searchParams.get("distance") || ""}
-                                            placeholder="50 km"
-                                            className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                        />
-                                    </div>
-
-                                    {/* Age Range */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
-                                        <div className="flex gap-2 mt-2">
-                                            <input
-                                                type="number"
-                                                name="ageMin"
-                                                min={18}
-                                                max={100}
-                                                defaultValue={searchParams.get("ageMin") || ""}
-                                                className="w-1/2 p-2 border rounded-md"
-                                                placeholder={t('discover.minAge')}
-                                            />
-                                            <input
-                                                type="number"
-                                                name="ageMax"
-                                                min={18}
-                                                max={100}
-                                                defaultValue={searchParams.get("ageMax") || ""}
-                                                className="w-1/2 p-2 border rounded-md"
-                                                placeholder={t('discover.maxAge')}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Min Rating */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium">{t('discover.minRating')}</label>
-                                        <select
-                                            name="rating"
-                                            className="w-full mt-2 p-2 border rounded-md"
-                                            defaultValue={searchParams.get("rating") || ""}
-                                        >
-                                            <option value="">{t('discover.selectRating')}</option>
-                                            {[1, 2, 3, 4, 5].map((r) => (
-                                                <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Gender */}
-                                    <div>
-                                        <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
-                                        <select
-                                            name="gender"
-                                            className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                            defaultValue={searchParams.get("gender") || ""}
-                                        >
-                                            <option value="">{t('discover.allGenders')}</option>
-                                            <option value="female">{t('discover.female')}</option>
-                                            <option value="male">{t('discover.male')}</option>
-                                            <option value="other">{t('discover.other')}</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between p-6 space-x-3 border-t">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            navigate(`/customer`, { replace: true });
-                                            setDrawerOpen(false);
-                                        }}
-                                        className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                    >
-                                        {t('discover.resetFilters')}
-                                    </button>
-
-                                    <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
-                                        {t('discover.applyFilters')}
-                                    </button>
-                                </div>
-                            </Form>
-                        </DrawerContent>
-                    </Drawer>
+                                </Form>
+                            </DrawerContent>
+                        </Drawer>
+                    </div>
                 </div>
+
+                {/* Search Results */}
+                {isSearching ? (
+                    <div className="p-3 sm:p-0">
+                        <p className="text-xs text-gray-500 mb-3">
+                            {t('discover.searchResultsFor', { defaultValue: 'Results for' })}: "<span className="font-semibold text-gray-700">{searchQuery}</span>"
+                        </p>
+                        {isSearchLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : searchResults && searchResults.length > 0 ? (
+                            <>
+                                {/* Desktop search results grid */}
+                                <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                                    {searchResults.map((model) => {
+                                        const modelDisplayState = getModelState(model);
+                                        return (
+                                            <div
+                                                key={model.id}
+                                                className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden h-auto w-full group"
+                                            >
+                                                <div>
+                                                    <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                                                        {model?.whatsapp && (
+                                                            <button
+                                                                type="button"
+                                                                className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                            >
+                                                                <MessageSquareText className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        {modelDisplayState.isContact ? (
+                                                            <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                                                <UserCheck className="w-4 h-4" />
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
+                                                                onClick={() => handleAddFriend(model)}
+                                                                disabled={fetcher.state !== "idle"}
+                                                            >
+                                                                <UserPlus className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="relative h-full overflow-hidden">
+                                                    <div
+                                                        onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        className="w-full h-[30vh]"
+                                                    >
+                                                        {model.Images[0]?.name ? (
+                                                            <img
+                                                                src={model.Images[0].name}
+                                                                alt={model.firstName}
+                                                                className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                            />
+                                                        ) : model.profile ? (
+                                                            <img
+                                                                src={model.profile}
+                                                                alt={model.firstName}
+                                                                className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                            />
+                                                        ) : (
+                                                            <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                                                                <User className="w-16 h-16 text-white" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                                                    <div className="absolute bottom-4 left-4 right-4 text-white sm:opacity-0 sm:group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 space-y-1">
+                                                        <div className="flex items-start gap-2 justify-start flex-col">
+                                                            <h2
+                                                                className="flex items-center justify-start text-md"
+                                                                style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
+                                                            >
+                                                                <User size={16} />&nbsp;{model.firstName}&nbsp;{model.lastName},
+                                                            </h2>
+                                                            <p
+                                                                className="flex items-center justify-start gap-2 text-sm text-white"
+                                                                style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}
+                                                            >
+                                                                <Calendar size={16} /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center text-sm opacity-90 mb-3">
+                                                            <MapPin className="h-4 w-4 mr-1" />
+                                                            {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Mobile search results list */}
+                                <div className="block sm:hidden w-full space-y-8">
+                                    {searchResults.map((model) => {
+                                        const modelDisplayState = getModelState(model);
+                                        return (
+                                            <div key={model.id} className="flex items-start justify-between pb-4 border-b">
+                                                <div className="flex items-start justify-start gap-2">
+                                                    {model.profile ? (
+                                                        <img
+                                                            src={model.profile}
+                                                            alt="Profile"
+                                                            className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
+                                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer"
+                                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        >
+                                                            <User className="w-7 h-7 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                    <div className="space-y-0.5">
+                                                        <h2
+                                                            className="text-sm font-semibold text-gray-900 cursor-pointer"
+                                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                                        >
+                                                            {model.firstName} {model.lastName}
+                                                        </h2>
+                                                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                            <MapPin className="w-3 h-3" />
+                                                            {model.address ? `${model.address} · ${formatDistance(model.distance)}` : formatDistance(model.distance)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    {model?.whatsapp && (
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                        >
+                                                            <MessageSquareText className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {modelDisplayState.isContact ? (
+                                                        <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                                            <UserCheck className="w-4 h-4" />
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
+                                                            onClick={() => handleAddFriend(model)}
+                                                            disabled={fetcher.state !== "idle"}
+                                                        >
+                                                            <UserPlus className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : searchResults && searchResults.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
+                                <Search className="w-12 h-12 text-gray-300 mb-3" />
+                                <p className="text-gray-500 font-medium">{t('discover.noSearchResults', { defaultValue: 'No results found' })}</p>
+                                <p className="text-xs text-gray-400 mt-1">{t('discover.tryDifferentSearch', { defaultValue: 'Try a different name or WhatsApp number' })}</p>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
 
                 <div
                     ref={scrollContainerRef}
-                    className="px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6"
+                    className={`px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6 ${isSearching ? "hidden" : ""}`}
                     style={{
                         msOverflowStyle: 'none',
                         scrollbarWidth: 'none',
@@ -1227,7 +1519,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     ))}
                 </div>
 
-                {selectedProfile ? (
+                {!isSearching && selectedProfile ? (
                     <div className="flex gap-6 p-3 sm:p-0">
                         <div className="bg-gray-800 rounded-lg overflow-hidden w-full sm:w-1/2">
                             <Swiper
@@ -1484,14 +1776,14 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             </div>
                         </div>
                     </div>
-                ) : (
+                ) : !isSearching ? (
                     <div className="text-center py-12">
                         <p className="text-gray-400 text-lg">{t('discover.clickProfile')}</p>
                     </div>
-                )}
+                ) : null}
             </div>
 
-            <div className="flex flex-col items-start justify-start p-4 w-full space-y-4">
+            <div className={`flex flex-col items-start justify-start p-4 w-full space-y-4 ${isSearching ? "hidden" : ""}`}>
                 <div className="space-y-2">
                     <h1 className="text-sm sm:text-md sm:font-bold text-gray-700 uppercase text-shadow-md">{t('discover.nearbyYou')}</h1>
                     <p className="text-xs sm:text-sm font-normal text-gray-600">
