@@ -46,6 +46,7 @@ import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
 import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
+import { useScrollDirection } from "~/hooks/useScrollDirection";
 
 interface NearbyPagination {
     page: number;
@@ -270,6 +271,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
+    const isScrollingDown = useScrollDirection();
     const isLoading = navigation.state === "loading";
 
     // Subscription modal management
@@ -676,7 +678,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         return (
             <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
                 <div>
-                    <div className="flex flex-col gap-2 sm:bg-white w-full p-3 sm:px-0">
+                    <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col gap-2 bg-gray-100 sm:bg-white p-3 sm:px-6 sm:py-3 transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
                         <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
                             {t("modelDashboard.title")}
                         </h1>
@@ -889,6 +891,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             </Drawer>
                         </div>
                     </div>
+                    {/* Spacer for fixed search bar */}
+                    <div className="h-20 sm:h-14"></div>
 
                     {/* Search results or empty state */}
                     {isSearching ? (
@@ -1042,7 +1046,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     return (
         <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
             <div className="w-full">
-                <div className="flex flex-col sm:flex-row items-start justify-between gap-2 bg-gray-100 sm:bg-white w-full p-3 sm:px-0">
+                <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col sm:flex-row items-start justify-between gap-2 bg-gray-100 sm:bg-white p-3 sm:px-6 sm:py-3 transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
                     <h1 className="text-sm sm:text-xl text-rose-500 text-shadow-sm">
                         {t("modelDashboard.title")}
                     </h1>
@@ -1255,6 +1259,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         </Drawer>
                     </div>
                 </div>
+                {/* Spacer for fixed search bar */}
+                <div className="h-20 sm:h-14"></div>
 
                 {/* Search Results */}
                 {isSearching ? (

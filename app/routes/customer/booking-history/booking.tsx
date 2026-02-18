@@ -224,7 +224,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
 
          {/* Status Filter */}
          {bookInfos && bookInfos.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
                <button
                   type="button"
                   onClick={() => setStatusFilter("all")}

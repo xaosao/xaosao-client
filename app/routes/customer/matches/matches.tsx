@@ -692,7 +692,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     )}
 
                     <TabsContent value="foryou">
-                        <div className="flex items-center justify-end gap-2 mb-4">
+                        <div className="flex items-center justify-end gap-2 sticky top-[48px] sm:top-0 z-20 bg-white pt-6 sm:pt-3 pb-2 -mx-2 px-2 sm:-mx-4 sm:px-4">
                             <div className="w-full sm:w-2/5 relative items-center justify-end">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
