@@ -27,7 +27,7 @@ import {
 } from "~/components/ui/drawer";
 import ModelCard from "./modelComponent";
 import EmptyPage from "~/components/ui/empty";
-import Pagination from "~/components/ui/pagination";
+// Pagination removed — replaced with infinite scroll
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // interface, service and utils
@@ -120,16 +120,16 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
-    const take = 20;
+    const take = 50;
 
     const likePage = Number(url.searchParams.get("likeMePage") || 1);
-    const likeTake = 20;
+    const likeTake = 50;
 
     const favPage = Number(url.searchParams.get("favouritePage") || 1);
-    const favouriteTake = 20;
+    const favouriteTake = 50;
 
     const passedPage = Number(url.searchParams.get("passedPage") || 1);
-    const passedTake = 20;
+    const passedTake = 50;
 
     // Filters
     const filters = {
@@ -407,6 +407,21 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
     const isSearching = searchQuery.length >= 2;
     const isSearchLoading = searchFetcher.state === "loading";
 
+    // Infinite scroll state
+    const loadMoreFetcher = useFetcher<LoaderReturn>();
+    const loadMoreTabRef = React.useRef<"foryou" | "likeme" | "favourite" | "passed">("foryou");
+    const processedDataRef = React.useRef<any>(null);
+    const sentinelRef = React.useRef<HTMLDivElement>(null);
+    const [currentPages, setCurrentPages] = React.useState({
+        foryou: 1, likeme: 1, favourite: 1, passed: 1,
+    });
+    const [hasMore, setHasMore] = React.useState({
+        foryou: foryouPagination.hasNextPage,
+        likeme: likemePagination.hasNextPage,
+        favourite: favouritePagination.hasNextPage,
+        passed: passPagination.hasNextPage,
+    });
+
     // Debounced search effect
     React.useEffect(() => {
         if (searchTimeoutRef.current) {
@@ -454,7 +469,86 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         setCachedLikeMe(likeMeModels);
         setCachedFavourite(myFavouriteModels);
         setCachedPassed(myPassModels);
+        // Reset infinite scroll state when loader data changes (tab switch / filter)
+        setCurrentPages({
+            foryou: foryouPagination.currentPage,
+            likeme: likemePagination.currentPage,
+            favourite: favouritePagination.currentPage,
+            passed: passPagination.currentPage,
+        });
+        setHasMore({
+            foryou: foryouPagination.hasNextPage,
+            likeme: likemePagination.hasNextPage,
+            favourite: favouritePagination.hasNextPage,
+            passed: passPagination.hasNextPage,
+        });
+        processedDataRef.current = null;
     }, [foryouModels, likeMeModels, myFavouriteModels, myPassModels, fetcher.state]);
+
+    // Load more function for infinite scroll
+    const loadMore = React.useCallback(() => {
+        if (loadMoreFetcher.state !== "idle" || !hasMore[tabValue]) return;
+
+        loadMoreTabRef.current = tabValue;
+        const nextPage = currentPages[tabValue] + 1;
+        const params = new URLSearchParams(searchParams);
+
+        switch (tabValue) {
+            case "foryou": params.set("page", String(nextPage)); break;
+            case "likeme": params.set("likeMePage", String(nextPage)); break;
+            case "favourite": params.set("favouritePage", String(nextPage)); break;
+            case "passed": params.set("passedPage", String(nextPage)); break;
+        }
+
+        loadMoreFetcher.load(`/customer/matches?${params.toString()}`);
+    }, [tabValue, currentPages, hasMore, searchParams, loadMoreFetcher]);
+
+    // Handle load more results — append to cached arrays
+    React.useEffect(() => {
+        if (loadMoreFetcher.state !== "idle" || !loadMoreFetcher.data || loadMoreFetcher.data === processedDataRef.current) return;
+        processedDataRef.current = loadMoreFetcher.data;
+        const data = loadMoreFetcher.data as LoaderReturn;
+        const tab = loadMoreTabRef.current;
+
+        const dedup = (prev: IForYouModelResponse[], next: IForYouModelResponse[]) => {
+            const ids = new Set(prev.map(m => m.id));
+            return [...prev, ...next.filter(m => !ids.has(m.id))];
+        };
+
+        if (tab === "foryou") {
+            setCachedForyou(prev => dedup(prev, data.foryouModels));
+            setCurrentPages(prev => ({ ...prev, foryou: data.foryouPagination.currentPage }));
+            setHasMore(prev => ({ ...prev, foryou: data.foryouPagination.hasNextPage }));
+        } else if (tab === "likeme") {
+            setCachedLikeMe(prev => dedup(prev, data.likeMeModels));
+            setCurrentPages(prev => ({ ...prev, likeme: data.likemePagination.currentPage }));
+            setHasMore(prev => ({ ...prev, likeme: data.likemePagination.hasNextPage }));
+        } else if (tab === "favourite") {
+            setCachedFavourite(prev => dedup(prev, data.myFavouriteModels));
+            setCurrentPages(prev => ({ ...prev, favourite: data.favouritePagination.currentPage }));
+            setHasMore(prev => ({ ...prev, favourite: data.favouritePagination.hasNextPage }));
+        } else if (tab === "passed") {
+            setCachedPassed(prev => dedup(prev, data.myPassModels));
+            setCurrentPages(prev => ({ ...prev, passed: data.passPagination.currentPage }));
+            setHasMore(prev => ({ ...prev, passed: data.passPagination.hasNextPage }));
+        }
+    }, [loadMoreFetcher.state, loadMoreFetcher.data]);
+
+    // IntersectionObserver — auto-load when sentinel scrolls into view
+    React.useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) loadMore();
+            },
+            { rootMargin: "200px" }
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [loadMore]);
 
     // Handle fetcher response
     React.useEffect(() => {
@@ -986,17 +1080,10 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                         );
                                     })}
                                 </div>
-                                {foryouPagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={foryouPagination.currentPage}
-                                        totalPages={foryouPagination.totalPages}
-                                        totalCount={foryouPagination.totalCount}
-                                        limit={foryouPagination.limit}
-                                        hasNextPage={foryouPagination.hasNextPage}
-                                        hasPreviousPage={foryouPagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                    />
+                                {hasMore.foryou && (
+                                    <div ref={sentinelRef} className="flex justify-center py-6">
+                                        <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                                    </div>
                                 )}
                             </div>
                         ) : (
@@ -1035,18 +1122,10 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                         );
                                     })}
                                 </div>
-                                {likemePagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={likemePagination.currentPage}
-                                        totalPages={likemePagination.totalPages}
-                                        totalCount={likemePagination.totalCount}
-                                        limit={likemePagination.limit}
-                                        hasNextPage={likemePagination.hasNextPage}
-                                        hasPreviousPage={likemePagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="likeMePage"
-                                    />
+                                {hasMore.likeme && (
+                                    <div ref={sentinelRef} className="flex justify-center py-6">
+                                        <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                                    </div>
                                 )}
                             </div>
                         ) : (
@@ -1085,18 +1164,10 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                         );
                                     })}
                                 </div>
-                                {favouritePagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={favouritePagination.currentPage}
-                                        totalPages={favouritePagination.totalPages}
-                                        totalCount={favouritePagination.totalCount}
-                                        limit={favouritePagination.limit}
-                                        hasNextPage={favouritePagination.hasNextPage}
-                                        hasPreviousPage={favouritePagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="favouritePage"
-                                    />
+                                {hasMore.favourite && (
+                                    <div ref={sentinelRef} className="flex justify-center py-6">
+                                        <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                                    </div>
                                 )}
                             </div>
                         ) : (
@@ -1135,18 +1206,10 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                         );
                                     })}
                                 </div>
-                                {passPagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={passPagination.currentPage}
-                                        totalPages={passPagination.totalPages}
-                                        totalCount={passPagination.totalCount}
-                                        limit={passPagination.limit}
-                                        hasNextPage={passPagination.hasNextPage}
-                                        hasPreviousPage={passPagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="passedPage"
-                                    />
+                                {hasMore.passed && (
+                                    <div ref={sentinelRef} className="flex justify-center py-6">
+                                        <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                                    </div>
                                 )}
                             </div>
                         ) : (
