@@ -365,7 +365,8 @@
     "male": "Male",
     "other": "Other",
     "resetFilters": "Reset",
-    "applyFilters": "Apply"
+    "applyFilters": "Apply",
+    "noMoreModels": "No more companions nearby"
   },
   "matches": {
     "processing": "Processing....",

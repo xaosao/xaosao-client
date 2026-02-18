@@ -6,8 +6,6 @@ import {
     MapPin,
     Search,
     Calendar,
-    Minimize,
-    Maximize,
     UserPlus,
     UserCheck,
     ChevronLeft,
@@ -568,8 +566,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         isContact: false
     };
 
-    const [isFullscreen, setIsFullscreen] = useState(false);
-
     // Refs for auto-scroll to selected model in header
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const modelItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -984,42 +980,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
             </div>
         );
     }
-
-    const toggleFullscreen = async () => {
-        const doc: any = document;
-        const docEl: any = document.documentElement;
-
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
-            if (docEl.requestFullscreen) {
-                await docEl.requestFullscreen();
-                setIsFullscreen(true);
-                return;
-            }
-            if (docEl.webkitRequestFullscreen) {
-                await docEl.webkitRequestFullscreen();
-                setIsFullscreen(true);
-                return;
-            }
-            document.body.style.height = "100vh";
-            document.body.style.overflow = "hidden";
-            setIsFullscreen(true);
-        } else {
-            if (doc.exitFullscreen) {
-                await doc.exitFullscreen();
-                setIsFullscreen(false);
-                return;
-            }
-            if (doc.webkitExitFullscreen) {
-                await doc.webkitExitFullscreen();
-                setIsFullscreen(false);
-                return;
-            }
-
-            document.body.style.height = "";
-            document.body.style.overflow = "";
-            setIsFullscreen(false);
-        }
-    };
 
     const handleProfileClick = (id: string) => {
         searchParams.set("profileId", id);
@@ -2045,7 +2005,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 </div>
 
                 {/* Infinite Scroll: Loading Spinner and Sentinel */}
-                <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-full flex flex-col items-center justify-center py-8">
                     {isLoadingMore && (
                         <div className="flex items-center gap-2 text-rose-500">
                             <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -2060,23 +2020,12 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
                     {/* No more models message */}
                     {!hasMore && cachedNearbyModels.length > 0 && (
-                        <div className="text-center text-gray-500 py-4">
+                        <div className="w-full text-center text-gray-500 py-4">
                             <p className="text-sm">{t('discover.noMoreModels', { defaultValue: 'No more companions nearby' })}</p>
                         </div>
                     )}
                 </div>
             </div>
-
-            <button
-                onClick={toggleFullscreen}
-                className="cursor-pointer fixed bottom-16 right-4 sm:bottom-4 sm:right-4 z-50 p-3 rounded-full bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
-            >
-                {isFullscreen ? (
-                    <Minimize className="w-5 h-5" />
-                ) : (
-                    <Maximize className="w-5 h-5" />
-                )}
-            </button>
 
             {/* Subscription Trial Modal */}
             {trialPackage && (

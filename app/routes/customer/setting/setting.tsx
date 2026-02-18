@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import type { Route } from "./+types/setting";
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
-import { User, Lock, Bell, Globe, Flag, Trash2, LogOut, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check } from "lucide-react";
+import { User, Lock, Bell, Globe, Flag, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check } from "lucide-react";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 // components
@@ -394,17 +394,6 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                     <ChevronRight size={16} className="block sm:hidden" />
                 </div>
 
-                <div className="px-8 sm:px-0 mt-4">
-                    <Form method="post" action="/logout">
-                        <button
-                            type="submit"
-                            className="w-full flex items-center justify-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 text-rose-500 border border-rose-300 cursor-pointer hover:bg-rose-100 mt-4"
-                        >
-                            <LogOut size={16} />
-                            <span className="text-sm font-medium">{t('settings.common.logout')}</span>
-                        </button>
-                    </Form>
-                </div>
             </div>
 
             {/* Main Content */}

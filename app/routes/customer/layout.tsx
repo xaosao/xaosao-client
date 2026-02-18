@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
-import { Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
 import {
     User,
     Heart,
@@ -10,6 +10,7 @@ import {
     Wallet2,
     Settings,
     HandHeart,
+    LogOut,
 } from "lucide-react";
 import type { Notification } from "~/hooks/useNotifications";
 import { requireVerifiedUserSession } from "~/services/auths.server";
@@ -252,7 +253,17 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                             );
                         })}
                     </div>
+                    <Form method="post" action="/logout" className="w-full mt-10">
+                        <button
+                            type="submit"
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-sm text-sm font-medium bg-rose-50 border border-rose-100 text-rose-500 cursor-pointer hover:bg-rose-100 transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span suppressHydrationWarning>{t('settings.common.logout')}</span>
+                        </button>
+                    </Form>
                 </div>
+
             </div>
 
             <div className="w-full sm:w-4/5 flex flex-col min-h-screen pb-18 sm:pb-0">
@@ -272,12 +283,20 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                             </div>
                             <div className="flex items-start justify-center flex-col min-w-0">
                                 <span className="text-sm font-medium uppercase truncate max-w-full">{customerData.firstName} {customerData.lastName}</span>
-                                <span className="text-xs text-gray-500 truncate max-w-full">{customerData.bio}</span>
+                                {/* <span className="text-xs text-gray-500 truncate max-w-full">{customerData.bio}</span> */}
                             </div>
                         </Link>
-                        <div className="flex items-center justify-center gap-4">
+                        <div className="flex items-center justify-center gap-3">
                             <NotificationBell userType="customer" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
-                            {/* <Settings size={18} className="text-gray-500" onClick={() => navigate("/customer/setting")} /> */}
+                            <Form method="post" action="/logout">
+                                <button
+                                    type="submit"
+                                    className="bg-rose-50 flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer text-xs font-medium"
+                                >
+                                    {/* <span suppressHydrationWarning>{t('settings.common.logout')}</span> */}
+                                    <LogOut className="w-4 h-4" />
+                                </button>
+                            </Form>
                         </div>
                     </div>
                 )}
