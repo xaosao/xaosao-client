@@ -85,7 +85,10 @@ export default function WalletPage({ loaderData }: TransactionProps) {
         transactions,
         pagination
     } = loaderData;
-    const isLoading = navigation.state === "loading";
+    // Only show full-page loading when NOT navigating to modal routes (detail, edit, delete, top-up)
+    const isNavigatingToAction = navigation.location?.pathname.startsWith("/customer/wallets/") ||
+        navigation.location?.pathname.startsWith("/customer/wallet-topup");
+    const isLoading = navigation.state === "loading" && !isNavigatingToAction;
 
     // Listen for real-time notifications - refresh wallet instantly when admin approves/rejects recharge
     const handleNewNotification = React.useCallback((notification: Notification) => {

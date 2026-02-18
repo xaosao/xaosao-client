@@ -104,7 +104,9 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
    const navigation = useNavigation()
    const revalidator = useRevalidator()
    const { bookings } = loaderData
-   const isLoading = navigation.state === "loading";
+   const isNavigatingToAction = navigation.location?.pathname.startsWith("/model/dating/") ||
+      navigation.location?.pathname.startsWith("/model/call/");
+   const isLoading = navigation.state === "loading" && !isNavigatingToAction;
    const [isPolicyOpen, setIsPolicyOpen] = useState(false);
 
    // Booking notification types that should trigger a refresh

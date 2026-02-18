@@ -77,7 +77,10 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
    const navigation = useNavigation()
    const revalidator = useRevalidator()
    const { bookInfos } = loaderData
-   const isLoading = navigation.state === "loading";
+   // Only show full-page loading when NOT navigating to modal routes (detail, edit, cancel, delete, release, dispute)
+   const isNavigatingToAction = navigation.location?.pathname.startsWith("/customer/book-service/") ||
+      navigation.location?.pathname.startsWith("/customer/call/");
+   const isLoading = navigation.state === "loading" && !isNavigatingToAction;
    const [isPolicyOpen, setIsPolicyOpen] = useState(false);
    const [statusFilter, setStatusFilter] = useState<string>("all");
 
