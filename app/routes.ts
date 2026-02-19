@@ -127,6 +127,7 @@ export default [
   route("customer", "./routes/customer/layout.tsx", [
     index("./routes/customer/discover.tsx"),
     route("discover/search", "./routes/customer/discover.search.tsx"),
+    route("discover/load-more", "./routes/customer/discover.load-more.tsx"),
     route("matches", "./routes/customer/matches/matches.tsx"),
     route("matches/search", "./routes/customer/matches.search.tsx"),
 

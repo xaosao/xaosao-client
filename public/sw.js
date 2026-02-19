@@ -5,8 +5,8 @@ const DYNAMIC_CACHE = 'xaosao-dynamic-v14';
 // Log version on load for debugging
 console.log('[SW] Service Worker Version:', CACHE_NAME);
 
-// Detect iOS
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+// Detect iOS (no `window` in service worker context — use `self` or just UA check)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 // Assets to cache immediately on install
 // NOTE: Don't cache '/' as it's dynamic and depends on auth state

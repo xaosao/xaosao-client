@@ -79,12 +79,15 @@ function useCacheClear() {
       localStorage.setItem("app_version", APP_VERSION);
       localStorage.setItem("last_cache_clear", now.toString());
 
-      // Unregister old service workers
+      // Force service worker to update (don't unregister — that destroys push subscriptions)
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (const registration of registrations) {
-            registration.unregister();
-            console.log("[Cache] Service worker unregistered");
+            if (registration.active) {
+              registration.active.postMessage({ type: 'FORCE_UPDATE' });
+            }
+            registration.update();
+            console.log("[Cache] Service worker force-updated");
           }
         });
       }
@@ -198,20 +201,27 @@ function usePWA() {
     };
 
     // On iOS PWA, the service worker API might not be immediately available
-    // Try immediately, and if not available, retry after a delay
+    // Try immediately, and if not available, retry with increasing delays
     if ("serviceWorker" in navigator) {
       registerSW();
     } else if (isIOSPWA()) {
       console.log("[PWA] iOS PWA detected but service worker not available, will retry...");
-      // Retry after a delay for iOS PWA
-      const retryTimeout = setTimeout(() => {
+      // Retry up to 5 times with increasing delays (1s, 2s, 3s, 4s, 5s)
+      let attempt = 0;
+      const maxAttempts = 5;
+      const tryRegister = () => {
+        attempt++;
         if ("serviceWorker" in navigator) {
-          console.log("[PWA] Service Worker now available on iOS PWA, registering...");
+          console.log(`[PWA] Service Worker now available on iOS PWA (attempt ${attempt}), registering...`);
           registerSW();
+        } else if (attempt < maxAttempts) {
+          console.log(`[PWA] iOS PWA: SW not available yet (attempt ${attempt}/${maxAttempts}), retrying in ${attempt + 1}s...`);
+          retryTimeout = setTimeout(tryRegister, (attempt + 1) * 1000);
         } else {
-          console.log("[PWA] Service Worker still not available on iOS PWA after retry");
+          console.log("[PWA] iOS PWA: Service Worker not available after all retries");
         }
-      }, 1000);
+      };
+      let retryTimeout = setTimeout(tryRegister, 1000);
 
       return () => clearTimeout(retryTimeout);
     }
