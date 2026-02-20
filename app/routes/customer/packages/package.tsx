@@ -73,7 +73,7 @@ export default function PricingPage({ loaderData }: TransactionProps) {
 
    // Find the first non-current plan or popular plan for mobile default selection
    const defaultSelectedPlan = plans.find(p => !p.current && p.isPopular) || plans.find(p => !p.current) || plans[0];
-   const [selectedPlan, setSelectedPlan] = useState<ISubscriptionPlanWithCurrentResponse>(defaultSelectedPlan)
+   const [selectedPlan, setSelectedPlan] = useState<ISubscriptionPlanWithCurrentResponse | undefined>(defaultSelectedPlan)
 
    return (
       <div className="sm:min-h-screen relative overflow-hidden px-3 sm:px-0">
@@ -113,6 +113,11 @@ export default function PricingPage({ loaderData }: TransactionProps) {
             </div>
 
             <div className="grid md:grid-cols-3 gap-4 mb-16">
+               {plans.length === 0 && (
+                  <div className="col-span-3 text-center py-12 text-gray-500">
+                     <p className="text-sm font-light">{t('packages.list.noPlansAvailable', { defaultValue: 'No plans available at the moment.' })}</p>
+                  </div>
+               )}
                {plans.map((plan) => (
                   <Card
                      key={plan.name}
@@ -194,6 +199,11 @@ export default function PricingPage({ loaderData }: TransactionProps) {
                   {t('packages.list.subtitle')}
                </p>
             </div>
+            {plans.length === 0 && (
+               <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm font-light">{t('packages.list.noPlansAvailable', { defaultValue: 'No plans available at the moment.' })}</p>
+               </div>
+            )}
             <div className="flex items-start justify-start w-full">
                <Swiper
                   modules={[Navigation, Pagination]}
@@ -255,50 +265,54 @@ export default function PricingPage({ loaderData }: TransactionProps) {
             </div>
 
             {/* Display selected plan details */}
-            <div className={`mt-4 p-3 rounded-lg border ${selectedPlan.current ? "bg-rose-100 border-rose-300" : "bg-rose-50 border-rose-200"}`}>
-               <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-md font-bold text-gray-800">
-                     {t(`packages.items.${getPackageKey(selectedPlan.name)}.name`, { defaultValue: selectedPlan.name })} - {t('packages.list.features')}
-                  </h4>
-                  {selectedPlan.current && (
-                     <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
-                        {t('packages.list.currentPlan')}
-                     </span>
-                  )}
-               </div>
-               <p className="text-sm text-gray-600 mb-3">
-                  {t(`packages.items.${getPackageKey(selectedPlan.name)}.description`, { defaultValue: selectedPlan.description })}
-               </p>
-            </div>
-
-            <div className="space-y-4 mb-8 w-full px-3 py-4 border rounded-md">
-               {selectedPlan.features && Object.values(selectedPlan.features).map((feature, index) => {
-                  const featureKey = featureKeyMap[feature as string];
-                  return (
-                     <div key={index} className="flex items-center space-x-3 text-sm">
-                        <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        <span className="text-gray-700 font-light">
-                           {featureKey ? t(`packages.features.${featureKey}`) : feature}
-                        </span>
+            {selectedPlan && (
+               <>
+                  <div className={`mt-4 p-3 rounded-lg border ${selectedPlan.current ? "bg-rose-100 border-rose-300" : "bg-rose-50 border-rose-200"}`}>
+                     <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-md font-bold text-gray-800">
+                           {t(`packages.items.${getPackageKey(selectedPlan.name)}.name`, { defaultValue: selectedPlan.name })} - {t('packages.list.features')}
+                        </h4>
+                        {selectedPlan.current && (
+                           <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                              {t('packages.list.currentPlan')}
+                           </span>
+                        )}
                      </div>
-                  );
-               })}
-            </div>
+                     <p className="text-sm text-gray-600 mb-3">
+                        {t(`packages.items.${getPackageKey(selectedPlan.name)}.description`, { defaultValue: selectedPlan.description })}
+                     </p>
+                  </div>
 
-            <div className="fixed bottom-0 z-50 bg-white w-full h-auto left-0 p-3 border-t shadow-lg">
-               <Button
-                  size="lg"
-                  onClick={() => navigate(`/customer/payment/${selectedPlan.id}`)}
-                  disabled={selectedPlan.current}
-                  className={`w-full py-3 rounded-md transition-all duration-300 ${selectedPlan.current
-                     ? "bg-gray-400 text-white cursor-not-allowed"
-                     : "bg-rose-500 text-white hover:shadow-lg hover:bg-rose-600"
-                     }`}
-                  variant={"outline"}
-               >
-                  {selectedPlan.current ? t('packages.list.currentPlan') : t('packages.list.continue')}
-               </Button>
-            </div>
+                  <div className="space-y-4 mb-8 w-full px-3 py-4 border rounded-md">
+                     {selectedPlan.features && Object.values(selectedPlan.features).map((feature, index) => {
+                        const featureKey = featureKeyMap[feature as string];
+                        return (
+                           <div key={index} className="flex items-center space-x-3 text-sm">
+                              <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                              <span className="text-gray-700 font-light">
+                                 {featureKey ? t(`packages.features.${featureKey}`) : feature}
+                              </span>
+                           </div>
+                        );
+                     })}
+                  </div>
+
+                  <div className="fixed bottom-0 z-50 bg-white w-full h-auto left-0 p-3 border-t shadow-lg">
+                     <Button
+                        size="lg"
+                        onClick={() => navigate(`/customer/payment/${selectedPlan.id}`)}
+                        disabled={selectedPlan.current}
+                        className={`w-full py-3 rounded-md transition-all duration-300 ${selectedPlan.current
+                           ? "bg-gray-400 text-white cursor-not-allowed"
+                           : "bg-rose-500 text-white hover:shadow-lg hover:bg-rose-600"
+                           }`}
+                        variant={"outline"}
+                     >
+                        {selectedPlan.current ? t('packages.list.currentPlan') : t('packages.list.continue')}
+                     </Button>
+                  </div>
+               </>
+            )}
          </div>
       </div >
    )

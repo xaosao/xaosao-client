@@ -430,6 +430,7 @@ export async function updateModelSetting(
         sendMailNoti: data.notifications_email,
         sendPushNoti: data.notifications_push,
         sendSMSNoti: data.notifications_sms,
+        sendWhatsappNoti: data.notifications_whatsapp,
       },
     });
 

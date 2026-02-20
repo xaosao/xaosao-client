@@ -1001,6 +1001,8 @@
       "pushDescription": "ຮັບການແຈ້ງເຕືອນແບບ push ໃນອຸປະກອນຂອງທ່ານ",
       "smsTitle": "ການແຈ້ງເຕືອນທາງ SMS",
       "smsDescription": "ຮັບການແຈ້ງເຕືອນທາງ SMS",
+      "whatsappTitle": "ການແຈ້ງເຕືອນທາງ WhatsApp",
+      "whatsappDescription": "ຮັບການອັບເດດທາງ WhatsApp",
       "saveChange": "ບັນທຶກການປ່ຽນແປງ",
       "saving": "ກຳລັງບັນທຶກ...."
     },

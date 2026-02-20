@@ -503,6 +503,7 @@ export async function updateCustomerSetting(
         sendMailNoti: data.notifications_email,
         sendPushNoti: data.notifications_push,
         sendSMSNoti: data.notifications_sms,
+        sendWhatsappNoti: data.notifications_whatsapp,
       },
     });
 

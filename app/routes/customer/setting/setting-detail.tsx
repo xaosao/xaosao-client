@@ -19,7 +19,7 @@ import type { ICustomerCredentials, ICustomerResponse, ICustomerSettingCredentia
 import { changeCustomerPassword, createReport, deleteAccount, getCustomerProfile, updateCustomerSetting, updateProfile } from "~/services/profile.server";
 import { prisma } from "~/services/database.server";
 
-type NotificationType = "push" | "sms"; // "email" disabled for now
+type NotificationType = "push" | "sms" | "whatsapp"; // "email" disabled for now
 
 interface LoaderReturn {
    customerData: ICustomerResponse;
@@ -61,6 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
       notifications_email: formData.get("notifications_email") === "true",
       notifications_push: formData.get("notifications_push") === "true",
       notifications_sms: formData.get("notifications_sms") === "true",
+      notifications_whatsapp: formData.get("notifications_whatsapp") === "true",
    };
 
    if (request.method === "PATCH") {
@@ -275,6 +276,7 @@ export default function SettingPage({ loaderData }: TransactionProps) {
       // email: customerData.sendMailNoti, // Email notification disabled for now
       push: customerData.sendPushNoti,
       sms: customerData.sendSMSNoti,
+      whatsapp: customerData.sendWhatsappNoti ?? false,
    });
    const [showPushDialog, setShowPushDialog] = React.useState(false);
    const [pushSuccess, setPushSuccess] = React.useState(false);

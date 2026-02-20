@@ -1001,6 +1001,8 @@
       "pushDescription": "รับการแจ้งเตือนแบบพุชบนอุปกรณ์ของคุณ",
       "smsTitle": "การแจ้งเตือนทาง SMS",
       "smsDescription": "รับการแจ้งเตือนทาง SMS",
+      "whatsappTitle": "การแจ้งเตือนทาง WhatsApp",
+      "whatsappDescription": "รับการอัพเดทผ่าน WhatsApp",
       "saveChange": "บันทึกการเปลี่ยนแปลง",
       "saving": "กำลังบันทึก...."
     },

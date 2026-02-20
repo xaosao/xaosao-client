@@ -167,8 +167,9 @@ model customer {
   sendMailNoti       Boolean   @default(true) // 7
   sendSMSNoti        Boolean   @default(true) // 8 - default ON for new users
   sendPushNoti       Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
-  defaultLanguage    String    @default("en") // 10
-  defaultTheme       String    @default("light") // 11
+  sendWhatsappNoti   Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  defaultLanguage    String    @default("en") // 11
+  defaultTheme       String    @default("light") // 12
 
   // Referral tracking - which model referred this customer
   referredByModelId  String?   @db.ObjectId // Model who referred this customer (for special/partner commission)
@@ -234,8 +235,9 @@ model model {
   sendMailNoti        Boolean   @default(true) // 7
   sendSMSNoti         Boolean   @default(true) // 8 - default ON for new users
   sendPushNoti        Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
-  defaultLanguage     String    @default("en") // 10
-  defaultTheme        String    @default("light") // 11
+  sendWhatsappNoti    Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  defaultLanguage     String    @default("en") // 11
+  defaultTheme        String    @default("light") // 12
   isProfileHidden     Boolean   @default(false) // Self-service profile visibility toggle
 
   // Model type for tiered commission system
@@ -863,4 +865,47 @@ model push_subscription {
   updatedAt DateTime @updatedAt
 
   @@index([userType, userId])
+}
+
+model broadcast_notification {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  title   String
+  message String
+
+  // Targeting
+  targetUserType String  // "customer", "model", "all"
+  targetGender   String? // "male", "female", null = all
+  targetAgeMin   Int?    // null = no minimum
+  targetAgeMax   Int?    // null = no maximum
+  targetCountry  String? // null = all countries
+  targetPackage  String? // "24h", "1w", "1m", "3m", null = all
+  targetService  String? // "no_service", "drinking_only", null = all
+  targetBooking  String? // "never_booked", "never_got_booked", null = all
+  targetImages   String? // "incomplete" (less than 6 images), null = all
+
+  // Delivery channels (which channels to send on)
+  channelSMS      Boolean @default(false)
+  channelPush     Boolean @default(false)
+  channelInApp    Boolean @default(true)
+  channelWhatsApp Boolean @default(false)
+
+  // Scheduling
+  scheduleType   String    // "immediate", "scheduled"
+  scheduledAt    DateTime? // when to send (null = immediate)
+  recurrence     String    @default("once") // "once", "daily", "weekly"
+  recurrenceTime String?   // "HH:mm" for daily/weekly (e.g., "09:00")
+  lastSentAt     DateTime?
+  nextRunAt      DateTime? // pre-calculated next run time for cron
+
+  // Status & Stats
+  status          String @default("draft") // "draft", "scheduled", "sending", "sent", "failed", "cancelled"
+  totalRecipients Int    @default(0)
+  sentCount       Int    @default(0)
+  failedCount     Int    @default(0)
+
+  // Audit
+  createdBy String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sentAt    DateTime?
 }

@@ -21,6 +21,7 @@ export interface IModelSettingCredentials {
   notifications_email?: boolean;
   notifications_push?: boolean;
   notifications_sms?: boolean;
+  notifications_whatsapp?: boolean;
 }
 
 export interface IModelOwnProfileResponse {

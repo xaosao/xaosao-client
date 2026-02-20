@@ -970,6 +970,8 @@
       "pushDescription": "Receive push notifications on your device",
       "smsTitle": "SMS Notifications",
       "smsDescription": "Receive notifications via SMS",
+      "whatsappTitle": "WhatsApp Notifications",
+      "whatsappDescription": "Receive updates via WhatsApp",
       "saveChange": "Save Change",
       "saving": "Saving...."
     },
