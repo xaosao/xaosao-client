@@ -148,21 +148,23 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
    const isSubmitting =
       navigation.state !== "idle" && navigation.formMethod === "POST";
 
-   // Get the appropriate rate based on billing type
-   // Priority: specific custom rate -> customRate (fallback) -> service default rate
-   const getRate = (): number => {
+   // Use the ORIGINAL booked rate (derived from stored price/quantity) instead of current model rates
+   // This ensures price changes by the model don't affect existing bookings
+   const getOriginalBookedRate = (): number => {
+      if (!dateBooking?.price) return 0;
       if (billingType === 'per_hour') {
-         return service.customHourlyRate || service.customRate || service.service.hourlyRate || 0;
+         return dateBooking.hours ? dateBooking.price / dateBooking.hours : dateBooking.price;
       } else if (billingType === 'per_session') {
-         if (sessionType === 'one_time') {
-            return service.customOneTimePrice || service.customRate || service.service.oneTimePrice || 0;
-         } else {
-            return service.customOneNightPrice || service.customRate || service.service.oneNightPrice || 0;
-         }
+         return dateBooking.price; // Session price is the full price
       } else if (billingType === 'per_minute') {
-         return service.customMinuteRate || service.customRate || service.service.minuteRate || 0;
+         return dateBooking.minutes ? dateBooking.price / dateBooking.minutes : dateBooking.price;
       }
-      return service.customRate || service.service.baseRate;
+      // per_day
+      return dateBooking.dayAmount ? dateBooking.price / dateBooking.dayAmount : dateBooking.price;
+   };
+
+   const getRate = (): number => {
+      return getOriginalBookedRate();
    };
 
    // Calculate total price based on billing type

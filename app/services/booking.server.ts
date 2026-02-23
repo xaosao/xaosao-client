@@ -1100,10 +1100,15 @@ export async function updateServiceBooking(
         modelId: true,
         customerId: true,
         modelServiceId: true,
+        price: true,
+        dayAmount: true,
+        hours: true,
+        sessionType: true,
+        minutes: true,
         modelService: {
           select: {
             service: {
-              select: { name: true },
+              select: { name: true, billingType: true },
             },
           },
         },
@@ -1153,38 +1158,35 @@ export async function updateServiceBooking(
     }
 
     // ========================================
-    // SECURITY: Verify price from database for update
+    // PRICE: Use original booked rate to recalculate price
+    // This prevents model's price changes from affecting existing bookings
     // ========================================
     let verifiedPrice = data.price;
-    if (existingBooking.modelServiceId) {
-      const priceVerification = await calculateAndVerifyBookingPrice(
-        existingBooking.modelServiceId,
-        data.price,
-        {
-          hours: data.hours,
-          dayAmount: data.dayAmount,
-          sessionType: data.sessionType,
-          modelServiceVariantId: data.modelServiceVariantId,
-          minutes: data.minutes,
-        }
-      );
+    if (existingBooking.price && existingBooking.modelService?.service?.billingType) {
+      const billingType = existingBooking.modelService.service.billingType;
 
-      verifiedPrice = priceVerification.calculatedPrice;
+      // Derive the original unit rate from the stored booking
+      let originalRate = existingBooking.price;
+      if (billingType === "per_hour" && existingBooking.hours) {
+        originalRate = existingBooking.price / existingBooking.hours;
+      } else if (billingType === "per_day" && existingBooking.dayAmount) {
+        originalRate = existingBooking.price / existingBooking.dayAmount;
+      } else if (billingType === "per_minute" && existingBooking.minutes) {
+        originalRate = existingBooking.price / existingBooking.minutes;
+      }
+      // per_session: originalRate = existingBooking.price (full session price)
 
-      if (!priceVerification.isValid) {
-        await createAuditLogs({
-          ...auditBase,
-          action: "SECURITY_PRICE_MISMATCH_UPDATE",
-          description: `SECURITY ALERT: Price mismatch on update! Frontend: ${data.price.toLocaleString()}, Database: ${verifiedPrice.toLocaleString()} (${priceVerification.priceSource})`,
-          status: "warning",
-          onError: {
-            bookingId: id,
-            customerId,
-            frontendPrice: data.price,
-            calculatedPrice: verifiedPrice,
-            priceSource: priceVerification.priceSource,
-          },
-        });
+      // Recalculate with original rate and new quantity
+      if (billingType === "per_hour" && data.hours) {
+        verifiedPrice = originalRate * data.hours;
+      } else if (billingType === "per_day") {
+        const days = data.dayAmount || 1;
+        verifiedPrice = originalRate * days;
+      } else if (billingType === "per_minute" && data.minutes) {
+        verifiedPrice = originalRate * data.minutes;
+      } else {
+        // per_session: price stays the same regardless of edit
+        verifiedPrice = existingBooking.price;
       }
     }
 

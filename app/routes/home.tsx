@@ -166,7 +166,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             <div className="flex gap-4 justify-center items-center">
               <Button
                 size="lg"
-                className="cursor-pointer w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
+                className="cursor-pointer w-auto text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
                 onClick={() => navigate("/video-tutorials")}
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
@@ -223,22 +223,31 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           )}
 
           {/* Companion/Model login section */}
-          <div className="flex items-center justify-center py-2 text-center">
+          <div className="flex items-center justify-center py-2 text-center gap-2">
             <p className="text-white text-md">
               {t('home.areYouCompanion', { defaultValue: 'Are you a companion?' })}
             </p>
-            <button
+            {/* <button
               onClick={() => navigate("/model-auth/login")}
               className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50 underline"
             >
               {t('home.companionLoginHere', { defaultValue: 'Login here' })}
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </button> */}
+            <Button
+              size="lg"
+              className="flex cursor-pointer w-auto bg-rose-500 hover:bg-rose-500 text-white border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
+              onClick={() => navigate("/model-auth/login")}
+            >
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              {t('home.companionLoginHere', { defaultValue: 'Login here' })}
+            </Button>
           </div>
-
+          {/*
           <div className="w-full flex items-center justify-center mt-6">
             <Mouse className="animate-bounce text-white" />
           </div>
+          */}
         </div>
       </section>
 

@@ -6,7 +6,7 @@ import { notifyCommissionEarned, notifyModelTypeUpgrade } from "./unified-notifi
 export const REFERRAL_REWARD_AMOUNT = 50000;
 
 // Minimum referred models required for commission eligibility
-// Local: 2, Production: 20
+// Local: 2, Production: 5
 export const MIN_REFERRED_MODELS_FOR_COMMISSION = parseInt(
   process.env.MIN_REFERRED_MODELS_FOR_COMMISSION || "2",
   10
