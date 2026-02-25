@@ -4,6 +4,7 @@ import { Form, Link, Outlet, useFetcher, useLocation, useNavigate, useRevalidato
 import {
     Briefcase,
     EyeOff,
+    FileText,
     HandHeart,
     Heart,
     LogOut,
@@ -132,14 +133,16 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         setShowLocationPrompt(false);
     }, [requestLocation]);
 
-    // Booking notification types that should trigger a layout refresh (for pending count)
-    const bookingNotificationTypes = [
+    // Notification types that should trigger a layout/child route refresh
+    const revalidateNotificationTypes = [
         "booking_created",
         "booking_cancelled",
         "booking_disputed",
+        "new_post_match",
+        "post_interest",
     ];
 
-    // Handle new notifications - refresh layout when booking-related, redirect for calls
+    // Handle new notifications - refresh layout when booking/post-related, redirect for calls
     const handleNewNotification = useCallback((notification: Notification) => {
         // Handle incoming call - redirect to incoming call page
         if (notification.type === "incoming_call") {
@@ -151,9 +154,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
             return;
         }
 
-        // Handle booking notifications - refresh pending count
-        if (bookingNotificationTypes.includes(notification.type)) {
-            console.log("[ModelLayout] Booking notification received, refreshing pending count...", notification.type);
+        // Handle booking/post notifications - refresh data
+        if (revalidateNotificationTypes.includes(notification.type)) {
+            console.log("[ModelLayout] Revalidating for notification:", notification.type);
             revalidator.revalidate();
         }
     }, [revalidator, navigate]);
@@ -166,6 +169,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     });
 
     const navigationItems = useMemo(() => [
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model/posts", icon: FileText, badge: 0 },
         { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
         // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
@@ -175,10 +179,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     ], [t, i18n.language, pendingBookingCount]);
 
     const mobileNavigationItems = useMemo(() => [
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model/posts", icon: FileText, badge: 0 },
         { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
-        // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
-        { title: t('navigation.wallet'), url: "/model/settings?tab=wallet", icon: Wallet, badge: 0 },
         { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
     ], [t, i18n.language, pendingBookingCount]);

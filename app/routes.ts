@@ -3,6 +3,9 @@ import { index, route, type RouteConfig } from "@react-router/dev/routes";
 export default [
   index("routes/home.tsx"),
 
+  // Public post share page (SEO/OG tags for social media)
+  route("post/:id", "./routes/post-share.tsx"),
+
   // API routes for SSE notifications
   route(
     "api/notifications/model-sse",
@@ -67,7 +70,7 @@ export default [
 
   // Model dashboard routes
   route("model", "./routes/model/layout.tsx", [
-    index("./routes/model/matches/matches.tsx"),
+    index("./routes/model/posts/posts.tsx"),
     route("profile", "./routes/model/profile/profile.tsx"),
     route("profile/edit", "./routes/model/profile/edit.tsx"),
     route(
@@ -88,6 +91,14 @@ export default [
       route("receive-money/:id", "./routes/model/dating/dating.receive-money.tsx"),
       route("refund/:id", "./routes/model/dating/dating.refund.tsx"),
     ]),
+
+    // Posts
+    route("posts", "./routes/model/posts/posts.tsx"),
+    route("posts/create", "./routes/model/posts/posts.create.tsx"),
+    route("posts/:id", "./routes/model/posts/posts.$id.tsx"),
+    route("posts/:id/interested", "./routes/model/posts/posts.$id.interested.tsx"),
+    route("posts/:id/delete", "./routes/model/posts/posts.$id.delete.tsx"),
+    route("posts/:id/fulfill", "./routes/model/posts/posts.$id.fulfill.tsx"),
 
     // Referral program
     route("referral", "./routes/model/referral.tsx"),
@@ -130,6 +141,14 @@ export default [
     route("discover/load-more", "./routes/customer/discover.load-more.tsx"),
     route("matches", "./routes/customer/matches/matches.tsx"),
     route("matches/search", "./routes/customer/matches.search.tsx"),
+
+    // Posts
+    route("posts", "./routes/customer/posts/posts.tsx"),
+    route("posts/create", "./routes/customer/posts/posts.create.tsx"),
+    route("posts/:id", "./routes/customer/posts/posts.$id.tsx"),
+    route("posts/:id/interested", "./routes/customer/posts/posts.$id.interested.tsx"),
+    route("posts/:id/delete", "./routes/customer/posts/posts.$id.delete.tsx"),
+    route("posts/:id/fulfill", "./routes/customer/posts/posts.$id.fulfill.tsx"),
 
     route("dates-history", "./routes/customer/booking-history/booking.tsx"),
 

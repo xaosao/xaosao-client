@@ -1,18 +1,18 @@
 import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
-import { Form, Link, Outlet, useLocation, useNavigate, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     User,
     Heart,
     Search,
     Wallet,
-    Wallet2,
+    FileText,
     Settings,
     HandHeart,
     LogOut,
 } from "lucide-react";
-import type { Notification } from "~/hooks/useNotifications";
+import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { requireVerifiedUserSession } from "~/services/auths.server";
 import { getCustomerProfile } from "~/services/profile.server";
 import type { ICustomerResponse } from "~/interfaces/customer";
@@ -95,8 +95,33 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
+    const revalidator = useRevalidator();
     const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Notification types that should trigger data refresh
+    const revalidateNotificationTypes = [
+        "new_post_match",
+        "post_interest",
+        "booking_confirmed",
+        "booking_rejected",
+        "booking_completed",
+    ];
+
+    // Handle new notifications - refresh child routes when post/booking-related
+    const handleNewNotification = useCallback((notification: Notification) => {
+        if (revalidateNotificationTypes.includes(notification.type)) {
+            console.log("[CustomerLayout] Revalidating for notification:", notification.type);
+            revalidator.revalidate();
+        }
+    }, [revalidator]);
+
+    // Connect to real-time notifications for data revalidation
+    useNotifications({
+        userType: "customer",
+        onNewNotification: handleNewNotification,
+        playSound: false, // Sound handled by NotificationBell
+    });
 
     // Only show modal on mount when on dashboard page
     const isDashboardPage = location.pathname === "/customer";
@@ -167,6 +192,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
         // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
         { title: t('navigation.datingHistory'), url: "/customer/dates-history", icon: HandHeart },
@@ -177,10 +203,9 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     const mobileNavigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
-        // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
         { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart },
-        { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet2 },
         { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
     ], [t, i18n.language]);
 

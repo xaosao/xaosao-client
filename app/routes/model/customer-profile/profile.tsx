@@ -14,6 +14,8 @@ import { capitalize } from '~/utils/functions/textFormat';
 import { calculateAgeFromDOB, formatNumber } from '~/utils';
 import { getCustomerProfile } from '~/services/profile.server';
 import { requireModelSession, getModelTokenFromSession } from '~/services/model-auth.server';
+import { getUserProfilePosts } from '~/services/post.server';
+import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
 export const meta: MetaFunction = () => {
    return [
@@ -30,8 +32,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       throw new Response("Customer ID is required", { status: 400 });
    }
 
-   const customer = await getCustomerProfile(customerId, modelId);
-   return { customer, modelId };
+   const [customer, customerPosts] = await Promise.all([
+      getCustomerProfile(customerId, modelId),
+      getUserProfilePosts(customerId, "customer"),
+   ]);
+   return { customer, modelId, customerPosts };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -114,7 +119,7 @@ export default function CustomerProfilePage() {
    const { t } = useTranslation();
    const navigate = useNavigate();
    const navigation = useNavigation();
-   const { customer } = useLoaderData<{ customer: CustomerData }>();
+   const { customer, customerPosts } = useLoaderData<{ customer: CustomerData; customerPosts: any[] }>();
 
    const images = customer.Images || [];
    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
@@ -440,6 +445,20 @@ export default function CustomerProfilePage() {
                   )}
                </div>
             </div>
+
+            {/* Posts Section */}
+            {customerPosts && customerPosts.length > 0 && (
+               <div className="px-2 pb-4">
+                  <Separator className="mb-4" />
+                  <h3 className="text-sm uppercase text-gray-800 font-bold mb-3">{t("navigation.posts")}:</h3>
+                  <ProfilePostsSection
+                     posts={customerPosts}
+                     isOwnProfile={false}
+                     viewerType="model"
+                     basePath="/model/posts"
+                  />
+               </div>
+            )}
          </div>
 
          {selectedIndex !== null && images.length > 0 && (

@@ -34,6 +34,8 @@ import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, cre
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
+import { getUserProfilePosts } from '~/services/post.server';
+import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
@@ -59,7 +61,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     const model = await getModelProfile(modelId, customerId)
 
     // Fetch review data, subscription status, trial package, wallet balance, and pending deposits
-    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet, pendingDeposit] = await Promise.all([
+    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet, pendingDeposit, modelPosts] = await Promise.all([
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
         getCustomerReviewForModel(customerId, modelId),
@@ -77,6 +79,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
             where: { customerId, identifier: "recharge", status: "pending", customerHidden: { not: true } },
             select: { id: true },
         }),
+        getUserProfilePosts(modelId, "model"),
     ]);
 
     const reviewData: IReviewData = {
@@ -102,6 +105,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         trialPackage,
         customerBalance: availableBalance,
         hasPendingDeposit: !!pendingDeposit,
+        modelPosts,
     }
 }
 
@@ -201,7 +205,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const revalidator = useRevalidator()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, hasPendingDeposit } = loaderData
+    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, hasPendingDeposit, modelPosts } = loaderData as any
 
     // Listen for real-time notifications - refresh balance instantly when admin approves recharge
     const handleNewNotification = React.useCallback((notification: Notification) => {
@@ -585,6 +589,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             <TabsTrigger value="account">{t('profile.tabs.accountInfo')}</TabsTrigger>
                             <TabsTrigger value="images">{t('profile.tabs.images')}</TabsTrigger>
                             <TabsTrigger value="reviews">{t('profile.tabs.reviews')}</TabsTrigger>
+                            <TabsTrigger value="posts">{t('navigation.posts')}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="services" className="space-y-4">
                             {model.ModelService.length > 0 ?
@@ -1075,6 +1080,14 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     />
                                 )}
                             </div>
+                        </TabsContent>
+                        <TabsContent value="posts" className="space-y-4">
+                            <ProfilePostsSection
+                                posts={modelPosts || []}
+                                isOwnProfile={false}
+                                viewerType="customer"
+                                basePath="/customer/posts"
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>

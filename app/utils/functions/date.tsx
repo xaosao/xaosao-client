@@ -72,3 +72,16 @@ export function formatDateRelative(date: Date): string {
         return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
     }
 }
+
+// Short relative time (e.g., "5m ago", "2h ago", "3d ago")
+// Accepts optional t function from react-i18next for locale-aware output
+export function getTimeAgo(dateStr: string, t?: (key: string, options?: Record<string, unknown>) => string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return t ? t("posts.timeAgo.justNow", { defaultValue: "just now" }) : "just now";
+    if (minutes < 60) return t ? t("posts.timeAgo.minutes", { count: minutes, defaultValue: `${minutes}m ago` }) : `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t ? t("posts.timeAgo.hours", { count: hours, defaultValue: `${hours}h ago` }) : `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return t ? t("posts.timeAgo.days", { count: days, defaultValue: `${days}d ago` }) : `${days}d ago`;
+}

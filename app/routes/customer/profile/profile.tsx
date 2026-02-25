@@ -16,6 +16,8 @@ import type { ICustomerResponse } from '~/interfaces/customer';
 import { capitalize, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
 import { createCustomerImage, getCustomerProfile, updateCustomerImage, deleteCustomerImage } from '~/services/profile.server';
+import { getUserProfilePosts } from '~/services/post.server';
+import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -27,9 +29,12 @@ interface TransactionProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request)
-    const customerData = await getCustomerProfile(customerId)
+    const [customerData, profilePosts] = await Promise.all([
+        getCustomerProfile(customerId),
+        getUserProfilePosts(customerId, "customer"),
+    ]);
 
-    return { customerData }
+    return { customerData, profilePosts }
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -155,7 +160,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [searchParams] = useSearchParams();
     const fetcher = useFetcher();
     const actionData = useActionData<typeof action>()
-    const { customerData } = loaderData;
+    const { customerData, profilePosts } = loaderData as any;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedImageId, setSelectedImageId] = React.useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = React.useState<string | null>(null);
@@ -629,6 +634,7 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                                 <TabsTrigger value="account">{t('profile.tabs.accountInfo')}</TabsTrigger>
                                 <TabsTrigger value="interest">{t('profile.tabs.interest')}</TabsTrigger>
                                 <TabsTrigger value="images">{t('profile.tabs.images')}</TabsTrigger>
+                                <TabsTrigger value="posts">{t('navigation.posts')}</TabsTrigger>
                             </TabsList>
                             <TabsContent value="account">
                                 <div className="w-full flex items-start justify-start flex-col space-y-2 text-sm p-2">
@@ -696,6 +702,14 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                                         />
                                     </div>
                                 </div>
+                            </TabsContent>
+                            <TabsContent value="posts">
+                                <ProfilePostsSection
+                                    posts={profilePosts}
+                                    isOwnProfile={true}
+                                    viewerType="customer"
+                                    basePath="/customer/posts"
+                                />
                             </TabsContent>
                         </Tabs>
                     </div>

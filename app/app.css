@@ -238,6 +238,18 @@
   /* or mt-4 in tailwind */
 }
 
+.custom-swiper-post .swiper-pagination-bullet {
+  @apply w-2 h-2 bg-white/60 rounded-full transition-all duration-300;
+}
+
+.custom-swiper-post .swiper-pagination-bullet-active {
+  @apply w-6 bg-white rounded-full;
+}
+
+.custom-swiper-post .swiper-pagination {
+  bottom: 8px !important;
+}
+
 .text-stroke-white {
   -webkit-text-stroke: 1px white;
   color: rgb(232, 0, 81);
@@ -266,6 +278,19 @@
 
 .animate-loading-bar {
   animation: loading-bar 1s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
 }
 
 /* Safari mobile fixes */

@@ -200,6 +200,8 @@ model customer {
   subscription          subscription[]
   subscription_history  subscription_history[]
   notifications         customer_notification[]
+  posts                 post[]
+  postInterests         post_interest[]
 }
 
 model model {
@@ -289,6 +291,8 @@ model model {
   service_booking       service_booking[]
   banks                 banks[]
   notifications         model_notification[]
+  posts                 post[]
+  postInterests         post_interest[]
 }
 
 // subscription
@@ -538,6 +542,7 @@ model service {
   updatedById String? @db.ObjectId
 
   ModelService model_service[]
+  posts        post[]
 }
 
 model model_service {
@@ -908,4 +913,74 @@ model broadcast_notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sentAt    DateTime?
+}
+
+// ==================== Posts ====================
+
+model post {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Author (one of these will be set)
+  authorType  String   // "customer" or "model"
+  customerId  String?  @db.ObjectId
+  modelId     String?  @db.ObjectId
+
+  // Content
+  content     String
+  images      String[]
+
+  // Service reference
+  serviceId   String?  @db.ObjectId
+
+  // Targeting preferences (for customer posts)
+  targetGender    String?
+  targetCount     Int?
+  targetAgeMin    Int?
+  targetAgeMax    Int?
+
+  // When & Where
+  preferredDate   DateTime?
+  preferredTime   String?
+  location        String?
+
+  // Status & Expiration
+  status          String   @default("active") // "active", "expired", "fulfilled", "deleted"
+  expiresAt       DateTime
+
+  // Engagement stats
+  interestedCount Int      @default(0)
+
+  // Notification tracking
+  notifiedUserIds String[] @db.ObjectId
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  customer    customer?       @relation(fields: [customerId], references: [id])
+  model       model?          @relation(fields: [modelId], references: [id])
+  service     service?        @relation(fields: [serviceId], references: [id])
+  interests   post_interest[]
+}
+
+model post_interest {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId     String   @db.ObjectId
+
+  // Who expressed interest
+  userType   String   // "customer" or "model"
+  customerId String?  @db.ObjectId
+  modelId    String?  @db.ObjectId
+
+  createdAt  DateTime @default(now())
+
+  // Relations
+  post       post      @relation(fields: [postId], references: [id])
+  customer   customer? @relation(fields: [customerId], references: [id])
+  model      model?    @relation(fields: [modelId], references: [id])
+
+  // One interest per user per post
+  @@unique([postId, customerId])
+  @@unique([postId, modelId])
 }

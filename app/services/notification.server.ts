@@ -228,7 +228,10 @@ export type NotificationType =
   // Call notifications
   | "incoming_call"
   | "call_missed"
-  | "call_ended";
+  | "call_ended"
+  // Post notifications
+  | "new_post_match"
+  | "post_interest";
 
 interface NotificationPayload {
   type: NotificationType;

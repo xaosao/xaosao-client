@@ -43,6 +43,8 @@ import type { IModelOwnProfileResponse, IModelBank } from '~/interfaces/model-pr
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
 import { capitalize, getFirstWord, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
 import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank, setDefaultBank, toggleProfileVisibility } from '~/services/model-profile.server';
+import { getUserProfilePosts } from '~/services/post.server';
+import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
 const MAX_IMAGES = 6;
 
@@ -55,11 +57,12 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const modelId = await requireModelSession(request);
-    const [model, banks] = await Promise.all([
+    const [model, banks, profilePosts] = await Promise.all([
         getModelOwnProfile(modelId),
         getModelBanks(modelId),
+        getUserProfilePosts(modelId, "model"),
     ]);
-    return { model, banks };
+    return { model, banks, profilePosts };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -234,7 +237,7 @@ export default function ModelProfilePage() {
     const navigate = useNavigate();
     const navigation = useNavigation();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { model, banks } = useLoaderData<{ model: IModelOwnProfileResponse; banks: IModelBank[] }>();
+    const { model, banks, profilePosts } = useLoaderData<{ model: IModelOwnProfileResponse; banks: IModelBank[]; profilePosts: any[] }>();
 
     const images = model.Images;
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -700,6 +703,7 @@ export default function ModelProfilePage() {
                             <TabsTrigger value="banks">{t("modelProfile.tabs.bankAccounts")}</TabsTrigger>
                             <TabsTrigger value="services">{t("modelProfile.tabs.services")}</TabsTrigger>
                             <TabsTrigger value="images">{t("modelProfile.tabs.images")}</TabsTrigger>
+                            <TabsTrigger value="posts">{t("navigation.posts")}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="account">
                             <div className="flex flex-col sm:flex-row items-start justify-between space-y-2">
@@ -1187,6 +1191,14 @@ export default function ModelProfilePage() {
                                     </div>
                                 </div>
                             )}
+                        </TabsContent>
+                        <TabsContent value="posts" className="space-y-4">
+                            <ProfilePostsSection
+                                posts={profilePosts}
+                                isOwnProfile={true}
+                                viewerType="model"
+                                basePath="/model/posts"
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>
