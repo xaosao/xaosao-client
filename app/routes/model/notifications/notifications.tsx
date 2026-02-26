@@ -121,6 +121,11 @@ function getNotificationIcon(type: string, isRead: boolean) {
     // Referral notifications
     case "referral_bonus":
       return <Sparkles className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-amber-500"}`} />;
+    // Post notifications
+    case "post_interest":
+      return <Heart className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-rose-500"}`} />;
+    case "new_post_match":
+      return <Users className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-pink-500"}`} />;
     // System notifications
     case "welcome":
       return <Sparkles className={`h-4 w-4 ${isRead ? "text-gray-400" : "text-amber-500"}`} />;

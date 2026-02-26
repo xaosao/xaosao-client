@@ -1,25 +1,67 @@
 import { useTranslation } from "react-i18next";
-import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router";
+import { useLoaderData, useNavigate, useSearchParams, type LoaderFunctionArgs } from "react-router";
 import { ArrowLeft, Calendar, Clock, MapPin, Users, Heart, MessageCircle } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { requireUserSession } from "~/services/auths.server";
 import { getPostById, getCustomerBasicProfile } from "~/services/post.server";
+import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
+import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
-  const [post, customerProfile] = await Promise.all([
+  const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
+  const { prisma } = await import("~/services/database.server");
+
+  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
     getPostById(params.id!),
     getCustomerBasicProfile(customerId),
+    hasActiveSubscription(customerId),
+    hasPendingSubscription(customerId),
+    prisma.subscription_plan.findFirst({
+      where: { name: "24-Hour Trial", status: "active" },
+      select: { id: true, price: true },
+    }),
+    prisma.wallet.findFirst({
+      where: { customerId },
+      select: { totalBalance: true, totalSpend: true, totalRefunded: true },
+    }),
   ]);
+
   if (!post) throw new Response("Post not found", { status: 404 });
-  return { post, customerProfile };
+
+  const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+
+  return {
+    post,
+    customerProfile,
+    hasActiveSubscription: hasSubscription,
+    hasPendingSubscription: hasPending,
+    trialPackage,
+    customerBalance: availableBalance,
+  };
 }
 
 export default function PostDetailPage() {
-  const { post, customerProfile } = useLoaderData<typeof loader>();
+  const { post, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const shouldShowSubscriptionFromUrl = searchParams.get("showSubscription") === "true";
+
+  const {
+    showSubscriptionModal,
+    openSubscriptionModal,
+    closeSubscriptionModal,
+    handleSubscribe,
+  } = useSubscriptionCheck({
+    hasActiveSubscription,
+    hasPendingSubscription,
+    customerBalance,
+    trialPrice: trialPackage?.price || 10000,
+    trialPlanId: trialPackage?.id || "",
+    showOnMount: shouldShowSubscriptionFromUrl,
+  });
 
   const author = post.authorType === "customer" ? post.customer : post.model;
   const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "User";
@@ -32,6 +74,10 @@ export default function PostDetailPage() {
     : "";
 
   const handleChat = (modelName: string, whatsapp: number) => {
+    if (!hasActiveSubscription) {
+      openSubscriptionModal();
+      return;
+    }
     const message = t("posts.customerChatMessage", {
       modelName,
       customerName,
@@ -136,6 +182,17 @@ export default function PostDetailPage() {
             );
           })}
         </div>
+      )}
+
+      {trialPackage && (
+        <SubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={closeSubscriptionModal}
+          customerBalance={customerBalance}
+          trialPrice={trialPackage.price}
+          trialPlanId={trialPackage.id}
+          onSubscribe={handleSubscribe}
+        />
       )}
     </div>
   );
