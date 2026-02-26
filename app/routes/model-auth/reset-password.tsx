@@ -52,7 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const result = await modelResetPassword(resetData.token, resetData.password);
 
     if (result.success) {
-      return redirect("/model-auth/login?reset=success");
+      return redirect("/model-auth/login?tab=model&reset=success");
     }
 
     return {
@@ -213,7 +213,7 @@ export default function ModelResetPassword() {
 
           <div className="text-center">
             <Link
-              to="/model-auth/login"
+              to="/model-auth/login?tab=model"
               className="font-medium text-rose-600 hover:text-rose-500 text-sm uppercase text-xs"
             >
               ← {t("modelAuth.forgotPassword.backToLogin")}

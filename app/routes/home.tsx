@@ -174,17 +174,18 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </Button>
               <Button
                 size="lg"
-                className="flex cursor-pointer w-auto border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-                onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
+                className="flex cursor-pointer w-auto border-border bg-rose-500 hover:bg-rose-500 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
+                // onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
+                onClick={() => navigate("/model-auth/login")}
               >
                 <LogIn className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                 {hasCustomerToken ? t('home.myAccount') : t('home.login')}
               </Button>
             </div>
 
-            <p className="text-white/80 text-xs sm:text-sm">
+            {/* <p className="text-white/80 text-xs sm:text-sm">
               {t('home.customerLoginHint', { defaultValue: '👆 For customers looking for companions' })}
-            </p>
+            </p> */}
           </div>
 
           {services && services.length > 0 && (
@@ -223,17 +224,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           )}
 
           {/* Companion/Model login section */}
-          <div className="flex items-center justify-center py-2 text-center gap-2">
+          {/* <div className="flex items-center justify-center py-2 text-center gap-2">
             <p className="text-white text-md">
               {t('home.areYouCompanion', { defaultValue: 'Are you a companion?' })}
             </p>
-            {/* <button
-              onClick={() => navigate("/model-auth/login")}
-              className="text-md text-bold cursor-pointer text-white hover:text-rose-500 font-medium transition-all duration-200 inline-flex items-center gap-2 px-4 rounded-lg hover:bg-white/5 hover:border-rose-500/50 underline"
-            >
-              {t('home.companionLoginHere', { defaultValue: 'Login here' })}
-              <ArrowRight className="w-4 h-4" />
-            </button> */}
             <Button
               size="lg"
               className="flex cursor-pointer w-auto bg-rose-500 hover:bg-rose-500 text-white border-border px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
@@ -242,12 +236,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               {t('home.companionLoginHere', { defaultValue: 'Login here' })}
             </Button>
-          </div>
-          {/*
-          <div className="w-full flex items-center justify-center mt-6">
-            <Mouse className="animate-bounce text-white" />
-          </div>
-          */}
+          </div> */}
         </div>
       </section>
 

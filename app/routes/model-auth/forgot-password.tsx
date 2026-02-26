@@ -132,7 +132,7 @@ export default function ModelForgotPassword() {
 
           <div className="text-center">
             <Link
-              to="/model-auth/login"
+              to="/model-auth/login?tab=model"
               className="font-medium text-rose-600 hover:text-rose-500 text-sm"
             >
               {t("modelAuth.forgotPassword.backToLogin")}

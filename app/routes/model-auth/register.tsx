@@ -258,7 +258,7 @@ export default function ModelRegister() {
       const timer = setTimeout(() => {
         const redirectParam = loaderData.redirectTo ? `&redirect=${encodeURIComponent(loaderData.redirectTo)}` : "";
         navigate(
-          `/model-auth/login?toastMessage=Registration successful! Please wait for admin approval to login.&toastType=success&toastDuration=5000${redirectParam}`
+          `/model-auth/login?tab=model&toastMessage=Registration successful! Please wait for admin approval to login.&toastType=success&toastDuration=5000${redirectParam}`
         );
       }, 2000);
       return () => clearTimeout(timer);
@@ -379,7 +379,7 @@ export default function ModelRegister() {
 
             <div className="flex flex-col items-center justify-center space-y-2">
               <div className="flex items-center justify-center gap-2">
-                <ArrowLeft className="w-5 h-5 text-gray-500" onClick={() => navigate(loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login")} />
+                <ArrowLeft className="w-5 h-5 text-gray-500" onClick={() => navigate(loaderData.redirectTo ? `/model-auth/login?tab=model&redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login?tab=model")} />
                 <label className="block text-sm font-medium text-gray-700">
                   {t("modelAuth.register.profileImage")} <span className="text-rose-500">*</span>
                 </label>
@@ -595,7 +595,7 @@ export default function ModelRegister() {
             <div className="text-center text-sm">
               <p className="text-gray-600">
                 {t("modelAuth.register.alreadyHaveAccount")}&nbsp;&nbsp;
-                <Link to={loaderData.redirectTo ? `/model-auth/login?redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login"} className="font-medium text-rose-600 hover:text-rose-500 text-xs uppercase">
+                <Link to={loaderData.redirectTo ? `/model-auth/login?tab=model&redirect=${encodeURIComponent(loaderData.redirectTo)}` : "/model-auth/login?tab=model"} className="font-medium text-rose-600 hover:text-rose-500 text-xs uppercase">
                   {t("modelAuth.register.loginHere")}
                 </Link>
               </p>

@@ -30,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
     // If not logged in, redirect to login
     if (!customerId) {
-        throw redirect("/login");
+        throw redirect("/model-auth/login?tab=customer");
     }
 
     // If already verified, redirect to customer dashboard
@@ -57,7 +57,7 @@ export async function action({ request }: Route.ActionArgs) {
     const customerId = await getUserFromSession(request);
 
     if (!customerId) {
-        throw redirect("/login");
+        throw redirect("/model-auth/login?tab=customer");
     }
 
     const formData = await request.formData();

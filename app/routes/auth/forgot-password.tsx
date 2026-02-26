@@ -230,7 +230,7 @@ export default function ForgotPasswordPage() {
                             <p className="text-sm text-gray-300">
                                 {t('forgotPassword.rememberPassword')}{" "}
                                 <Link
-                                    to="/login"
+                                    to="/model-auth/login?tab=customer"
                                     className="text-sm text-white hover:text-rose-600 font-medium hover:underline ml-2 uppercase hover:underline"
                                 >
                                     {t('login.loginButton')}

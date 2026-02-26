@@ -346,7 +346,7 @@ export default function SignUpPage() {
                         <div className="flex flex-col items-center justify-center space-y-2">
 
                             <div className="flex items-center justify-center gap-2">
-                                <ArrowLeft className="w-5 h-5 text-white cursor-pointer" onClick={() => navigate("/login")} />
+                                <ArrowLeft className="w-5 h-5 text-white cursor-pointer" onClick={() => navigate("/model-auth/login?tab=customer")} />
                                 <Label className="text-gray-300 text-sm">
                                     {t('register.profileImage')}<span className="text-rose-500">*</span>
                                 </Label>
@@ -603,7 +603,7 @@ export default function SignUpPage() {
 
                         <div className="text-center space-x-2 mb-40 sm:mb-0">
                             <span className="text-sm text-white">{t('register.alreadyHaveAccount')} </span>
-                            <Link to="/login" className="text-white text-sm font-bold hover:text-rose-600 font-xs uppercase">
+                            <Link to="/model-auth/login?tab=customer" className="text-white text-sm font-bold hover:text-rose-600 font-xs uppercase">
                                 {t('register.backLogin')}
                             </Link>
                         </div>

@@ -39,7 +39,7 @@ export async function action({ request }: Route.ActionArgs) {
         await validateResetPasswordInputs({ password })
         const res = await resetPassword(otp as string, password)
         if (res.success) {
-            return redirect("/login")
+            return redirect("/model-auth/login?tab=customer&reset=success")
         }
         return { success: res.success, error: res.error, message: res.message, messageKey: "resetPassword.errors.somethingWentWrong" }
     } catch (error: any) {
@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
                     <div className="text-center pt-4">
                         <p className="text-md text-gray-400">
                             {t('resetPassword.rememberPassword')}{" "}&nbsp;&nbsp;
-                            <Link to="/login" className="text-sm text-white hover:text-rose-600 font-medium uppercase">
+                            <Link to="/model-auth/login?tab=customer" className="text-sm text-white hover:text-rose-600 font-medium uppercase">
                                 {t('login.loginButton')}
                             </Link>
                         </p>
