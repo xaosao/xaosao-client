@@ -2592,6 +2592,7 @@
     "emptyFeed": "ยังไม่มีโพสต์ กลับมาดูใหม่ภายหลัง!",
     "emptyMyPosts": "คุณยังไม่ได้สร้างโพสต์ใดๆ",
     "createFirst": "สร้างโพสต์แรกของคุณ",
+    "post": "โพสต์",
     "interested": "สนใจ",
     "peopleInterested": "สนใจ",
     "share": "แชร์",
@@ -2644,6 +2645,9 @@
     "timeAgo.justNow": "เมื่อกี้",
     "timeAgo.minutes": "{{count}} นาทีที่แล้ว",
     "timeAgo.hours": "{{count}} ชั่วโมงที่แล้ว",
-    "timeAgo.days": "{{count}} วันที่แล้ว"
+    "timeAgo.days": "{{count}} วันที่แล้ว",
+    "stillAvailable": "ยังรับอยู่",
+    "bookNow": "จองเลย",
+    "customerChatMessage": "สวัสดีค่ะ/ครับ {{modelName}}\nฉันชื่อ {{customerName}} เห็นโพสต์กำลังหาเพื่อนไปเที่ยวด้วยกันคืนนี้\nยังว่างอยู่ไหมคะ/ครับ? จะจองเลยค่ะ/ครับ"
   }
 }

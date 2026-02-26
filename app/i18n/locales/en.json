@@ -2495,6 +2495,7 @@
     "emptyFeed": "No posts yet. Check back later!",
     "emptyMyPosts": "You haven't created any posts yet.",
     "createFirst": "Create your first post",
+    "post": "Post",
     "interested": "Interested",
     "peopleInterested": "interested",
     "share": "Share",
@@ -2547,6 +2548,9 @@
     "timeAgo.justNow": "just now",
     "timeAgo.minutes": "{{count}}m ago",
     "timeAgo.hours": "{{count}}h ago",
-    "timeAgo.days": "{{count}}d ago"
+    "timeAgo.days": "{{count}}d ago",
+    "stillAvailable": "Available",
+    "bookNow": "Book Now",
+    "customerChatMessage": "Hi, {{modelName}}.\nI'm {{customerName}}, I see your post looking for a partner to hang out tonight.\nAre you still available? I'll book you."
   }
 }

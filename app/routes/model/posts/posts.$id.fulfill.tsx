@@ -8,7 +8,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 
   try {
     await markPostFulfilled(postId, modelId, "model");
-    return redirect("/model/posts");
+    return redirect("/model");
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to mark post as fulfilled" };
   }

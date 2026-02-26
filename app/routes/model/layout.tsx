@@ -169,8 +169,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     });
 
     const navigationItems = useMemo(() => [
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model/posts", icon: FileText, badge: 0 },
-        { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: FileText, badge: 0 },
+        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
         // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.wallet'), url: "/model/settings?tab=wallet", icon: Wallet, badge: 0 },
@@ -179,8 +179,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     ], [t, i18n.language, pendingBookingCount]);
 
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model/posts", icon: FileText, badge: 0 },
-        { title: t('navigation.match'), url: "/model", icon: Heart, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: FileText, badge: 0 },
+        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
@@ -195,8 +195,15 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         if (url === "/model/settings") {
             return location.pathname === "/model/settings" && location.search !== "?tab=wallet";
         }
-        if (url === "/model" && location.pathname === "/model") return true;
-        if (url !== "/model" && location.pathname.startsWith(url)) return true;
+        // Handle posts (index route at /model renders posts, also match /model/posts/*)
+        if (url === "/model") {
+            return location.pathname === "/model" || location.pathname.startsWith("/model/posts");
+        }
+        // Handle matches
+        if (url === "/model/matches") {
+            return location.pathname.startsWith("/model/matches");
+        }
+        if (location.pathname.startsWith(url)) return true;
         return false;
     };
 
@@ -210,8 +217,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         !location.pathname.startsWith("/model/profile") &&
         !location.pathname.startsWith("/model/settings") &&
         mobileNavigationItems.some(item => {
-            if (item.url === "/model" && location.pathname === "/model") return true;
-            if (item.url !== "/model" && location.pathname.startsWith(item.url)) return true;
+            if (item.url === "/model") return location.pathname === "/model" || location.pathname.startsWith("/model/posts");
+            if (location.pathname.startsWith(item.url)) return true;
             return false;
         });
 

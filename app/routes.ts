@@ -71,6 +71,7 @@ export default [
   // Model dashboard routes
   route("model", "./routes/model/layout.tsx", [
     index("./routes/model/posts/posts.tsx"),
+    route("matches", "./routes/model/matches/matches.tsx"),
     route("profile", "./routes/model/profile/profile.tsx"),
     route("profile/edit", "./routes/model/profile/edit.tsx"),
     route(
@@ -93,8 +94,8 @@ export default [
     ]),
 
     // Posts
-    route("posts", "./routes/model/posts/posts.tsx"),
     route("posts/create", "./routes/model/posts/posts.create.tsx"),
+    route("posts/load-more", "./routes/model/posts/posts.load-more.tsx"),
     route("posts/:id", "./routes/model/posts/posts.$id.tsx"),
     route("posts/:id/interested", "./routes/model/posts/posts.$id.interested.tsx"),
     route("posts/:id/delete", "./routes/model/posts/posts.$id.delete.tsx"),
@@ -145,6 +146,7 @@ export default [
     // Posts
     route("posts", "./routes/customer/posts/posts.tsx"),
     route("posts/create", "./routes/customer/posts/posts.create.tsx"),
+    route("posts/load-more", "./routes/customer/posts/posts.load-more.tsx"),
     route("posts/:id", "./routes/customer/posts/posts.$id.tsx"),
     route("posts/:id/interested", "./routes/customer/posts/posts.$id.interested.tsx"),
     route("posts/:id/delete", "./routes/customer/posts/posts.$id.delete.tsx"),

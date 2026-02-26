@@ -1,22 +1,23 @@
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Heart } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Heart, MessageCircle } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
-import { Card, CardContent } from "~/components/ui/card";
 import { requireUserSession } from "~/services/auths.server";
-import { getPostById } from "~/services/post.server";
-import { calculateAgeFromDOB } from "~/utils";
+import { getPostById, getCustomerBasicProfile } from "~/services/post.server";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-  await requireUserSession(request);
-  const post = await getPostById(params.id!);
+  const customerId = await requireUserSession(request);
+  const [post, customerProfile] = await Promise.all([
+    getPostById(params.id!),
+    getCustomerBasicProfile(customerId),
+  ]);
   if (!post) throw new Response("Post not found", { status: 404 });
-  return { post };
+  return { post, customerProfile };
 }
 
 export default function PostDetailPage() {
-  const { post } = useLoaderData<typeof loader>();
+  const { post, customerProfile } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -26,55 +27,64 @@ export default function PostDetailPage() {
     ? t(`modelServices.serviceItems.${post.service.name}.name`, { defaultValue: post.service.name })
     : null;
 
+  const customerName = customerProfile
+    ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
+    : "";
+
+  const handleChat = (modelName: string, whatsapp: number) => {
+    const message = t("posts.customerChatMessage", {
+      modelName,
+      customerName,
+      defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
+    });
+    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <button
-        onClick={() => navigate("/customer/posts")}
+        onClick={() => navigate("/customer/posts?tab=myPosts")}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-rose-500 mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
         {t("posts.backToPosts", { defaultValue: "Back to Posts" })}
       </button>
 
-      {/* Post content */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 mb-3">
-            {author?.profile ? (
-              <img src={author.profile} alt={authorName} className="w-12 h-12 rounded-full object-cover border" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-rose-400" />
-              </div>
-            )}
-            <div>
-              <p className="font-medium">{authorName}</p>
-              <p className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleString()}</p>
+      <div className="p-2 border border-rose-300 rounded-md bg-rose-50">
+        <div className="flex items-center gap-3 mb-3">
+          {author?.profile ? (
+            <img src={author.profile} alt={authorName} className="w-12 h-12 rounded-full object-cover border" />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
+              <Users className="h-6 w-6 text-rose-400" />
             </div>
-            {serviceName && (
-              <Badge variant="outline" className="ml-auto text-xs border-rose-200 text-rose-600">{serviceName}</Badge>
-            )}
+          )}
+          <div>
+            <p className="font-medium">{authorName}</p>
+            <p className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleString()}</p>
           </div>
+          {serviceName && (
+            <Badge variant="outline" className="ml-auto text-xs border-rose-200 text-rose-600">{serviceName}</Badge>
+          )}
+        </div>
 
-          <p className="text-sm text-gray-800 whitespace-pre-wrap mb-3">{post.content}</p>
+        <p className="text-sm text-gray-800 whitespace-pre-wrap mb-3">{post.content}</p>
 
-          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-            {post.preferredDate && (
-              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(post.preferredDate).toLocaleDateString()}</span>
-            )}
-            {post.preferredTime && (
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{post.preferredTime}</span>
-            )}
-            {post.location && (
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{post.location}</span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+          {post.preferredDate && (
+            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(post.preferredDate).toLocaleDateString()}</span>
+          )}
+          {post.preferredTime && (
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{post.preferredTime}</span>
+          )}
+          {post.location && (
+            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{post.location}</span>
+          )}
+        </div>
+      </div>
 
-      {/* Interested users */}
-      <h2 className="text-sm font-bold mb-3 flex items-center gap-2">
-        <Heart className="h-4 w-4 text-rose-500" />
+      <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
+        <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
         {t("posts.interestedPeople", { defaultValue: "People Interested" })} ({post.interests.length})
       </h2>
 
@@ -87,18 +97,18 @@ export default function PostDetailPage() {
           {post.interests.map((interest) => {
             const user = interest.userType === "customer" ? interest.customer : interest.model;
             if (!user) return null;
-            const age = (user as any).dob ? calculateAgeFromDOB((user as any).dob) : null;
+            const userName = `${user.firstName} ${user.lastName || ""}`.trim();
             const profileUrl = interest.userType === "model"
-              ? `/customer/model-profile/${user.id}`
+              ? `/customer/user-profile/${user.id}`
               : "#";
 
             return (
-              <Card
+              <div
                 key={interest.id}
-                className="cursor-pointer hover:border-rose-200 transition-colors"
+                className="flex items-center justify-between border border-gray-200 cursor-pointer hover:border-rose-200 transition-colors rounded-sm px-4"
                 onClick={() => profileUrl !== "#" && navigate(profileUrl)}
               >
-                <CardContent className="p-3 flex items-center gap-3">
+                <div className="p-3 flex items-center gap-3">
                   {user.profile ? (
                     <img src={user.profile} alt="" className="w-10 h-10 rounded-full object-cover border" />
                   ) : (
@@ -107,14 +117,22 @@ export default function PostDetailPage() {
                     </div>
                   )}
                   <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {user.firstName} {user.lastName || ""}
-                      {age ? `, ${age}` : ""}
-                    </p>
+                    <p className="text-sm font-medium">{userName}</p>
                     <p className="text-xs text-gray-400">{new Date(interest.createdAt).toLocaleString()}</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                {user.whatsapp && (
+                  <button
+                    className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChat(userName, user.whatsapp!);
+                    }}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

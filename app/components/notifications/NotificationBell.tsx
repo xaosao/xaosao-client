@@ -70,6 +70,7 @@ export function NotificationBell({
 
   const notificationsUrl = userType === "model" ? "/model/notifications" : "/customer/notifications";
   const detailBaseUrl = userType === "model" ? "/model/dating/detail" : "/customer/book-service/detail";
+  const postDetailBaseUrl = userType === "model" ? "/model/posts" : "/customer/posts";
 
   // Calculate display count from store
   const unreadCount = getUnreadCount();
@@ -129,7 +130,7 @@ export function NotificationBell({
               {recentNotifications.map((notification) => (
                 <Link
                   key={notification.id}
-                  to={notification.data?.bookingId ? `${detailBaseUrl}/${notification.data.bookingId}` : notificationsUrl}
+                  to={notification.data?.bookingId ? `${detailBaseUrl}/${notification.data.bookingId}` : notification.data?.postId ? `${postDetailBaseUrl}/${notification.data.postId}` : notificationsUrl}
                   className={`block p-3 hover:bg-gray-50 transition-colors ${notification.isRead ? "bg-gray-50/50" : "bg-white"
                     }`}
                   onClick={() => handleNotificationClick(notification)}

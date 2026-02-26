@@ -1,16 +1,17 @@
 import { useTranslation } from "react-i18next";
 import { useFetcher, useNavigate } from "react-router";
-import { Heart, Send, MessageCircle, Loader, MoreHorizontal } from "lucide-react";
-import PostImageGallery from "~/components/posts/PostImageGallery";
+import { Heart, MessageCircle, Loader, CalendarCheck } from "lucide-react";
+
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
-import type { PostItem } from "~/types/post";
+import type { PostItem, UserProfile } from "~/types/post";
+import PostImageGallery from "~/components/posts/PostImageGallery";
 
 interface FeedPostCardProps {
   post: PostItem;
-  hasSubscription?: boolean;
+  customerProfile?: UserProfile | null;
 }
 
-export default function FeedPostCard({ post, hasSubscription }: FeedPostCardProps) {
+export default function FeedPostCard({ post, customerProfile }: FeedPostCardProps) {
   const { t } = useTranslation();
   const fetcher = useFetcher();
   const navigate = useNavigate();
@@ -29,25 +30,26 @@ export default function FeedPostCard({ post, hasSubscription }: FeedPostCardProp
     : null;
   const hasImages = post.images?.length > 0;
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `XaoSao - ${authorName}`,
-          text: post.content,
-          url: window.location.origin + `/post/${post.id}`,
-        });
-      } catch {}
-    }
+  const customerName = customerProfile
+    ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
+    : "";
+
+  const handleChat = () => {
+    if (!author?.whatsapp) return;
+    const message = t("posts.customerChatMessage", {
+      modelName: authorName,
+      customerName,
+      defaultValue: `Hi, ${authorName}.\nI'm ${customerName}, I see your post looking for a partner to hang out tonight.\nAre you still available? I'll book you.`,
+    });
+    window.open(`https://wa.me/${author.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   return (
-    <div className={`bg-white ${!hasImages ? "pb-2" : ""}`}>
-      {/* Header — avatar | name + time | menu */}
+    <div className={`rounded-sm bg-white ${!hasImages ? "pb-2" : ""}`}>
       <div className="flex items-center justify-between px-4 py-3">
         <div
           className="flex items-center gap-3 cursor-pointer min-w-0"
-          onClick={() => author?.id && navigate(`/customer/model-profile/${author.id}`)}
+          onClick={() => author?.id && navigate(`/customer/user-profile/${author.id}`)}
         >
           <div className="relative flex-shrink-0">
             {author?.profile ? (
@@ -64,8 +66,8 @@ export default function FeedPostCard({ post, hasSubscription }: FeedPostCardProp
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold truncate">{authorName}</span>
-              {age && <span className="text-xs text-gray-400">{age}</span>}
+              <span className="text-sm font-semibold truncate">{authorName} -</span>
+              {age && <span className="text-sm text-gray-400">{age}y</span>}
               {serviceName && (
                 <span className="text-xs text-rose-500 font-medium truncate">{serviceName}</span>
               )}
@@ -73,73 +75,67 @@ export default function FeedPostCard({ post, hasSubscription }: FeedPostCardProp
             <span className="text-xs text-gray-400">{timeAgo}</span>
           </div>
         </div>
-        <button onClick={handleShare} className="p-1 text-gray-400 hover:text-gray-600">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">
+          {t("posts.stillAvailable", { defaultValue: "Available" })}
+        </span>
       </div>
 
-      {/* Content */}
       <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>
         <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{post.content}</p>
       </div>
 
-      {/* Image — full width, edge-to-edge */}
       {hasImages && (
         <PostImageGallery images={post.images} authorName={authorName} />
       )}
 
-      {/* Action icons row */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-1">
-          {/* Heart / Interested */}
+          {/* Interest */}
           <fetcher.Form method="post" action={`/customer/posts/${post.id}/interested`}>
             <button
               type="submit"
               disabled={isToggling}
-              className="p-2 hover:opacity-60 transition-opacity"
+              className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity"
             >
               {isToggling ? (
-                <Loader className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader className="h-4 w-4 animate-spin text-gray-400" />
               ) : (
                 <Heart
-                  className={`h-6 w-6 ${
-                    optimisticInterested
-                      ? "fill-red-500 text-red-500"
-                      : "text-gray-800"
-                  }`}
+                  className={`h-4 w-4 ${optimisticInterested
+                    ? "fill-red-500 text-red-500"
+                    : "text-gray-500"
+                    }`}
                 />
               )}
+              <span className={`text-sm ${optimisticInterested ? "text-red-500 font-semibold" : "text-gray-500"}`}>
+                {t("posts.interested", { defaultValue: "Interested" })}
+              </span>
             </button>
           </fetcher.Form>
 
-          {/* Chat — WhatsApp (subscription required) */}
-          {hasSubscription && author?.whatsapp && (
+          {/* Chat */}
+          {author?.whatsapp && (
             <button
-              className="p-2 hover:opacity-60 transition-opacity"
-              onClick={() => window.open(`https://wa.me/${author.whatsapp}`, "_blank")}
+              className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
+              onClick={handleChat}
             >
-              <MessageCircle className="h-6 w-6 text-gray-800" />
+              <MessageCircle className="h-4 w-4" />
+              <span className="text-sm">{t("posts.chat", { defaultValue: "Chat" })}</span>
             </button>
           )}
+        </div>
 
-          {/* Share */}
-          <button className="p-2 hover:opacity-60 transition-opacity" onClick={handleShare}>
-            <Send className="h-5 w-5 text-gray-800" />
+        {/* Book Now */}
+        {author?.id && (
+          <button
+            className="cursor-pointer flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
+            onClick={() => navigate(`/customer/user-profile/${author.id}`)}
+          >
+            <CalendarCheck className="h-3.5 w-3.5" />
+            {t("posts.bookNow", { defaultValue: "Book Now" })}
           </button>
-        </div>
+        )}
       </div>
-
-      {/* Interested count */}
-      {post.interestedCount > 0 && (
-        <div className="px-4 pb-1">
-          <span className="text-sm font-semibold">
-            {post.interestedCount} {t("posts.peopleInterested", { defaultValue: "interested" })}
-          </span>
-        </div>
-      )}
-
-      {/* Bottom padding for spacing */}
-      <div className="h-1" />
     </div>
   );
 }

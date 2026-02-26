@@ -34,7 +34,7 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
     ? `${modelProfile.firstName} ${modelProfile.lastName || ""}`.trim()
     : "";
   const profileLink = modelProfile?.id
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/customer/model-profile/${modelProfile.id}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/customer/user-profile/${modelProfile.id}`
     : "";
 
   const handleChat = () => {

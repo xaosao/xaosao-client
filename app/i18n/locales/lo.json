@@ -195,7 +195,7 @@
     "chat": "ແຊັດ",
     "datingHistory": "ປະຫວັດການນັດພົບ",
     "dating": "ນັດພົບ",
-    "posts": "ໂພສ",
+    "posts": "ໂພສຫາຄູ່",
     "packages": "ແພັກເກັດ",
     "wallet": "ກະເປົາເງິນ",
     "myProfile": "ໂປຣໄຟລ໌",
@@ -2578,7 +2578,7 @@
     "iosNote": "ການແຈ້ງເຕືອນແບບພຸສເທິງ iOS ຈະເຮັດວຽກໄດ້ພຽງແຕ່ເມື່ອເພີ່ມແອັບໃສ່ໜ້າຈໍຫຼັກເທົ່ານັ້ນ"
   },
   "posts": {
-    "title": "ໂພສ",
+    "title": "ໂພສຫາຄູ່",
     "create": "ສ້າງໂພສ",
     "createAvailability": "ໂພສຄວາມພ້ອມ",
     "feed": "ຟີດ",
@@ -2587,6 +2587,7 @@
     "emptyFeed": "ຍັງບໍ່ມີໂພສ. ກວດເບິ່ງອີກເທື່ອໜຶ່ງໃນພາຍຫຼັງ!",
     "emptyMyPosts": "ທ່ານຍັງບໍ່ໄດ້ສ້າງໂພສໃດໆເທື່ອ.",
     "createFirst": "ສ້າງໂພສທຳອິດຂອງທ່ານ",
+    "post": "ສ້າງໂພສ",
     "interested": "ສົນໃຈ",
     "peopleInterested": "ສົນໃຈ",
     "share": "ແຊຣ໌",
@@ -2605,7 +2606,7 @@
     "age": "ອາຍຸ",
     "create.title": "ສ້າງຄຳຂໍ",
     "create.availabilityTitle": "ໂພສຄວາມພ້ອມ",
-    "create.whatLookingFor": "ທ່ານກຳລັງຊອກຫາຫຍັງ?",
+    "create.whatLookingFor": "ທ່ານກຳລັງຊອກຫາຄູ່ແບບໃດ?",
     "create.whatAvailable": "ທ່ານພ້ອມໃຫ້ບໍລິການຫຍັງ?",
     "create.contentPlaceholder": "ຕົວຢ່າງ: ຂ້ອຍຕ້ອງການ 2 ຄົນສຳລັບດື່ມຄືນນີ້ຢູ່ວຽງຈັນ...",
     "create.availabilityPlaceholder": "ຕົວຢ່າງ: ຂ້ອຍວ່າງມື້ນີ້ສຳລັບດື່ມ ຫຼື ທ່ອງທ່ຽວຢູ່ວຽງຈັນ...",
@@ -2639,6 +2640,9 @@
     "timeAgo.justNow": "ຫາກໍ",
     "timeAgo.minutes": "{{count}} ນາທີກ່ອນ",
     "timeAgo.hours": "{{count}} ຊົ່ວໂມງກ່ອນ",
-    "timeAgo.days": "{{count}} ມື້ກ່ອນ"
+    "timeAgo.days": "{{count}} ມື້ກ່ອນ",
+    "stillAvailable": "ຍັງຮັບຢູ່",
+    "bookNow": "ຈອງເລີຍ",
+    "customerChatMessage": "ສະບາຍດີ {{modelName}}.\nຂ້ອຍຊື່ {{customerName}}, ຂ້ອຍເຫັນໂພສຂອງເຈົ້າກຳລັງຊອກຫາເພື່ອນໄປນຳຄືນນີ້.\nເຈົ້າຍັງວ່າງຢູ່ບໍ? ຂ້ອຍຈະຈອງເຈົ້າ."
   }
 }

@@ -8,7 +8,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 
   try {
     await deletePost(postId, modelId, "model");
-    return redirect("/model/posts");
+    return redirect("/model");
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to delete post" };
   }

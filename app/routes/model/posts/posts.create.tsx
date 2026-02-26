@@ -56,7 +56,7 @@ export async function action({ request }: ActionFunctionArgs) {
       images: imageUrls,
     });
 
-    return redirect("/model/posts");
+    return redirect("/model");
   } catch (error: any) {
     return { error: true, message: error?.message || "posts.create.failed" };
   }
@@ -193,7 +193,7 @@ export default function CreateModelPost({ loaderData }: PageProps) {
               </p>
             </div>
             <button
-              onClick={() => navigate("/model/posts")}
+              onClick={() => navigate("/model")}
               className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600"
             >
               <X className="h-5 w-5" />

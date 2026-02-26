@@ -197,6 +197,8 @@ export default function ModelNotifications({ loaderData }: PageProps) {
 
     if (notification.data?.bookingId) {
       navigate(`/model/dating/detail/${notification.data.bookingId}`);
+    } else if (notification.data?.postId) {
+      navigate(`/model/posts/${notification.data.postId}`);
     }
   };
 

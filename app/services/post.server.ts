@@ -623,7 +623,7 @@ export async function getModelBasicProfile(modelId: string) {
 export async function getCustomerBasicProfile(customerId: string) {
   return prisma.customer.findUnique({
     where: { id: customerId },
-    select: { firstName: true, lastName: true, profile: true },
+    select: { id: true, firstName: true, lastName: true, profile: true },
   });
 }
 

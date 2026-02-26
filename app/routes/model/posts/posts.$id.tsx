@@ -47,7 +47,7 @@ export default function ModelPostDetailPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <button
-        onClick={() => navigate("/model/posts?tab=myPosts")}
+        onClick={() => navigate("/model?tab=myPosts")}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-rose-500 mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
