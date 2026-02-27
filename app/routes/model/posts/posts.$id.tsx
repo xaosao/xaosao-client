@@ -31,7 +31,7 @@ export default function ModelPostDetailPage() {
     ? `${modelProfile.firstName} ${modelProfile.lastName || ""}`.trim()
     : "";
   const profileLink = modelProfile?.id
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/customer/model-profile/${modelProfile.id}`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/customer/user-profile/${modelProfile.id}`
     : "";
 
   const handleChat = (customerName: string, whatsapp: number) => {
@@ -39,7 +39,7 @@ export default function ModelPostDetailPage() {
       customerName,
       modelName,
       link: profileLink,
-      defaultValue: `Hi, ${customerName}.\nI'm ${modelName}, ready to be your companion for the day and service you want.\nPlease booking at: ${profileLink}`,
+      defaultValue: `Hi {{customerName}}. Interested in booking me as your drinking companion?\nI'm still available! Book me at: ${profileLink}`,
     });
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
   };

@@ -362,16 +362,17 @@ export default function ModelWalletPage() {
     const file = e.target.files?.[0];
     if (file) {
       setQrCodeFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setQrCodePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Use URL.createObjectURL for better iOS compatibility
+      const previewUrl = URL.createObjectURL(file);
+      setQrCodePreview(previewUrl);
     }
   };
 
   // Remove selected QR code
   const handleRemoveQrCode = () => {
+    if (qrCodePreview && qrCodePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(qrCodePreview);
+    }
     setQrCodeFile(null);
     setQrCodePreview(null);
     if (qrCodeInputRef.current) {

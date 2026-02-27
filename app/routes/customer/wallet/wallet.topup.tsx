@@ -306,17 +306,8 @@ export default function WalletTopUpPage() {
 
             processedFiles.push(processedFile);
 
-            // Create preview
-            if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
-                const preview = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(processedFile);
-                });
-                newPreviews.push(preview);
-            } else {
-                newPreviews.push(URL.createObjectURL(processedFile));
-            }
+            // Create preview using URL.createObjectURL (better iOS compatibility)
+            newPreviews.push(URL.createObjectURL(processedFile));
         }
 
         if (processedFiles.length > 0) {

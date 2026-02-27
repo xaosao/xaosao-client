@@ -91,8 +91,7 @@ const tb = new Telbiz(
 
 export const sessionStorage = createCookieSessionStorage({
   cookie: {
-    // secure: process.env.NODE_ENV === "production",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     secrets: [SESSION_SECRET],
     sameSite: "lax",
     httpOnly: true,
@@ -123,7 +122,8 @@ export async function requireUserSession(request: Request) {
     const isPublic = publicPaths.includes(pathname);
 
     if (!isPublic) {
-      throw redirect("/login");
+      const redirectTo = encodeURIComponent(pathname + url.search);
+      throw redirect(`/model-auth/login?tab=customer&redirect=${redirectTo}`);
     }
   }
 
@@ -139,7 +139,9 @@ export async function requireVerifiedUserSession(request: Request) {
   const customerId = await getUserFromSession(request);
 
   if (!customerId) {
-    throw redirect("/login");
+    const url = new URL(request.url);
+    const redirectTo = encodeURIComponent(url.pathname + url.search);
+    throw redirect(`/model-auth/login?tab=customer&redirect=${redirectTo}`);
   }
 
   // Check if phone is verified
@@ -232,6 +234,7 @@ export async function createUserSession(
     `Path=/`,
     `Max-Age=${maxAge}`,
     `SameSite=Lax`,
+    `HttpOnly`,
   ];
 
   if (isProduction) {

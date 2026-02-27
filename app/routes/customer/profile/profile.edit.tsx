@@ -170,23 +170,9 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                 // Store the compressed file for form submission
                 setCompressedFile(compressed);
 
-                // Create preview from compressed file (only in browser)
-                if (typeof window !== 'undefined' && typeof FileReader !== 'undefined') {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const result = reader.result as string;
-                        console.log('Preview DataURL length:', result.length);
-                        setImage(result);
-                    };
-                    reader.onerror = (err) => {
-                        console.error('FileReader error:', err);
-                    };
-                    reader.readAsDataURL(compressed);
-                } else {
-                    // Fallback: Use object URL for preview (works in all browsers)
-                    const objectUrl = URL.createObjectURL(compressed);
-                    setImage(objectUrl);
-                }
+                // Create preview using URL.createObjectURL (better iOS compatibility)
+                const previewUrl = URL.createObjectURL(compressed);
+                setImage(previewUrl);
             } catch (error) {
                 console.error('Error compressing image:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Failed to process image';

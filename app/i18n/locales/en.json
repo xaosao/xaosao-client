@@ -2536,8 +2536,8 @@
     "create.cancel": "Cancel",
     "create.submit": "Post & Notify",
     "chat": "Chat",
-    "chatMessage": "Hi, I'm {{name}} and I'm ready to service you for the day and service you want.\nPlease booking at: {{link}}",
-    "chatMessageDetail": "Hi, {{customerName}}.\nI'm {{modelName}}, ready to be your companion for the day and service you want.\nPlease booking at: {{link}}",
+    "chatMessage": "Hi, I'm {{name}} and I'm available for the date, time and service you need.\nYou can book me at: {{link}}",
+    "chatMessageDetail": "Hi {{customerName}}, interested in booking me as your companion?\nI'm still available, book me at: {{link}}",
     "fulfill": "Done",
     "confirmFulfill": "Mark this post as done?",
     "confirmFulfillDesc": "This will close your post and stop showing it to others.",
@@ -2551,6 +2551,6 @@
     "timeAgo.days": "{{count}}d ago",
     "stillAvailable": "Available",
     "bookNow": "Book Now",
-    "customerChatMessage": "Hi, {{modelName}}.\nI'm {{customerName}}, I see your post looking for a partner to hang out tonight.\nAre you still available? I'll book you."
+    "customerChatMessage": "Hi {{modelName}}, I saw you're interested in my post.\nAre you still available? I'd like to book you."
   }
 }

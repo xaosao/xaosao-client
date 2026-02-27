@@ -843,7 +843,7 @@ export async function getReferralStats(modelId: string) {
       currentCommissionEarnings: model.totalReferralEarnings || 0,
       // Normal → Special progress
       modelsUntilSpecial: model.type === "normal"
-        ? Math.max(0, MIN_REFERRED_MODELS_FOR_COMMISSION - approvedReferredModels + 1)
+        ? Math.max(0, MIN_REFERRED_MODELS_FOR_COMMISSION - approvedReferredModels)
         : 0,
       specialProgress: model.type === "normal"
         ? Math.min(100, (approvedReferredModels / MIN_REFERRED_MODELS_FOR_COMMISSION) * 100)

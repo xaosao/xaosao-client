@@ -542,7 +542,7 @@ async function notifyMatchingCustomers(post: any) {
           notificationType: "new_post_match",
           title: "ມີໂພສໃໝ່!",
           message: `${modelName}: "${contentPreview}"`,
-          smsMessage: `XaoSao: ${modelName} ພ້ອມໃຫ້ບໍລິການ${serviceName ? ` ${serviceName}` : ""}. ເປີດແອັບເພື່ອເບິ່ງ.`,
+          smsMessage: `Xaosao: ${modelName} ເປີດໃຫ້ບໍລິການ${serviceName ? ` ${serviceName}` : ""} ແລ້ວ.\nເບິ່ງລາຍລະອຽດ: https://xaosao.com/customer/user-profile/${post.modelId}`,
           data: { postId: post.id, modelId: post.modelId },
           url: `/customer/posts/${post.id}`,
         })

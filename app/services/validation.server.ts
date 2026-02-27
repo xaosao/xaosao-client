@@ -185,9 +185,11 @@ const updateProfileSchema = z.object({
       .string()
       .max(20, "Invalid first name. Must be at most 20 characters long.")
   ),
-  lastName: refineSafe(
-    z.string().max(20, "Invalid last name. Must be at most 20 characters long.")
-  ),
+  lastName: z
+    .string()
+    .max(20, "Invalid last name. Must be at most 20 characters long.")
+    .nullable()
+    .optional(),
   dob: z.coerce.date().refine((date) => !isNaN(date.getTime()), {
     message: "Invalid date format. Please enter a valid date.",
   }),
@@ -205,6 +207,20 @@ const updateProfileSchema = z.object({
   profile: z.string().url("Invalid profile URL.").nullable().optional(),
 
   interests: z.string().nullable().optional().default(null),
+
+  available_status: z
+    .string()
+    .refine((val) => ["available", "busy", "offline"].includes(val), {
+      message: "Invalid availability status.",
+    })
+    .nullable()
+    .optional(),
+
+  address: z
+    .string()
+    .max(200, "Address must be at most 200 characters long.")
+    .nullable()
+    .optional(),
 
   relationshipStatus: z
     .string()

@@ -42,7 +42,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Check if customer is already logged in
   const customerId = await getUserFromSession(request);
   if (customerId) {
-    throw redirect("/customer");
+    const customerRedirect = url.searchParams.get("redirect") || "/customer";
+    throw redirect(customerRedirect);
   }
 
   const reset = url.searchParams.get("reset");

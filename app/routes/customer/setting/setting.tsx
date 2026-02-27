@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import type { Route } from "./+types/setting";
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
-import { User, Lock, Bell, Globe, Flag, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check } from "lucide-react";
+import { User, Lock, Bell, Globe, Flag, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check, Wallet, LogOut } from "lucide-react";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 // components
@@ -276,6 +276,7 @@ export default function SettingPage({ loaderData }: TransactionProps) {
 
     const menuItems = [
         { id: 'basic', label: t('settings.menu.basic'), icon: User },
+        { id: 'wallets', label: t('navigation.wallet'), icon: Wallet, link: '/customer/wallets' },
         { id: 'password', label: t('settings.menu.password'), icon: Lock },
         // { id: 'twofa', label: t('settings.menu.twofa'), icon: Shield },
         { id: 'notification', label: t('settings.menu.notification'), icon: Bell },
@@ -363,7 +364,7 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                         return (
                             <div
                                 key={item.id}
-                                onClick={() => isMobile ? navigate(`/customer/setting-detail/${item.id}`) : scrollToSection(item.id)}
+                                onClick={() => item.link ? navigate(item.link) : isMobile ? navigate(`/customer/setting-detail/${item.id}`) : scrollToSection(item.id)}
                                 className={`cursor-pointer w-full flex items-center justify-between sm:justify-start gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 ${activeSection === item.id
                                     ? 'bg-rose-100 hover:bg-rose-200 text-rose-600'
                                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
@@ -393,6 +394,29 @@ export default function SettingPage({ loaderData }: TransactionProps) {
                     </div>
                     <ChevronRight size={16} className="block sm:hidden" />
                 </div>
+
+                {/* <div
+                    onClick={() => navigate("/customer/wallets")}
+                    className={`cursor-pointer w-full flex items-center justify-between sm:justify-start gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 text-gray-600 hover:bg-gray-100 hover:text-gray-800`}
+                >
+                    <div className="flex items-start gap-2">
+                        <Wallet size={16} />
+                        <span className="text-sm font-medium">{t('navigation.wallet', { defaultValue: 'Wallet' })}</span>
+                    </div>
+                    <ChevronRight size={16} className="block sm:hidden" />
+                </div> */}
+
+                <Form method="post" action="/logout" className="mt-4">
+                    <button
+                        type="submit"
+                        className="cursor-pointer w-full flex items-center justify-center gap-3 p-3 rounded-lg text-left transition-all duration-200 text-red-500 bg-red-50 hover:text-red-600"
+                    >
+                        <div className="flex items-start gap-2">
+                            <LogOut size={16} />
+                            <span className="text-sm font-medium">{t('settings.common.logout', { defaultValue: 'Logout' })}</span>
+                        </div>
+                    </button>
+                </Form>
 
             </div>
 

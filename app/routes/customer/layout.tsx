@@ -203,9 +203,10 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     const mobileNavigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
         { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart },
+        // { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
         { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
     ], [t, i18n.language]);
 

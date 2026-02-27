@@ -160,17 +160,9 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                 // Store the compressed file for form submission
                 setCompressedFile(compressed);
 
-                // Create preview from compressed file
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    console.log('Preview DataURL length:', result.length);
-                    setImage(result);
-                };
-                reader.onerror = (err) => {
-                    console.error('FileReader error:', err);
-                };
-                reader.readAsDataURL(compressed);
+                // Create preview using URL.createObjectURL (better iOS compatibility)
+                const previewUrl = URL.createObjectURL(compressed);
+                setImage(previewUrl);
             } catch (error) {
                 console.error('Error compressing image:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
@@ -379,9 +371,9 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                             </div>
                             <div className="gap-2 sm:gap-4">
                                 <Label htmlFor="available_status" className="text-gray-500 text-sm mb-1">
-                                    {t("modelProfileEdit.availabilityStatus")}<span className="text-rose-500">*</span>
+                                    {t("modelProfileEdit.availabilityStatus")}
                                 </Label>
-                                <Select name="available_status" required defaultValue={modelData.available_status}>
+                                <Select name="available_status" defaultValue={modelData.available_status}>
                                     <SelectTrigger className="bg-background rounded-md h-14 text-foreground font-medium px-6 w-full">
                                         <SelectValue placeholder={t("modelProfileEdit.selectAvailability")} />
                                     </SelectTrigger>

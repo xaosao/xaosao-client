@@ -106,7 +106,7 @@ const tb = new Telbiz(
 const modelSessionStorage = createCookieSessionStorage({
   cookie: {
     name: "__model_session", // Different cookie name
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     secrets: [MODEL_SESSION_SECRET],
     sameSite: "lax",
     httpOnly: true,
@@ -222,6 +222,7 @@ export async function createModelSession(
     `Path=/`,
     `Max-Age=${maxAge}`,
     `SameSite=Lax`,
+    `HttpOnly`,
   ];
 
   if (isProduction) {
