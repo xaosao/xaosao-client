@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Form, Link, Outlet, useFetcher, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, redirect, useFetcher, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     Briefcase,
     EyeOff,
@@ -63,32 +63,38 @@ interface LayoutProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const modelId = await requireModelSession(request);
-    const [modelData, unreadNotifications, notifications, pendingBookingCount] = await Promise.all([
-        getModelDashboardData(modelId),
-        getModelUnreadCount(modelId),
-        getModelNotifications(modelId, { limit: 10 }),
-        getModelPendingBookingCount(modelId),
-    ]);
 
-    const initialNotifications: Notification[] = notifications.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        data: n.data as Record<string, any>,
-        isRead: n.isRead,
-        createdAt: n.createdAt.toISOString(),
-    }));
+    try {
+        const [modelData, unreadNotifications, notifications, pendingBookingCount] = await Promise.all([
+            getModelDashboardData(modelId),
+            getModelUnreadCount(modelId).catch(() => 0),
+            getModelNotifications(modelId, { limit: 10 }).catch(() => []),
+            getModelPendingBookingCount(modelId).catch(() => 0),
+        ]);
 
-    // Check if model has at least one active service
-    const hasServices = (modelData?.ModelService?.length ?? 0) > 0;
+        const initialNotifications: Notification[] = (notifications || []).map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            data: n.data as Record<string, any>,
+            isRead: n.isRead,
+            createdAt: n.createdAt.toISOString(),
+        }));
 
-    // Check if model has enabled notifications (either push or SMS)
-    const hasEnabledNotifications = modelData?.sendPushNoti || modelData?.sendSMSNoti || false;
+        // Check if model has at least one active service
+        const hasServices = (modelData?.ModelService?.length ?? 0) > 0;
 
-    const isProfileHidden = modelData?.isProfileHidden === true;
+        // Check if model has enabled notifications (either push or SMS)
+        const hasEnabledNotifications = modelData?.sendPushNoti || modelData?.sendSMSNoti || false;
 
-    return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden };
+        const isProfileHidden = modelData?.isProfileHidden === true;
+
+        return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden };
+    } catch (error) {
+        console.error("[ModelLayout] Loader error:", error);
+        throw redirect("/model-auth/login");
+    }
 }
 
 export default function ModelLayout({ loaderData }: LayoutProps) {

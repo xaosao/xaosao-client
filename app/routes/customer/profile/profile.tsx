@@ -321,13 +321,19 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
         }
     };
 
-    // Reset uploading/deleting state when fetcher completes
+    // Track when fetcher was actually busy (submitting/loading) to avoid clearing state prematurely
+    const wasFetcherBusy = React.useRef(false);
+
+    // Reset uploading/deleting state only when fetcher transitions from busy → idle
     React.useEffect(() => {
-        if (fetcher.state === 'idle') {
+        if (fetcher.state !== 'idle') {
+            wasFetcherBusy.current = true;
+        } else if (wasFetcherBusy.current) {
+            wasFetcherBusy.current = false;
             if (uploadingImageId) setUploadingImageId(null);
             if (deletingImageId) setDeletingImageId(null);
         }
-    }, [fetcher.state, uploadingImageId, deletingImageId]);
+    }, [fetcher.state]);
 
     // Set active tab to "images" if URL hash is #images (after upload redirect)
     React.useEffect(() => {
@@ -479,6 +485,20 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
             </div>
         );
     };
+
+    // Show full-page loading overlay when compressing or uploading images
+    if (isCompressing || uploadingImageId || deletingImageId) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                <div className="flex flex-col items-center justify-center bg-white p-6 rounded-xl shadow-md gap-3">
+                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                    <p className="text-gray-600 font-medium">
+                        {isCompressing ? t('profileEdit.compressing') : deletingImageId ? t('profile.deleting', { defaultValue: 'Deleting...' }) : t('profile.uploading', { defaultValue: 'Uploading...' })}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -742,13 +762,13 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         </button>
 
                         <button
-                            className="absolute left-4 text-white hidden sm:block bg-black/50 hover:bg-black/70 rounded-full p-2"
+                            className="absolute left-2 sm:left-4 text-white bg-black/50 hover:bg-black/70 rounded-full p-2"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handlePrev();
                             }}
                         >
-                            <ChevronLeft size={40} />
+                            <ChevronLeft size={32} />
                         </button>
 
                         <img
@@ -761,13 +781,13 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
                         />
 
                         <button
-                            className="absolute right-4 text-white hidden sm:block bg-black/50 hover:bg-black/70 rounded-full p-2"
+                            className="absolute right-2 sm:right-4 text-white bg-black/50 hover:bg-black/70 rounded-full p-2"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleNext();
                             }}
                         >
-                            <ChevronRight size={40} />
+                            <ChevronRight size={32} />
                         </button>
                     </div>
                 )}

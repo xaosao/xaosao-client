@@ -1927,55 +1927,6 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 </div>
                                             )}
 
-                                            {selectedIndex !== null && (
-                                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
-                                                    <button
-                                                        className="absolute top-4 right-4 text-white z-50 hover:text-gray-300 transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedIndex(null);
-                                                        }}
-                                                        onTouchEnd={(e) => {
-                                                            e.stopPropagation();
-                                                            e.preventDefault();
-                                                            setSelectedIndex(null);
-                                                        }}
-                                                        type="button"
-                                                        aria-label="Close"
-                                                    >
-                                                        <X size={32} />
-                                                    </button>
-
-                                                    <button
-                                                        className="absolute left-4 text-white hidden sm:block"
-                                                        onClick={handlePrev}
-                                                    >
-                                                        <ChevronLeft size={40} />
-                                                    </button>
-
-                                                    <img
-                                                        src={images[selectedIndex].name}
-                                                        alt="Selected"
-                                                        className="h-full sm:max-h-[80vh] w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
-                                                        onTouchStart={handleTouchStart}
-                                                        onTouchMove={handleTouchMove}
-                                                        onTouchEnd={handleTouchEnd}
-                                                    />
-
-                                                    <button
-                                                        className="absolute right-4 text-white hidden sm:block"
-                                                        onClick={handleNext}
-                                                    >
-                                                        <ChevronRight size={40} />
-                                                    </button>
-
-                                                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
-                                                        <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-                                                            {selectedIndex + 1} / {images.length}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -2032,6 +1983,57 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     )}
                 </div>
             </div>
+
+            {/* Image Lightbox */}
+            {selectedIndex !== null && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+                    <button
+                        className="absolute top-4 right-4 text-white z-50 hover:text-gray-300 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIndex(null);
+                        }}
+                        onTouchEnd={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setSelectedIndex(null);
+                        }}
+                        type="button"
+                        aria-label="Close"
+                    >
+                        <X size={32} />
+                    </button>
+
+                    <button
+                        className="absolute left-2 sm:left-4 text-white z-50 bg-black/40 rounded-full p-1"
+                        onClick={handlePrev}
+                    >
+                        <ChevronLeft size={32} />
+                    </button>
+
+                    <img
+                        src={images[selectedIndex]?.name}
+                        alt="Selected"
+                        className="h-full sm:max-h-[80vh] w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    />
+
+                    <button
+                        className="absolute right-2 sm:right-4 text-white z-50 bg-black/40 rounded-full p-1"
+                        onClick={handleNext}
+                    >
+                        <ChevronRight size={32} />
+                    </button>
+
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-50">
+                        <div className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                            {selectedIndex + 1} / {images.length}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Subscription Trial Modal */}
             {trialPackage && (

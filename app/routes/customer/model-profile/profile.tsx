@@ -824,7 +824,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     </button>
 
                                     <button
-                                        className="absolute left-4 text-white p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer hidden sm:block"
+                                        className="absolute left-2 sm:left-4 text-white p-2 sm:p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer"
                                         onClick={handlePrev}
                                         type="button"
                                     >
@@ -841,7 +841,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                     />
 
                                     <button
-                                        className="absolute right-4 text-white p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer hidden sm:block"
+                                        className="absolute right-2 sm:right-4 text-white p-2 sm:p-3 bg-black/50 hover:bg-black/70 rounded-full z-10 cursor-pointer"
                                         onClick={handleNext}
                                         type="button"
                                     >

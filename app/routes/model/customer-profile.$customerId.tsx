@@ -436,10 +436,10 @@ export default function CustomerProfilePage({ loaderData }: ProfilePageProps) {
                                     </button>
 
                                     <button
-                                        className="absolute left-4 text-white hidden sm:block"
+                                        className="absolute left-2 sm:left-4 text-white bg-black/40 rounded-full p-1"
                                         onClick={handlePrev}
                                     >
-                                        <ChevronLeft size={40} />
+                                        <ChevronLeft size={32} />
                                     </button>
 
                                     <img
@@ -452,10 +452,10 @@ export default function CustomerProfilePage({ loaderData }: ProfilePageProps) {
                                     />
 
                                     <button
-                                        className="absolute right-4 text-white hidden sm:block"
+                                        className="absolute right-2 sm:right-4 text-white bg-black/40 rounded-full p-1"
                                         onClick={handleNext}
                                     >
-                                        <ChevronRight size={40} />
+                                        <ChevronRight size={32} />
                                     </button>
                                 </div>
                             )}

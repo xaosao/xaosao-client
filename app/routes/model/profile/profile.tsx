@@ -372,15 +372,21 @@ export default function ModelProfilePage() {
         }
     };
 
-    // Reset uploading/deleting state when fetcher completes
+    // Track when fetcher was actually busy (submitting/loading) to avoid clearing state prematurely
+    const wasFetcherBusy = React.useRef(false);
+
+    // Reset uploading/deleting state only when fetcher transitions from busy → idle
     React.useEffect(() => {
-        if (fetcher.state === 'idle') {
+        if (fetcher.state !== 'idle') {
+            wasFetcherBusy.current = true;
+        } else if (wasFetcherBusy.current) {
+            wasFetcherBusy.current = false;
             if (uploadingImageId) setUploadingImageId(null);
             if (deletingImageId) setDeletingImageId(null);
             if (deletingBankId) setDeletingBankId(null);
             if (isBankSubmitting) setIsBankSubmitting(false);
         }
-    }, [fetcher.state, uploadingImageId, deletingImageId, deletingBankId, isBankSubmitting]);
+    }, [fetcher.state]);
 
     // Handle delete image
     const handleDeleteImage = (imageId: string, imageName: string) => {
@@ -1164,10 +1170,10 @@ export default function ModelProfilePage() {
                                     </button>
 
                                     <button
-                                        className="absolute left-4 text-white hidden sm:block"
+                                        className="absolute left-2 sm:left-4 text-white bg-black/40 rounded-full p-1"
                                         onClick={handlePrev}
                                     >
-                                        <ChevronLeft size={40} />
+                                        <ChevronLeft size={32} />
                                     </button>
 
                                     <img
@@ -1180,10 +1186,10 @@ export default function ModelProfilePage() {
                                     />
 
                                     <button
-                                        className="absolute right-4 text-white hidden sm:block"
+                                        className="absolute right-2 sm:right-4 text-white bg-black/40 rounded-full p-1"
                                         onClick={handleNext}
                                     >
-                                        <ChevronRight size={40} />
+                                        <ChevronRight size={32} />
                                     </button>
 
                                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-2 rounded-full">

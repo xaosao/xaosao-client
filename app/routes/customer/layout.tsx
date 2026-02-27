@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
-import { Form, Link, Outlet, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
+import { Form, Link, Outlet, redirect, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     User,
     Heart,
@@ -45,51 +45,60 @@ interface TransactionProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireVerifiedUserSession(request);
-    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
-    const { prisma } = await import("~/services/database.server");
 
-    const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
-        getCustomerProfile(customerId),
-        getCustomerUnreadCount(customerId),
-        getCustomerNotifications(customerId, { limit: 10 }),
-        hasActiveSubscription(customerId),
-        hasPendingSubscription(customerId),
-        prisma.subscription_plan.findFirst({
-            where: { name: "24-Hour Trial", status: "active" },
-            select: { id: true, price: true },
-        }),
-        prisma.wallet.findFirst({
-            where: { customerId },
-            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }),
-    ]);
+    try {
+        const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
+        const { prisma } = await import("~/services/database.server");
 
-    const initialNotifications: Notification[] = notifications.map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        data: n.data as Record<string, any>,
-        isRead: n.isRead,
-        createdAt: n.createdAt.toISOString(),
-    }));
+        const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
+            getCustomerProfile(customerId),
+            getCustomerUnreadCount(customerId).catch(() => 0),
+            getCustomerNotifications(customerId, { limit: 10 }).catch(() => []),
+            hasActiveSubscription(customerId).catch(() => false),
+            hasPendingSubscription(customerId).catch(() => false),
+            prisma.subscription_plan.findFirst({
+                where: { name: "24-Hour Trial", status: "active" },
+                select: { id: true, price: true },
+            }).catch(() => null),
+            prisma.wallet.findFirst({
+                where: { customerId },
+                select: { totalBalance: true, totalSpend: true, totalRefunded: true },
+            }).catch(() => null),
+        ]);
 
-    // Check if customer has enabled notifications (either push or SMS)
-    const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
+        const initialNotifications: Notification[] = (notifications || []).map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            data: n.data as Record<string, any>,
+            isRead: n.isRead,
+            createdAt: n.createdAt.toISOString(),
+        }));
 
-    // Calculate available balance: totalBalance - totalSpend + totalRefunded
-    const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+        // Check if customer has enabled notifications (either push or SMS)
+        const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
 
-    return {
-        customerData,
-        unreadNotifications,
-        initialNotifications,
-        hasActiveSubscription: hasSubscription,
-        hasPendingSubscription: hasPending,
-        hasEnabledNotifications,
-        trialPackage,
-        customerBalance: availableBalance,
-    };
+        // Calculate available balance: totalBalance - totalSpend + totalRefunded
+        const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+
+        return {
+            customerData,
+            unreadNotifications,
+            initialNotifications,
+            hasActiveSubscription: hasSubscription,
+            hasPendingSubscription: hasPending,
+            hasEnabledNotifications,
+            trialPackage,
+            customerBalance: availableBalance,
+        };
+    } catch (error) {
+        console.error("[CustomerLayout] Loader error:", error);
+        // If the critical profile query fails, redirect to login rather than showing error page
+        const url = new URL(request.url);
+        const redirectTo = encodeURIComponent(url.pathname + url.search);
+        throw redirect(`/model-auth/login?tab=customer&redirect=${redirectTo}`);
+    }
 }
 
 export default function Dashboard({ loaderData }: TransactionProps) {

@@ -91,6 +91,8 @@ const tb = new Telbiz(
 
 export const sessionStorage = createCookieSessionStorage({
   cookie: {
+    name: "__customer_session",
+    path: "/",
     secure: process.env.NODE_ENV === "production",
     secrets: [SESSION_SECRET],
     sameSite: "lax",
