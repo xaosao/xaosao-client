@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Briefcase, Calendar1, CalendarIcon, Loader, X, Wallet, Clock, Moon, Video } from "lucide-react"
+import { AlertCircle, Briefcase, Calendar1, CalendarIcon, Coins, Loader, X, Wallet, Clock, Moon, Video } from "lucide-react"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useParams, type LoaderFunctionArgs } from "react-router"
 
 // components:
@@ -66,6 +66,8 @@ export async function action({ params, request }: Route.ActionArgs) {
          // Note: "Online" instead of "Online Call" to avoid SQL injection filter (blocks word "call")
          bookingData.location = 'Online'
       }
+
+      bookingData.hasTip = formData.get('hasTip') === 'on';
 
       await validateServiceBookingInputs(bookingData as IServiceBookingCredentials);
       const res = await createServiceBooking(customerId, modelId, modelServiceId, bookingData as IServiceBookingCredentials);
@@ -687,6 +689,15 @@ export default function ServiceBooking() {
                            </div>
                         </>
                      )}
+
+                     {/* Tip checkbox */}
+                     <label className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
+                        <input type="checkbox" name="hasTip" className="w-4 h-4 accent-amber-500 rounded" />
+                        <Coins className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        <span className="text-sm text-gray-700">
+                           {t("booking.hasTip", { defaultValue: "I'll give a tip" })}
+                        </span>
+                     </label>
 
                      <div className="border-t pt-3 mt-3">
                         <div className="flex justify-between items-center">

@@ -17,6 +17,7 @@ interface CreatePostData {
   preferredDate?: Date;
   preferredTime?: string;
   location?: string;
+  hasTip?: boolean;
   expiresInHours?: number; // default 24
 }
 
@@ -50,6 +51,7 @@ export async function createPost(data: CreatePostData) {
       preferredDate: data.preferredDate || undefined,
       preferredTime: data.preferredTime || undefined,
       location: data.location || undefined,
+      hasTip: data.hasTip || false,
       expiresAt,
     },
     include: {
@@ -448,7 +450,14 @@ async function notifyMatchingModels(post: any) {
   const customerName = post.customer
     ? `${post.customer.firstName} ${post.customer.lastName || ""}`.trim()
     : "Customer";
-  const serviceName = post.service?.name || "";
+  const serviceNameMap: Record<string, string> = {
+    drinkingFriend: "ເພື່ອນດື່ມ",
+    travelingFriend: "ເພື່ອນທ່ອງທ່ຽວ",
+    sleepPartner: "ຄູ່ນອນ",
+    massage: "ບໍລິການນວດ",
+    hmongNewYear: "ຄູ່ປີໃໝ່ມົ້ງ",
+  };
+  const serviceName = serviceNameMap[post.service?.name] || post.service?.name || "";
   const contentPreview = post.content.length > 80
     ? post.content.substring(0, 80) + "..."
     : post.content;
@@ -459,15 +468,16 @@ async function notifyMatchingModels(post: any) {
   for (let i = 0; i < models.length; i += BATCH_SIZE) {
     const batch = models.slice(i, i + BATCH_SIZE);
 
+    const tipTag = post.hasTip ? " (ມີທິບເພີ່ມ)" : "";
     await Promise.allSettled(
       batch.map((model) =>
         notifyUser({
           userType: "model",
           userId: model.id,
           notificationType: "new_post_match",
-          title: "ມີການຮ້ອງຂໍໃໝ່!",
-          message: `${customerName}: "${contentPreview}"`,
-          smsMessage: `XaoSao: ${customerName} ກຳລັງຊອກຫາ${serviceName ? ` ${serviceName}` : "ບໍລິການ"}. ເປີດແອັບເພື່ອເບິ່ງ.`,
+          title: `ມີການຮ້ອງຂໍໃໝ່!${tipTag}`,
+          message: `${customerName}: "${contentPreview}"${tipTag}`,
+          smsMessage: `XaoSao: ${customerName} ກຳລັງຊອກຫາ${serviceName ? ` ${serviceName}` : "ບໍລິການ"}${tipTag}.\nເຂົ້າເບິ່ງລາຍລະອຽດໃນແອັບ xaosao.`,
           data: { postId: post.id, customerId: post.customerId },
           url: `/model/posts/${post.id}`,
         })
@@ -523,7 +533,14 @@ async function notifyMatchingCustomers(post: any) {
   const modelName = post.model
     ? `${post.model.firstName} ${post.model.lastName || ""}`.trim()
     : "Model";
-  const serviceName = post.service?.name || "";
+  const serviceNameMap: Record<string, string> = {
+    drinkingFriend: "ເພື່ອນດື່ມ",
+    travelingFriend: "ເພື່ອນທ່ອງທ່ຽວ",
+    sleepPartner: "ຄູ່ນອນ",
+    massage: "ບໍລິການນວດ",
+    hmongNewYear: "ຄູ່ປີໃໝ່ມົ້ງ",
+  };
+  const serviceName = serviceNameMap[post.service?.name] || post.service?.name || "";
   const contentPreview = post.content.length > 80
     ? post.content.substring(0, 80) + "..."
     : post.content;

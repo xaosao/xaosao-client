@@ -1,4 +1,4 @@
-import { Clock, FileText, Check, X, Download, Calendar, ArrowLeft } from "lucide-react"
+import { Clock, UserSearch, Check, X, Download, Calendar, ArrowLeft } from "lucide-react"
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
 
@@ -152,7 +152,7 @@ export default function TransactionDetails() {
                   {transaction?.paymentSlip && transaction.paymentSlip.length > 0 ? (
                      <div className="space-y-3">
                         <div className="flex items-center space-x-3">
-                           <FileText className="h-8 w-8 text-blue-600" />
+                           <UserSearch className="h-8 w-8 text-blue-600" />
                            <div>
                               <p className="text-sm font-medium">{t('wallet.detail.paymentSlip.available')} ({transaction.paymentSlip.length})</p>
                               <p className="text-sm text-gray-500">{t('wallet.detail.paymentSlip.uploaded')}</p>
@@ -176,7 +176,7 @@ export default function TransactionDetails() {
                      </div>
                   ) : (
                      <div className="text-center py-4">
-                        <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                        <UserSearch className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                         <p className="text-gray-500 text-sm">{t('wallet.detail.paymentSlip.noSlip', { defaultValue: 'No payment slip provided' })}</p>
                      </div>
                   )}

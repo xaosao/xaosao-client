@@ -7,7 +7,7 @@ import {
     Heart,
     Search,
     Wallet,
-    FileText,
+    UserSearch,
     Settings,
     HandHeart,
     LogOut,
@@ -201,7 +201,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     const navigationItems = useMemo(() => [
         { title: t('navigation.discover'), url: "/customer", icon: Search },
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch },
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
         // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
         { title: t('navigation.datingHistory'), url: "/customer/dates-history", icon: HandHeart },
@@ -215,7 +215,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
         { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart },
         // { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet },
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: FileText },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch },
         { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
     ], [t, i18n.language]);
 

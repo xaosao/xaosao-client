@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import type { Route } from "./+types/wallet.edit"
-import { AlertCircle, ArrowLeft, FileText, Loader, Upload } from "lucide-react"
+import { AlertCircle, ArrowLeft, UserSearch, Loader, Upload } from "lucide-react"
 import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from "react-router"
 import { useTranslation } from "react-i18next"
 
@@ -278,7 +278,7 @@ export default function TransactionEdit() {
                      <div className="flex space-x-2">
                         {transaction?.paymentSlip && !previewSlip && (
                            <Button variant="outline" size="sm" onClick={handleDownloadSlip}>
-                              <FileText className="h-3 w-3 mr-1" />
+                              <UserSearch className="h-3 w-3 mr-1" />
                               {t('wallet.edit.download')}
                            </Button>
                         )}

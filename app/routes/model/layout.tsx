@@ -4,7 +4,7 @@ import { Form, Link, Outlet, redirect, useFetcher, useLocation, useNavigate, use
 import {
     Briefcase,
     EyeOff,
-    FileText,
+    UserSearch,
     HandHeart,
     Heart,
     LogOut,
@@ -175,7 +175,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     });
 
     const navigationItems = useMemo(() => [
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: FileText, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: UserSearch, badge: 0 },
         { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
         // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
@@ -185,7 +185,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     ], [t, i18n.language, pendingBookingCount]);
 
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: FileText, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: UserSearch, badge: 0 },
         { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },

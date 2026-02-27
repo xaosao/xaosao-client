@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Video, Banknote, RefreshCcw } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Video, Banknote, RefreshCcw } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -61,6 +61,7 @@ interface BookingData {
    hours: number | null;
    sessionType: 'one_time' | 'one_night' | null;
    createdAt: string;
+   hasTip: boolean;
    isContact: boolean;
    customer: {
       id: string;
@@ -236,7 +237,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                   {bookings.map((booking) => (
                      <Card
                         key={booking.id}
-                        className="hover:shadow-md transition-shadow rounded-sm py-4 sm:py-8 cursor-pointer"
+                        className={`hover:shadow-md transition-shadow rounded-sm py-4 sm:py-8 cursor-pointer ${booking.hasTip ? "border border-yellow-500" : ""}`}
                         onClick={() => navigate(`/model/dating/detail/${booking.id}`)}
                      >
                         <CardHeader>
@@ -318,6 +319,12 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                               <span className="text-sm text-muted-foreground font-semibold">
                                  {formatCurrency(booking.price)}
                               </span>
+                              {booking.hasTip && (
+                                 <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
+                                    <Coins className="h-3 w-3" />
+                                    {t("tipBadge", { defaultValue: "+Tip" })}
+                                 </span>
+                              )}
                            </div>
 
                            <div className="flex items-center gap-2">

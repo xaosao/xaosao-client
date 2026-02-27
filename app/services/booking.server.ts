@@ -988,6 +988,7 @@ export async function createServiceBooking(
         minutes: data.minutes ?? null,
         sessionType: data.sessionType ?? null,
         modelServiceVariantId: data.modelServiceVariantId ?? null,
+        hasTip: data.hasTip || false,
         location: data.location,
         preferredAttire: data.preferred ?? "",
         startDate: data.startDate,
@@ -1038,7 +1039,8 @@ export async function createServiceBooking(
             customer.firstName,
             data.startDate,
             data.location,
-            data.price
+            data.price,
+            data.hasTip
           );
         }
 
@@ -1344,6 +1346,7 @@ export async function getAllMyServiceBookings(customerId: string) {
         hours: true,
         sessionType: true,
         completionToken: true,
+        hasTip: true,
         modelCheckedInAt: true,
         model: {
           select: {
@@ -1758,6 +1761,7 @@ export async function getAllModelBookings(modelId: string) {
         hours: true,
         sessionType: true,
         createdAt: true,
+        hasTip: true,
         modelCheckedInAt: true,
         customer: {
           select: {

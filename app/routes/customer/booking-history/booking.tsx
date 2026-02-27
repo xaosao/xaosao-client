@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Shirt, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, SquarePen, X, Trash2, Video } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, SquarePen, X, Trash2, Video } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -266,7 +266,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                      {filteredBookings.map((booking) => (
                         <Card
                            key={booking.id}
-                           className="border hover:shadow-md transition-shadow rounded-sm cursor-pointer"
+                           className={`border hover:shadow-md transition-shadow rounded-sm cursor-pointer ${booking.hasTip ? "border-yellow-500" : ""}`}
                            onClick={() => navigate(`/customer/book-service/detail/${booking.id}`)}
                         >
                            <CardHeader>
@@ -348,6 +348,12 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                  <span className="text-sm text-muted-foreground font-semibold">
                                     {formatCurrency(booking.price)}
                                  </span>
+                                 {booking.hasTip && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
+                                       <Coins className="h-3 w-3" />
+                                       {t("tipBadge", { defaultValue: "+Tip" })}
+                                    </span>
+                                 )}
                               </div>
 
                               {booking.model && (

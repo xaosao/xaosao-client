@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, type ActionFunctionArgs, type LoaderFunction } from "react-router";
-import { ArrowLeft, Loader, Send } from "lucide-react";
+import { ArrowLeft, Coins, Loader, Send } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { requireUserSession } from "~/services/auths.server";
@@ -37,6 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
       targetAgeMax: formData.get("targetAgeMax") ? parseInt(formData.get("targetAgeMax") as string) : undefined,
       preferredDate: formData.get("preferredDate") ? new Date(formData.get("preferredDate") as string) : undefined,
       preferredTime: (formData.get("preferredTime") as string) || undefined,
+      hasTip: formData.get("hasTip") === "on",
     });
 
     return redirect("/customer/posts");
@@ -86,7 +87,7 @@ export default function CreateCustomerPost() {
           <label className="text-sm font-medium text-gray-700 block mb-1">
             {t("posts.create.service", { defaultValue: "Service" })}
           </label>
-          <select name="serviceId" className="w-full border rounded-lg p-2.5 text-sm bg-white">
+          <select name="serviceId" defaultValue={services.find((s) => s.name === "drinkingFriend")?.id || ""} className="w-full border rounded-lg p-2.5 text-sm bg-white">
             <option value="">{t("posts.create.anyService", { defaultValue: "Any service" })}</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -117,7 +118,7 @@ export default function CreateCustomerPost() {
               name="targetCount"
               min={1}
               max={10}
-              placeholder="1"
+              defaultValue={1}
               className="w-full border rounded-lg p-2.5 text-sm"
             />
           </div>
@@ -177,6 +178,20 @@ export default function CreateCustomerPost() {
             />
           </div>
         </div>
+
+        {/* Tip */}
+        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors border border-yellow-300 bg-yellow-50">
+          <input type="checkbox" name="hasTip" className="w-4 h-4 accent-amber-500 rounded" />
+          <Coins className="h-5 w-5 text-amber-500 flex-shrink-0" />
+          <div>
+            <span className="text-sm font-medium text-gray-700">
+              {t("posts.create.hasTip", { defaultValue: "I'll give a tip" })}
+            </span>
+            <p className="text-xs text-gray-400">
+              {t("posts.create.hasTipHint", { defaultValue: "Let models know you'll tip" })}
+            </p>
+          </div>
+        </label>
 
         {/* Error */}
         {actionData?.error && (

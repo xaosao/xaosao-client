@@ -404,8 +404,10 @@
     "yearsOld": "years old.",
     "km": "km"
   },
+  "tipBadge": "+Has Tip",
   "booking": {
     "loading": "Loading....",
+    "hasTip": "I'll give a tip",
     "serviceUnavailable": "Service Unavailable",
     "title": "Your Love Plans Ahead:",
     "subtitle": "Got some dates lined up? Don not let the moment slip away — great connections start with one meeting.",
@@ -2534,6 +2536,8 @@
     "create.expiresIn": "Expires in",
     "create.hours": "hours",
     "create.cancel": "Cancel",
+    "create.hasTip": "I'll give a tip",
+    "create.hasTipHint": "Let models know you'll tip",
     "create.submit": "Post & Notify",
     "chat": "Chat",
     "chatMessage": "Hi, I'm {{name}} and I'm available for the date, time and service you need.\nYou can book me at: {{link}}",

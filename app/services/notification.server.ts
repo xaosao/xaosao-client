@@ -582,14 +582,16 @@ export async function notifyBookingCreated(
   customerName: string,
   startDate?: Date,
   location?: string,
-  price?: number
+  price?: number,
+  hasTip?: boolean
 ) {
   const translatedService = translateServiceName(serviceName);
+  const tipTag = hasTip ? " (+ທິບ)" : "";
 
   await createModelNotification(modelId, {
     type: "booking_created",
-    title: "ມີການຈອງໃໝ່!",
-    message: `${customerName} ໄດ້ຂໍຈອງບໍລິການ "${translatedService}" ຂອງທ່ານ.`,
+    title: `ມີການຈອງໃໝ່!${tipTag}`,
+    message: `${customerName} ໄດ້ຂໍຈອງບໍລິການ "${translatedService}" ຂອງທ່ານ.${tipTag}`,
     data: { bookingId, customerId },
   });
 
@@ -598,7 +600,7 @@ export async function notifyBookingCreated(
     ? new Date(startDate).toLocaleDateString("lo-LA")
     : "";
   const priceStr = price ? `${price.toLocaleString()} LAK` : "";
-  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${customerName} ຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
+  const smsMessage = `XaoSao: ມີການຈອງໃໝ່!${tipTag} ${customerName} ຈອງບໍລິການ "${translatedService}"${dateStr ? ` ວັນທີ ${dateStr}` : ""}${location ? ` ທີ່ ${location}` : ""}${priceStr ? ` ລາຄາ ${priceStr}` : ""}. ກະລຸນາຕອບຮັບ/ປະຕິເສດໃນແອັບ.`;
   sendSMSToModel(modelId, smsMessage);
 
   // Send push notification to model

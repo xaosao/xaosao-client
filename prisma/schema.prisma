@@ -606,6 +606,7 @@ model service_booking {
   endDate         DateTime?
   status          String    // pending, confirmed, in_progress, awaiting_confirmation, completed, cancelled, rejected, disputed
   paymentStatus   String    @default("pending") // pending, held, pending_release, released, refunded
+  hasTip          Boolean   @default(false) // Customer will give tip
   rejectReason    String?
   completedAt     DateTime?
   holdTransactionId    String? @db.ObjectId // Customer's hold transaction
@@ -942,6 +943,9 @@ model post {
   preferredDate   DateTime?
   preferredTime   String?
   location        String?
+
+  // Tip indicator
+  hasTip          Boolean  @default(false)
 
   // Status & Expiration
   status          String   @default("active") // "active", "expired", "fulfilled", "deleted"

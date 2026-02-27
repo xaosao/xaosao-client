@@ -47,6 +47,7 @@ export interface IServiceBookingCredentials {
   modelServiceVariantId?: string; // For massage service variants
   location: string;
   preferred?: string;
+  hasTip?: boolean;
 }
 
 export type IServiceBooking = {
@@ -90,6 +91,7 @@ export type IServiceBooking = {
       minuteRate: number | null;
     };
   };
+  hasTip: boolean;
   isContact: boolean;
 };
 

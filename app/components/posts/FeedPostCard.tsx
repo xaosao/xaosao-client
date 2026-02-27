@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useFetcher, useNavigate } from "react-router";
-import { Heart, MessageCircle, Loader, CalendarCheck } from "lucide-react";
+import { Heart, MessageCircle, Loader, CalendarCheck, Coins } from "lucide-react";
 
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
 import type { PostItem, UserProfile } from "~/types/post";
@@ -45,7 +45,7 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
   };
 
   return (
-    <div className={`rounded-sm bg-white ${!hasImages ? "pb-2" : ""}`}>
+    <div className={`rounded-sm bg-white ${!hasImages ? "pb-2" : ""} ${post.hasTip ? "sm:border-transparent border border-yellow-300" : ""}`}>
       <div className="flex items-center justify-between px-4 py-3">
         <div
           className="flex items-center gap-3 cursor-pointer min-w-0"
@@ -75,9 +75,17 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
             <span className="text-xs text-gray-400">{timeAgo}</span>
           </div>
         </div>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">
-          {t("posts.stillAvailable", { defaultValue: "Available" })}
-        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {post.hasTip && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
+              <Coins className="h-3 w-3" />
+              {t("tipBadge", { defaultValue: "+Tip" })}
+            </span>
+          )}
+          <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">
+            {t("posts.stillAvailable", { defaultValue: "Available" })}
+          </span>
+        </div>
       </div>
 
       <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>

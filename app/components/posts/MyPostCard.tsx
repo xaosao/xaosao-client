@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { getTimeAgo } from "~/utils";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Trash2 } from "lucide-react";
+import { CheckCircle, Coins, Trash2 } from "lucide-react";
 import { useFetcher, useNavigate } from "react-router";
 
 // components and utils:
@@ -46,7 +46,7 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
 
   return (
     <div
-      className={`border-b py-4 border-gray-300 rounded-sm bg-white ${!isActive ? "opacity-90" : ""}`}>
+      className={`border-b py-4 border-gray-300 rounded-sm bg-white ${!isActive ? "opacity-90" : ""} ${post.hasTip ? "sm:border-gray-300 border-yellow-300" : ""}`}>
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative flex-shrink-0">
@@ -67,6 +67,12 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
               <span className="text-sm font-semibold truncate">{authorName}</span>
               {serviceName && (
                 <span className="text-xs text-rose-500 font-medium truncate">{serviceName}</span>
+              )}
+              {post.hasTip && (
+                <span className="text-xs px-1.5 py-0 rounded-full bg-amber-100 text-amber-600 flex items-center gap-0.5">
+                  <Coins className="h-3 w-3" />
+                  {t("tipBadge", { defaultValue: "+Tip" })}
+                </span>
               )}
               <Badge
                 variant="outline"

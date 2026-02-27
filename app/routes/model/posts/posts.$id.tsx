@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Heart, MessageCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { getPostById, getModelBasicProfile } from "~/services/post.server";
@@ -67,9 +67,17 @@ export default function ModelPostDetailPage() {
             <p className="font-medium">{authorName}</p>
             <p className="text-xs text-gray-400">{new Date(post.createdAt).toLocaleString()}</p>
           </div>
-          {serviceName && (
-            <Badge variant="outline" className="ml-auto text-xs border-rose-200 text-rose-600">{serviceName}</Badge>
-          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            {post.hasTip && (
+              <Badge variant="outline" className="text-xs border-amber-200 text-amber-600 bg-amber-50 flex items-center gap-1">
+                <Coins className="h-3 w-3" />
+                {t("tipBadge", { defaultValue: "+Tip" })}
+              </Badge>
+            )}
+            {serviceName && (
+              <Badge variant="outline" className="text-xs border-rose-200 text-rose-600">{serviceName}</Badge>
+            )}
+          </div>
         </div>
 
         <p className="text-sm text-gray-800 whitespace-pre-wrap mb-3">{post.content}</p>

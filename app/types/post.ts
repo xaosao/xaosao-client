@@ -10,6 +10,7 @@ export interface PostItem {
   preferredDate?: string;
   preferredTime?: string;
   location?: string;
+  hasTip?: boolean;
   interestedCount: number;
   isInterested: boolean;
   expiresAt: string;

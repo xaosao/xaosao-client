@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRevalidator } from "react-router";
-import { Loader, X, Send } from "lucide-react";
+import { Coins, Loader, X, Send } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 interface CreateCustomerPostModalProps {
@@ -126,7 +126,7 @@ export default function CreateCustomerPostModal({
           <label className="text-sm font-medium text-gray-700 block mb-1">
             {t("posts.create.service", { defaultValue: "Service" })}
           </label>
-          <select name="serviceId" className="w-full border rounded-lg p-2.5 text-sm bg-white">
+          <select name="serviceId" defaultValue={services.find((s) => s.name === "drinkingFriend")?.id || ""} className="w-full border rounded-lg p-2.5 text-sm bg-white">
             <option value="">{t("posts.create.anyService", { defaultValue: "Any service" })}</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
@@ -157,11 +157,25 @@ export default function CreateCustomerPostModal({
               name="targetCount"
               min={1}
               max={10}
-              placeholder="1"
+              defaultValue={1}
               className="w-full border rounded-lg p-2.5 text-sm"
             />
           </div>
         </div>
+
+        {/* Tip */}
+        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-amber-50 transition-colors">
+          <input type="checkbox" name="hasTip" className="w-4 h-4 accent-amber-500 rounded" />
+          <Coins className="h-5 w-5 text-amber-500 flex-shrink-0" />
+          <div>
+            <span className="text-sm font-medium text-gray-700">
+              {t("posts.create.hasTip", { defaultValue: "I'll give a tip" })}
+            </span>
+            <p className="text-xs text-gray-400">
+              {t("posts.create.hasTipHint", { defaultValue: "Let models know you'll tip" })}
+            </p>
+          </div>
+        </label>
 
         {/* Error */}
         {error && (
