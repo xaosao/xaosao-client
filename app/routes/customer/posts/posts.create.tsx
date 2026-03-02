@@ -32,7 +32,7 @@ export async function action({ request }: ActionFunctionArgs) {
       content: content.trim(),
       serviceId: (formData.get("serviceId") as string) || undefined,
       targetGender: (formData.get("targetGender") as string) || undefined,
-      targetCount: formData.get("targetCount") ? parseInt(formData.get("targetCount") as string) : undefined,
+      location: (formData.get("location") as string) || undefined,
       targetAgeMin: formData.get("targetAgeMin") ? parseInt(formData.get("targetAgeMin") as string) : undefined,
       targetAgeMax: formData.get("targetAgeMax") ? parseInt(formData.get("targetAgeMax") as string) : undefined,
       preferredDate: formData.get("preferredDate") ? new Date(formData.get("preferredDate") as string) : undefined,
@@ -111,14 +111,12 @@ export default function CreateCustomerPost() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">
-              {t("posts.create.count", { defaultValue: "How many?" })}
+              {t("posts.create.location", { defaultValue: "Location" })}
             </label>
             <input
-              type="number"
-              name="targetCount"
-              min={1}
-              max={10}
-              defaultValue={1}
+              type="text"
+              name="location"
+              placeholder={t("posts.create.locationPlaceholder", { defaultValue: "e.g. Vientiane" })}
               className="w-full border rounded-lg p-2.5 text-sm"
             />
           </div>

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useFetcher, useNavigate } from "react-router";
-import { Heart, MessageCircle, Loader, Coins } from "lucide-react";
+import { Heart, MessageCircle, Loader, Coins, MapPin } from "lucide-react";
 
 import type { PostItem, UserProfile } from "~/types/post";
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
@@ -94,7 +94,7 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
       <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>
         <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
-        {(post.targetGender || post.targetCount) && (
+        {(post.targetGender || post.location) && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {post.targetGender && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">
@@ -103,9 +103,10 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
                   : t("posts.male", { defaultValue: "Male" })}
               </span>
             )}
-            {post.targetCount && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">
-                {post.targetCount} {t("posts.people", { defaultValue: "people" })}
+            {post.location && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 flex items-center gap-0.5">
+                <MapPin className="h-3 w-3" />
+                {post.location}
               </span>
             )}
           </div>

@@ -136,7 +136,7 @@ export default function CreateCustomerPostModal({
           </select>
         </div>
 
-        {/* Gender & Count */}
+        {/* Gender & Location */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">
@@ -150,14 +150,12 @@ export default function CreateCustomerPostModal({
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">
-              {t("posts.create.count", { defaultValue: "How many?" })}
+              {t("posts.create.location", { defaultValue: "Location" })}
             </label>
             <input
-              type="number"
-              name="targetCount"
-              min={1}
-              max={10}
-              defaultValue={1}
+              type="text"
+              name="location"
+              placeholder={t("posts.create.locationPlaceholder", { defaultValue: "e.g. Vientiane" })}
               className="w-full border rounded-lg p-2.5 text-sm"
             />
           </div>
