@@ -665,6 +665,8 @@ export async function getReferralStats(modelId: string) {
       referralCode: true,
       customerReferralCode: true,
       firstName: true,
+      lastName: true,
+      profile: true,
       type: true,
       totalReferredModels: true,
       totalReferredCustomers: true,
@@ -800,6 +802,8 @@ export async function getReferralStats(modelId: string) {
   const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:3000/";
 
   return {
+    modelName: `${model.firstName || ""}${model.lastName ? ` ${model.lastName}` : ""}`.trim(),
+    modelProfile: model.profile || "https://xaosao.b-cdn.net/default-image.png",
     modelType: model.type || "normal",
     referralCode,
     referralLink: `${baseUrl}model-auth/register?ref=${referralCode}`,
