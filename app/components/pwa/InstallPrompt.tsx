@@ -38,7 +38,6 @@ function isMobileDevice(): boolean {
 }
 
 const STORAGE_KEY = "pwa-install-prompt-dismissed";
-const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function InstallPrompt() {
   const { t } = useTranslation();
@@ -54,13 +53,9 @@ export function InstallPrompt() {
     // Don't show if already installed
     if (isStandalone()) return;
 
-    // Check if user dismissed recently
-    const dismissedAt = localStorage.getItem(STORAGE_KEY);
-    if (dismissedAt) {
-      const dismissedTime = parseInt(dismissedAt, 10);
-      if (Date.now() - dismissedTime < DISMISS_DURATION) {
-        return;
-      }
+    // Check if user dismissed in this session
+    if (sessionStorage.getItem(STORAGE_KEY)) {
+      return;
     }
 
     // Set iOS flag
@@ -117,7 +112,7 @@ export function InstallPrompt() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    sessionStorage.setItem(STORAGE_KEY, "1");
     setShowPrompt(false);
   };
 
