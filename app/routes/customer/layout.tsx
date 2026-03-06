@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { Form, Link, Outlet, redirect, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
@@ -134,9 +134,12 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Only show modal on mount when on dashboard page
     const isDashboardPage = location.pathname === "/customer";
+    console.log("[ModalSequence] State:", { isDashboardPage, hasEnabledNotifications, hasActiveSubscription, hasPendingSubscription });
 
-    // Location prompt modal state
+    // === Modal sequencing: Location → Push Notification (Android) → Subscription ===
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+    const [locationStepDone, setLocationStepDone] = useState(false);
+    const [pushStepDone, setPushStepDone] = useState(false);
 
     // Auto-location tracking - updates server silently when location is available
     const { requestLocation, hasLocation, permissionState } = useAutoLocation({
@@ -145,28 +148,53 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         onNeedPermission: useCallback(() => {
             // Only show prompt on dashboard page, not on every navigation
             if (isDashboardPage) {
-                // Check if user has already dismissed the prompt this session
                 const dismissed = sessionStorage.getItem("locationPromptDismissed");
                 if (!dismissed) {
                     setShowLocationPrompt(true);
+                } else {
+                    setLocationStepDone(true);
                 }
             }
         }, [isDashboardPage]),
     });
 
-    // Close location prompt and remember dismissal for this session
+    // Detect when location step is done (permission already granted/denied, no prompt needed)
+    useEffect(() => {
+        console.log("[ModalSequence] Location check:", { isDashboardPage, showLocationPrompt, permissionState, locationStepDone });
+        if (!isDashboardPage || showLocationPrompt) return;
+        if (permissionState === "granted" || permissionState === "denied") {
+            console.log("[ModalSequence] Location permission already", permissionState, "→ skipping prompt, advancing in 500ms");
+            const timer = setTimeout(() => {
+                if (!showLocationPrompt) {
+                    setLocationStepDone(true);
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isDashboardPage, permissionState, showLocationPrompt]);
+
+    // Close location prompt → advance to push notification step
     const closeLocationPrompt = useCallback(() => {
         setShowLocationPrompt(false);
         sessionStorage.setItem("locationPromptDismissed", "true");
+        setLocationStepDone(true);
     }, []);
 
     // Handle location request from prompt
     const handleLocationRequest = useCallback(() => {
         requestLocation();
         setShowLocationPrompt(false);
+        sessionStorage.setItem("locationPromptDismissed", "true");
+        setLocationStepDone(true);
     }, [requestLocation]);
 
-    // Subscription modal management
+    // Push notification dismissed → advance to subscription step
+    const handlePushDismissed = useCallback(() => {
+        console.log("[ModalSequence] Push step done → advancing to subscription");
+        setPushStepDone(true);
+    }, []);
+
+    // Subscription modal management - only auto-show after location + push steps are done
     const {
         showSubscriptionModal,
         openSubscriptionModal,
@@ -178,7 +206,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         customerBalance,
         trialPrice: trialPackage?.price || 10000,
         trialPlanId: trialPackage?.id || "",
-        showOnMount: isDashboardPage, // Only show on mount when on dashboard
+        showOnMount: pushStepDone && isDashboardPage,
     });
 
     // SSE connection for subscription activation notifications
@@ -372,10 +400,22 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                 </div>
             )}
 
-            {/* Push Notification Permission Prompt */}
-            <PushNotificationPrompt userType="customer" hasEnabledNotifications={hasEnabledNotifications} />
+            {/* Step 1: Location Permission Prompt Modal */}
+            <LocationPromptModal
+                isOpen={showLocationPrompt}
+                onClose={closeLocationPrompt}
+                onRequestLocation={handleLocationRequest}
+            />
 
-            {/* Subscription Trial Modal */}
+            {/* Step 2: Push Notification Permission Prompt (Android only, after location step) */}
+            <PushNotificationPrompt
+                userType="customer"
+                hasEnabledNotifications={hasEnabledNotifications}
+                enabled={locationStepDone}
+                onDismiss={handlePushDismissed}
+            />
+
+            {/* Step 3: Subscription Trial Modal (after push step) */}
             {trialPackage && (
                 <SubscriptionModal
                     isOpen={showSubscriptionModal}
@@ -387,13 +427,6 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     hasPendingSubscription={hasPendingSubscription}
                 />
             )}
-
-            {/* Location Permission Prompt Modal */}
-            <LocationPromptModal
-                isOpen={showLocationPrompt}
-                onClose={closeLocationPrompt}
-                onRequestLocation={handleLocationRequest}
-            />
         </div>
     );
 }

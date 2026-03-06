@@ -7,6 +7,8 @@ import { usePushNotifications } from "~/hooks/usePushNotifications";
 interface PushNotificationPromptProps {
   userType: "model" | "customer";
   hasEnabledNotifications?: boolean;
+  enabled?: boolean;
+  onDismiss?: () => void;
 }
 
 // Only remember dismissal for current session (until page refresh)
@@ -53,12 +55,20 @@ function isIOSVersionSupported(): boolean {
   }
 }
 
-export function PushNotificationPrompt({ userType, hasEnabledNotifications }: PushNotificationPromptProps) {
+// Check if device is Android
+function isAndroid(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    return /Android/.test(navigator.userAgent);
+  } catch {
+    return false;
+  }
+}
+
+export function PushNotificationPrompt({ userType, hasEnabledNotifications, enabled = true, onDismiss }: PushNotificationPromptProps) {
   const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isIOSSafari, setIsIOSSafari] = useState(false);
-  const [isIOSPWA, setIsIOSPWA] = useState(false);
 
   const {
     isSupported,
@@ -71,156 +81,89 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications }: Pu
   } = usePushNotifications({ userType });
 
   useEffect(() => {
-    // Only run on client
     if (typeof window === "undefined") return;
+    if (!enabled) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      const iosDevice = isIOS();
-      const standalonePWA = isStandalone();
-      const iosVersionOK = isIOSVersionSupported();
-
-      console.log("[PushPrompt] Device detection:", {
-        isIOS: iosDevice,
-        isStandalone: standalonePWA,
-        isIOSVersionSupported: iosVersionOK,
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "N/A",
-      });
-
-      // Check if we're on iOS Safari (not PWA)
-      const iosInSafari = iosDevice && !standalonePWA;
-      setIsIOSSafari(iosInSafari);
-
-      // Check if we're on iOS PWA (standalone mode)
-      const iosInPWA = iosDevice && standalonePWA && iosVersionOK;
-      setIsIOSPWA(iosInPWA);
-
-      // For iOS Safari, show instructions to add to home screen
-      if (iosInSafari && iosVersionOK) {
-        console.log("[PushPrompt] iOS Safari detected");
-
-        // Don't show if notifications are already enabled (push or SMS)
-        if (hasEnabledNotifications) {
-          console.log("[PushPrompt] Not showing: Notifications already enabled");
-          return;
-        }
-
-        if (sessionDismissed[userType]) {
-          console.log("[PushPrompt] Not showing: Dismissed in current session");
-          return;
-        }
-
-        console.log("[PushPrompt] Will show iOS instructions in 3 seconds...");
-        timer = setTimeout(() => {
-          console.log("[PushPrompt] Showing iOS instructions now!");
-          setShowPrompt(true);
-        }, 3000);
+      // Android only - skip iOS devices entirely
+      if (!isAndroid()) {
+        console.log("[PushPrompt] Not Android, skipping");
+        onDismiss?.();
         return;
       }
 
-      // For iOS PWA or other devices, use the standard flow
       // Wait for hook to finish initializing
       if (isInitializing) {
         console.log("[PushPrompt] Still initializing, waiting...");
         return;
       }
 
-      console.log("[PushPrompt] Checking conditions:", {
-        isSupported,
-        isSubscribed,
-        permission,
-        userType,
-        iosInPWA,
-      });
-
-      // Don't show if notifications are already enabled (push or SMS)
+      // Don't show if notifications are already enabled
       if (hasEnabledNotifications) {
         console.log("[PushPrompt] Not showing: Notifications already enabled");
+        onDismiss?.();
         return;
       }
 
-      // For iOS PWA, show prompt if not subscribed (even if isSupported is false)
-      const shouldShowForIOSPWA = iosInPWA && !isSubscribed && permission !== "denied";
-
-      // For other devices, check isSupported
-      const shouldShowForOther = !iosDevice && isSupported && !isSubscribed && permission !== "denied";
-
-      if (!shouldShowForIOSPWA && !shouldShowForOther) {
-        console.log("[PushPrompt] Not showing prompt");
+      // Check if push is supported and not already subscribed
+      if (!isSupported || isSubscribed || permission === "denied") {
+        console.log("[PushPrompt] Not showing: conditions not met", { isSupported, isSubscribed, permission });
+        onDismiss?.();
         return;
       }
 
       if (sessionDismissed[userType]) {
         console.log("[PushPrompt] Not showing: Dismissed in current session");
+        onDismiss?.();
         return;
       }
 
-      console.log("[PushPrompt] Will show prompt in 3 seconds...");
+      console.log("[PushPrompt] Will show prompt in 1 second...");
       timer = setTimeout(() => {
-        console.log("[PushPrompt] Showing prompt now!");
         setShowPrompt(true);
-      }, 3000);
+      }, 1000);
 
     } catch (err) {
       console.error("[PushPrompt] Error in useEffect:", err);
+      onDismiss?.();
     }
 
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isSupported, isSubscribed, permission, userType, isInitializing, hasEnabledNotifications]);
+  }, [enabled, isSupported, isSubscribed, permission, userType, isInitializing, hasEnabledNotifications, onDismiss]);
 
   const handleEnable = async () => {
     const success = await subscribe();
     if (success) {
-      // Update notification settings in the database
       try {
         await fetch("/api/notifications/update-settings", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userType,
-            sendPushNoti: true,
-            sendSMSNoti: true,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userType, sendPushNoti: true, sendSMSNoti: true }),
         });
       } catch (error) {
         console.error("[PushPrompt] Failed to update notification settings:", error);
       }
 
       setShowSuccess(true);
-      // Auto close modal after showing success message
       setTimeout(() => {
         setShowPrompt(false);
+        onDismiss?.();
       }, 2000);
     }
   };
 
   const handleDismiss = () => {
-    // Only dismiss for current session - will show again on page refresh
     sessionDismissed[userType] = true;
     setShowPrompt(false);
+    onDismiss?.();
   };
 
-  // For iOS Safari, we show even when isSupported is false (to show instructions)
-  // For iOS PWA, we show the enable button (bypass isSupported check)
-  // For other platforms, we need isSupported to be true
-  if (!showPrompt) {
-    return null;
-  }
-
-  // On non-iOS platforms, still check isSupported
-  // But skip this check for iOS PWA (we handle it separately)
-  if (!isIOSSafari && !isIOSPWA && !isSupported) {
-    return null;
-  }
-
-  // Show iOS-specific instructions if in Safari (not PWA)
-  // iOS PWA should show the enable button, not instructions
-  const showIOSInstructions = isIOSSafari && !isIOSPWA;
+  if (!showPrompt) return null;
+  if (!isSupported) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
@@ -263,34 +206,6 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications }: Pu
                 defaultValue: "You'll now receive notifications for bookings, messages, and updates.",
               })}
             </p>
-          ) : showIOSInstructions ? (
-            <>
-              <p className="text-sm text-gray-600">
-                {t("push.iosInstruction", {
-                  defaultValue:
-                    "To receive notifications on iOS, please add this app to your home screen first.",
-                })}
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                <p className="text-sm font-medium text-blue-800">
-                  {t("push.iosStepsTitle", { defaultValue: "How to add:" })}
-                </p>
-                <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-                  <li>{t("push.iosStep1", { defaultValue: "Tap the Share button (square with arrow)" })}</li>
-                  <li>{t("push.iosStep2", { defaultValue: "Scroll down and tap \"Add to Home Screen\"" })}</li>
-                  <li>{t("push.iosStep3", { defaultValue: "Tap \"Add\" to confirm" })}</li>
-                  <li>{t("push.iosStep4", { defaultValue: "Open the app from your home screen" })}</li>
-                </ol>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-sm text-amber-800">
-                  {t("push.iosNote", {
-                    defaultValue:
-                      "Push notifications on iOS only work when the app is added to home screen.",
-                  })}
-                </p>
-              </div>
-            </>
           ) : (
             <>
               <p className="text-sm text-gray-600">
@@ -363,33 +278,23 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications }: Pu
               >
                 {t("push.notNow", { defaultValue: "Not Now" })}
               </Button>
-              {!showIOSInstructions && (
-                <Button
-                  className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
-                  onClick={handleEnable}
-                  disabled={isLoading || permission === "denied"}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {t("push.enabling", { defaultValue: "Enabling..." })}
-                    </span>
-                  ) : (
-                    <>
-                      <Bell className="w-4 h-4" />
-                      {t("push.enable", { defaultValue: "Enable Notifications" })}
-                    </>
-                  )}
-                </Button>
-              )}
-              {showIOSInstructions && (
-                <Button
-                  className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
-                  onClick={handleDismiss}
-                >
-                  {t("push.gotIt", { defaultValue: "Got it" })}
-                </Button>
-              )}
+              <Button
+                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
+                onClick={handleEnable}
+                disabled={isLoading || permission === "denied"}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t("push.enabling", { defaultValue: "Enabling..." })}
+                  </span>
+                ) : (
+                  <>
+                    <Bell className="w-4 h-4" />
+                    {t("push.enable", { defaultValue: "Enable Notifications" })}
+                  </>
+                )}
+              </Button>
             </>
           )}
         </div>

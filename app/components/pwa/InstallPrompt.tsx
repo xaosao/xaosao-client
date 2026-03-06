@@ -70,29 +70,10 @@ export function InstallPrompt() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // For iOS - show manual instructions after a delay
-    if (isIOS()) {
-      const timer = setTimeout(() => {
-        setShowPrompt(true);
-      }, 2000);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener(
-          "beforeinstallprompt",
-          handleBeforeInstallPrompt
-        );
-      };
-    }
-
-    // For Android - show prompt after delay if beforeinstallprompt hasn't fired
-    const timer = setTimeout(() => {
-      if (isAndroid()) {
-        setShowPrompt(true);
-      }
-    }, 3000);
+    // Show immediately for both iOS and Android
+    setShowPrompt(true);
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener(
         "beforeinstallprompt",
         handleBeforeInstallPrompt
@@ -149,7 +130,7 @@ export function InstallPrompt() {
           </p>
 
           {isIOSDevice ? (
-            // iOS Instructions
+            // iOS Instructions - Share → Add to Home Screen
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-gray-700">
                 {t("pwa.iosTitle")}
@@ -170,7 +151,7 @@ export function InstallPrompt() {
               </div>
             </div>
           ) : deferredPrompt ? (
-            // Android/Chrome Install Button (when beforeinstallprompt fired)
+            // Android - native install available
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Download className="w-4 h-4" />
@@ -178,7 +159,7 @@ export function InstallPrompt() {
               </div>
             </div>
           ) : (
-            // Android Manual Instructions (when beforeinstallprompt didn't fire)
+            // Android - manual install instructions (Chrome menu)
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-gray-700">
                 {t("pwa.androidTitle", { defaultValue: "To install this app:" })}
@@ -186,7 +167,7 @@ export function InstallPrompt() {
               <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
-                    <span className="text-rose-500 font-bold text-sm">⋮</span>
+                    <span className="text-rose-500 font-bold text-lg">⋮</span>
                   </div>
                   <span>{t("pwa.androidStep1", { defaultValue: "Tap the menu button (⋮) in Chrome" })}</span>
                 </div>
@@ -210,7 +191,7 @@ export function InstallPrompt() {
           >
             {t("pwa.notNow")}
           </Button>
-          {!isIOSDevice && deferredPrompt && (
+          {!isIOSDevice && deferredPrompt ? (
             <Button
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
               onClick={handleInstall}
@@ -218,8 +199,7 @@ export function InstallPrompt() {
               <Download className="w-4 h-4 mr-2" />
               {t("pwa.install")}
             </Button>
-          )}
-          {(isIOSDevice || !deferredPrompt) && (
+          ) : (
             <Button
               className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
               onClick={handleDismiss}
