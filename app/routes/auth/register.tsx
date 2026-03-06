@@ -217,6 +217,16 @@ export default function SignUpPage() {
         return () => clearInterval(interval)
     }, []);
 
+    // Redirect to login page with book_service tab after successful registration
+    useEffect(() => {
+        if (actionData?.success) {
+            const timer = setTimeout(() => {
+                navigate("/model-auth/login?tab=customer");
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [actionData, navigate]);
+
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setProfileError("");
 

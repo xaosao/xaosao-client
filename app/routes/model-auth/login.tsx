@@ -360,7 +360,12 @@ export default function UnifiedLogin() {
             <div className="flex bg-gray-100/80 rounded-2xl p-1.5 mb-4">
               <button
                 type="button"
-                onClick={() => setActiveTab("customer")}
+                onClick={() => {
+                  setActiveTab("customer");
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("tab", "customer");
+                  window.history.replaceState({}, "", url.toString());
+                }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] text-sm font-semibold transition-all duration-300 cursor-pointer ${isCustomer
                   ? "bg-white text-rose-500 shadow-md shadow-rose-100/50"
                   : "text-gray-400 hover:text-gray-600"
@@ -375,7 +380,12 @@ export default function UnifiedLogin() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("model")}
+                onClick={() => {
+                  setActiveTab("model");
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("tab", "model");
+                  window.history.replaceState({}, "", url.toString());
+                }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] text-sm font-semibold transition-all duration-300 cursor-pointer ${!isCustomer
                   ? "bg-white text-gray-800 shadow-md"
                   : "text-gray-400 hover:text-gray-600"

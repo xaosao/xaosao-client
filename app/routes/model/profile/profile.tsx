@@ -1163,14 +1163,14 @@ export default function ModelProfilePage() {
                             {selectedIndex !== null && images.length > 0 && (
                                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
                                     <button
-                                        className="absolute top-4 right-4 text-white"
+                                        className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-black/70 rounded-full p-2"
                                         onClick={() => setSelectedIndex(null)}
                                     >
-                                        <X size={32} />
+                                        <X size={24} />
                                     </button>
 
                                     <button
-                                        className="absolute left-2 sm:left-4 text-white bg-black/40 rounded-full p-1"
+                                        className="absolute left-2 sm:left-4 z-10 text-white bg-black/40 rounded-full p-1"
                                         onClick={handlePrev}
                                     >
                                         <ChevronLeft size={32} />
@@ -1179,14 +1179,14 @@ export default function ModelProfilePage() {
                                     <img
                                         src={images[selectedIndex].name}
                                         alt="Selected"
-                                        className="h-full sm:max-h-[80vh] w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
+                                        className="max-h-[85vh] max-w-full sm:max-w-[90vw] object-contain rounded-lg shadow-lg"
                                         onTouchStart={handleTouchStart}
                                         onTouchMove={handleTouchMove}
                                         onTouchEnd={handleTouchEnd}
                                     />
 
                                     <button
-                                        className="absolute right-2 sm:right-4 text-white bg-black/40 rounded-full p-1"
+                                        className="absolute right-2 sm:right-4 z-10 text-white bg-black/40 rounded-full p-1"
                                         onClick={handleNext}
                                     >
                                         <ChevronRight size={32} />
