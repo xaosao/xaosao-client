@@ -264,7 +264,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="lo" suppressHydrationWarning>
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
@@ -273,6 +273,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
+
+        {/* SEO */}
+        <meta name="robots" content="index, follow" />
+        <link rel="alternate" hrefLang="lo" href="https://xaosao.com" />
+        <link rel="alternate" hrefLang="en" href="https://xaosao.com" />
+        <link rel="alternate" hrefLang="x-default" href="https://xaosao.com" />
 
         {/* PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />

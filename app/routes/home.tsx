@@ -35,9 +35,30 @@ const getServiceIcon = (serviceName: string) => {
 };
 
 export function meta({ }: Route.MetaArgs) {
+  const title = "XaoSao-ເຊົ່າສາວ | SaoSao ບໍລິການສາວ Sao";
+  const description = "XaoSao (ເຊົ່າສາວ)-ແພລດຟອມເຊົ່າສາວອອນລາຍ ສາວສາວ SaoSao. ຊອກຫາສາວ ຈອງບໍລິການ ນັດພົບ. Find your perfect companion with XaoSao dating app.";
+  const url = "https://xaosao.com";
+  const image = "https://xaosao.com/icons/icon-512x512.png";
+
   return [
-    { title: "XaoSao Client" },
-    { name: "description", content: "Welcome to XaoSao!" },
+    { title },
+    { name: "description", content: description },
+    { name: "keywords", content: "xaosao, saosao, sao, ເຊົ່າສາວ, ສາວສາວ, ສາວ, dating, companion, ນັດພົບ, ບໍລິການສາວ, ເຊົ່າ" },
+    // Canonical
+    { tagName: "link", rel: "canonical", href: url },
+    // Open Graph
+    { property: "og:type", content: "website" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: description },
+    { property: "og:url", content: url },
+    { property: "og:image", content: image },
+    { property: "og:site_name", content: "XaoSao" },
+    { property: "og:locale", content: "lo_LA" },
+    // Twitter Card
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: title },
+    { name: "twitter:description", content: description },
+    { name: "twitter:image", content: image },
   ];
 }
 
@@ -146,8 +167,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     return translatedDesc;
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "XaoSao",
+        "alternateName": ["ເຊົ່າສາວ", "SaoSao", "ສາວສາວ", "Sao", "ສາວ"],
+        "url": "https://xaosao.com",
+        "description": "XaoSao - ແພລດຟອມເຊົ່າສາວອອນລາຍ. ຊອກຫາສາວ ຈອງບໍລິການ ນັດພົບ.",
+      },
+      {
+        "@type": "Organization",
+        "name": "XaoSao",
+        "url": "https://xaosao.com",
+        "logo": "https://xaosao.com/icons/icon-512x512.png",
+        "description": "XaoSao (ເຊົ່າສາວ) - Companion dating platform in Laos",
+      },
+    ],
+  };
+
   return (
     <div className="fullscreen safe-area min-h-screen bg-background text-foreground transition-colors duration-300 font-serif">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Header />
 
       <section className="relative min-h-screen flex items-center justify-center">

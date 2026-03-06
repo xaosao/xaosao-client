@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /customer/
+Disallow: /model/
+Disallow: /api/
+
+Sitemap: https://xaosao.com/sitemap.xml
