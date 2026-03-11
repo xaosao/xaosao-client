@@ -56,6 +56,8 @@ export interface NotifyUserParams {
     title: string;
     icon?: string;
   }>;
+  /** Skip SMS for this notification (useful for broadcast/bulk notifications) */
+  skipSMS?: boolean;
 }
 
 export interface NotifyUserResult {
@@ -93,6 +95,7 @@ export async function notifyUser(
     data,
     url,
     actions,
+    skipSMS = false,
   } = params;
 
   const result: NotifyUserResult = {
@@ -136,10 +139,12 @@ export async function notifyUser(
       ? createModelNotification(userId, notificationPayload)
       : createCustomerNotification(userId, notificationPayload),
 
-    // 2. SMS (respects user preference)
-    userType === "model"
-      ? sendSMSToModel(userId, smsText)
-      : sendSMSToCustomer(userId, smsText),
+    // 2. SMS (respects user preference, skipped for broadcast notifications)
+    skipSMS
+      ? Promise.resolve()
+      : userType === "model"
+        ? sendSMSToModel(userId, smsText)
+        : sendSMSToCustomer(userId, smsText),
 
     // 3. Push Notification (respects user preference)
     sendPushToUser(userType, userId, pushPayload),

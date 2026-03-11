@@ -477,9 +477,9 @@ async function notifyMatchingModels(post: any) {
           notificationType: "new_post_match",
           title: `ມີການຮ້ອງຂໍໃໝ່!${tipTag}`,
           message: `${customerName}: "${contentPreview}"${tipTag}`,
-          smsMessage: `XaoSao: ${customerName} ກຳລັງຊອກຫາ${serviceName ? ` ${serviceName}` : "ບໍລິການ"}${tipTag}.\nເຂົ້າເບິ່ງລາຍລະອຽດໃນແອັບ xaosao.`,
           data: { postId: post.id, customerId: post.customerId },
           url: `/model/posts/${post.id}`,
+          skipSMS: true,
         })
       )
     );
@@ -559,9 +559,9 @@ async function notifyMatchingCustomers(post: any) {
           notificationType: "new_post_match",
           title: "ມີໂພສໃໝ່!",
           message: `${modelName}: "${contentPreview}"`,
-          smsMessage: `Xaosao: ${modelName} ເປີດໃຫ້ບໍລິການ${serviceName ? ` ${serviceName}` : ""} ແລ້ວ.\nເບິ່ງລາຍລະອຽດ: https://xaosao.com/customer/user-profile/${post.modelId}`,
           data: { postId: post.id, modelId: post.modelId },
           url: `/customer/posts/${post.id}`,
+          skipSMS: true,
         })
       )
     );
