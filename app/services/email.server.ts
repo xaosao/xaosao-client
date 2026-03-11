@@ -1,15 +1,7 @@
 import nodemailer from "nodemailer";
-import Telbiz from "telbiz";
 
-// Admin email and phone for notifications
+// Admin email for notifications
 const ADMIN_EMAIL = "xaosao95@gmail.com";
-const ADMIN_PHONE = "2078856194"; // Lao phone number format (without country code 856)
-
-// Initialize Telbiz SMS client
-const tb = new Telbiz(
-  process.env.TELBIZ_CLIENT_ID as string,
-  process.env.TELBIZ_SECRETKEY as string
-);
 
 // Create transporter - using Gmail SMTP
 const transporter = nodemailer.createTransport({
@@ -44,22 +36,6 @@ async function sendEmail(options: EmailOptions): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("SEND_EMAIL_FAILED", error);
-    return false;
-  }
-}
-
-async function sendAdminSMS(message: string): Promise<boolean> {
-  try {
-    if (!process.env.TELBIZ_CLIENT_ID || !process.env.TELBIZ_SECRETKEY) {
-      console.warn("Telbiz credentials not configured. SMS not sent.");
-      return false;
-    }
-
-    await tb.SendSMSAsync("OTP", ADMIN_PHONE, message);
-    console.log(`Admin SMS sent to ${ADMIN_PHONE}`);
-    return true;
-  } catch (error) {
-    console.error("SEND_ADMIN_SMS_FAILED", error);
     return false;
   }
 }
@@ -153,12 +129,6 @@ export async function notifyAdminNewPendingModel(
   }).catch((err) =>
     console.error("Failed to send new model notification:", err)
   );
-
-  // Send SMS to admin
-  const smsMessage = `XaoSao: ມີ Model ໃໝ່ລົງທະບຽນ - ${model.firstName} ${model.lastName || ""}. ກະລຸນາກວດສອບ.`;
-  sendAdminSMS(smsMessage).catch((err) =>
-    console.error("Failed to send new model SMS notification:", err)
-  );
 }
 
 // ========================================
@@ -239,12 +209,6 @@ export async function notifyAdminNewWithdrawal(
   }).catch((err) =>
     console.error("Failed to send withdrawal notification:", err)
   );
-
-  // Send SMS to admin
-  const smsMessage = `XaoSao: ມີຄຳຮ້ອງຖອນເງິນໃໝ່ - ${data.amount.toLocaleString()} LAK ຈາກ ${data.modelName}. ກະລຸນາກວດສອບ.`;
-  sendAdminSMS(smsMessage).catch((err) =>
-    console.error("Failed to send withdrawal SMS notification:", err)
-  );
 }
 
 // ========================================
@@ -316,12 +280,6 @@ export async function notifyAdminNewDeposit(data: DepositData): Promise<void> {
     subject,
     html,
   }).catch((err) => console.error("Failed to send deposit notification:", err));
-
-  // Send SMS to admin
-  const smsMessage = `XaoSao: ມີຄຳຮ້ອງເຕີມເງິນໃໝ່ - ${data.amount.toLocaleString()} LAK ຈາກ ${data.customerName}. ກະລຸນາກວດສອບ.`;
-  sendAdminSMS(smsMessage).catch((err) =>
-    console.error("Failed to send deposit SMS notification:", err)
-  );
 }
 
 // ========================================
@@ -418,12 +376,6 @@ export async function notifyAdminNewCustomer(
     html,
   }).catch((err) =>
     console.error("Failed to send new customer notification:", err)
-  );
-
-  // Send SMS to admin
-  const smsMessage = `XaoSao: ມີລູກຄ້າໃໝ່ລົງທະບຽນ - ${customer.firstName} ${customer.lastName || ""} (${customer.tel || "N/A"}). ຍິນດີຕ້ອນຮັບ!`;
-  sendAdminSMS(smsMessage).catch((err) =>
-    console.error("Failed to send new customer SMS notification:", err)
   );
 }
 
@@ -568,11 +520,5 @@ export async function notifyAdminNewBooking(
     html,
   }).catch((err) =>
     console.error("Failed to send new booking notification:", err)
-  );
-
-  // Send SMS to admin
-  const smsMessage = `XaoSao: ມີການຈອງໃໝ່! ${booking.customerName} ຈອງ ${booking.serviceName} ກັບ ${booking.modelName} - ${booking.totalPrice.toLocaleString()} LAK. ກະລຸນາກວດສອບ.`;
-  sendAdminSMS(smsMessage).catch((err) =>
-    console.error("Failed to send new booking SMS notification:", err)
   );
 }
