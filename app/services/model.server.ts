@@ -7,6 +7,17 @@ import { notifyCustomerLikeReceived } from "./notification.server";
 
 const { compare, hash } = bcrypt;
 
+// Base condition: only show models who have at least one open service
+const OPEN_SERVICE_CONDITION = {
+  ModelService: {
+    some: {
+      status: "active",
+      isAvailable: true,
+      service: { status: "active" },
+    },
+  },
+};
+
 interface ForYouFilters {
   gender?: string;
   location?: string;
@@ -44,6 +55,7 @@ export async function getModelsForCustomer(
     const whereClause: any = {
       status: "active",
       isProfileHidden: { not: true },
+      ...OPEN_SERVICE_CONDITION,
       customer_interactions: {
         none: {
           customerId,
@@ -70,7 +82,7 @@ export async function getModelsForCustomer(
       whereClause.rating = { gte: filters.minRating };
     }
 
-    // Services filter - models who have these services available
+    // Services filter - models who have these specific services available
     if (filters.services && filters.services.length > 0) {
       whereClause.ModelService = {
         some: {
@@ -280,6 +292,7 @@ export async function getNearbyModels(
     longitude: { not: null },
     status: "active",
     isProfileHidden: { not: true },
+    ...OPEN_SERVICE_CONDITION,
     // Exclude models the customer has passed
     customer_interactions: {
       none: {
@@ -307,7 +320,7 @@ export async function getNearbyModels(
     whereClause.rating = { gte: filters.minRating };
   }
 
-  // Services filter - models who have these services available
+  // Services filter - models who have these specific services available
   if (filters.services && filters.services.length > 0) {
     whereClause.ModelService = {
       some: {
@@ -464,6 +477,7 @@ export async function searchModels(customerId: string, query: string) {
     where: {
       status: "active",
       isProfileHidden: { not: true },
+      ...OPEN_SERVICE_CONDITION,
       OR: orConditions,
     },
     take: 20,
@@ -567,6 +581,7 @@ export async function getHotModels(customerId: string, limit: number = 10) {
       where: {
         status: "active",
         isProfileHidden: { not: true },
+        ...OPEN_SERVICE_CONDITION,
         // Exclude models the customer has passed
         customer_interactions: {
           none: {
@@ -1016,6 +1031,7 @@ export async function getForyouModels(
       where: {
         status: "active",
         isProfileHidden: { not: true },
+        ...OPEN_SERVICE_CONDITION,
         ...(filters.gender ? { gender: filters.gender } : {}),
         ...(filters.location
           ? { address: { contains: filters.location } }
@@ -1152,6 +1168,7 @@ export async function getLikeMeModels(
         where: {
           status: "active",
           isProfileHidden: { not: true },
+          ...OPEN_SERVICE_CONDITION,
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -1208,6 +1225,7 @@ export async function getLikeMeModels(
         where: {
           status: "active",
           isProfileHidden: { not: true },
+          ...OPEN_SERVICE_CONDITION,
           model_interactions: {
             some: {
               customerId: customerId.toString(),
@@ -1257,6 +1275,7 @@ export async function getModelsByInteraction(
         where: {
           status: "active",
           isProfileHidden: { not: true },
+          ...OPEN_SERVICE_CONDITION,
           customer_interactions: {
             some: {
               customerId,
@@ -1306,6 +1325,7 @@ export async function getModelsByInteraction(
         where: {
           status: "active",
           isProfileHidden: { not: true },
+          ...OPEN_SERVICE_CONDITION,
           customer_interactions: {
             some: {
               customerId: customerId.toString(),
