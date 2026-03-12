@@ -202,8 +202,8 @@ export async function notifyCustomerWelcome(
     notificationType: "welcome",
     title: "ຍິນດີຕ້ອນຮັບສູ່ XaoSao!",
     message: `ສະບາຍດີ ${customerName}! ຍິນດີຕ້ອນຮັບສູ່ XaoSao. ທ່ານສະມາດເລີ່ມຕົ້ນສົນທະນາ ແລະ ຈອງຄູ່ທີ່ທ່ານມັກໄດ້ເລີຍ.`,
-    smsMessage: `XaoSao: ຍິນດີຕ້ອນຮັບ ${customerName}! ທ່ານສະມາດເລີ່ມຕົ້ນສົນທະນາ ແລະ ຈອງຄູ່ທີ່ທ່ານມັກໄດ້ເລີຍ.`,
     url: "/customer",
+    skipSMS: true,
   });
 }
 

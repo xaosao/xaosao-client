@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router";
 import { ArrowLeft, Loader, Eye, EyeOff, Check, UserRound, Calendar } from "lucide-react";
-import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigate, useNavigation, useSearchParams } from "react-router";
 
 // services
 import { modelLogin } from "~/services/model-auth.server";
@@ -10,12 +10,6 @@ import type { IModelSigninCredentials } from "~/services/model-auth.server";
 import { validateModelSignInInputs } from "~/services/model-validation.server";
 import { validateSignInInputs } from "~/services/validation.server";
 import type { ICustomerSigninCredentials } from "~/interfaces";
-
-// components
-import { LocationPermissionGuide } from "~/components/LocationPermissionGuide";
-
-// hooks
-import { useGeolocation } from "~/hooks/useGeolocation";
 
 export const meta: MetaFunction = () => {
   return [
@@ -62,8 +56,6 @@ export async function action({ request }: ActionFunctionArgs) {
     };
   }
 
-  const { prisma } = await import("~/services/database.server");
-
   const formData = await request.formData();
   const loginType = formData.get("loginType") as string;
 
@@ -71,9 +63,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const passwordRaw = formData.get("password");
   const rememberMeRaw = formData.get("rememberMe");
   const redirectTo = formData.get("redirectTo") as string | null;
-
-  const latitudeRaw = formData.get("latitude");
-  const longitudeRaw = formData.get("longitude");
 
   if (!whatsappRaw || !passwordRaw) {
     return {
@@ -96,7 +85,6 @@ export async function action({ request }: ActionFunctionArgs) {
   if (loginType === "customer") {
     try {
       const { customerLogin } = await import("~/services/auths.server");
-      const { getLocationDetails } = await import("~/services/base.server");
 
       const signInData: ICustomerSigninCredentials = {
         whatsapp,
@@ -109,72 +97,6 @@ export async function action({ request }: ActionFunctionArgs) {
       const url = new URL(request.url);
       const redirectPath = url.searchParams.get("redirect") || "/customer";
       const result = await customerLogin(signInData, redirectPath);
-
-      // Update customer location on login (non-blocking)
-      try {
-        const customer = await prisma.customer.findFirst({
-          where: { whatsapp },
-          select: { id: true },
-        });
-
-        if (customer) {
-          const locationUpdateData: Record<string, any> = {};
-
-          // GPS coordinates from browser
-          if (latitudeRaw && longitudeRaw) {
-            const latitude = parseFloat(String(latitudeRaw));
-            const longitude = parseFloat(String(longitudeRaw));
-
-            if (!isNaN(latitude) && !isNaN(longitude) &&
-              latitude >= -90 && latitude <= 90 &&
-              longitude >= -180 && longitude <= 180) {
-              locationUpdateData.latitude = latitude;
-              locationUpdateData.longitude = longitude;
-              console.log(`GPS location updated for customer ${whatsapp}: (${latitude}, ${longitude})`);
-            }
-          }
-
-          // IP-based location
-          const forwardedFor = request.headers.get("x-forwarded-for");
-          const clientIp = forwardedFor?.split(",")[0].trim() ||
-            request.headers.get("x-real-ip") ||
-            "127.0.0.1";
-          const accessKey = process.env.APIIP_API_KEY || "";
-
-          if (clientIp && clientIp !== "127.0.0.1") {
-            try {
-              const locationDetails = await getLocationDetails(clientIp, accessKey);
-              if (locationDetails) {
-                locationUpdateData.ip = clientIp;
-                locationUpdateData.country = locationDetails.countryName;
-                locationUpdateData.location = locationDetails;
-
-                if (!locationUpdateData.latitude && locationDetails.latitude) {
-                  locationUpdateData.latitude = +locationDetails.latitude;
-                }
-                if (!locationUpdateData.longitude && locationDetails.longitude) {
-                  locationUpdateData.longitude = +locationDetails.longitude;
-                }
-
-                console.log(`IP location updated for customer ${whatsapp}: ${locationDetails.countryName}, ${locationDetails.city} (IP: ${clientIp})`);
-              }
-            } catch (ipLocationError) {
-              console.error("Customer IP location lookup error:", ipLocationError);
-            }
-          }
-
-          if (Object.keys(locationUpdateData).length > 0) {
-            await prisma.customer.update({
-              where: { id: customer.id },
-              data: locationUpdateData,
-            }).catch(err => {
-              console.error("Failed to update customer location on login:", err);
-            });
-          }
-        }
-      } catch (locationError) {
-        console.error("Customer location update error during login:", locationError);
-      }
 
       if (!result) {
         return { error: "login.errors.loginFailed" };
@@ -217,39 +139,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
     validateModelSignInInputs(credentials);
 
-    if (latitudeRaw && longitudeRaw) {
-      try {
-        const latitude = parseFloat(String(latitudeRaw));
-        const longitude = parseFloat(String(longitudeRaw));
-
-        if (!isNaN(latitude) && !isNaN(longitude) &&
-          latitude >= -90 && latitude <= 90 &&
-          longitude >= -180 && longitude <= 180) {
-
-          const model = await prisma.model.findFirst({
-            where: { whatsapp },
-            select: { id: true }
-          });
-
-          if (model) {
-            await prisma.model.update({
-              where: { id: model.id },
-              data: {
-                latitude,
-                longitude,
-              },
-            }).catch(err => {
-              console.error("Failed to update model GPS location on login:", err);
-            });
-
-            console.log(`Model GPS location updated for ${whatsapp}: (${latitude}, ${longitude})`);
-          }
-        }
-      } catch (locationError) {
-        console.error("Model GPS location update error during login:", locationError);
-      }
-    }
-
     return await modelLogin(credentials);
   } catch (error: any) {
     if (error && typeof error === "object" && !error.message) {
@@ -282,22 +171,23 @@ export default function UnifiedLogin() {
   const { showResetSuccess, redirectTo, initialTab } = useLoaderData<typeof loader>();
   const isSubmitting = navigation.state === "submitting";
 
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"customer" | "model">(initialTab as "customer" | "model");
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(showResetSuccess);
 
   const isCustomer = activeTab === "customer";
 
-  const {
-    latitude,
-    longitude,
-    loading: locationLoading,
-    error: locationError,
-    permissionState,
-    requestLocation,
-  } = useGeolocation({ enableHighAccuracy: true, timeout: 15000 });
-
-  const hasLocation = latitude !== null && longitude !== null;
+  // Show error as toast via URL params
+  useEffect(() => {
+    if (actionData?.error) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("toastMessage", actionData.error);
+      params.set("toastType", "error");
+      params.set("toastDuration", "4000");
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [actionData]);
 
   useEffect(() => {
     if (showResetSuccess) {
@@ -409,79 +299,6 @@ export default function UnifiedLogin() {
               </p>
             </div>
 
-            {/* Location status */}
-            <div className="mb-5 text-center">
-              {locationLoading && (
-                <p className="text-xs text-amber-600 flex items-center justify-center gap-1">
-                  <Loader className="w-3 h-3 animate-spin" />
-                  {t("modelAuth.login.gettingLocation", { defaultValue: "ກຳລັງຮັບຕຳແໜ່ງຂອງທ່ານ..." })}
-                </p>
-              )}
-              {!locationLoading && hasLocation && (
-                <p className="text-xs text-emerald-600 flex items-center justify-center gap-1">
-                  <span>📍</span>
-                  {t("modelAuth.login.locationDetected", { defaultValue: "ກວດພົບຕຳແໜ່ງແລ້ວ" })}
-                </p>
-              )}
-              {!locationLoading && !hasLocation && permissionState === "denied" && (
-                <div className="space-y-2 text-center">
-                  <p className="text-xs text-orange-500 flex items-center justify-center gap-1">
-                    <span>📍</span>
-                    {t("modelAuth.login.locationBlocked", { defaultValue: "Location blocked" })}
-                  </p>
-                  <LocationPermissionGuide
-                    variant="light"
-                    onRetry={requestLocation}
-                    permissionDenied={true}
-                  />
-                </div>
-              )}
-              {!locationLoading &&
-                !hasLocation &&
-                (permissionState === "prompt" || permissionState === "unknown") &&
-                !locationError && (
-                  <div className="flex items-center justify-center gap-2">
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                      <span>📍</span>
-                      {t("modelAuth.login.enableLocationPrompt", {
-                        defaultValue: "Enable location for better experience",
-                      })}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={requestLocation}
-                      className={`text-xs px-3 py-1 rounded-full cursor-pointer transition-colors ${isCustomer
-                        ? "bg-rose-500 hover:bg-rose-600 text-white"
-                        : "bg-gray-800 hover:bg-gray-900 text-white"
-                        }`}
-                    >
-                      {t("modelAuth.login.enableLocation", { defaultValue: "Enable" })}
-                    </button>
-                  </div>
-                )}
-              {!locationLoading &&
-                !hasLocation &&
-                permissionState !== "denied" &&
-                locationError && (
-                  <div className="flex items-center justify-center gap-2">
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                      <span>📍</span>
-                      {t("modelAuth.login.locationUnavailable", { defaultValue: "ບໍ່ສາມາດຮັບຕຳແໜ່ງໄດ້" })}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={requestLocation}
-                      className={`text-xs underline cursor-pointer transition-colors ${isCustomer
-                        ? "text-rose-500 hover:text-rose-600"
-                        : "text-gray-500 hover:text-gray-700"
-                        }`}
-                    >
-                      {t("modelAuth.login.retry", { defaultValue: "ລອງໃໝ່" })}
-                    </button>
-                  </div>
-                )}
-            </div>
-
             {/* Success message */}
             {showSuccessMessage && (
               <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl">
@@ -490,24 +307,11 @@ export default function UnifiedLogin() {
               </div>
             )}
 
-            {/* Error message */}
-            {actionData?.error && (
-              <div className="mb-5 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-sm">
-                {t(actionData.error)}
-              </div>
-            )}
-
             {/* Login Form */}
             <Form method="post" className="space-y-5">
               <input type="hidden" name="loginType" value={isCustomer ? "customer" : "model"} />
               {!isCustomer && redirectTo && redirectTo !== "/model" && (
                 <input type="hidden" name="redirectTo" value={redirectTo} />
-              )}
-              {hasLocation && (
-                <>
-                  <input type="hidden" name="latitude" value={latitude!} />
-                  <input type="hidden" name="longitude" value={longitude!} />
-                </>
               )}
 
               {/* Phone number */}

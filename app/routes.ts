@@ -66,6 +66,7 @@ export default [
     "./routes/model-auth/forgot-password.tsx"
   ),
   route("model-auth/verify-otp", "./routes/model-auth/verify-otp.tsx"),
+  route("model-auth/verify-registration", "./routes/model-auth/verify-registration.tsx"),
   route("model-auth/reset-password", "./routes/model-auth/reset-password.tsx"),
 
   // Model dashboard routes

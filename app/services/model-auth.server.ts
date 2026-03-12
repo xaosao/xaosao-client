@@ -16,6 +16,8 @@ import { notifyReferralRegistered } from "./unified-notification.server";
 const { compare, hash } = bcrypt;
 const MODEL_SESSION_SECRET =
   process.env.MODEL_SESSION_SECRET || process.env.SESSION_SECRET!;
+const MODEL_REG_SESSION_SECRET =
+  process.env.MODEL_REG_SESSION_SECRET || MODEL_SESSION_SECRET;
 
 // Model-specific interfaces
 export interface IModelSigninCredentials {
@@ -102,6 +104,29 @@ const tb = new Telbiz(
   process.env.TELBIZ_SECRETKEY as string
 );
 
+// Send OTP via SMS using Telbiz
+async function sendOtpTelbiz(
+  phoneNumber: string,
+  otp: string
+): Promise<TelbizResult> {
+  try {
+    const msg = `ລະຫັດ OTP ແມ່ນ: ${otp}`;
+    const phone = phoneNumber;
+
+    const res = await tb.SendSMSAsync("OTP", phone, msg);
+    return {
+      success: true,
+      data: res as TelbizResponse,
+    };
+  } catch (error: any) {
+    console.error("Error sending OTP:", error);
+    return {
+      success: false,
+      error: error as TelbizError,
+    };
+  }
+}
+
 // Separate session storage for models
 const modelSessionStorage = createCookieSessionStorage({
   cookie: {
@@ -112,6 +137,70 @@ const modelSessionStorage = createCookieSessionStorage({
     httpOnly: true,
   },
 });
+
+// Separate session storage for model registration (temporary data before OTP verification)
+const modelRegistrationSessionStorage = createCookieSessionStorage({
+  cookie: {
+    name: "__model_registration",
+    secure: process.env.NODE_ENV === "production",
+    secrets: [MODEL_REG_SESSION_SECRET],
+    sameSite: "lax",
+    httpOnly: true,
+    maxAge: 600, // 10 minutes - registration data expires
+  },
+});
+
+// Store model registration data temporarily in session (before OTP verification)
+export async function storeModelRegistrationData(
+  request: Request,
+  data: IModelSignupCredentials & { otp: string; otpExpiry: number; ip: string; accessKey: string }
+) {
+  const session = await modelRegistrationSessionStorage.getSession(
+    request.headers.get("Cookie")
+  );
+  session.set("registrationData", data);
+  return await modelRegistrationSessionStorage.commitSession(session);
+}
+
+// Get model registration data from session
+export async function getModelRegistrationData(request: Request) {
+  const session = await modelRegistrationSessionStorage.getSession(
+    request.headers.get("Cookie")
+  );
+  return session.get("registrationData") as
+    | (IModelSignupCredentials & { otp: string; otpExpiry: number; ip: string; accessKey: string })
+    | null;
+}
+
+// Clear model registration session
+export async function clearModelRegistrationSession(request: Request) {
+  const session = await modelRegistrationSessionStorage.getSession(
+    request.headers.get("Cookie")
+  );
+  return await modelRegistrationSessionStorage.destroySession(session);
+}
+
+// Send OTP for model registration via SMS
+export async function sendModelRegistrationOTP(whatsapp: number): Promise<{ otp: string; success: boolean }> {
+  const otp = crypto.randomBytes(3).toString("hex").toUpperCase();
+  const result = await sendOtpTelbiz(String(whatsapp), otp);
+  if (!result.success) {
+    throw new Error("modelAuth.serverMessages.sendOtpFailed");
+  }
+  return { otp, success: true };
+}
+
+// Verify model registration OTP
+export function verifyModelRegistrationOTP(
+  storedOtp: string,
+  inputOtp: string,
+  otpExpiry: number
+): boolean {
+  if (Date.now() > otpExpiry) {
+    return false; // OTP expired
+  }
+  return storedOtp === inputOtp.toUpperCase();
+}
 
 export async function getModelFromSession(request: Request) {
   const session = await modelSessionStorage.getSession(
@@ -137,6 +226,7 @@ export async function requireModelSession(request: Request) {
       "/model-auth/login",
       "/model-auth/register",
       "/model-auth/forgot-password",
+      "/model-auth/verify-registration",
     ];
     const isPublic = publicPaths.includes(pathname);
 
@@ -705,29 +795,6 @@ export async function modelRegister(
       error: true,
       message: error.message || "modelAuth.serverMessages.registrationFailed",
     });
-  }
-}
-
-// Send OTP via SMS using Telbiz
-async function sendOtpTelbiz(
-  phoneNumber: string,
-  otp: string
-): Promise<TelbizResult> {
-  try {
-    const msg = `ລະຫັດ OTP ແມ່ນ: ${otp}`;
-    const phone = phoneNumber;
-
-    const res = await tb.SendSMSAsync("OTP", phone, msg);
-    return {
-      success: true,
-      data: res as TelbizResponse,
-    };
-  } catch (error: any) {
-    console.error("Error sending OTP:", error);
-    return {
-      success: false,
-      error: error as TelbizError,
-    };
   }
 }
 

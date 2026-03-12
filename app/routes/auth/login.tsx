@@ -1,18 +1,16 @@
 import type { Route } from "./+types/login";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useCallback } from "react";
-import { Eye, EyeOff, Loader, User, AlertCircle } from "lucide-react";
-import { Form, Link, useActionData, useNavigate, useNavigation } from "react-router";
+import { Eye, EyeOff, Loader, User } from "lucide-react";
+import { Form, Link, useActionData, useNavigate, useNavigation, useSearchParams } from "react-router";
 
 // Components
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { LocationPermissionGuide } from "~/components/LocationPermissionGuide";
 
 // Hooks
 import { useIsMobile } from "~/hooks/use-mobile";
-import { useGeolocation } from "~/hooks/useGeolocation";
 
 // Services & Types
 import { validateSignInInputs } from "~/services/validation.server";
@@ -72,14 +70,6 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
     try {
         // Dynamic import for code splitting
         const { customerLogin } = await import("~/services/auths.server");
-        const { prisma } = await import("~/services/database.server");
-        const { getLocationDetails } = await import("~/services/base.server");
-
-        // Get client IP from request headers (set by reverse proxy/load balancer)
-        const forwardedFor = request.headers.get("x-forwarded-for");
-        const clientIp = forwardedFor?.split(",")[0].trim() ||
-            request.headers.get("x-real-ip") ||
-            "127.0.0.1";
 
         // Get redirect parameter from URL
         const url = new URL(request.url);
@@ -91,10 +81,6 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         const whatsappRaw = formData.get("whatsapp");
         const passwordRaw = formData.get("password");
         const rememberMeRaw = formData.get("rememberMe");
-
-        // Get GPS coordinates from client (if provided)
-        const latitudeRaw = formData.get("latitude");
-        const longitudeRaw = formData.get("longitude");
 
         // Validate required fields
         if (!whatsappRaw || !passwordRaw) {
@@ -125,70 +111,6 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionRespo
         // Validate and attempt login
         validateSignInInputs(signInData);
         const result = await customerLogin(signInData, redirectPath);
-
-        // Update user location on login (non-blocking - don't fail login if this fails)
-        try {
-            const customer = await prisma.customer.findFirst({
-                where: { whatsapp },
-                select: { id: true }
-            });
-
-            if (customer) {
-                // Prepare location update data
-                const locationUpdateData: Record<string, any> = {};
-
-                // Update GPS coordinates if provided from browser
-                if (latitudeRaw && longitudeRaw) {
-                    const latitude = parseFloat(String(latitudeRaw));
-                    const longitude = parseFloat(String(longitudeRaw));
-
-                    if (!isNaN(latitude) && !isNaN(longitude) &&
-                        latitude >= -90 && latitude <= 90 &&
-                        longitude >= -180 && longitude <= 180) {
-                        locationUpdateData.latitude = latitude;
-                        locationUpdateData.longitude = longitude;
-                        console.log(`GPS location updated for user ${whatsapp}: (${latitude}, ${longitude})`);
-                    }
-                }
-
-                // Update IP-based location (country, city, etc.) from client IP
-                const accessKey = process.env.APIIP_API_KEY || "";
-                if (clientIp && clientIp !== "127.0.0.1") {
-                    try {
-                        const locationDetails = await getLocationDetails(clientIp, accessKey);
-                        if (locationDetails) {
-                            locationUpdateData.ip = clientIp;
-                            locationUpdateData.country = locationDetails.countryName;
-                            locationUpdateData.location = locationDetails;
-
-                            // Use IP-based lat/long as fallback if GPS not available
-                            if (!locationUpdateData.latitude && locationDetails.latitude) {
-                                locationUpdateData.latitude = +locationDetails.latitude;
-                            }
-                            if (!locationUpdateData.longitude && locationDetails.longitude) {
-                                locationUpdateData.longitude = +locationDetails.longitude;
-                            }
-
-                            console.log(`IP location updated for user ${whatsapp}: ${locationDetails.countryName}, ${locationDetails.city} (IP: ${clientIp})`);
-                        }
-                    } catch (ipLocationError) {
-                        console.error("IP location lookup error:", ipLocationError);
-                    }
-                }
-
-                // Update customer if we have any location data
-                if (Object.keys(locationUpdateData).length > 0) {
-                    await prisma.customer.update({
-                        where: { id: customer.id },
-                        data: locationUpdateData,
-                    }).catch(err => {
-                        console.error("Failed to update location on login:", err);
-                    });
-                }
-            }
-        } catch (locationError) {
-            console.error("Location update error during login:", locationError);
-        }
 
         if (!result) {
             return {
@@ -238,18 +160,7 @@ export default function SignInPage() {
     const navigate = useNavigate();
     const navigation = useNavigation();
     const actionData = useActionData<typeof action>();
-
-    // Geolocation hook - automatically requests location on mount
-    const {
-        latitude,
-        longitude,
-        loading: locationLoading,
-        error: locationError,
-        permissionState,
-        permissionDenied,
-        requestLocation,
-        canRetry
-    } = useGeolocation({ enableHighAccuracy: true, timeout: 15000 });
+    const [searchParams] = useSearchParams();
 
     // Local state
     const [showPassword, setShowPassword] = useState(false);
@@ -258,7 +169,17 @@ export default function SignInPage() {
     // Computed values
     const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
     const isMobile = useIsMobile();
-    const hasLocation = latitude !== null && longitude !== null;
+
+    // Show error as toast via URL params
+    useEffect(() => {
+        if (actionData?.error && actionData?.message) {
+            const params = new URLSearchParams(window.location.search);
+            params.set("toastMessage", actionData.message);
+            params.set("toastType", "error");
+            params.set("toastDuration", "4000");
+            navigate({ search: params.toString() }, { replace: true });
+        }
+    }, [actionData]);
 
     // Background image carousel effect
     useEffect(() => {
@@ -315,71 +236,9 @@ export default function SignInPage() {
                     </h1>
                     <p className="text-white text-sm">{t('login.subtitle')}</p>
 
-                    {/* Location status indicator */}
-                    <div className="pt-2">
-                        {locationLoading && (
-                            <p className="text-xs text-yellow-300 flex items-center">
-                                <Loader className="w-3 h-3 mr-1 animate-spin" />
-                                {t('login.gettingLocation', { defaultValue: 'Getting your location...' })}
-                            </p>
-                        )}
-                        {!locationLoading && hasLocation && (
-                            <p className="text-xs text-green-400 flex items-center">
-                                <span className="mr-1">📍</span>
-                                {t('login.locationDetected', { defaultValue: 'Location detected' })}
-                            </p>
-                        )}
-                        {!locationLoading && !hasLocation && permissionState === 'denied' && (
-                            <div className="space-y-2">
-                                <p className="text-xs text-orange-400 flex items-center">
-                                    <span className="mr-1">📍</span>
-                                    {t('login.locationBlocked', { defaultValue: 'Location blocked' })}
-                                </p>
-                                <LocationPermissionGuide variant="dark" onRetry={requestLocation} permissionDenied={true} />
-                            </div>
-                        )}
-                        {!locationLoading && !hasLocation && (permissionState === 'prompt' || permissionState === 'unknown') && !locationError && (
-                            <div className="flex items-center gap-2">
-                                <p className="text-xs text-gray-300 flex items-center">
-                                    <span className="mr-1">📍</span>
-                                    {t('login.enableLocationPrompt', { defaultValue: 'Enable location for better experience' })}
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={requestLocation}
-                                    className="text-xs bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-full cursor-pointer"
-                                >
-                                    {t('login.enableLocation', { defaultValue: 'Enable' })}
-                                </button>
-                            </div>
-                        )}
-                        {!locationLoading && !hasLocation && permissionState !== 'denied' && locationError && (
-                            <div className="flex items-center justify-between w-full">
-                                <p className="text-xs text-gray-400 flex items-center">
-                                    <span className="mr-1">📍</span>
-                                    {t('login.locationUnavailable', { defaultValue: 'Location unavailable' })}
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={requestLocation}
-                                    className="text-xs text-rose-500 hover:text-rose-400 underline cursor-pointer"
-                                >
-                                    {t('login.retry', { defaultValue: 'Retry' })}
-                                </button>
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 <Form method="post" className="space-y-4 sm:space-y-6" noValidate>
-                    {/* Hidden fields for GPS coordinates */}
-                    {hasLocation && (
-                        <>
-                            <input type="hidden" name="latitude" value={latitude!} />
-                            <input type="hidden" name="longitude" value={longitude!} />
-                        </>
-                    )}
-
                     <div>
                         <Label htmlFor="whatsapp" className="text-gray-300 text-sm">
                             {t('login.phoneNumber')}
@@ -427,19 +286,6 @@ export default function SignInPage() {
                             </button>
                         </div>
                     </div>
-
-                    {actionData?.error && actionData.message && (
-                        <div
-                            role="alert"
-                            aria-live="polite"
-                            className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm"
-                        >
-                            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" aria-hidden="true" />
-                            <span className="text-red-200 text-sm">
-                                {t(actionData.message)}
-                            </span>
-                        </div>
-                    )}
 
                     <div className="w-full flex items-center justify-between">
                         <div className="flex items-center">

@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef } from "react";
-import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Calendar, ChevronLeft, ChevronRight, Flame, Mouse, Crown, Star, Check, TrendingUp, Infinity } from "lucide-react";
+import { LogIn, User, Wine, Plane, PartyPopper, BedDouble, ArrowRight, Play, Gift, Users, Trophy, Sparkles, MapPin, Calendar, ChevronLeft, ChevronRight, Flame, Crown, Star, Check, TrendingUp, Infinity } from "lucide-react";
 
 // Swiper
 import "swiper/css";
