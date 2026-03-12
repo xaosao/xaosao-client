@@ -62,11 +62,14 @@ export async function createPost(data: CreatePostData) {
   });
 
   // Send notifications asynchronously (don't block the response)
+  // Customer posts → notify only models, Model posts → notify only customers
   if (data.authorType === "customer") {
+    console.log(`[Post] Customer post ${post.id} → notifying matching models only`);
     notifyMatchingModels(post).catch((err) =>
       console.error("[Post] Failed to notify matching models:", err)
     );
-  } else {
+  } else if (data.authorType === "model") {
+    console.log(`[Post] Model post ${post.id} → notifying matching customers only`);
     notifyMatchingCustomers(post).catch((err) =>
       console.error("[Post] Failed to notify matching customers:", err)
     );
