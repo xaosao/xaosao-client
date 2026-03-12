@@ -142,6 +142,7 @@ export interface IForYouModelResponse {
   firstName: string;
   lastName: string | null;
   dob: Date;
+  gender?: string;
   profile: string | null;
   latitude: number | null;
   longitude: number | null;

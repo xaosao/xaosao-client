@@ -46,6 +46,7 @@ import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
 import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { useScrollDirection } from "~/hooks/useScrollDirection";
 
 interface NearbyPagination {
@@ -273,6 +274,10 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const [drawerOpen, setDrawerOpen] = React.useState(false);
     const isScrollingDown = useScrollDirection();
     const isLoading = navigation.state === "loading";
+    const isMobile = useIsMobile();
+
+    // Gender tab state for mobile
+    const [genderTab, setGenderTab] = useState<"female" | "male">("female");
 
     // Subscription modal management
     const {
@@ -559,8 +564,16 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         fetcher.submit(formData, { method: "post" });
     };
 
-    const selectedId = searchParams.get("profileId") || cachedModels?.[0]?.id;
-    const selectedProfile = cachedModels.find((p) => p.id === selectedId);
+    // On mobile, filter models by gender tab
+    const displayModels = isMobile
+        ? cachedModels.filter((m) => m.gender === genderTab)
+        : cachedModels;
+    const displayNearbyModels = isMobile
+        ? cachedNearbyModels.filter((m) => m.gender === genderTab)
+        : cachedNearbyModels;
+
+    const selectedId = searchParams.get("profileId") || displayModels?.[0]?.id;
+    const selectedProfile = displayModels.find((p) => p.id === selectedId);
 
     // Get optimistic display state for selectedProfile
     const displayState = selectedProfile ? getModelState(selectedProfile) : {
@@ -612,7 +625,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         return () => clearTimeout(timeoutId);
     }, [selectedId, navigation.state]);
 
-    const [images, setImages] = React.useState<IUserImages[]>(models?.[0]?.Images ?? []);
+    const [images, setImages] = React.useState<IUserImages[]>(displayModels?.[0]?.Images ?? []);
     const [touchEndX, setTouchEndX] = React.useState<number | null>(null)
     const [touchStartX, setTouchStartX] = React.useState<number | null>(null)
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null)
@@ -678,8 +691,35 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         return (
             <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
                 <div>
-                    <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col gap-2 bg-gray-100 sm:bg-white p-3 sm:px-6 sm:py-3 transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
-                        <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">
+                    <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col bg-gray-100 sm:bg-white transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
+                        {/* Mobile Gender Tabs */}
+                        {isMobile && (
+                            <div className="flex border-b border-gray-200 bg-white">
+                                <button
+                                    type="button"
+                                    onClick={() => setGenderTab("female")}
+                                    className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "female"
+                                        ? "text-rose-500 border-b-2 border-rose-500"
+                                        : "text-gray-500"
+                                        }`}
+                                >
+                                    {t('discover.female')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGenderTab("male")}
+                                    className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "male"
+                                        ? "text-rose-500 border-b-2 border-rose-500"
+                                        : "text-gray-500"
+                                        }`}
+                                >
+                                    {t('discover.male')}
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-2 p-3 sm:px-6 sm:py-3">
+                        <h1 className="hidden sm:block text-lg sm:text-xl text-rose-500 text-shadow-sm">
                             {t("modelDashboard.title")}
                         </h1>
                         <div className="flex items-center gap-2">
@@ -854,8 +894,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 </select>
                                             </div>
 
-                                            {/* Gender */}
-                                            <div>
+                                            {/* Gender - hidden on mobile (handled by tabs) */}
+                                            <div className="hidden sm:block">
                                                 <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
                                                 <select
                                                     name="gender"
@@ -890,9 +930,10 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                 </DrawerContent>
                             </Drawer>
                         </div>
+                        </div>
                     </div>
                     {/* Spacer for fixed search bar */}
-                    <div className="h-20 sm:h-14"></div>
+                    <div className="h-24 sm:h-14"></div>
 
                     {/* Search results or empty state */}
                     {isSearching ? (
@@ -1046,8 +1087,35 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     return (
         <div className="space-y-6 sm:space-y-8 p-0 sm:p-6">
             <div className="w-full">
-                <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col sm:flex-row items-start justify-between gap-2 bg-gray-100 sm:bg-white p-3 sm:px-6 sm:py-3 transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
-                    <h1 className="text-sm sm:text-xl text-rose-500 text-shadow-sm">
+                <div className={`fixed top-[65px] sm:top-0 left-0 right-0 sm:left-[20%] z-20 flex flex-col bg-gray-100 sm:bg-white transition-transform duration-300 ${isScrollingDown ? '-translate-y-full' : 'translate-y-0'}`}>
+                    {/* Mobile Gender Tabs */}
+                    {isMobile && (
+                        <div className="flex border-b border-gray-200 bg-white">
+                            <button
+                                type="button"
+                                onClick={() => setGenderTab("female")}
+                                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "female"
+                                    ? "text-rose-500 border-b-2 border-rose-500"
+                                    : "text-gray-500"
+                                    }`}
+                            >
+                                {t('discover.female')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setGenderTab("male")}
+                                className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "male"
+                                    ? "text-rose-500 border-b-2 border-rose-500"
+                                    : "text-gray-500"
+                                    }`}
+                            >
+                                {t('discover.male')}
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2 p-3 sm:px-6 sm:py-3">
+                    <h1 className="hidden sm:block text-sm sm:text-xl text-rose-500 text-shadow-sm">
                         {t("modelDashboard.title")}
                     </h1>
                     <div className="w-full sm:w-2/5 flex items-center gap-2">
@@ -1258,9 +1326,10 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             </DrawerContent>
                         </Drawer>
                     </div>
+                    </div>
                 </div>
                 {/* Spacer for fixed search bar */}
-                <div className="h-20 sm:h-14"></div>
+                <div className="h-24 sm:h-14"></div>
 
                 {/* Search Results */}
                 {isSearching ? (
@@ -1446,7 +1515,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         scrollbarWidth: 'none',
                     }}
                 >
-                    {cachedModels.map((data) => (
+                    {displayModels.map((data) => (
                         <div
                             key={data.id}
                             ref={(el) => {
@@ -1759,7 +1828,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
                 <div className="hidden sm:block">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                        {cachedNearbyModels?.map((model) => {
+                        {displayNearbyModels?.map((model) => {
                             const modelDisplayState = getModelState(model);
                             return (
                                 <div
@@ -1845,7 +1914,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 </div>
 
                 <div className="block sm:hidden w-full space-y-8">
-                    {cachedNearbyModels?.map((model) => {
+                    {displayNearbyModels?.map((model) => {
                         const modelDisplayState = getModelState(model);
                         return (
                             <div key={model.id} className="flex items-start justify-between pb-4 border-b">
@@ -1976,7 +2045,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     )}
 
                     {/* No more models message */}
-                    {!hasMore && cachedNearbyModels.length > 0 && (
+                    {!hasMore && displayNearbyModels.length > 0 && (
                         <div className="w-full text-center text-gray-500 py-4">
                             <p className="text-sm">{t('discover.noMoreModels', { defaultValue: 'No more companions nearby' })}</p>
                         </div>
