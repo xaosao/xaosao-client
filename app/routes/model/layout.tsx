@@ -1,9 +1,10 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Form, Link, Outlet, redirect, useFetcher, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     Briefcase,
     EyeOff,
+    Gift,
     UserSearch,
     HandHeart,
     Heart,
@@ -12,6 +13,7 @@ import {
     User,
     User2Icon,
     Wallet,
+    X,
 } from "lucide-react";
 import {
     Dialog,
@@ -110,6 +112,44 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
     // Location prompt modal state
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+    // Referral promotion popup - show until March 31, 2026
+    const PROMO_END_DATE = new Date("2026-04-01T00:00:00");
+    const [showPromoPopup, setShowPromoPopup] = useState(false);
+    const [promoCountdown, setPromoCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
+
+    useEffect(() => {
+        const now = new Date();
+        if (now >= PROMO_END_DATE) return; // Promotion ended
+
+        // Show once per session
+        const dismissed = sessionStorage.getItem("referral_promo_dismissed");
+        if (!dismissed) {
+            setShowPromoPopup(true);
+        }
+
+        // Update countdown
+        const updateCountdown = () => {
+            const diff = PROMO_END_DATE.getTime() - Date.now();
+            if (diff <= 0) {
+                setShowPromoPopup(false);
+                return;
+            }
+            setPromoCountdown({
+                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((diff / (1000 * 60)) % 60),
+            });
+        };
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const dismissPromo = useCallback(() => {
+        setShowPromoPopup(false);
+        sessionStorage.setItem("referral_promo_dismissed", "true");
+    }, []);
 
     // Auto-location tracking - updates server silently when location is available
     const { requestLocation, hasLocation, permissionState } = useAutoLocation({
@@ -431,6 +471,69 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     </div>
                 </DialogPortal>
             </Dialog>
+
+            {/* Referral Promotion Popup */}
+            {showPromoPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div className="relative w-full max-w-sm bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-2xl overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={dismissPromo}
+                            className="absolute top-3 right-3 p-1 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-10"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+
+                        <div className="p-6 text-center text-white space-y-4">
+                            <div className="mx-auto w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
+                                <Gift className="w-7 h-7 text-white" />
+                            </div>
+
+                            <div>
+                                <h2 className="text-lg font-bold">{t('referralPromo.title', { defaultValue: 'ໂປຣໂມຊັ່ນແນະນຳໃກ້ໝົດ!' })}</h2>
+                                <p className="text-sm text-white/90 mt-2">
+                                    {t('referralPromo.description', {
+                                        defaultValue: 'ຮັບ 50,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄົນ ກຳລັງຈະໝົດເຂດ! ຫຼັງຈາກ 01/04/2026 ຈະໄດ້ຮັບພຽງ 10,000 ກີບ ເທົ່ານັ້ນ.'
+                                    })}
+                                </p>
+                            </div>
+
+                            {/* Countdown */}
+                            <div className="flex justify-center gap-3">
+                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
+                                    <p className="text-xl font-bold">{promoCountdown.days}</p>
+                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.days', { defaultValue: 'ມື້' })}</p>
+                                </div>
+                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
+                                    <p className="text-xl font-bold">{promoCountdown.hours}</p>
+                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.hours', { defaultValue: 'ຊົ່ວໂມງ' })}</p>
+                                </div>
+                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
+                                    <p className="text-xl font-bold">{promoCountdown.minutes}</p>
+                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.minutes', { defaultValue: 'ນາທີ' })}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { dismissPromo(); navigate("/model/referral"); }}
+                                    className="w-full py-2.5 bg-white text-rose-600 font-bold rounded-lg hover:bg-white/90 transition-colors"
+                                >
+                                    {t('referralPromo.referNow', { defaultValue: 'ແນະນຳເລີຍ!' })}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={dismissPromo}
+                                    className="text-sm text-white/70 hover:text-white transition-colors"
+                                >
+                                    {t('referralPromo.later', { defaultValue: 'ພາຍຫຼັງ' })}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Location Permission Prompt Modal */}
             <LocationPromptModal
