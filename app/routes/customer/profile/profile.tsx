@@ -92,13 +92,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         try {
             // Handle image deletion
             if (deleteImage) {
-                // Delete the image from Bunny CDN if it exists
-                if (imageName) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string));
-                }
-                // Delete the image record from database
+                // Delete the image record from database first
                 const res = await deleteCustomerImage(imageId, customerId);
                 if (res.id) {
+                    // Delete from Bunny CDN after DB delete succeeds
+                    if (imageName) {
+                        await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string)).catch((err) =>
+                            console.error("[BunnyCDN] Failed to clean up deleted image:", err)
+                        );
+                    }
                     return { success: true, action: "delete", imageId, message: "Image deleted successfully!" };
                 }
             }
@@ -107,13 +109,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 const buffer = Buffer.from(await newFile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
                 image = url;
-                // Delete old file AFTER successful upload
-                if (imageName) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string))
-                }
 
                 const res = await updateCustomerImage(imageId, customerId, image);
                 if (res.id) {
+                    // Delete old file ONLY after database update succeeds
+                    if (imageName) {
+                        await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string)).catch((err) =>
+                            console.error("[BunnyCDN] Failed to clean up old image:", err)
+                        );
+                    }
                     return { success: true, action: "update", imageId, message: "Image updated successfully!" };
                 }
             } else {

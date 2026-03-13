@@ -76,12 +76,6 @@ export async function action({ params, request }: Route.ActionArgs) {
         const buffer = Buffer.from(await file.arrayBuffer());
         const url = await uploadFileToBunnyServer(buffer, file.name, file.type);
         transactionData.paymentSlip = [url];
-        // Delete old file AFTER successful upload
-        if (originPaymentSlip) {
-          await deleteFileFromBunny(
-            extractFilenameFromCDNSafe(originPaymentSlip as string)
-          );
-        }
       } else {
         const origin = formData.get("originPaymentSlip") as string;
         transactionData.paymentSlip = origin ? [origin] : [];
@@ -97,6 +91,14 @@ export async function action({ params, request }: Route.ActionArgs) {
         transactionData as ITransactionCredentials
       );
       if (res.id) {
+        // Delete old file ONLY after database update succeeds
+        if (originPaymentSlip && file && file instanceof File && file.size > 0) {
+          await deleteFileFromBunny(
+            extractFilenameFromCDNSafe(originPaymentSlip as string)
+          ).catch((err) =>
+            console.error("[BunnyCDN] Failed to clean up old payment slip:", err)
+          );
+        }
         return redirect(
           `/model/settings/wallet?toastMessage=${encodeURIComponent("modelWallet.success.updated")}&toastType=success`
         );

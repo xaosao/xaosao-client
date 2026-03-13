@@ -46,20 +46,20 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (request.method === "PATCH") {
         try {
+            const oldProfile = profile as string | null;
+            let shouldDeleteOldProfile = false;
+
             // Handle image deletion
             if (deleteImage && profile) {
-                await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
                 customerData.profile = ""; // Set to empty or you can use a default image URL
+                shouldDeleteOldProfile = true;
             }
             // Handle new image upload
             else if (newProfile && newProfile instanceof File && newProfile.size > 0) {
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
                 customerData.profile = url;
-                // Delete old file AFTER successful upload
-                if (profile) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
-                }
+                shouldDeleteOldProfile = !!profile;
             }
             // Keep existing profile
             else {
@@ -84,6 +84,13 @@ export async function action({ request }: Route.ActionArgs) {
             }
             const res = await updateProfile(customerId, customerData as ICustomerCredentials);
             if (res.id) {
+                // Delete old file ONLY after database update succeeds
+                if (shouldDeleteOldProfile && oldProfile) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(oldProfile)).catch((err) =>
+                        console.error("[BunnyCDN] Failed to clean up old profile image:", err)
+                    );
+                }
+
                 // Sync profile update to chat backend (non-blocking)
                 try {
                     const authToken = await getUserTokenFromSession(request);

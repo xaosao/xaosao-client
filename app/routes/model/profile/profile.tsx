@@ -182,11 +182,14 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         try {
-            // Delete file from BunnyCDN if imageName exists
-            if (imageName) {
-                await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName));
-            }
+            // Delete from database first, then clean up Bunny
             await deleteModelImage(imageId, modelId);
+            // Delete file from BunnyCDN after DB delete succeeds
+            if (imageName) {
+                await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName)).catch((err) =>
+                    console.error("[BunnyCDN] Failed to clean up deleted image:", err)
+                );
+            }
             return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.imageDeleted")}&tab=images`);
         } catch (error: any) {
             return redirect(`/model/profile?error=${encodeURIComponent(error.message || "modelProfile.errors.imageDeleteFailed")}&tab=images`);
@@ -202,11 +205,6 @@ export async function action({ request }: ActionFunctionArgs) {
             const buffer = Buffer.from(await newFile.arrayBuffer());
             const imageUrl = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
 
-            // Delete old file AFTER successful upload
-            if (!isNewUpload && imageName) {
-                await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName));
-            }
-
             if (isNewUpload) {
                 // Create new image record in database
                 const res = await createModelImage(modelId, imageUrl);
@@ -217,6 +215,12 @@ export async function action({ request }: ActionFunctionArgs) {
                 // Update existing image record in database
                 const res = await updateModelImage(imageId, modelId, imageUrl);
                 if (res.id) {
+                    // Delete old file ONLY after database update succeeds
+                    if (imageName) {
+                        await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName)).catch((err) =>
+                            console.error("[BunnyCDN] Failed to clean up old image:", err)
+                        );
+                    }
                     return redirect(`/model/profile?success=${encodeURIComponent("modelProfile.success.imageUpdated")}&tab=images`);
                 }
             }
