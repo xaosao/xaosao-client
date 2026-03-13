@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ImagePlus, Loader, X, Send } from "lucide-react";
-import { redirect, useNavigate, type ActionFunctionArgs, type LoaderFunction } from "react-router";
+import { redirect, useFetcher, useNavigate, type ActionFunctionArgs, type LoaderFunction } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { requireModelSession } from "~/services/model-auth.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import { createPost, getModelBasicProfile } from "~/services/post.server";
+import { checkProfanity } from "~/utils/profanityFilter";
 
 interface LoaderReturn {
   modelProfile: { firstName: string; lastName?: string | null; profile?: string | null };
@@ -25,7 +26,18 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const content = formData.get("content") as string;
   if (!content?.trim()) {
-    return { error: true, message: "posts.create.contentRequired" };
+    return Response.json({ error: true, message: "posts.create.contentRequired" });
+  }
+
+  // Check profanity before processing images
+  const profanityCheck = checkProfanity(content.trim());
+  if (profanityCheck.blocked) {
+    return Response.json({
+      error: true,
+      profanity: true,
+      matchedWord: profanityCheck.matchedWord || "",
+      message: "posts.create.profanityBlocked",
+    });
   }
 
   try {
@@ -35,7 +47,7 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 
     if (imageFiles.length > 4) {
-      return { error: true, message: "Maximum 4 images allowed" };
+      return Response.json({ error: true, message: "Maximum 4 images allowed" });
     }
 
     const imageUrls: string[] = [];
@@ -58,7 +70,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return redirect("/model");
   } catch (error: any) {
-    return { error: true, message: error?.message || "posts.create.failed" };
+    const msg = error?.message || "";
+    if (msg.startsWith("PROFANITY_BLOCKED:")) {
+      const word = msg.split(":")[1] || "";
+      return Response.json({ error: true, profanity: true, matchedWord: word, message: "posts.create.profanityBlocked" });
+    }
+    return Response.json({ error: true, message: msg || "posts.create.profanityBlocked" });
   }
 }
 
@@ -70,13 +87,24 @@ export default function CreateModelPost({ loaderData }: PageProps) {
   const modelProfile = loaderData?.modelProfile;
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const fetcher = useFetcher<{ error?: boolean; profanity?: boolean; message?: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [content, setContent] = useState("");
   const [previews, setPreviews] = useState<{ url: string; file: File }[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const isSubmitting = fetcher.state !== "idle";
+
+  // Derive server error from fetcher data
+  const serverError = fetcher.data?.error
+    ? fetcher.data.profanity
+      ? t("posts.create.profanityBlocked", { defaultValue: "We do not allow inappropriate language in creating posts. Please review and try again!" })
+      : t(fetcher.data.message || "posts.create.profanityBlocked", { defaultValue: fetcher.data.message || "Failed to create post" })
+    : null;
+
+  const error = localError || serverError;
 
   // Cleanup Object URLs on unmount
   useEffect(() => {
@@ -93,12 +121,12 @@ export default function CreateModelPost({ loaderData }: PageProps) {
     const totalCount = previews.length + newFiles.length;
 
     if (totalCount > 4) {
-      setError(t("posts.create.maxImages", { defaultValue: "Maximum 4 images allowed" }));
+      setLocalError(t("posts.create.maxImages", { defaultValue: "Maximum 4 images allowed" }));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    setError(null);
+    setLocalError(null);
     setIsCompressing(true);
 
     try {
@@ -118,7 +146,7 @@ export default function CreateModelPost({ loaderData }: PageProps) {
 
       setPreviews((prev) => [...prev, ...newPreviews]);
     } catch (err: any) {
-      setError(err?.message || "Failed to process images");
+      setLocalError(err?.message || "Failed to process images");
     } finally {
       setIsCompressing(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -132,39 +160,19 @@ export default function CreateModelPost({ loaderData }: PageProps) {
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!content.trim()) {
-      setError(t("posts.create.contentRequired", { defaultValue: "Please write something" }));
+      setLocalError(t("posts.create.contentRequired", { defaultValue: "Please write something" }));
       return;
     }
 
-    setIsSubmitting(true);
-    setError(null);
+    setLocalError(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("content", content.trim());
-      previews.forEach((p) => formData.append("images", p.file, p.file.name));
+    const formData = new FormData();
+    formData.append("content", content.trim());
+    previews.forEach((p) => formData.append("images", p.file, p.file.name));
 
-      const response = await fetch(window.location.pathname, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
-      }
-
-      const result = await response.json();
-      if (result?.error) {
-        setError(t(result.message, { defaultValue: result.message }));
-      }
-    } catch {
-      setError(t("posts.create.failed", { defaultValue: "Failed to create post" }));
-    } finally {
-      setIsSubmitting(false);
-    }
+    fetcher.submit(formData, { method: "POST" });
   };
 
   return (

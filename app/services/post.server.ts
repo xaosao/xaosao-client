@@ -1,5 +1,6 @@
 import { prisma } from "./database.server";
 import { notifyUser } from "./unified-notification.server";
+import { checkProfanity } from "~/utils/profanityFilter";
 
 // ==================== Types ====================
 
@@ -33,6 +34,12 @@ interface PostFilters {
  * Create a new post and notify matching users on the other side
  */
 export async function createPost(data: CreatePostData) {
+  // Check for profanity before creating post
+  const profanityCheck = checkProfanity(data.content);
+  if (profanityCheck.blocked) {
+    throw new Error(`PROFANITY_BLOCKED:${profanityCheck.matchedWord || ""}`);
+  }
+
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + (data.expiresInHours || 24));
 

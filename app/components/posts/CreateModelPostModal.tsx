@@ -120,7 +120,7 @@ export default function CreateModelPostModal({
         setError(t(result.message, { defaultValue: result.message }));
       }
     } catch {
-      setError(t("posts.create.failed", { defaultValue: "Failed to create post" }));
+      setError(t("posts.create.profanityBlocked", { defaultValue: "Failed to create post" }));
     } finally {
       setIsSubmitting(false);
     }

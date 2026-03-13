@@ -1066,8 +1066,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
             {/* Nearby models skeleton */}
             <div className="space-y-4">
                 <Skeleton className="h-6 w-48" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3].map((i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="space-y-3">
                             <Skeleton className="h-48 w-full rounded-2xl" />
                             <Skeleton className="h-4 w-3/4" />
@@ -1344,7 +1344,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         ) : searchResults && searchResults.length > 0 ? (
                             <>
                                 {/* Desktop search results grid */}
-                                <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                                <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
                                     {searchResults.map((model) => {
                                         const modelDisplayState = getModelState(model);
                                         return (
@@ -1827,7 +1827,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 </div>
 
                 <div className="hidden sm:block">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
                         {displayNearbyModels?.map((model) => {
                             const modelDisplayState = getModelState(model);
                             return (

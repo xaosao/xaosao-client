@@ -5,6 +5,7 @@ import { ArrowLeft, Coins, Loader, Send } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { requireUserSession } from "~/services/auths.server";
 import { createPost, getActiveServices } from "~/services/post.server";
+import { checkProfanity } from "~/utils/profanityFilter";
 
 interface LoaderReturn {
   services: { id: string; name: string }[];
@@ -25,6 +26,12 @@ export async function action({ request }: ActionFunctionArgs) {
     return { error: true, message: "posts.create.contentRequired" };
   }
 
+  // Check profanity before creating post
+  const profanityCheck = checkProfanity(content.trim());
+  if (profanityCheck.blocked) {
+    return { error: true, profanity: true, matchedWord: profanityCheck.matchedWord || "", message: "posts.create.profanityBlocked" };
+  }
+
   try {
     await createPost({
       authorType: "customer",
@@ -42,7 +49,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return redirect("/customer/posts");
   } catch (error: any) {
-    return { error: true, message: error?.message || "posts.create.failed" };
+    const msg = error?.message || "";
+    if (msg.startsWith("PROFANITY_BLOCKED:")) {
+      const word = msg.split(":")[1] || "";
+      return { error: true, profanity: true, matchedWord: word, message: "posts.create.profanityBlocked" };
+    }
+    return { error: true, message: msg || "posts.create.profanityBlocked" };
   }
 }
 
@@ -194,7 +206,9 @@ export default function CreateCustomerPost() {
         {/* Error */}
         {actionData?.error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-            {t(actionData.message, { defaultValue: actionData.message })}
+            {actionData.profanity
+              ? t("posts.create.profanityBlocked", { defaultValue: "We do not allow inappropriate language in creating posts. Please review and try again!" })
+              : t(actionData.message, { defaultValue: actionData.message })}
           </div>
         )}
 
