@@ -719,217 +719,217 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                         )}
 
                         <div className="flex flex-col gap-2 p-3 sm:px-6 sm:py-3">
-                        <h1 className="hidden sm:block text-lg sm:text-xl text-rose-500 text-shadow-sm">
-                            {t("modelDashboard.title")}
-                        </h1>
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder={t('discover.searchPlaceholder')}
-                                    className="w-1/2 pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
-                                />
-                                {searchQuery && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSearchQuery("");
-                                            setSearchResults(null);
-                                        }}
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
-                                    >
-                                        <X className="w-3.5 h-3.5 text-gray-400" />
-                                    </button>
-                                )}
-                            </div>
+                            <h1 className="hidden sm:block text-lg sm:text-xl text-rose-500 text-shadow-sm">
+                                {t("modelDashboard.title")}
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder={t('discover.searchPlaceholder')}
+                                        className="w-1/2 pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSearchQuery("");
+                                                setSearchResults(null);
+                                            }}
+                                            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
+                                        >
+                                            <X className="w-3.5 h-3.5 text-gray-400" />
+                                        </button>
+                                    )}
+                                </div>
 
-                            {/* Filter Button */}
-                            <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                                <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
-                                    <SlidersHorizontal className="w-4 h-4" />
-                                </DrawerTrigger>
-                                <DrawerContent className="space-y-2 sm:space-y-4">
-                                    <Form
-                                        method="get"
-                                        className="flex flex-col h-full"
-                                        onSubmit={(e) => {
-                                            const formData = new FormData(e.currentTarget);
-                                            const newParams = new URLSearchParams();
+                                {/* Filter Button */}
+                                <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                                    <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
+                                        <SlidersHorizontal className="w-4 h-4" />
+                                    </DrawerTrigger>
+                                    <DrawerContent className="space-y-2 sm:space-y-4">
+                                        <Form
+                                            method="get"
+                                            className="flex flex-col h-full"
+                                            onSubmit={(e) => {
+                                                const formData = new FormData(e.currentTarget);
+                                                const newParams = new URLSearchParams();
 
-                                            const distance = formData.get("distance");
-                                            const ageMin = formData.get("ageMin");
-                                            const ageMax = formData.get("ageMax");
-                                            const rating = formData.get("rating");
-                                            const gender = formData.get("gender");
-                                            const services = formData.getAll("services");
+                                                const distance = formData.get("distance");
+                                                const ageMin = formData.get("ageMin");
+                                                const ageMax = formData.get("ageMax");
+                                                const rating = formData.get("rating");
+                                                const gender = formData.get("gender");
+                                                const services = formData.getAll("services");
 
-                                            if (distance) newParams.set("distance", distance.toString());
-                                            if (ageMin) newParams.set("ageMin", ageMin.toString());
-                                            if (ageMax) newParams.set("ageMax", ageMax.toString());
-                                            if (rating) newParams.set("rating", rating.toString());
-                                            if (gender) newParams.set("gender", gender.toString());
-                                            services.forEach(service => {
-                                                if (service) newParams.append("services", service.toString());
-                                            });
+                                                if (distance) newParams.set("distance", distance.toString());
+                                                if (ageMin) newParams.set("ageMin", ageMin.toString());
+                                                if (ageMax) newParams.set("ageMax", ageMax.toString());
+                                                if (rating) newParams.set("rating", rating.toString());
+                                                if (gender) newParams.set("gender", gender.toString());
+                                                services.forEach(service => {
+                                                    if (service) newParams.append("services", service.toString());
+                                                });
 
-                                            navigate(`?${newParams.toString()}`, { replace: true });
-                                            setDrawerOpen(false);
-                                            e.preventDefault();
-                                        }}
-                                    >
-                                        <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
-                                            <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
-                                            <DrawerClose>
+                                                navigate(`?${newParams.toString()}`, { replace: true });
+                                                setDrawerOpen(false);
+                                                e.preventDefault();
+                                            }}
+                                        >
+                                            <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
+                                                <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
+                                                <DrawerClose>
+                                                    <button
+                                                        type="button"
+                                                        className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                    </button>
+                                                </DrawerClose>
+                                            </div>
+
+                                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                                {/* Services Filter */}
+                                                <div>
+                                                    <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
+                                                    <div className="space-y-2">
+                                                        <label className="flex items-center text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                name="services"
+                                                                value="massage"
+                                                                defaultChecked={searchParams.getAll("services").includes("massage")}
+                                                                className="mr-2 cursor-pointer accent-rose-500"
+                                                            />
+                                                            {t('discover.services.massage')}
+                                                        </label>
+                                                        <label className="flex items-center text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                name="services"
+                                                                value="drinkingFriend"
+                                                                defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
+                                                                className="mr-2 cursor-pointer accent-rose-500"
+                                                            />
+                                                            {t('discover.services.drinkingFriend')}
+                                                        </label>
+                                                        <label className="flex items-center text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                name="services"
+                                                                value="travelingPartner"
+                                                                defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
+                                                                className="mr-2 cursor-pointer accent-rose-500"
+                                                            />
+                                                            {t('discover.services.travelingPartner')}
+                                                        </label>
+                                                        <label className="flex items-center text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                name="services"
+                                                                value="talkingPartner"
+                                                                defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
+                                                                className="mr-2 cursor-pointer accent-rose-500"
+                                                            />
+                                                            {t('discover.services.talkingPartner')}
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                {/* Max Distance */}
+                                                <div>
+                                                    <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
+                                                    <input
+                                                        type="number"
+                                                        name="distance"
+                                                        min={1}
+                                                        max={500}
+                                                        defaultValue={searchParams.get("distance") || ""}
+                                                        placeholder="50 km"
+                                                        className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                    />
+                                                </div>
+
+                                                {/* Age Range */}
+                                                <div>
+                                                    <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
+                                                    <div className="flex gap-2 mt-2">
+                                                        <input
+                                                            type="number"
+                                                            name="ageMin"
+                                                            min={18}
+                                                            max={100}
+                                                            defaultValue={searchParams.get("ageMin") || ""}
+                                                            className="w-1/2 p-2 border rounded-md"
+                                                            placeholder={t('discover.minAge')}
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            name="ageMax"
+                                                            min={18}
+                                                            max={100}
+                                                            defaultValue={searchParams.get("ageMax") || ""}
+                                                            className="w-1/2 p-2 border rounded-md"
+                                                            placeholder={t('discover.maxAge')}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Min Rating */}
+                                                <div>
+                                                    <label className="block text-gray-700 font-medium">{t('discover.minRating')}111</label>
+                                                    <select
+                                                        name="rating"
+                                                        className="w-full mt-2 p-2 border rounded-md"
+                                                        defaultValue={searchParams.get("rating") || ""}
+                                                    >
+                                                        <option value="">{t('discover.selectRating')}</option>
+                                                        {[1, 2, 3, 4, 5].map((r) => (
+                                                            <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Gender - hidden on mobile (handled by tabs) */}
+                                                <div className="hidden sm:block">
+                                                    <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
+                                                    <select
+                                                        name="gender"
+                                                        className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                        defaultValue={searchParams.get("gender") || ""}
+                                                    >
+                                                        <option value="">{t('discover.allGenders')}</option>
+                                                        <option value="female">{t('discover.female')}</option>
+                                                        <option value="male">{t('discover.male')}</option>
+                                                        <option value="other">{t('discover.other')}</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-6 space-x-3 border-t">
                                                 <button
                                                     type="button"
-                                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                    onClick={() => {
+                                                        navigate(`/customer`, { replace: true });
+                                                        setDrawerOpen(false);
+                                                    }}
+                                                    className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
                                                 >
-                                                    <X className="w-5 h-5" />
+                                                    {t('discover.resetFilters')}
                                                 </button>
-                                            </DrawerClose>
-                                        </div>
 
-                                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                            {/* Services Filter */}
-                                            <div>
-                                                <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center text-sm">
-                                                        <input
-                                                            type="checkbox"
-                                                            name="services"
-                                                            value="massage"
-                                                            defaultChecked={searchParams.getAll("services").includes("massage")}
-                                                            className="mr-2 cursor-pointer accent-rose-500"
-                                                        />
-                                                        {t('discover.services.massage')}
-                                                    </label>
-                                                    <label className="flex items-center text-sm">
-                                                        <input
-                                                            type="checkbox"
-                                                            name="services"
-                                                            value="drinkingFriend"
-                                                            defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
-                                                            className="mr-2 cursor-pointer accent-rose-500"
-                                                        />
-                                                        {t('discover.services.drinkingFriend')}
-                                                    </label>
-                                                    <label className="flex items-center text-sm">
-                                                        <input
-                                                            type="checkbox"
-                                                            name="services"
-                                                            value="travelingPartner"
-                                                            defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
-                                                            className="mr-2 cursor-pointer accent-rose-500"
-                                                        />
-                                                        {t('discover.services.travelingPartner')}
-                                                    </label>
-                                                    <label className="flex items-center text-sm">
-                                                        <input
-                                                            type="checkbox"
-                                                            name="services"
-                                                            value="talkingPartner"
-                                                            defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
-                                                            className="mr-2 cursor-pointer accent-rose-500"
-                                                        />
-                                                        {t('discover.services.talkingPartner')}
-                                                    </label>
-                                                </div>
+                                                <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
+                                                    {t('discover.applyFilters')}
+                                                </button>
                                             </div>
-
-                                            {/* Max Distance */}
-                                            <div>
-                                                <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
-                                                <input
-                                                    type="number"
-                                                    name="distance"
-                                                    min={1}
-                                                    max={500}
-                                                    defaultValue={searchParams.get("distance") || ""}
-                                                    placeholder="50 km"
-                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                                />
-                                            </div>
-
-                                            {/* Age Range */}
-                                            <div>
-                                                <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
-                                                <div className="flex gap-2 mt-2">
-                                                    <input
-                                                        type="number"
-                                                        name="ageMin"
-                                                        min={18}
-                                                        max={100}
-                                                        defaultValue={searchParams.get("ageMin") || ""}
-                                                        className="w-1/2 p-2 border rounded-md"
-                                                        placeholder={t('discover.minAge')}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        name="ageMax"
-                                                        min={18}
-                                                        max={100}
-                                                        defaultValue={searchParams.get("ageMax") || ""}
-                                                        className="w-1/2 p-2 border rounded-md"
-                                                        placeholder={t('discover.maxAge')}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Min Rating */}
-                                            <div>
-                                                <label className="block text-gray-700 font-medium">{t('discover.minRating')}111</label>
-                                                <select
-                                                    name="rating"
-                                                    className="w-full mt-2 p-2 border rounded-md"
-                                                    defaultValue={searchParams.get("rating") || ""}
-                                                >
-                                                    <option value="">{t('discover.selectRating')}</option>
-                                                    {[1, 2, 3, 4, 5].map((r) => (
-                                                        <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Gender - hidden on mobile (handled by tabs) */}
-                                            <div className="hidden sm:block">
-                                                <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
-                                                <select
-                                                    name="gender"
-                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                                    defaultValue={searchParams.get("gender") || ""}
-                                                >
-                                                    <option value="">{t('discover.allGenders')}</option>
-                                                    <option value="female">{t('discover.female')}</option>
-                                                    <option value="male">{t('discover.male')}</option>
-                                                    <option value="other">{t('discover.other')}</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between p-6 space-x-3 border-t">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    navigate(`/customer`, { replace: true });
-                                                    setDrawerOpen(false);
-                                                }}
-                                                className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                            >
-                                                {t('discover.resetFilters')}
-                                            </button>
-
-                                            <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
-                                                {t('discover.applyFilters')}
-                                            </button>
-                                        </div>
-                                    </Form>
-                                </DrawerContent>
-                            </Drawer>
-                        </div>
+                                        </Form>
+                                    </DrawerContent>
+                                </Drawer>
+                            </div>
                         </div>
                     </div>
                     {/* Spacer for fixed search bar */}
@@ -1115,217 +1115,217 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     )}
 
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 p-3 sm:px-6 sm:py-3">
-                    <h1 className="hidden sm:block text-sm sm:text-xl text-rose-500 text-shadow-sm">
-                        {t("modelDashboard.title")}
-                    </h1>
-                    <div className="w-full sm:w-2/5 flex items-center gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder={t('discover.searchPlaceholder')}
-                                className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSearchQuery("");
-                                        setSearchResults(null);
-                                    }}
-                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
-                                >
-                                    <X className="w-3.5 h-3.5 text-gray-400" />
-                                </button>
-                            )}
-                        </div>
+                        <h1 className="hidden sm:block text-sm sm:text-xl text-rose-500 text-shadow-sm">
+                            {t("modelDashboard.title")}
+                        </h1>
+                        <div className="w-full sm:w-2/5 flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder={t('discover.searchPlaceholder')}
+                                    className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setSearchResults(null);
+                                        }}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100"
+                                    >
+                                        <X className="w-3.5 h-3.5 text-gray-400" />
+                                    </button>
+                                )}
+                            </div>
 
-                        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                            <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
-                                <SlidersHorizontal className="w-4 h-4" />
-                            </DrawerTrigger>
-                            <DrawerContent className="space-y-2 sm:space-y-4">
-                                <Form
-                                    method="get"
-                                    className="flex flex-col h-full"
-                                    onSubmit={(e) => {
-                                        const formData = new FormData(e.currentTarget);
-                                        const newParams = new URLSearchParams();
+                            <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                                <DrawerTrigger className="flex items-center justify-start gap-2 p-2 rounded-md cursor-pointer bg-rose-100 text-rose-500">
+                                    <SlidersHorizontal className="w-4 h-4" />
+                                </DrawerTrigger>
+                                <DrawerContent className="space-y-2 sm:space-y-4">
+                                    <Form
+                                        method="get"
+                                        className="flex flex-col h-full"
+                                        onSubmit={(e) => {
+                                            const formData = new FormData(e.currentTarget);
+                                            const newParams = new URLSearchParams();
 
-                                        // Add filter values only if they have values
-                                        const distance = formData.get("distance");
-                                        const ageMin = formData.get("ageMin");
-                                        const ageMax = formData.get("ageMax");
-                                        const rating = formData.get("rating");
-                                        const gender = formData.get("gender");
-                                        const services = formData.getAll("services");
+                                            // Add filter values only if they have values
+                                            const distance = formData.get("distance");
+                                            const ageMin = formData.get("ageMin");
+                                            const ageMax = formData.get("ageMax");
+                                            const rating = formData.get("rating");
+                                            const gender = formData.get("gender");
+                                            const services = formData.getAll("services");
 
-                                        if (distance) newParams.set("distance", distance.toString());
-                                        if (ageMin) newParams.set("ageMin", ageMin.toString());
-                                        if (ageMax) newParams.set("ageMax", ageMax.toString());
-                                        if (rating) newParams.set("rating", rating.toString());
-                                        if (gender) newParams.set("gender", gender.toString());
-                                        services.forEach(service => {
-                                            if (service) newParams.append("services", service.toString());
-                                        });
+                                            if (distance) newParams.set("distance", distance.toString());
+                                            if (ageMin) newParams.set("ageMin", ageMin.toString());
+                                            if (ageMax) newParams.set("ageMax", ageMax.toString());
+                                            if (rating) newParams.set("rating", rating.toString());
+                                            if (gender) newParams.set("gender", gender.toString());
+                                            services.forEach(service => {
+                                                if (service) newParams.append("services", service.toString());
+                                            });
 
-                                        navigate(`?${newParams.toString()}`, { replace: true });
-                                        setDrawerOpen(false);
-                                        e.preventDefault();
-                                    }}
-                                >
-                                    <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
-                                        <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
-                                        <DrawerClose>
+                                            navigate(`?${newParams.toString()}`, { replace: true });
+                                            setDrawerOpen(false);
+                                            e.preventDefault();
+                                        }}
+                                    >
+                                        <div className="hidden sm:flex items-center justify-between px-6 py-2 border-b">
+                                            <h2 className="text-lg font-bold text-rose-500">{t('discover.filterOptions')}</h2>
+                                            <DrawerClose>
+                                                <button
+                                                    type="button"
+                                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            </DrawerClose>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-4 font-sm">
+                                            {/* Services Filter */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
+                                                <div className="space-y-2">
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="massage"
+                                                            defaultChecked={searchParams.getAll("services").includes("massage")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.massage')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="drinkingFriend"
+                                                            defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.drinkingFriend')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="travelingPartner"
+                                                            defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.travelingPartner')}
+                                                    </label>
+                                                    <label className="flex items-center text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            value="talkingPartner"
+                                                            defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
+                                                            className="mr-2 cursor-pointer accent-rose-500"
+                                                        />
+                                                        {t('discover.services.talkingPartner')}
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Max Distance */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
+                                                <input
+                                                    type="number"
+                                                    name="distance"
+                                                    min={1}
+                                                    max={500}
+                                                    defaultValue={searchParams.get("distance") || ""}
+                                                    placeholder="50 km"
+                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                />
+                                            </div>
+
+                                            {/* Age Range */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
+                                                <div className="flex gap-2 mt-2">
+                                                    <input
+                                                        type="number"
+                                                        name="ageMin"
+                                                        min={18}
+                                                        max={100}
+                                                        defaultValue={searchParams.get("ageMin") || ""}
+                                                        className="w-1/2 p-2 border rounded-md"
+                                                        placeholder={t('discover.minAge')}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        name="ageMax"
+                                                        min={18}
+                                                        max={100}
+                                                        defaultValue={searchParams.get("ageMax") || ""}
+                                                        className="w-1/2 p-2 border rounded-md"
+                                                        placeholder={t('discover.maxAge')}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Min Rating */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.minRating')}</label>
+                                                <select
+                                                    name="rating"
+                                                    className="w-full mt-2 p-2 border rounded-md"
+                                                    defaultValue={searchParams.get("rating") || ""}
+                                                >
+                                                    <option value="">{t('discover.selectRating')}</option>
+                                                    {[1, 2, 3, 4, 5].map((r) => (
+                                                        <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Gender */}
+                                            <div>
+                                                <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
+                                                <select
+                                                    name="gender"
+                                                    className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                                    defaultValue={searchParams.get("gender") || ""}
+                                                >
+                                                    <option value="">{t('discover.allGenders')}</option>
+                                                    <option value="female">{t('discover.female')}</option>
+                                                    <option value="male">{t('discover.male')}</option>
+                                                    <option value="other">{t('discover.other')}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-6 space-x-3 border-t">
                                             <button
                                                 type="button"
-                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                                onClick={() => {
+                                                    navigate(`/customer`, { replace: true });
+                                                    setDrawerOpen(false);
+                                                }}
+                                                className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
                                             >
-                                                <X className="w-5 h-5" />
+                                                {t('discover.resetFilters')}
                                             </button>
-                                        </DrawerClose>
-                                    </div>
 
-                                    <div className="flex-1 overflow-y-auto p-6 space-y-4 font-sm">
-                                        {/* Services Filter */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium mb-2">{t('discover.filterByServices')}</label>
-                                            <div className="space-y-2">
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="massage"
-                                                        defaultChecked={searchParams.getAll("services").includes("massage")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.massage')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="drinkingFriend"
-                                                        defaultChecked={searchParams.getAll("services").includes("drinkingFriend")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.drinkingFriend')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="travelingPartner"
-                                                        defaultChecked={searchParams.getAll("services").includes("travelingPartner")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.travelingPartner')}
-                                                </label>
-                                                <label className="flex items-center text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="services"
-                                                        value="talkingPartner"
-                                                        defaultChecked={searchParams.getAll("services").includes("talkingPartner")}
-                                                        className="mr-2 cursor-pointer accent-rose-500"
-                                                    />
-                                                    {t('discover.services.talkingPartner')}
-                                                </label>
-                                            </div>
+                                            <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
+                                                {t('discover.applyFilters')}
+                                            </button>
                                         </div>
-
-                                        {/* Max Distance */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.maxDistance')}</label>
-                                            <input
-                                                type="number"
-                                                name="distance"
-                                                min={1}
-                                                max={500}
-                                                defaultValue={searchParams.get("distance") || ""}
-                                                placeholder="50 km"
-                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                            />
-                                        </div>
-
-                                        {/* Age Range */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.ageRange')}</label>
-                                            <div className="flex gap-2 mt-2">
-                                                <input
-                                                    type="number"
-                                                    name="ageMin"
-                                                    min={18}
-                                                    max={100}
-                                                    defaultValue={searchParams.get("ageMin") || ""}
-                                                    className="w-1/2 p-2 border rounded-md"
-                                                    placeholder={t('discover.minAge')}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    name="ageMax"
-                                                    min={18}
-                                                    max={100}
-                                                    defaultValue={searchParams.get("ageMax") || ""}
-                                                    className="w-1/2 p-2 border rounded-md"
-                                                    placeholder={t('discover.maxAge')}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Min Rating */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.minRating')}</label>
-                                            <select
-                                                name="rating"
-                                                className="w-full mt-2 p-2 border rounded-md"
-                                                defaultValue={searchParams.get("rating") || ""}
-                                            >
-                                                <option value="">{t('discover.selectRating')}</option>
-                                                {[1, 2, 3, 4, 5].map((r) => (
-                                                    <option key={r} value={r}>{r} <Star className="h-4 w-4" /></option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* Gender */}
-                                        <div>
-                                            <label className="block text-gray-700 font-medium">{t('discover.gender')}</label>
-                                            <select
-                                                name="gender"
-                                                className="w-full mt-2 p-2 border rounded-md focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                                defaultValue={searchParams.get("gender") || ""}
-                                            >
-                                                <option value="">{t('discover.allGenders')}</option>
-                                                <option value="female">{t('discover.female')}</option>
-                                                <option value="male">{t('discover.male')}</option>
-                                                <option value="other">{t('discover.other')}</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-6 space-x-3 border-t">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                navigate(`/customer`, { replace: true });
-                                                setDrawerOpen(false);
-                                            }}
-                                            className="w-full bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                        >
-                                            {t('discover.resetFilters')}
-                                        </button>
-
-                                        <button type="submit" className="w-full bg-rose-500 text-white py-2 rounded-md hover:bg-rose-600 transition-colors font-medium">
-                                            {t('discover.applyFilters')}
-                                        </button>
-                                    </div>
-                                </Form>
-                            </DrawerContent>
-                        </Drawer>
-                    </div>
+                                    </Form>
+                                </DrawerContent>
+                            </Drawer>
+                        </div>
                     </div>
                 </div>
                 {/* Spacer for fixed search bar */}
@@ -1826,7 +1826,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     </p>
                 </div>
 
-                <div className="hidden sm:block">
+                <div className="w-full hidden sm:block">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
                         {displayNearbyModels?.map((model) => {
                             const modelDisplayState = getModelState(model);

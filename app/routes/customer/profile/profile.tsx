@@ -104,12 +104,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
             // Handle image update
             else if (newFile && newFile instanceof File && newFile.size > 0) {
-                if (imageName) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string))
-                }
                 const buffer = Buffer.from(await newFile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
                 image = url;
+                // Delete old file AFTER successful upload
+                if (imageName) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName as string))
+                }
 
                 const res = await updateCustomerImage(imageId, customerId, image);
                 if (res.id) {

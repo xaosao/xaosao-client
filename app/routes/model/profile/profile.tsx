@@ -114,12 +114,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
             // Upload new QR code image if provided
             if (hasNewQrCode) {
-                // Delete old QR code from BunnyCDN if exists
+                const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
+                qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+                // Delete old QR code AFTER successful upload
                 if (existingQrCode) {
                     await deleteFileFromBunny(extractFilenameFromCDNSafe(existingQrCode));
                 }
-                const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-                qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
             }
 
             await updateModelBank(bankId, modelId, {
@@ -198,16 +198,14 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (newFile && newFile instanceof File && newFile.size > 0) {
         try {
-            let imageUrl = "";
+            // Upload new file to BunnyCDN first
+            const buffer = Buffer.from(await newFile.arrayBuffer());
+            const imageUrl = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
 
-            // Delete old file from BunnyCDN if updating existing image
+            // Delete old file AFTER successful upload
             if (!isNewUpload && imageName) {
                 await deleteFileFromBunny(extractFilenameFromCDNSafe(imageName));
             }
-
-            // Upload new file to BunnyCDN
-            const buffer = Buffer.from(await newFile.arrayBuffer());
-            imageUrl = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
 
             if (isNewUpload) {
                 // Create new image record in database

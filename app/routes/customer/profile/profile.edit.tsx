@@ -53,12 +53,13 @@ export async function action({ request }: Route.ActionArgs) {
             }
             // Handle new image upload
             else if (newProfile && newProfile instanceof File && newProfile.size > 0) {
-                if (profile) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
-                }
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
                 customerData.profile = url;
+                // Delete old file AFTER successful upload
+                if (profile) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string))
+                }
             }
             // Keep existing profile
             else {

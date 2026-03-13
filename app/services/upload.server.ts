@@ -89,6 +89,8 @@ export async function uploadFileToBunnyServer(
 }
 
 export async function deleteFileFromBunny(filePath: string): Promise<boolean> {
+  if (!filePath) return false;
+
   const STORAGE_ZONE_NAME = process.env.BUNNY_STORAGE_ZONE || "";
   const ACCESS_KEY = process.env.BUNNY_API_KEY || "";
   const BASE_HOSTNAME =
@@ -96,12 +98,25 @@ export async function deleteFileFromBunny(filePath: string): Promise<boolean> {
 
   const endpoint = `https://${BASE_HOSTNAME}/${STORAGE_ZONE_NAME}/${filePath}`;
 
-  const response = await fetch(endpoint, {
-    method: "DELETE",
-    headers: {
-      AccessKey: ACCESS_KEY,
-    },
-  });
+  console.log(`[BunnyCDN DELETE] Deleting file: ${filePath} | Endpoint: ${endpoint} | Time: ${new Date().toISOString()}`);
 
-  return response.ok;
+  try {
+    const response = await fetch(endpoint, {
+      method: "DELETE",
+      headers: {
+        AccessKey: ACCESS_KEY,
+      },
+    });
+
+    if (response.ok) {
+      console.log(`[BunnyCDN DELETE] SUCCESS: ${filePath}`);
+    } else {
+      console.error(`[BunnyCDN DELETE] FAILED: ${filePath} | Status: ${response.status}`);
+    }
+
+    return response.ok;
+  } catch (error) {
+    console.error(`[BunnyCDN DELETE] ERROR: ${filePath}`, error);
+    return false;
+  }
 }

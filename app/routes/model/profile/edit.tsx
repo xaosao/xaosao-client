@@ -46,12 +46,13 @@ export async function action({ request }: Route.ActionArgs) {
     if (request.method === "PATCH") {
         try {
             if (newProfile && newProfile instanceof File && newProfile.size > 0) {
-                if (profile) {
-                    await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string));
-                }
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
                 modelFormData.profile = url;
+                // Delete old file AFTER successful upload
+                if (profile) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(profile as string));
+                }
             } else {
                 modelFormData.profile = formData.get("profile") as string;
             }

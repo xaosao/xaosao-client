@@ -36,12 +36,13 @@ export async function action({ params, request }: Route.ActionArgs) {
    if (request.method === "PATCH") {
       try {
          if (file && file instanceof File && file.size > 0) {
-            if (originPaymentSlip) {
-               await deleteFileFromBunny(extractFilenameFromCDNSafe(originPaymentSlip as string))
-            }
             const buffer = Buffer.from(await file.arrayBuffer());
             const url = await uploadFileToBunnyServer(buffer, file.name, file.type);
             transactionData.paymentSlip = [url];
+            // Delete old file AFTER successful upload
+            if (originPaymentSlip) {
+               await deleteFileFromBunny(extractFilenameFromCDNSafe(originPaymentSlip as string))
+            }
 
          } else {
             const origin = formData.get("originPaymentSlip") as string;
