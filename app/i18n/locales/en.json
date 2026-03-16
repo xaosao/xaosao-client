@@ -2184,6 +2184,9 @@
     "emailSubject": "Check out {{name}}'s Profile",
     "emailBody": "Hi,\n\nI wanted to share {{name}}'s profile with you.\n\nCheck it out here: {{url}}"
   },
+  "modelChatCustomer": {
+    "autoMessage": "Hello {{customerName}}, I'm available and ready to be your partner. My name on the app is: {{modelName}}."
+  },
   "modelDating": {
     "loading": "Loading...",
     "title": "My Dating Requests",

@@ -15,9 +15,10 @@ interface CustomerCardProps {
     customer: any;
     modelLatitude?: number;
     modelLongitude?: number;
+    modelName?: string;
 }
 
-export default function CustomerCard({ customer, modelLatitude, modelLongitude }: CustomerCardProps) {
+export default function CustomerCard({ customer, modelLatitude, modelLongitude, modelName }: CustomerCardProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
@@ -75,7 +76,13 @@ export default function CustomerCard({ customer, modelLatitude, modelLongitude }
                                 <button
                                     type="button"
                                     className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                                    onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                                    onClick={() => {
+                                        const message = t("modelChatCustomer.autoMessage", {
+                                            customerName: customer.firstName || "",
+                                            modelName: modelName || ""
+                                        });
+                                        window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                                    }}
                                 >
                                     <MessageSquareText className="w-4 h-4" />
                                 </button>

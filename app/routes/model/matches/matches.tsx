@@ -53,6 +53,7 @@ interface LoaderReturn {
     passPagination: PaginationProps;
     modelLatitude: number;
     modelLongitude: number;
+    modelName: string;
 }
 
 type PaginationProps = {
@@ -86,6 +87,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const model = await getModelDashboardData(modelId);
     const modelLatitude = model?.latitude || 0;
     const modelLongitude = model?.longitude || 0;
+    const modelName = `${model?.firstName || ''} ${model?.lastName || ''}`.trim();
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -158,6 +160,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             passPagination: DEFAULT_PAGINATION,
             modelLatitude,
             modelLongitude,
+            modelName,
         };
     }
 
@@ -176,6 +179,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             passPagination: DEFAULT_PAGINATION,
             modelLatitude,
             modelLongitude,
+            modelName,
         };
     }
 
@@ -196,6 +200,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             passPagination: DEFAULT_PAGINATION,
             modelLatitude,
             modelLongitude,
+            modelName,
         };
     }
 
@@ -214,6 +219,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             passPagination,
             modelLatitude,
             modelLongitude,
+            modelName,
         };
     }
 
@@ -321,6 +327,7 @@ export default function ModelMatchesPage() {
         passPagination,
         modelLatitude,
         modelLongitude,
+        modelName,
     } = useLoaderData<LoaderReturn>();
     const actionData = useActionData<typeof action>();
 
@@ -655,6 +662,7 @@ export default function ModelMatchesPage() {
                                             customer={customer}
                                             modelLatitude={modelLatitude}
                                             modelLongitude={modelLongitude}
+                                            modelName={modelName}
                                         />
                                     ))}
                                 </div>
@@ -694,6 +702,7 @@ export default function ModelMatchesPage() {
                                             customer={customer}
                                             modelLatitude={modelLatitude}
                                             modelLongitude={modelLongitude}
+                                            modelName={modelName}
                                         />
                                     ))}
                                 </div>
@@ -734,6 +743,7 @@ export default function ModelMatchesPage() {
                                             customer={customer}
                                             modelLatitude={modelLatitude}
                                             modelLongitude={modelLongitude}
+                                            modelName={modelName}
                                         />
                                     ))}
                                 </div>
@@ -774,6 +784,7 @@ export default function ModelMatchesPage() {
                                             customer={customer}
                                             modelLatitude={modelLatitude}
                                             modelLongitude={modelLongitude}
+                                            modelName={modelName}
                                         />
                                     ))}
                                 </div>

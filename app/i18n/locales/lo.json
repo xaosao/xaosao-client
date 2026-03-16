@@ -2248,6 +2248,9 @@
     "emailSubject": "ເບິ່ງໂປຣໄຟລ໌ຂອງ {{name}}",
     "emailBody": "ສະບາຍດີ,\n\nຂ້ອຍຢາກແບ່ງປັນໂປຣໄຟລ໌ຂອງ {{name}} ໃຫ້ທ່ານ.\n\nເບິ່ງໄດ້ທີ່ນີ້: {{url}}"
   },
+  "modelChatCustomer": {
+    "autoMessage": "ສະບາຍດີ {{customerName}}, ນ້ອງຫວ່າງ ແລະ ພ້ອມເປັນຄູ່ເດີ, ຊື່ນ້ອງໃນແອັບແມ່ນ: {{modelName}}."
+  },
   "modelDating": {
     "loading": "ກຳລັງໂຫລດ...",
     "title": "ປະຫວັດການນັດພົບຂອງທ່ານ",

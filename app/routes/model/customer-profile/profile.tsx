@@ -14,6 +14,7 @@ import { capitalize } from '~/utils/functions/textFormat';
 import { calculateAgeFromDOB, formatNumber } from '~/utils';
 import { getCustomerProfile } from '~/services/profile.server';
 import { requireModelSession, getModelTokenFromSession } from '~/services/model-auth.server';
+import { getModelDashboardData } from '~/services/model.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
@@ -32,11 +33,13 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       throw new Response("Customer ID is required", { status: 400 });
    }
 
-   const [customer, customerPosts] = await Promise.all([
+   const [customer, customerPosts, modelData] = await Promise.all([
       getCustomerProfile(customerId, modelId),
       getUserProfilePosts(customerId, "customer"),
+      getModelDashboardData(modelId),
    ]);
-   return { customer, modelId, customerPosts };
+   const modelName = `${modelData?.firstName || ''} ${modelData?.lastName || ''}`.trim();
+   return { customer, modelId, customerPosts, modelName };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -119,7 +122,7 @@ export default function CustomerProfilePage() {
    const { t } = useTranslation();
    const navigate = useNavigate();
    const navigation = useNavigation();
-   const { customer, customerPosts } = useLoaderData<{ customer: CustomerData; customerPosts: any[] }>();
+   const { customer, customerPosts, modelName } = useLoaderData<{ customer: CustomerData; customerPosts: any[]; modelName: string }>();
 
    const images = customer.Images || [];
    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
@@ -217,7 +220,13 @@ export default function CustomerProfilePage() {
                            size="sm"
                            type="button"
                            className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                           onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                           onClick={() => {
+                              const message = t("modelChatCustomer.autoMessage", {
+                                 customerName: customer.firstName || "",
+                                 modelName: modelName || ""
+                              });
+                              window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                           }}
                         >
                            <MessageSquareText className="w-3 h-3" />
                         </Button>
@@ -309,7 +318,13 @@ export default function CustomerProfilePage() {
                               size="sm"
                               type="button"
                               className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                              onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                              onClick={() => {
+                              const message = t("modelChatCustomer.autoMessage", {
+                                 customerName: customer.firstName || "",
+                                 modelName: modelName || ""
+                              });
+                              window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                           }}
                            >
                               <MessageSquareText className="w-4 h-4" />
                               {t("modelCustomerProfile.message")}
