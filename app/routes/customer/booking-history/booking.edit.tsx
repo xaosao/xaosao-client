@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button"
 import { Textarea } from "~/components/ui/textarea"
 import { Calendar } from "~/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 // utils:
 import { cn } from "~/lib/utils"
@@ -137,6 +138,14 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
       dateBooking?.endDate ? new Date(dateBooking.endDate) : undefined
    );
 
+   // State for per_hour: separate time
+   const [selectedTime, setSelectedTime] = useState<string>(
+      dateBooking?.startDate
+         ? `${String(new Date(dateBooking.startDate).getHours()).padStart(2, '0')}:${String(new Date(dateBooking.startDate).getMinutes()).padStart(2, '0')}`
+         : ""
+   );
+   const [isStartDatePopoverOpen, setIsStartDatePopoverOpen] = useState(false);
+
    // State for per_hour services
    const [hours, setHours] = useState<number>(dateBooking?.hours || 2);
 
@@ -213,6 +222,36 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
       return `${days} ${t('booking.days')}`;
    };
 
+   // Generate time slots (every 30 min) with disabled flag for past times
+   const generateTimeSlots = (refDate?: Date): { value: string; label: string; disabled: boolean }[] => {
+      const slots: { value: string; label: string; disabled: boolean }[] = [];
+      const now = new Date();
+      const dateToCheck = refDate || startDate;
+      const isToday = dateToCheck
+         ? dateToCheck.getFullYear() === now.getFullYear() &&
+           dateToCheck.getMonth() === now.getMonth() &&
+           dateToCheck.getDate() === now.getDate()
+         : false;
+
+      for (let h = 0; h < 24; h++) {
+         for (let m = 0; m < 60; m += 30) {
+            const hour = String(h).padStart(2, '0');
+            const min = String(m).padStart(2, '0');
+            const value = `${hour}:${min}`;
+            const isPast = isToday && (h < now.getHours() || (h === now.getHours() && m <= now.getMinutes()));
+            slots.push({ value, label: value, disabled: isPast });
+         }
+      }
+      return slots;
+   };
+
+   const isDateDisabled = (date: Date): boolean => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dateToCheck = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      return dateToCheck < today;
+   };
+
    function closeHandler() {
       navigate("/customer/dates-history");
    }
@@ -240,6 +279,120 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
 
                <div className="space-y-6">
                   <div>
+                     {billingType === 'per_hour' ? (
+                        <div className="grid gap-3 sm:gap-6 grid-cols-2 lg:grid-cols-3">
+                           {/* Date picker (date only) */}
+                           <div className="space-y-2">
+                              <Label htmlFor="start-date" className="text-sm font-medium">
+                                 {t('booking.edit.startDate')} <span className="text-destructive">*</span>
+                              </Label>
+                              <Popover open={isStartDatePopoverOpen} onOpenChange={setIsStartDatePopoverOpen}>
+                                 <PopoverTrigger asChild>
+                                    <Button
+                                       id="start-date"
+                                       variant="outline"
+                                       className={cn(
+                                          "w-full justify-start text-left font-normal h-11",
+                                          !startDate && "text-muted-foreground",
+                                       )}
+                                    >
+                                       <CalendarIcon className="mr-2 h-4 w-4" />
+                                       {startDate ? format(startDate, "PPP") : t('profileBook.pickDate', { defaultValue: 'Pick a date' })}
+                                    </Button>
+                                 </PopoverTrigger>
+                                 <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                       mode="single"
+                                       selected={startDate}
+                                       onSelect={(date) => {
+                                          setStartDate(date);
+                                          setIsStartDatePopoverOpen(false);
+                                          // Reset time if switching to today and selected time is in the past
+                                          if (date && selectedTime) {
+                                             const now = new Date();
+                                             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                             const sel = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                             if (sel.getTime() === today.getTime()) {
+                                                const [h, m] = selectedTime.split(":").map(Number);
+                                                if (h < now.getHours() || (h === now.getHours() && m <= now.getMinutes())) {
+                                                   setSelectedTime("");
+                                                }
+                                             }
+                                          }
+                                       }}
+                                       disabled={isDateDisabled}
+                                       initialFocus
+                                    />
+                                 </PopoverContent>
+                              </Popover>
+                           </div>
+
+                           {/* Time picker */}
+                           <div className="space-y-2">
+                              <Label htmlFor="start-time" className="text-sm font-medium">
+                                 {t('profileBook.selectTime', { defaultValue: 'Select Time' })} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={selectedTime}
+                                 onValueChange={setSelectedTime}
+                              >
+                                 <SelectTrigger id="start-time" className="w-full h-11">
+                                    <Clock className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.pickTime', { defaultValue: 'Pick a time' })} />
+                                 </SelectTrigger>
+                                 <SelectContent className="max-h-60">
+                                    {generateTimeSlots().map((slot) => (
+                                       <SelectItem
+                                          key={slot.value}
+                                          value={slot.value}
+                                          disabled={slot.disabled}
+                                          className={slot.disabled ? "opacity-40 cursor-not-allowed" : ""}
+                                       >
+                                          {slot.label}
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+
+                           {/* Hours selector */}
+                           <div className="space-y-2 col-span-2 lg:col-span-1">
+                              <Label htmlFor="hours-select" className="text-sm font-medium">
+                                 {t('profileBook.numberOfHours')} <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                 value={String(hours)}
+                                 onValueChange={(value) => setHours(Number(value))}
+                              >
+                                 <SelectTrigger id="hours-select" className="w-full h-11">
+                                    <Clock className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder={t('profileBook.selectHours')} />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((hour) => (
+                                       <SelectItem key={hour} value={String(hour)}>
+                                          {hour} {hour === 1 ? t('profileBook.hour') : t('profileBook.hours')}
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </div>
+
+                           {/* Hidden combined startDate for form submission */}
+                           {startDate && selectedTime && (
+                              <input
+                                 type="hidden"
+                                 name="startDate"
+                                 value={(() => {
+                                    const [h, m] = selectedTime.split(":").map(Number);
+                                    const combined = new Date(startDate);
+                                    combined.setHours(h, m, 0, 0);
+                                    return combined.toISOString();
+                                 })()}
+                              />
+                           )}
+                        </div>
+                     ) : (
                      <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
                            <Label htmlFor="start-date" className="text-sm font-medium">
@@ -264,25 +417,48 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
                                     mode="single"
                                     selected={startDate}
                                     onSelect={setStartDate}
-                                    disabled={(date) => date < new Date()}
+                                    disabled={isDateDisabled}
                                     initialFocus
                                  />
-                                 <div className="p-2">
-                                    <Input
-                                       required
-                                       type="time"
-                                       name="startDate"
-                                       className="w-full"
-                                       defaultValue={String(dateBooking.startDate)}
-                                       onChange={(e) => {
-                                          if (!startDate) return;
-                                          const [hours, minutes] = e.target.value.split(":").map(Number);
-                                          const newDate = new Date(startDate);
-                                          newDate.setHours(hours);
-                                          newDate.setMinutes(minutes);
-                                          setStartDate(newDate);
-                                       }}
-                                    />
+                                 <div className="p-2 space-y-3">
+                                    <div className="space-y-1">
+                                       <Label className="text-sm font-medium text-gray-700">
+                                          {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                       </Label>
+                                       <Select
+                                          onValueChange={(val) => {
+                                             if (!startDate) return;
+                                             const [h, m] = val.split(":").map(Number);
+                                             const newDate = new Date(startDate);
+                                             newDate.setHours(h, m, 0, 0);
+                                             setStartDate(newDate);
+                                          }}
+                                       >
+                                          <SelectTrigger className="w-40 sm:w-48">
+                                             <Clock className="mr-2 h-4 w-4" />
+                                             <SelectValue placeholder={t('profileBook.pickTime', { defaultValue: 'Pick a time' })} />
+                                          </SelectTrigger>
+                                          <SelectContent className="max-h-60">
+                                             {generateTimeSlots().map((slot) => (
+                                                <SelectItem
+                                                   key={slot.value}
+                                                   value={slot.value}
+                                                   disabled={slot.disabled}
+                                                   className={slot.disabled ? "opacity-40 cursor-not-allowed" : ""}
+                                                >
+                                                   {slot.label}
+                                                </SelectItem>
+                                             ))}
+                                          </SelectContent>
+                                       </Select>
+                                    </div>
+                                    <Button
+                                       type="button"
+                                       onClick={() => {}}
+                                       className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                                    >
+                                       {t('profileBook.confirm', { defaultValue: 'Confirm' })}
+                                    </Button>
                                  </div>
                               </PopoverContent>
                            </Popover>
@@ -320,26 +496,50 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
                                     selected={endDate}
                                     onSelect={setEndDate}
                                     disabled={(date) => {
-                                       if (!startDate) return date < new Date();
+                                       if (!startDate) return isDateDisabled(date);
                                        return date < startDate;
                                     }}
                                     initialFocus
                                  />
-                                 <div className="p-2">
-                                    <Input
-                                       type="time"
-                                       name="endDate"
-                                       className="w-full"
-                                       defaultValue={String(dateBooking.endDate)}
-                                       onChange={(e) => {
-                                          if (!endDate) return;
-                                          const [hours, minutes] = e.target.value.split(":").map(Number);
-                                          const newDate = new Date(endDate);
-                                          newDate.setHours(hours);
-                                          newDate.setMinutes(minutes);
-                                          setEndDate(newDate);
-                                       }}
-                                    />
+                                 <div className="p-2 space-y-3">
+                                    <div className="space-y-1">
+                                       <Label className="text-sm font-medium text-gray-700">
+                                          {t('profileBook.selectTime', { defaultValue: 'Select Time' })}
+                                       </Label>
+                                       <Select
+                                          onValueChange={(val) => {
+                                             if (!endDate) return;
+                                             const [h, m] = val.split(":").map(Number);
+                                             const newDate = new Date(endDate);
+                                             newDate.setHours(h, m, 0, 0);
+                                             setEndDate(newDate);
+                                          }}
+                                       >
+                                          <SelectTrigger className="w-40 sm:w-48">
+                                             <Clock className="mr-2 h-4 w-4" />
+                                             <SelectValue placeholder={t('profileBook.pickTime', { defaultValue: 'Pick a time' })} />
+                                          </SelectTrigger>
+                                          <SelectContent className="max-h-60">
+                                             {generateTimeSlots(endDate).map((slot) => (
+                                                <SelectItem
+                                                   key={slot.value}
+                                                   value={slot.value}
+                                                   disabled={slot.disabled}
+                                                   className={slot.disabled ? "opacity-40 cursor-not-allowed" : ""}
+                                                >
+                                                   {slot.label}
+                                                </SelectItem>
+                                             ))}
+                                          </SelectContent>
+                                       </Select>
+                                    </div>
+                                    <Button
+                                       type="button"
+                                       onClick={() => {}}
+                                       className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                                    >
+                                       {t('profileBook.confirm', { defaultValue: 'Confirm' })}
+                                    </Button>
                                  </div>
                               </PopoverContent>
                            </Popover>
@@ -353,44 +553,8 @@ export default function EditServiceBooking({ loaderData }: TransactionProps) {
                         </div>
 
                      </div>
+                     )}
                   </div>
-
-                  {/* Hours selector for per_hour services */}
-                  {billingType === 'per_hour' && (
-                     <div className="space-y-2">
-                        <Label className="text-sm font-medium">
-                           {t('profileBook.selectHours')} <span className="text-destructive">*</span>
-                        </Label>
-                        <div className="flex items-center gap-3">
-                           <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setHours(Math.max(2, hours - 1))}
-                              disabled={hours <= 2}
-                           >
-                              -
-                           </Button>
-                           <div className="flex items-center gap-2 px-4 py-2 border rounded-md min-w-[80px] justify-center">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{hours}</span>
-                           </div>
-                           <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setHours(Math.min(10, hours + 1))}
-                              disabled={hours >= 10}
-                           >
-                              +
-                           </Button>
-                           <span className="text-sm text-muted-foreground">
-                              {hours !== 1 ? t('profileBook.hours') : t('modelServices.hour')}
-                           </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{t('profileBook.hoursHint')}</p>
-                     </div>
-                  )}
 
                   {/* Session type selector for per_session services */}
                   {billingType === 'per_session' && (
