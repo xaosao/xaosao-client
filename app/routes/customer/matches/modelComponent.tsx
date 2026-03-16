@@ -25,6 +25,7 @@ interface ModelCardProps {
     onLike?: (model: IForYouModelResponse) => void;
     onPass?: (model: IForYouModelResponse) => void;
     onAddFriend?: (model: IForYouModelResponse) => void;
+    onTrackActivity?: (modelId: string, action: string) => void;
     isFetching?: boolean;
 }
 
@@ -38,6 +39,7 @@ export default function ModelCard({
     onLike,
     onPass,
     onAddFriend,
+    onTrackActivity,
     isFetching
 }: ModelCardProps) {
     const { t } = useTranslation();
@@ -54,7 +56,7 @@ export default function ModelCard({
     };
 
     // Handler for WhatsApp button click with subscription check
-    const handleWhatsAppClick = (whatsappNumber: number) => {
+    const handleWhatsAppClick = (whatsappNumber: number, modelId: string) => {
         if (!hasActiveSubscription) {
             if (onOpenSubscriptionModal) {
                 onOpenSubscriptionModal();
@@ -62,6 +64,8 @@ export default function ModelCard({
                 navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
             }
         } else {
+            // Track chat click for active subscribers
+            onTrackActivity?.(modelId, "CLICK_CHAT");
             window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
@@ -112,7 +116,7 @@ export default function ModelCard({
                         <button
                             type="button"
                             className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
-                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                         >
                             <MessageSquareText className="w-4 h-4" />
                         </button>

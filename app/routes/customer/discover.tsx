@@ -244,6 +244,19 @@ export async function action({
             };
         }
 
+        // Handle tracking actions (fire-and-forget)
+        if (actionType === "trackActivity") {
+            const trackAction = formData.get("trackAction") as string;
+            const { trackSubscriberActivity } = await import("~/services/tracking.server");
+            trackSubscriberActivity({
+                customerId,
+                modelId,
+                action: trackAction as any,
+                page: "discover",
+            });
+            return { success: true, action: "trackActivity", modelId };
+        }
+
         // Invalid action type
         return {
             success: false,
@@ -296,6 +309,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
     // Optimistic UI: useFetcher for non-navigation form submissions
     const fetcher = useFetcher<typeof action>();
+    const trackingFetcher = useFetcher();
 
     // Optimistic state: Track pending interactions by modelId
     const [optimisticInteractions, setOptimisticInteractions] = useState<{
@@ -487,10 +501,17 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     };
 
     // Handler for WhatsApp button click with subscription check
-    const handleWhatsAppClick = (whatsappNumber: number) => {
+    const handleWhatsAppClick = (whatsappNumber: number, modelId: string) => {
         if (!hasActiveSubscription) {
             openSubscriptionModal();
         } else {
+            // Track chat click for active subscribers
+            const formData = new FormData();
+            formData.append("actionType", "trackActivity");
+            formData.append("trackAction", "CLICK_CHAT");
+            formData.append("modelId", modelId);
+            trackingFetcher.submit(formData, { method: "post" });
+
             window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
@@ -986,7 +1007,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     <button
                                                         type="button"
                                                         className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
-                                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                     >
                                                         <MessageSquareText className="w-4 h-4" />
                                                     </button>
@@ -1358,7 +1379,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             <button
                                                                 type="button"
                                                                 className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
-                                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                                onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                             >
                                                                 <MessageSquareText className="w-4 h-4" />
                                                             </button>
@@ -1472,7 +1493,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         <button
                                                             type="button"
                                                             className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
-                                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
                                                         </button>
@@ -1590,7 +1611,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         <button
                                                             type="button"
                                                             className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
                                                         </button>
@@ -1624,7 +1645,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         <button
                                                             type="button"
                                                             className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                            onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
                                                         </button>
@@ -1687,7 +1708,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     <button
                                                         type="button"
                                                         className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                     >
                                                         <MessageSquareText className="w-4 h-4" />
                                                     </button>
@@ -1721,7 +1742,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     <button
                                                         type="button"
                                                         className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
-                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp)}
+                                                        onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                     >
                                                         <MessageSquareText className="w-4 h-4" />
                                                     </button>
@@ -1841,7 +1862,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 <button
                                                     type="button"
                                                     className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
-                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                 >
                                                     <MessageSquareText className="w-4 h-4" />
                                                 </button>
@@ -2005,7 +2026,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         <button
                                             type="button"
                                             className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
-                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
+                                            onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                         >
                                             <MessageSquareText className="w-4 h-4" />
                                         </button>

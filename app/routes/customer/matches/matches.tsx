@@ -337,6 +337,19 @@ export async function action({ request }: Route.ActionArgs) {
             };
         }
 
+        // Handle tracking actions (fire-and-forget)
+        if (actionType === "trackActivity") {
+            const trackAction = formData.get("trackAction") as string;
+            const { trackSubscriberActivity } = await import("~/services/tracking.server");
+            trackSubscriberActivity({
+                customerId,
+                modelId,
+                action: trackAction as any,
+                page: "matches",
+            });
+            return { success: true, action: "trackActivity", modelId };
+        }
+
         return {
             success: false,
             error: true,
@@ -448,6 +461,16 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
 
     // Optimistic UI with useFetcher
     const fetcher = useFetcher<typeof action>();
+    const trackingFetcher = useFetcher();
+
+    // Track subscriber activity (fire-and-forget)
+    const handleTrackActivity = (modelId: string, trackAction: string) => {
+        const formData = new FormData();
+        formData.append("actionType", "trackActivity");
+        formData.append("trackAction", trackAction);
+        formData.append("modelId", modelId);
+        trackingFetcher.submit(formData, { method: "post" });
+    };
 
     const [optimisticInteractions, setOptimisticInteractions] = React.useState<{
         [modelId: string]: {
@@ -1041,6 +1064,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                     onLike={() => handleLike(model)}
                                                     onPass={() => handlePass(model)}
                                                     onAddFriend={() => handleAddFriend(model)}
+                                                    onTrackActivity={handleTrackActivity}
                                                     isFetching={fetcher.state !== "idle"}
                                                 />
                                             );
@@ -1075,6 +1099,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
+                                                onTrackActivity={handleTrackActivity}
                                                 isFetching={fetcher.state !== "idle"}
                                             />
                                         );
@@ -1117,6 +1142,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
+                                                onTrackActivity={handleTrackActivity}
                                                 isFetching={fetcher.state !== "idle"}
                                             />
                                         );
@@ -1159,6 +1185,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
+                                                onTrackActivity={handleTrackActivity}
                                                 isFetching={fetcher.state !== "idle"}
                                             />
                                         );
@@ -1201,6 +1228,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
+                                                onTrackActivity={handleTrackActivity}
                                                 isFetching={fetcher.state !== "idle"}
                                             />
                                         );

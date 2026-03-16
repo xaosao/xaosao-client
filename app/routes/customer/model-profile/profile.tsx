@@ -98,6 +98,17 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     const totalRefunded = wallet?.totalRefunded || 0;
     const availableBalance = totalBalance - totalSpend + totalRefunded;
 
+    // Track VIEW_MODEL_PROFILE for active subscribers (fire-and-forget, non-blocking)
+    if (hasSubscription) {
+        const { trackSubscriberActivity } = await import("~/services/tracking.server");
+        trackSubscriberActivity({
+            customerId,
+            modelId,
+            action: "VIEW_MODEL_PROFILE",
+            page: "model_profile",
+        });
+    }
+
     return {
         model: { ...model, reviewData },
         hasActiveSubscription: hasSubscription,
@@ -196,6 +207,19 @@ export async function action({
         }
     }
 
+    // Handle tracking actions (fire-and-forget)
+    if (actionType === "trackActivity") {
+        const trackAction = formData.get("trackAction") as string;
+        const { trackSubscriberActivity } = await import("~/services/tracking.server");
+        trackSubscriberActivity({
+            customerId,
+            modelId,
+            action: trackAction as any,
+            page: "model_profile",
+        });
+        return { success: true, action: "trackActivity", modelId };
+    }
+
     return { success: false, action: "invalid", modelId, message: "Invalid action type" };
 }
 
@@ -245,6 +269,17 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
 
     // Optimistic UI with useFetcher
     const fetcher = useFetcher<typeof action>();
+    const trackingFetcher = useFetcher();
+
+    // Track subscriber activity (fire-and-forget)
+    const trackActivity = (trackAction: string) => {
+        if (!hasActiveSubscription) return;
+        const formData = new FormData();
+        formData.append("actionType", "trackActivity");
+        formData.append("trackAction", trackAction);
+        formData.append("modelId", model.id);
+        trackingFetcher.submit(formData, { method: "post" });
+    };
 
     const [optimisticState, setOptimisticState] = React.useState<{
         customerAction: "LIKE" | null;
@@ -317,6 +352,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         if (!hasActiveSubscription) {
             openSubscriptionModal();
         } else {
+            trackActivity("CLICK_CHAT");
             window.open(`https://wa.me/${whatsappNumber}`);
         }
     };
@@ -332,6 +368,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
             setInsufficientBalanceData({ servicePrice, serviceName });
             setShowInsufficientBalanceModal(true);
         } else {
+            trackActivity("CLICK_BOOK");
             navigate(`/customer/book-service/${modelId}/${serviceId}`);
         }
     };
