@@ -503,7 +503,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
          )}
 
          <button
-            onClick={() => window.open("https://wa.me/8562093033918", "_blank")}
+            onClick={() => window.open("https://wa.me/8562094238897", "_blank")}
             className="flex gap-2 cursor-pointer fixed bottom-16 right-4 sm:bottom-6 sm:right-4 z-50 p-2 sm:p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
          >
             <Headset size={16} className="animate-pulse" />

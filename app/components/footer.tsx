@@ -2,7 +2,7 @@ import { Link } from "react-router"
 import { useTranslation } from "react-i18next"
 import { Facebook, MessageCircle, PhoneForwarded, Youtube } from "lucide-react"
 
-const PHONE_NUMBER = "8562093033918"
+const PHONE_NUMBER = "8562094238897"
 
 export function Footer() {
   const { t } = useTranslation()
