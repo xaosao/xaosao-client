@@ -2,6 +2,22 @@ import { prisma } from "./database.server";
 import { createAuditLogs } from "./log.server";
 import { FieldValidationError } from "./base.server";
 
+/**
+ * Expire subscriptions whose endDate has passed but status is still "active".
+ * Called by a cron job every 10 minutes.
+ */
+export async function expireOverdueSubscriptions() {
+  const now = new Date();
+  const result = await prisma.subscription.updateMany({
+    where: {
+      status: "active",
+      endDate: { lt: now },
+    },
+    data: { status: "expired" },
+  });
+  return result.count;
+}
+
 // Check if customer has active subscription
 export async function hasActiveSubscription(customerId: string) {
   try {
