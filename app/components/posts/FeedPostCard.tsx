@@ -1,22 +1,52 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useFetcher, useNavigate } from "react-router";
-import { Heart, MessageCircle, Loader, CalendarCheck, Coins } from "lucide-react";
+import { useFetcher, useNavigate, useSearchParams } from "react-router";
+import { Heart, MessageCircle, Loader, CalendarCheck, Coins, Gift, X, Send } from "lucide-react";
 
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
-import type { PostItem, UserProfile } from "~/types/post";
+import type { PostItem, UserProfile, GiftItem } from "~/types/post";
 import PostImageGallery from "~/components/posts/PostImageGallery";
 
 interface FeedPostCardProps {
   post: PostItem;
   customerProfile?: UserProfile | null;
+  gifts?: GiftItem[];
+  walletBalance?: number;
 }
 
-export default function FeedPostCard({ post, customerProfile }: FeedPostCardProps) {
+export default function FeedPostCard({ post, customerProfile, gifts = [], walletBalance = 0 }: FeedPostCardProps) {
   const { t } = useTranslation();
   const fetcher = useFetcher();
+  const giftFetcher = useFetcher();
   const navigate = useNavigate();
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+  const [, setSearchParams] = useSearchParams();
 
   const isToggling = fetcher.state !== "idle";
+  const isSendingGift = giftFetcher.state !== "idle";
+
+  // Handle gift send response
+  useEffect(() => {
+    if (giftFetcher.state === "idle" && giftFetcher.data) {
+      const data = giftFetcher.data as any;
+      if (data.success) {
+        setShowGiftModal(false);
+        setSelectedGiftId(null);
+        setSearchParams((prev) => {
+          prev.set("toastMessage", "posts.giftSentSuccess");
+          prev.set("toastType", "success");
+          return prev;
+        }, { replace: true });
+      } else if (data.error) {
+        setSearchParams((prev) => {
+          prev.set("toastMessage", data.error);
+          prev.set("toastType", "error");
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [giftFetcher.state, giftFetcher.data]);
   const optimisticInterested = fetcher.formData
     ? !post.isInterested
     : post.isInterested;
@@ -34,6 +64,9 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
     ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
     : "";
 
+  // Only show gift button on model posts
+  const isModelPost = post.authorType === "model";
+
   const handleChat = () => {
     if (!author?.whatsapp) return;
     const message = t("posts.customerChatMessage", {
@@ -42,6 +75,14 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
       defaultValue: `Hi, ${authorName}.\nI'm ${customerName}, I see your post looking for a partner to hang out tonight.\nAre you still available? I'll book you.`,
     });
     window.open(`https://wa.me/${author.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  const handleSendGift = () => {
+    if (!selectedGiftId) return;
+    giftFetcher.submit(
+      { giftId: selectedGiftId },
+      { method: "post", action: `/customer/posts/${post.id}/gift` }
+    );
   };
 
   return (
@@ -121,6 +162,22 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
             </button>
           </fetcher.Form>
 
+          {/* Gift - only for model posts */}
+          {isModelPost && gifts.length > 0 && (
+            <button
+              className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
+              onClick={() => setShowGiftModal(true)}
+              disabled={isSendingGift}
+            >
+              {isSendingGift ? (
+                <Loader className="h-4 w-4 animate-spin text-pink-400" />
+              ) : (
+                <Gift className="h-4 w-4 text-pink-500" />
+              )}
+              <span className="text-sm">{t("posts.gift", { defaultValue: "Gift" })}</span>
+            </button>
+          )}
+
           {/* Chat */}
           {author?.whatsapp && (
             <button
@@ -144,6 +201,78 @@ export default function FeedPostCard({ post, customerProfile }: FeedPostCardProp
           </button>
         )}
       </div>
+
+      {/* Gift Modal */}
+      {showGiftModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setShowGiftModal(false); setSelectedGiftId(null); }}>
+          <div
+            className="bg-white w-full sm:max-w-sm sm:rounded-lg rounded-t-2xl max-h-[70vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div>
+                <h3 className="text-sm font-semibold">{t("posts.sendGift", { defaultValue: "Send a Gift" })}</h3>
+                <p className="text-xs text-gray-400">
+                  {t("posts.walletBalance", { defaultValue: "Balance" })}: {walletBalance.toLocaleString()} ₭
+                </p>
+              </div>
+              <button onClick={() => { setShowGiftModal(false); setSelectedGiftId(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              <div className="grid grid-cols-3 gap-3">
+                {gifts.map((gift) => {
+                  const canAfford = walletBalance >= gift.price;
+                  const isSelected = selectedGiftId === gift.id;
+                  return (
+                    <button
+                      key={gift.id}
+                      disabled={!canAfford || isSendingGift}
+                      onClick={() => setSelectedGiftId(isSelected ? null : gift.id)}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        isSelected
+                          ? "border-pink-500 bg-pink-50 scale-[1.02]"
+                          : canAfford
+                            ? "border-gray-200 hover:border-pink-300 hover:bg-pink-50"
+                            : "border-gray-100 opacity-50 cursor-not-allowed"
+                      }`}
+                    >
+                      {gift.image ? (
+                        <img src={gift.image} alt={gift.name} className="w-10 h-10 object-contain" />
+                      ) : (
+                        <Gift className="w-10 h-10 text-pink-400" />
+                      )}
+                      <span className="text-xs font-medium truncate w-full text-center">{gift.name}</span>
+                      <span className="text-xs text-gray-500">{gift.price.toLocaleString()} ₭</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t">
+              <button
+                disabled={!selectedGiftId || isSendingGift}
+                onClick={handleSendGift}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  selectedGiftId && !isSendingGift
+                    ? "bg-pink-500 hover:bg-pink-600 text-white active:scale-[0.98]"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {isSendingGift ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {isSendingGift
+                  ? t("posts.sending", { defaultValue: "Sending..." })
+                  : t("posts.sendGift", { defaultValue: "Send a Gift" })}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -202,6 +202,7 @@ model customer {
   notifications         customer_notification[]
   posts                 post[]
   postInterests         post_interest[]
+  postGifts             post_gift[]
 }
 
 model model {
@@ -293,6 +294,7 @@ model model {
   notifications         model_notification[]
   posts                 post[]
   postInterests         post_interest[]
+  postGiftsReceived     post_gift[]
 }
 
 // subscription
@@ -966,6 +968,7 @@ model post {
   model       model?          @relation(fields: [modelId], references: [id])
   service     service?        @relation(fields: [serviceId], references: [id])
   interests   post_interest[]
+  gifts       post_gift[]
 }
 
 model post_interest {
@@ -987,4 +990,37 @@ model post_interest {
   // One interest per user per post
   @@unique([postId, customerId])
   @@unique([postId, modelId])
+}
+
+// ==================== Gifts ====================
+
+model gift {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  image     String   // CDN URL for gift image
+  price     Float    // Price in Kip
+  sortOrder Int      @default(0)
+  status    String   @default("active") // "active", "inactive"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postGifts post_gift[]
+}
+
+model post_gift {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId     String   @db.ObjectId
+  giftId     String   @db.ObjectId
+  customerId String   @db.ObjectId // Customer who sent the gift
+  modelId    String   @db.ObjectId // Model who owns the post (receives the gift)
+  amount     Float    // Amount paid (gift price at time of purchase)
+  reaction   String?  // Model's reaction sticker: "love", "care", "thankyou"
+
+  createdAt  DateTime @default(now())
+
+  // Relations
+  post       post      @relation(fields: [postId], references: [id])
+  gift       gift      @relation(fields: [giftId], references: [id])
+  customer   customer  @relation(fields: [customerId], references: [id])
+  model      model     @relation(fields: [modelId], references: [id])
 }

@@ -26,7 +26,7 @@ export interface PostItem {
     dob?: string;
     whatsapp?: number | null;
   } | null;
-  _count?: { interests: number };
+  _count?: { interests: number; gifts?: number };
 }
 
 export interface UserProfile {
@@ -34,4 +34,11 @@ export interface UserProfile {
   firstName: string;
   lastName?: string | null;
   profile?: string | null;
+}
+
+export interface GiftItem {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
 }

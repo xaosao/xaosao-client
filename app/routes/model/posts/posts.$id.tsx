@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { useLoaderData, useNavigate, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle } from "lucide-react";
+import { useLoaderData, useNavigate, useFetcher, type LoaderFunctionArgs } from "react-router";
+import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { getPostById, getModelBasicProfile } from "~/services/post.server";
@@ -8,18 +8,37 @@ import { requireModelSession } from "~/services/model-auth.server";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const modelId = await requireModelSession(request);
-  const [post, modelProfile] = await Promise.all([
+  const { getPostGifts } = await import("~/services/gift.server");
+
+  const [post, modelProfile, postGifts] = await Promise.all([
     getPostById(params.id!),
     getModelBasicProfile(modelId),
+    getPostGifts(params.id!),
   ]);
   if (!post) throw new Response("Post not found", { status: 404 });
-  return { post, modelId, modelProfile };
+  return { post, modelId, modelProfile, postGifts };
+}
+
+export async function action({ params, request }: LoaderFunctionArgs) {
+  const modelId = await requireModelSession(request);
+  const formData = await request.formData();
+  const postGiftId = formData.get("postGiftId") as string;
+  const reaction = formData.get("reaction") as string;
+
+  try {
+    const { reactToGift } = await import("~/services/gift.server");
+    await reactToGift(postGiftId, modelId, reaction);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error?.message || "Failed to react" };
+  }
 }
 
 export default function ModelPostDetailPage() {
-  const { post, modelId, modelProfile } = useLoaderData<typeof loader>();
-  const { t } = useTranslation();
+  const { post, modelId, modelProfile, postGifts } = useLoaderData<typeof loader>();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const reactionFetcher = useFetcher();
 
   const author = post.authorType === "customer" ? post.customer : post.model;
   const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "User";
@@ -41,6 +60,19 @@ export default function ModelPostDetailPage() {
       link: profileLink,
       defaultValue: `Hi {{customerName}}. Interested in booking me as your drinking companion?\nI'm still available! Book me at: ${profileLink}`,
     });
+    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  // Locale-based gift thank you messages
+  const giftThankYouMessages: Record<string, string> = {
+    en: `Thank you so much, {{customerName}}, for the gift.\nIf you're interested, feel free to book me as your drinking companion. My name on the app is: ${modelName}.`,
+    lo: `ຂອບໃຈຫຼາຍໆເດີ, {{customerName}} ສໍາລັບຂອງຂວັນ.\nຖ້າອ້າຍສົນໃຈນ້ອງຈອງໄດ້ເດີຈະເປັນຄູ່ດື່ມໃຫ້, ຊື່ນ້ອງໃນແອັບແມ່ນ: ${modelName}.`,
+    th: `ขอบคุณมากๆ นะคะ {{customerName}} สำหรับของขวัญ\nถ้าพี่สนใจจองน้องได้เลยนะคะ จะเป็นคู่ดื่มให้ ชื่อน้องในแอปคือ: ${modelName}`,
+  };
+
+  const handleGiftChat = (customerName: string, whatsapp: number) => {
+    const template = giftThankYouMessages[i18n.language] || giftThankYouMessages["en"];
+    const message = template.replace("{{customerName}}", customerName);
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
@@ -151,6 +183,83 @@ export default function ModelPostDetailPage() {
               })}
             </div>
           )}
+        </>
+      )}
+
+      {/* Gifts Received Section - model can react */}
+      {post.model?.id === modelId && postGifts && postGifts.length > 0 && (
+        <>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
+            <Gift className="h-4 w-4 text-pink-500" />
+            {t("posts.giftsReceived", { defaultValue: "Gifts Received" })} ({postGifts.length})
+          </h2>
+          <div className="space-y-2">
+            {postGifts.map((pg: any) => {
+              const sender = pg.customer;
+              const senderName = sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Customer";
+              const currentReaction = reactionFetcher.formData?.get("postGiftId") === pg.id
+                ? reactionFetcher.formData?.get("reaction") as string
+                : pg.reaction;
+
+              return (
+                <div key={pg.id} className="border border-gray-200 rounded-sm px-4 py-2">
+                  <div className="flex items-center gap-3">
+                    {sender?.profile ? (
+                      <img src={sender.profile} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                        <span className="text-xs font-semibold text-pink-500">{senderName.charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{senderName}</p>
+                      <p className="text-xs text-gray-400">{new Date(pg.createdAt).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {pg.gift?.image ? (
+                        <img src={pg.gift.image} alt={pg.gift.name} className="w-6 h-6 object-contain" />
+                      ) : (
+                        <Gift className="w-5 h-5 text-pink-400" />
+                      )}
+                      <span className="text-xs text-gray-500">{pg.gift?.name}</span>
+                      <span className="text-xs font-medium text-amber-600">{pg.gift?.price?.toLocaleString()} ₭</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-100">
+                    <div className="flex items-center gap-1">
+                      {/* Reaction stickers */}
+                      {["love", "care", "thankyou"].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => {
+                            reactionFetcher.submit(
+                              { postGiftId: pg.id, reaction: r },
+                              { method: "post" }
+                            );
+                          }}
+                          className={`text-base px-1 py-0.5 rounded transition-all ${
+                            currentReaction === r
+                              ? "bg-pink-100 scale-110"
+                              : "hover:bg-gray-100 opacity-50 hover:opacity-100"
+                          }`}
+                        >
+                          {r === "love" ? "❤️" : r === "care" ? "🥰" : "🙏"}
+                        </button>
+                      ))}
+                    </div>
+                    {sender?.whatsapp && (
+                      <button
+                        onClick={() => handleGiftChat(senderName, sender.whatsapp!)}
+                        className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm border border-green-300 bg-green-50 text-green-500 rounded-md hover:opacity-60 transition-opacity"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chatWithGiftSender", { defaultValue: "Chat" })}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
     </div>

@@ -2561,6 +2561,16 @@
     "timeAgo.days": "{{count}}d ago",
     "stillAvailable": "Available",
     "bookNow": "Book Now",
-    "customerChatMessage": "Hi {{modelName}}, I saw you're interested in my post.\nAre you still available? I'd like to book you."
+    "customerChatMessage": "Hi {{modelName}}, I saw you're interested in my post.\nAre you still available? I'd like to book you.",
+    "gift": "Gift",
+    "sendGift": "Send a Gift",
+    "walletBalance": "Balance",
+    "giftsSent": "Gifts",
+    "giftsReceived": "Gifts Received",
+    "giftSentSuccess": "Gift sent successfully!",
+    "giftSentFailed": "Failed to send gift",
+    "gifts": "gifts",
+    "giftThankYouChat": "Thank you so much, {{customerName}}, for the gift.\nIf you're interested, feel free to book me as your drinking companion. My name on the app is: {{modelName}}.",
+    "chatWithGiftSender": "Chat"
   }
 }

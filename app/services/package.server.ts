@@ -15,6 +15,11 @@ export async function expireOverdueSubscriptions() {
     },
     data: { status: "expired" },
   });
+  if (result.count > 0) {
+    console.log(
+      `[Expiry] Expired ${result.count} subscriptions at ${now.toISOString()} (server local: ${now.toLocaleString("en-US", { timeZone: "Asia/Vientiane" })})`
+    );
+  }
   return result.count;
 }
 

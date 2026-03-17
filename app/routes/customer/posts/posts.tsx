@@ -8,10 +8,12 @@ import MyPostCard from "~/components/posts/MyPostCard";
 import FeedPostCard from "~/components/posts/FeedPostCard";
 import CreateCustomerPostModal from "~/components/posts/CreateCustomerPostModal";
 
-import type { PostItem, UserProfile } from "~/types/post";
+import type { PostItem, UserProfile, GiftItem } from "~/types/post";
 import { requireUserSession } from "~/services/auths.server";
 import { hasActiveSubscription } from "~/services/package.server";
 import { getPostsFeed, getMyPosts, getActiveServices, getCustomerBasicProfile } from "~/services/post.server";
+import { getActiveGifts } from "~/services/gift.server";
+import { getCustomerWalletSummary } from "~/services/wallet.server";
 
 interface LoaderReturn {
   feed: { posts: PostItem[]; total: number; page: number; totalPages: number };
@@ -19,6 +21,8 @@ interface LoaderReturn {
   services: { id: string; name: string }[];
   hasSubscription: boolean;
   customerProfile: UserProfile | null;
+  gifts: GiftItem[];
+  walletBalance: number;
 }
 
 interface PageProps {
@@ -30,19 +34,25 @@ export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const serviceFilter = url.searchParams.get("service") || undefined;
 
-  const [feed, myPosts, services, hasSubscription, customerProfile] = await Promise.all([
+  const [feed, myPosts, services, hasSubscription, customerProfile, gifts, walletSummary] = await Promise.all([
     getPostsFeed("customer", customerId, { serviceId: serviceFilter, page: 1, limit: 20 }),
     getMyPosts(customerId, "customer", 1, 20),
     getActiveServices(),
     hasActiveSubscription(customerId),
     getCustomerBasicProfile(customerId),
+    getActiveGifts(),
+    getCustomerWalletSummary(customerId).catch(() => null),
   ]);
 
-  return { feed, myPosts, services, hasSubscription, customerProfile };
+  const walletBalance = walletSummary
+    ? Math.max(0, (walletSummary.totalBalance || 0) - (walletSummary.totalSpent || 0) + (walletSummary.totalRefunded || 0))
+    : 0;
+
+  return { feed, myPosts, services, hasSubscription, customerProfile, gifts, walletBalance };
 };
 
 export default function CustomerPostsPage({ loaderData }: PageProps) {
-  const { feed, myPosts, services, customerProfile } = loaderData;
+  const { feed, myPosts, services, customerProfile, gifts, walletBalance } = loaderData;
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") === "myPosts" ? "myPosts" : "feed") as "feed" | "myPosts";
@@ -203,7 +213,7 @@ export default function CustomerPostsPage({ loaderData }: PageProps) {
             ) : (
               <>
                 {feedPosts.map((post) => (
-                  <FeedPostCard key={post.id} post={post} customerProfile={customerProfile} />
+                  <FeedPostCard key={post.id} post={post} customerProfile={customerProfile} gifts={gifts} walletBalance={walletBalance} />
                 ))}
                 {feedHasMore && <div ref={feedSentinelRef} className="h-4 w-full" />}
                 {feedFetcher.state !== "idle" && (

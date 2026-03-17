@@ -231,7 +231,10 @@ export type NotificationType =
   | "call_ended"
   // Post notifications
   | "new_post_match"
-  | "post_interest";
+  | "post_interest"
+  // Gift notifications
+  | "gift_received"
+  | "gift_reaction";
 
 interface NotificationPayload {
   type: NotificationType;

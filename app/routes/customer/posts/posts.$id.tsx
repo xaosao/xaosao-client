@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, useSearchParams, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { requireUserSession } from "~/services/auths.server";
@@ -13,7 +13,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
   const { prisma } = await import("~/services/database.server");
 
-  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
+  const { getPostGifts } = await import("~/services/gift.server");
+
+  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet, postGifts] = await Promise.all([
     getPostById(params.id!),
     getCustomerBasicProfile(customerId),
     hasActiveSubscription(customerId),
@@ -26,6 +28,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       where: { customerId },
       select: { totalBalance: true, totalSpend: true, totalRefunded: true },
     }),
+    getPostGifts(params.id!),
   ]);
 
   if (!post) throw new Response("Post not found", { status: 404 });
@@ -40,11 +43,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     hasPendingSubscription: hasPending,
     trialPackage,
     customerBalance: availableBalance,
+    postGifts,
   };
 }
 
 export default function PostDetailPage() {
-  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = useLoaderData<typeof loader>();
+  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, postGifts } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -194,6 +198,50 @@ export default function PostDetailPage() {
               })}
             </div>
           )}
+        </>
+      )}
+
+      {/* Gifts Sent Section */}
+      {postGifts && postGifts.length > 0 && (
+        <>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
+            <Gift className="h-4 w-4 text-pink-500" />
+            {t("posts.giftsSent", { defaultValue: "Gifts" })} ({postGifts.length})
+          </h2>
+          <div className="space-y-2">
+            {postGifts.map((pg: any) => {
+              const sender = pg.customer;
+              const senderName = sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Customer";
+              return (
+                <div key={pg.id} className="flex items-center gap-3 border border-gray-200 rounded-sm px-4 py-2">
+                  {sender?.profile ? (
+                    <img src={sender.profile} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                      <span className="text-xs font-semibold text-pink-500">{senderName.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{senderName}</p>
+                    <p className="text-xs text-gray-400">{new Date(pg.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {pg.gift?.image ? (
+                      <img src={pg.gift.image} alt={pg.gift.name} className="w-7 h-7 object-contain" />
+                    ) : (
+                      <Gift className="w-5 h-5 text-pink-400" />
+                    )}
+                    <span className="text-xs text-gray-500">{pg.gift?.name}</span>
+                    {pg.reaction && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500">
+                        {pg.reaction === "love" ? "❤️" : pg.reaction === "care" ? "🥰" : "🙏"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 

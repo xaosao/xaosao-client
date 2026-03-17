@@ -2653,6 +2653,16 @@
     "timeAgo.days": "{{count}} ມື້ກ່ອນ",
     "stillAvailable": "ຍັງຮັບຢູ່",
     "bookNow": "ຈອງເລີຍ",
-    "customerChatMessage": "ສະບາຍດີນ້ອງ {{modelName}}, ເຫັນນ້ອງສົນໃຈໂພສຂອງອ້າຍ.\nນ້ອງຍັງວ່າງບໍ? ອ້າຍຈະຈອງນ້ອງ."
+    "customerChatMessage": "ສະບາຍດີນ້ອງ {{modelName}}, ເຫັນນ້ອງສົນໃຈໂພສຂອງອ້າຍ.\nນ້ອງຍັງວ່າງບໍ? ອ້າຍຈະຈອງນ້ອງ.",
+    "gift": "ໃຫ້ຂອງຂວັນ",
+    "sendGift": "ສົ່ງຂອງຂວັນ",
+    "walletBalance": "ຍອດເງິນ",
+    "giftsSent": "ຂອງຂວັນ",
+    "giftsReceived": "ຂອງຂວັນທີ່ໄດ້ຮັບ",
+    "giftSentSuccess": "ສົ່ງຂອງຂວັນສຳເລັດ!",
+    "giftSentFailed": "ສົ່ງຂອງຂວັນບໍ່ສຳເລັດ",
+    "gifts": "ຂອງຂວັນ",
+    "giftThankYouChat": "ຂອບໃຈຫຼາຍໆເດີ, {{customerName}} ສໍາລັບຂອງຂວັນ.\nຖ້າອ້າຍສົນໃຈນ້ອງຈອງໄດ້ເດີຈະເປັນຄູ່ດື່ມໃຫ້, ຊື່ນ້ອງໃນແອັບແມ່ນ: {{modelName}}.",
+    "chatWithGiftSender": "ທັກຫາ"
   }
 }

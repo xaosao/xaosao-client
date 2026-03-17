@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { getTimeAgo } from "~/utils";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Coins, Trash2 } from "lucide-react";
+import { CheckCircle, Coins, Gift, Trash2 } from "lucide-react";
 import { useFetcher, useNavigate } from "react-router";
 
 // components and utils:
@@ -30,6 +30,7 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
   const isActive = post.status === "active";
   const isFulfilled = post.status === "fulfilled";
   const interestCount = post._count?.interests || post.interestedCount || 0;
+  const giftCount = post._count?.gifts || 0;
   const hasImages = post.images?.length > 0;
   const authorName = userProfile
     ? `${userProfile.firstName} ${userProfile.lastName || ""}`.trim()
@@ -116,6 +117,15 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
             <span className="text-sm text-gray-400">
               {t("posts.noInterest", { defaultValue: "No interest yet" })}
             </span>
+          )}
+          {giftCount > 0 && (
+            <button
+              onClick={() => navigate(`/${userType}/posts/${post.id}`)}
+              className="text-sm font-semibold hover:text-pink-500 transition-colors border border-pink-300 px-2 py-1 rounded-full bg-pink-100 text-pink-500 flex items-center gap-1"
+            >
+              <Gift className="h-3.5 w-3.5" />
+              {giftCount} {t("posts.gifts", { defaultValue: "gifts" })}
+            </button>
           )}
         </div>
 

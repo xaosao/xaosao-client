@@ -179,7 +179,7 @@ export async function getMyPosts(
       where,
       include: {
         service: { select: { id: true, name: true } },
-        _count: { select: { interests: true } },
+        _count: { select: { interests: true, gifts: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,

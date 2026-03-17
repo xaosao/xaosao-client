@@ -2658,6 +2658,16 @@
     "timeAgo.days": "{{count}} วันที่แล้ว",
     "stillAvailable": "ยังรับอยู่",
     "bookNow": "จองเลย",
-    "customerChatMessage": "สวัสดีน้อง {{modelName}} เห็นน้องสนใจโพสต์ของพี่\nน้องยังว่างอยู่ไหม? พี่จะจองน้องนะ"
+    "customerChatMessage": "สวัสดีน้อง {{modelName}} เห็นน้องสนใจโพสต์ของพี่\nน้องยังว่างอยู่ไหม? พี่จะจองน้องนะ",
+    "gift": "ของขวัญ",
+    "sendGift": "ส่งของขวัญ",
+    "walletBalance": "ยอดเงิน",
+    "giftsSent": "ของขวัญ",
+    "giftsReceived": "ของขวัญที่ได้รับ",
+    "giftSentSuccess": "ส่งของขวัญสำเร็จ!",
+    "giftSentFailed": "ส่งของขวัญไม่สำเร็จ",
+    "gifts": "ของขวัญ",
+    "giftThankYouChat": "ขอบคุณมากๆ นะคะ {{customerName}} สำหรับของขวัญ\nถ้าพี่สนใจจองน้องได้เลยนะคะ จะเป็นคู่ดื่มให้ ชื่อน้องในแอปคือ: {{modelName}}",
+    "chatWithGiftSender": "แชท"
   }
 }

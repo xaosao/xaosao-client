@@ -152,6 +152,7 @@ export default [
     route("posts/:id/interested", "./routes/customer/posts/posts.$id.interested.tsx"),
     route("posts/:id/delete", "./routes/customer/posts/posts.$id.delete.tsx"),
     route("posts/:id/fulfill", "./routes/customer/posts/posts.$id.fulfill.tsx"),
+    route("posts/:id/gift", "./routes/customer/posts/posts.$id.gift.tsx"),
 
     route("dates-history", "./routes/customer/booking-history/booking.tsx"),
 
