@@ -144,7 +144,7 @@ export default function PostDetailPage() {
 
       {post.customer?.id === customerId && (
         <>
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-1 mt-4">
             <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
             {t("posts.interestedPeople", { defaultValue: "People Interested" })} ({post.interests.length})
           </h2>
@@ -204,7 +204,7 @@ export default function PostDetailPage() {
       {/* Gifts Sent Section */}
       {postGifts && postGifts.length > 0 && (
         <>
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-1 mt-4">
             <Gift className="h-4 w-4 text-pink-500" />
             {t("posts.giftsSent", { defaultValue: "Gifts" })} ({postGifts.length})
           </h2>

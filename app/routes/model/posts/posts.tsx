@@ -49,19 +49,7 @@ export default function ModelPostsPage({ loaderData }: PageProps) {
   };
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Swipe to change tab (mobile only)
-  const touchStartX = useRef<number | null>(null);
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartX.current = null;
-    if (Math.abs(diff) < 50) return;
-    if (diff > 0 && activeTab === "myPosts") setActiveTab("feed");
-    if (diff < 0 && activeTab === "feed") setActiveTab("myPosts");
-  };
+
 
   // Feed infinite scroll state
   const [feedPosts, setFeedPosts] = useState<PostItem[]>(feed.posts);
@@ -187,7 +175,7 @@ export default function ModelPostsPage({ loaderData }: PageProps) {
 
       <div className="h-[42px] sm:hidden" />
 
-      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div>
         {activeTab === "feed" && (
           <div className="divide-y divide-gray-100 space-y-2 sm:space-y-6 p-2 bg-gray-200 sm:bg-white">
             {feedPosts.length === 0 ? (
