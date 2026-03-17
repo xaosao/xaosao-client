@@ -82,6 +82,20 @@ export async function topUpWallet(
   userId: string
 ) {
   if (!amount || amount <= 0) throw new Error("Invalid top-up amount!");
+  if (amount < 10000) {
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "wallet.topup.minimumAmountError",
+    });
+  }
+  if (!paymentSlip || paymentSlip.length === 0) {
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "wallet.topup.paymentSlipRequired",
+    });
+  }
 
   const auditBase = {
     action: "TOPUP_WALLET",

@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Route } from "./+types/wallet.topup";
-import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
-import { AlertCircle, Check, CheckCircle, Clock, Copy, Download, Loader, QrCode, Upload } from "lucide-react";
+import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useSubmit, type LoaderFunction } from "react-router";
+import { AlertCircle, Check, CheckCircle, Clock, Copy, Download, ImageIcon, Loader, QrCode, Upload, X } from "lucide-react";
 
 // components
 import Modal from "~/components/ui/model";
@@ -54,6 +54,20 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (request.method === "POST") {
         try {
+            // Server-side amount validation
+            const numericAmount = Number(amount);
+            const url = new URL(request.url);
+            const suggestedAmount = url.searchParams.get("amount");
+            const minAmount = suggestedAmount ? Math.max(Number(suggestedAmount), 10000) : 10000;
+
+            if (!numericAmount || numericAmount < minAmount) {
+                return {
+                    success: false,
+                    error: true,
+                    message: `wallet.topup.minimumAmount`,
+                };
+            }
+
             // Handle multiple payment slip uploads (up to 3)
             const vouchers = formData.getAll("voucher");
             const paymentSlipUrls: string[] = [];
@@ -75,7 +89,16 @@ export async function action({ request }: Route.ActionArgs) {
                 }
             }
 
-            transactionData.amount = Number(transactionData.amount);
+            // Payment slip is always required
+            if (paymentSlipUrls.length === 0) {
+                return {
+                    success: false,
+                    error: true,
+                    message: "wallet.topup.paymentSlipRequired",
+                };
+            }
+
+            transactionData.amount = numericAmount;
             transactionData.paymentSlip = paymentSlipUrls;
             await validateTopUpInputs(transactionData as ITransactionCredentials);
             const res = await topUpWallet(paymentSlipUrls, Number(amount), customerId);
@@ -143,6 +166,7 @@ export default function WalletTopUpPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const navigation = useNavigation();
+    const submit = useSubmit();
     const actionData = useActionData<typeof action>();
     const loaderData = useLoaderData<typeof loader>();
 
@@ -230,6 +254,7 @@ export default function WalletTopUpPage() {
     };
 
     const [uploadError, setUploadError] = React.useState<string | null>(null);
+    const [showExamplePreview, setShowExamplePreview] = React.useState(false);
 
     // Check if file is WebP format
     const isWebpFile = (file: File): boolean => {
@@ -358,6 +383,16 @@ export default function WalletTopUpPage() {
         setDragOver(false);
     };
 
+    // Manual submit to avoid DataTransfer/file input issues on mobile browsers
+    const handleManualSubmit = () => {
+        const formData = new FormData();
+        formData.append("amount", String(amount ?? 0));
+        if (planId) formData.append("planId", planId);
+        if (returnUrl) formData.append("return_url", returnUrl);
+        uploadedFiles.forEach(file => formData.append("voucher", file));
+        submit(formData, { method: "post", encType: "multipart/form-data" });
+    };
+
     const canProceed = () => {
         switch (step) {
             case 1:
@@ -420,11 +455,10 @@ export default function WalletTopUpPage() {
                                         type="button"
                                         key={quickAmount}
                                         onClick={() => setAmount(quickAmount)}
-                                        className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${
-                                            amount === quickAmount
-                                                ? "border-rose-500 bg-rose-500 text-white"
-                                                : "border-gray-200 hover:border-rose-500 hover:text-rose-500"
-                                        }`}
+                                        className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${amount === quickAmount
+                                            ? "border-rose-500 bg-rose-500 text-white"
+                                            : "border-gray-200 hover:border-rose-500 hover:text-rose-500"
+                                            }`}
                                     >
                                         {formatCurrency1(quickAmount)}
                                     </button>
@@ -464,7 +498,7 @@ export default function WalletTopUpPage() {
 
                         {paymentMethod === "qr" && (
                             <div className="bg-white border border-dashed border-gray-200 rounded-xl p-6 text-center">
-                                <div className="w-full max-w-xs mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                                <div className="w-48 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                                     <img src="/images/qr-code.jpeg" alt="QR-code" className="w-full h-auto object-contain" />
                                 </div>
                                 <button
@@ -520,13 +554,9 @@ export default function WalletTopUpPage() {
 
             case 3:
                 return (
-                    <div className="p-0 sm:p-6 space-y-6">
+                    <div className="p-0 sm:p-6 space-y-3 sm:space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                {t('wallet.topup.paymentVoucher')} <span className="text-rose-500">*</span>
-                            </label>
                             <input type="text" name="amount" value={amount ?? 0} className="hidden" readOnly />
-                            {/* Uploaded slips grid */}
                             {uploadedFiles.length > 0 && (
                                 <div className="grid grid-cols-3 gap-2 mb-3">
                                     {uploadedFiles.map((file, index) => (
@@ -615,9 +645,6 @@ export default function WalletTopUpPage() {
 
                             <p className="text-xs text-gray-500 mt-2">
                                 {t('wallet.topup.supportedFormats')}
-                                <span className="block mt-1 text-blue-500">
-                                    {t('wallet.topup.autoCompression', { defaultValue: 'Large images will be automatically compressed for faster upload.' })}
-                                </span>
                             </p>
                             {uploadError && (
                                 <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
@@ -625,6 +652,49 @@ export default function WalletTopUpPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Example payment slip - hidden when files are uploaded */}
+                        {uploadedFiles.length === 0 && <div className="rounded-lg p-3">
+                            <div className="flex items-center space-x-2 mb-2">
+                                <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                <p className="text-xs font-medium text-blue-700">
+                                    {t('wallet.topup.exampleSlip', { defaultValue: 'Example payment slip' })}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowExamplePreview(true)}
+                                className="w-full cursor-pointer"
+                            >
+                                <img
+                                    src="/images/payment.jpg"
+                                    alt="Example payment slip"
+                                    className="max-h-40 object-contain object-left rounded-md bg-white"
+                                />
+                            </button>
+                        </div>}
+
+                        {/* Fullscreen example preview */}
+                        {showExamplePreview && (
+                            <div
+                                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+                                onClick={() => setShowExamplePreview(false)}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExamplePreview(false)}
+                                    className="absolute top-4 right-4 z-50 w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                                <img
+                                    src="/images/payment.jpg"
+                                    alt="Example payment slip"
+                                    className="max-w-full max-h-[85vh] object-contain rounded-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        )}
 
                         <div className="p-4 bg-amber-50 rounded-lg">
                             <div className="flex items-start space-x-2">
@@ -717,8 +787,8 @@ export default function WalletTopUpPage() {
 
                         {step < 4 ? (
                             <button
-                                type={step === 3 ? "submit" : "button"}
-                                onClick={step < 3 ? () => setStep(step + 1) : undefined}
+                                type="button"
+                                onClick={step === 3 ? handleManualSubmit : () => setStep(step + 1)}
                                 disabled={!canProceed()}
                                 className="flex items-center justify-center text-sm cursor-pointer px-6 py-2 bg-rose-500 text-white rounded-md hover:bg-rose-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                             >

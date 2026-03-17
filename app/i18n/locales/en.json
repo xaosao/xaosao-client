@@ -745,7 +745,11 @@
       "submitting": "Submiting....",
       "done": "Done",
       "cancel": "Cancel",
-      "minimumAmount": "Minimum amount is 10,000 Kip",
+      "minimumAmount": "Minimum amount is {{amount}} Kip",
+      "minimumAmountError": "Minimum top-up amount is 10,000 Kip",
+      "paymentSlipRequired": "Payment slip is required. Please upload your payment slip.",
+      "exampleSlip": "Example payment slip",
+      "tapToPreview": "Tap image to view full size",
       "depositSuccess": "Deposit success. Your transaction is under review!"
     },
     "edit": {

@@ -159,9 +159,10 @@ export function validateResetPasswordInputs(input: IResetPasswordCredentials) {
   return result.data;
 }
 
-// ====================== Reset password input validate
+// ====================== Top-up input validate
 const topUpSchema = z.object({
-  amount: z.number().min(5, "Base rate should be at least 5 digits."),
+  amount: z.number().min(10000, "Minimum top-up amount is 10,000 Kip."),
+  paymentSlip: z.array(z.string()).min(1, "Payment slip is required."),
 });
 
 export function validateTopUpInputs(input: ITransactionCredentials) {

@@ -46,6 +46,24 @@ export async function action({ params, request }: Route.ActionArgs) {
 
          transactionData.amount = parseFormattedNumber(transactionData.amount);
 
+         // Server-side: enforce minimum amount
+         if (!transactionData.amount || transactionData.amount < 10000) {
+            return {
+               success: false,
+               error: true,
+               message: "wallet.topup.minimumAmount",
+            };
+         }
+
+         // Server-side: require payment slip
+         if (!transactionData.paymentSlip || transactionData.paymentSlip.length === 0) {
+            return {
+               success: false,
+               error: true,
+               message: "wallet.topup.paymentSlipRequired",
+            };
+         }
+
          await validateTopUpInputs(transactionData as ITransactionCredentials);
 
          const res = await updateTransaction(transactionId, customerId, transactionData as ITransactionCredentials);
@@ -95,6 +113,7 @@ export default function TransactionEdit() {
    const actionData = useActionData<typeof action>()
    const transaction = useLoaderData<ITransactionResponse>();
    const [amount, setAmount] = React.useState<number>(transaction.amount || 0);
+   const MIN_AMOUNT = 10000;
    const isSubmitting =
       navigation.state !== "idle" && navigation.formMethod === "PATCH";
 
@@ -232,9 +251,17 @@ export default function TransactionEdit() {
                                  }
                               }}
                               placeholder="0.00"
-                              className="block w-full p-4 py-2 border border-gray-300 rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors"
+                              className={`block w-full p-4 py-2 border rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors ${amount > 0 && amount < MIN_AMOUNT ? 'border-red-500' : 'border-gray-300'}`}
                            />
                         </div>
+                        {amount > 0 && amount < MIN_AMOUNT && (
+                           <p className="text-xs text-red-500 mt-1">
+                              {t('wallet.topup.minimumAmount', {
+                                 defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`,
+                                 amount: MIN_AMOUNT.toLocaleString()
+                              })}
+                           </p>
+                        )}
                      </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -333,7 +360,7 @@ export default function TransactionEdit() {
                <Button
                   type="submit"
                   variant="outline"
-                  disabled={isSubmitting || !!uploadError}
+                  disabled={isSubmitting || !!uploadError || amount < MIN_AMOUNT || (!selectedFile && !transaction?.paymentSlip)}
                   className="flex gap-2 bg-rose-500 text-white hover:bg-rose-600 hover:text-white disabled:opacity-50"
                >
                   {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
