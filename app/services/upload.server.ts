@@ -60,10 +60,12 @@ export function getUserUploadPath(
   userType: "model" | "customer",
   userId: string,
   firstName: string,
-  fileType: UploadFileType
+  fileType: UploadFileType,
+  whatsapp?: number
 ): string {
   const prefix = userType === "model" ? "m" : "c";
-  const safeName = firstName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20) || "user";
+  const latinOnly = firstName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
+  const safeName = latinOnly || (whatsapp ? String(whatsapp).slice(0, -3) : "user");
   const userFolder = `${prefix}-${userId}-${safeName}`;
 
   const subfolderMap: Record<UploadFileType, string> = {
@@ -171,24 +173,27 @@ export async function resolveUserUploadPath(
   fileType: UploadFileType
 ): Promise<string> {
   let firstName = "user";
+  let whatsapp: number | undefined;
   try {
     if (userType === "customer") {
       const customer = await prisma.customer.findUnique({
         where: { id: userId },
-        select: { firstName: true },
+        select: { firstName: true, whatsapp: true },
       });
       if (customer?.firstName) firstName = customer.firstName;
+      if (customer?.whatsapp) whatsapp = customer.whatsapp;
     } else {
       const model = await prisma.model.findUnique({
         where: { id: userId },
-        select: { firstName: true },
+        select: { firstName: true, whatsapp: true },
       });
       if (model?.firstName) firstName = model.firstName;
+      if (model?.whatsapp) whatsapp = model.whatsapp;
     }
   } catch (error) {
     console.error("[Upload] Failed to fetch user name for folder path:", error);
   }
-  return getUserUploadPath(userType, userId, firstName, fileType);
+  return getUserUploadPath(userType, userId, firstName, fileType, whatsapp);
 }
 
 /**
@@ -256,7 +261,7 @@ export async function migrateProfileToStructuredFolder(
   const contentType = response.headers.get("content-type") || "image/jpeg";
 
   // Upload to structured folder
-  const folderPath = getUserUploadPath(userType, userId, firstName, "avatar");
+  const folderPath = getUserUploadPath(userType, userId, firstName, "avatar", whatsapp);
   const ext = oldPath.match(/\.(\w+)$/)?.[1] || "jpg";
   const newUrl = await uploadFileToBunnyServer(buffer, `profile.${ext}`, contentType, folderPath, "avatar");
 

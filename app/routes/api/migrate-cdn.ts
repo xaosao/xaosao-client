@@ -164,7 +164,7 @@ async function migrateCustomerProfiles(dryRun: boolean): Promise<MigrationResult
 
   const customers = await prisma.customer.findMany({
     where: { profile: { not: "" } },
-    select: { id: true, firstName: true, profile: true },
+    select: { id: true, firstName: true, whatsapp: true, profile: true },
   });
   result.total = customers.length;
 
@@ -174,7 +174,7 @@ async function migrateCustomerProfiles(dryRun: boolean): Promise<MigrationResult
       continue;
     }
     try {
-      const folderPath = getUserUploadPath("customer", customer.id, customer.firstName || "user", "avatar");
+      const folderPath = getUserUploadPath("customer", customer.id, customer.firstName || "user", "avatar", customer.whatsapp ?? undefined);
       const newUrl = await migrateFile(customer.profile, folderPath, "avatar", dryRun);
       if (newUrl) {
         if (!dryRun) {
@@ -198,7 +198,7 @@ async function migrateModelProfiles(dryRun: boolean): Promise<MigrationResult> {
 
   const models = await prisma.model.findMany({
     where: { profile: { not: "" } },
-    select: { id: true, firstName: true, profile: true },
+    select: { id: true, firstName: true, whatsapp: true, profile: true },
   });
   result.total = models.length;
 
@@ -208,7 +208,7 @@ async function migrateModelProfiles(dryRun: boolean): Promise<MigrationResult> {
       continue;
     }
     try {
-      const folderPath = getUserUploadPath("model", model.id, model.firstName || "user", "avatar");
+      const folderPath = getUserUploadPath("model", model.id, model.firstName || "user", "avatar", model.whatsapp ?? undefined);
       const newUrl = await migrateFile(model.profile, folderPath, "avatar", dryRun);
       if (newUrl) {
         if (!dryRun) {
@@ -235,20 +235,20 @@ async function migrateImages(dryRun: boolean): Promise<MigrationResult> {
   });
   result.total = images.length;
 
-  // Batch fetch user names
+  // Batch fetch user info
   const modelIds = [...new Set(images.filter(i => i.modelId).map(i => i.modelId!))];
   const customerIds = [...new Set(images.filter(i => i.customerId).map(i => i.customerId!))];
 
-  const modelsMap = new Map<string, string>();
-  const customersMap = new Map<string, string>();
+  const modelsMap = new Map<string, { name: string; whatsapp?: number }>();
+  const customersMap = new Map<string, { name: string; whatsapp?: number }>();
 
   if (modelIds.length > 0) {
-    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true } });
-    models.forEach(m => modelsMap.set(m.id, m.firstName || "user"));
+    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    models.forEach(m => modelsMap.set(m.id, { name: m.firstName || "user", whatsapp: m.whatsapp ?? undefined }));
   }
   if (customerIds.length > 0) {
-    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true } });
-    customers.forEach(c => customersMap.set(c.id, c.firstName || "user"));
+    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    customers.forEach(c => customersMap.set(c.id, { name: c.firstName || "user", whatsapp: c.whatsapp ?? undefined }));
   }
 
   for (const image of images) {
@@ -259,11 +259,11 @@ async function migrateImages(dryRun: boolean): Promise<MigrationResult> {
     try {
       let folderPath: string;
       if (image.modelId) {
-        const name = modelsMap.get(image.modelId) || "user";
-        folderPath = getUserUploadPath("model", image.modelId, name, "gallery");
+        const info = modelsMap.get(image.modelId) || { name: "user" };
+        folderPath = getUserUploadPath("model", image.modelId, info.name, "gallery", info.whatsapp);
       } else if (image.customerId) {
-        const name = customersMap.get(image.customerId) || "user";
-        folderPath = getUserUploadPath("customer", image.customerId, name, "gallery");
+        const info = customersMap.get(image.customerId) || { name: "user" };
+        folderPath = getUserUploadPath("customer", image.customerId, info.name, "gallery", info.whatsapp);
       } else {
         result.skipped++;
         continue;
@@ -296,12 +296,12 @@ async function migrateBankQR(dryRun: boolean): Promise<MigrationResult> {
   });
   result.total = banks.length;
 
-  // Batch fetch model names
+  // Batch fetch model info
   const modelIds = [...new Set(banks.filter(b => b.modelId).map(b => b.modelId!))];
-  const modelsMap = new Map<string, string>();
+  const modelsMap = new Map<string, { name: string; whatsapp?: number }>();
   if (modelIds.length > 0) {
-    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true } });
-    models.forEach(m => modelsMap.set(m.id, m.firstName || "user"));
+    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    models.forEach(m => modelsMap.set(m.id, { name: m.firstName || "user", whatsapp: m.whatsapp ?? undefined }));
   }
 
   for (const bank of banks) {
@@ -310,8 +310,8 @@ async function migrateBankQR(dryRun: boolean): Promise<MigrationResult> {
       continue;
     }
     try {
-      const name = modelsMap.get(bank.modelId) || "user";
-      const folderPath = getUserUploadPath("model", bank.modelId, name, "qr");
+      const info = modelsMap.get(bank.modelId) || { name: "user" };
+      const folderPath = getUserUploadPath("model", bank.modelId, info.name, "qr", info.whatsapp);
       const newUrl = await migrateFile(bank.qr_code, folderPath, "qr", dryRun);
       if (newUrl) {
         if (!dryRun) {
@@ -339,20 +339,20 @@ async function migrateTransactions(dryRun: boolean): Promise<MigrationResult> {
   });
   result.total = transactions.length;
 
-  // Batch fetch user names
+  // Batch fetch user info
   const modelIds = [...new Set(transactions.filter(t => t.modelId).map(t => t.modelId!))];
   const customerIds = [...new Set(transactions.filter(t => t.customerId).map(t => t.customerId!))];
 
-  const modelsMap = new Map<string, string>();
-  const customersMap = new Map<string, string>();
+  const modelsMap = new Map<string, { name: string; whatsapp?: number }>();
+  const customersMap = new Map<string, { name: string; whatsapp?: number }>();
 
   if (modelIds.length > 0) {
-    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true } });
-    models.forEach(m => modelsMap.set(m.id, m.firstName || "user"));
+    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    models.forEach(m => modelsMap.set(m.id, { name: m.firstName || "user", whatsapp: m.whatsapp ?? undefined }));
   }
   if (customerIds.length > 0) {
-    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true } });
-    customers.forEach(c => customersMap.set(c.id, c.firstName || "user"));
+    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    customers.forEach(c => customersMap.set(c.id, { name: c.firstName || "user", whatsapp: c.whatsapp ?? undefined }));
   }
 
   for (const tx of transactions) {
@@ -364,11 +364,11 @@ async function migrateTransactions(dryRun: boolean): Promise<MigrationResult> {
     try {
       let folderPath: string;
       if (tx.customerId) {
-        const name = customersMap.get(tx.customerId) || "user";
-        folderPath = getUserUploadPath("customer", tx.customerId, name, "slip");
+        const info = customersMap.get(tx.customerId) || { name: "user" };
+        folderPath = getUserUploadPath("customer", tx.customerId, info.name, "slip", info.whatsapp);
       } else if (tx.modelId) {
-        const name = modelsMap.get(tx.modelId) || "user";
-        folderPath = getUserUploadPath("model", tx.modelId, name, "slip");
+        const info = modelsMap.get(tx.modelId) || { name: "user" };
+        folderPath = getUserUploadPath("model", tx.modelId, info.name, "slip", info.whatsapp);
       } else {
         result.skipped++;
         continue;
@@ -417,20 +417,20 @@ async function migratePosts(dryRun: boolean): Promise<MigrationResult> {
   });
   result.total = posts.length;
 
-  // Batch fetch user names
+  // Batch fetch user info
   const modelIds = [...new Set(posts.filter(p => p.modelId).map(p => p.modelId!))];
   const customerIds = [...new Set(posts.filter(p => p.customerId).map(p => p.customerId!))];
 
-  const modelsMap = new Map<string, string>();
-  const customersMap = new Map<string, string>();
+  const modelsMap = new Map<string, { name: string; whatsapp?: number }>();
+  const customersMap = new Map<string, { name: string; whatsapp?: number }>();
 
   if (modelIds.length > 0) {
-    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true } });
-    models.forEach(m => modelsMap.set(m.id, m.firstName || "user"));
+    const models = await prisma.model.findMany({ where: { id: { in: modelIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    models.forEach(m => modelsMap.set(m.id, { name: m.firstName || "user", whatsapp: m.whatsapp ?? undefined }));
   }
   if (customerIds.length > 0) {
-    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true } });
-    customers.forEach(c => customersMap.set(c.id, c.firstName || "user"));
+    const customers = await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, firstName: true, whatsapp: true } });
+    customers.forEach(c => customersMap.set(c.id, { name: c.firstName || "user", whatsapp: c.whatsapp ?? undefined }));
   }
 
   for (const post of posts) {
@@ -442,11 +442,11 @@ async function migratePosts(dryRun: boolean): Promise<MigrationResult> {
     try {
       let folderPath: string;
       if (post.authorType === "model" && post.modelId) {
-        const name = modelsMap.get(post.modelId) || "user";
-        folderPath = getUserUploadPath("model", post.modelId, name, "post");
+        const info = modelsMap.get(post.modelId) || { name: "user" };
+        folderPath = getUserUploadPath("model", post.modelId, info.name, "post", info.whatsapp);
       } else if (post.customerId) {
-        const name = customersMap.get(post.customerId) || "user";
-        folderPath = getUserUploadPath("customer", post.customerId, name, "post");
+        const info = customersMap.get(post.customerId) || { name: "user" };
+        folderPath = getUserUploadPath("customer", post.customerId, info.name, "post", info.whatsapp);
       } else {
         result.skipped++;
         continue;
