@@ -73,8 +73,10 @@ export async function action({ params, request }: Route.ActionArgs) {
   if (request.method === "PATCH") {
     try {
       if (file && file instanceof File && file.size > 0) {
+        const { resolveUserUploadPath } = await import("~/services/upload.server");
+        const folderPath = await resolveUserUploadPath("model", modelId, "qr");
         const buffer = Buffer.from(await file.arrayBuffer());
-        const url = await uploadFileToBunnyServer(buffer, file.name, file.type);
+        const url = await uploadFileToBunnyServer(buffer, file.name, file.type, folderPath, "qr");
         transactionData.paymentSlip = [url];
       } else {
         const origin = formData.get("originPaymentSlip") as string;

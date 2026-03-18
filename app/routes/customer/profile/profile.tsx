@@ -52,8 +52,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (request.method === "POST") {
         try {
             if (newFile && newFile instanceof File && newFile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("customer", customerId, "gallery");
                 const buffer = Buffer.from(await newFile.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
+                const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type, folderPath, "gallery");
                 image = url;
             }
             const res = await createCustomerImage(customerId, image);
@@ -106,8 +108,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
             // Handle image update
             else if (newFile && newFile instanceof File && newFile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("customer", customerId, "gallery");
                 const buffer = Buffer.from(await newFile.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
+                const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type, folderPath, "gallery");
                 image = url;
 
                 const res = await updateCustomerImage(imageId, customerId, image);

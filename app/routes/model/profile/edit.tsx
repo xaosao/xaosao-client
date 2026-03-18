@@ -49,8 +49,10 @@ export async function action({ request }: Route.ActionArgs) {
             let hasNewProfile = false;
 
             if (newProfile && newProfile instanceof File && newProfile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("model", modelId, "avatar");
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
+                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type, folderPath, "avatar");
                 modelFormData.profile = url;
                 hasNewProfile = true;
             } else {

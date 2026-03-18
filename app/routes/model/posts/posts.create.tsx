@@ -52,10 +52,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const imageUrls: string[] = [];
     if (imageFiles.length > 0) {
+      const { resolveUserUploadPath } = await import("~/services/upload.server");
+      const folderPath = await resolveUserUploadPath("model", modelId, "post");
       const uploads = await Promise.all(
         imageFiles.map(async (file) => {
           const buffer = Buffer.from(await file.arrayBuffer());
-          return uploadFileToBunnyServer(buffer, file.name, file.type);
+          return uploadFileToBunnyServer(buffer, file.name, file.type, folderPath, "post");
         })
       );
       imageUrls.push(...uploads);

@@ -81,8 +81,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
         try {
             // Upload QR code image
+            const { resolveUserUploadPath } = await import("~/services/upload.server");
+            const folderPath = await resolveUserUploadPath("model", modelId, "qr");
             const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-            const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+            const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type, folderPath, "qr");
 
             await createModelBank(modelId, {
                 qr_code: qrCodeUrl,
@@ -114,8 +116,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
             // Upload new QR code image if provided
             if (hasNewQrCode) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("model", modelId, "qr");
                 const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-                qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+                qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type, folderPath, "qr");
                 // Delete old QR code AFTER successful upload
                 if (existingQrCode) {
                     await deleteFileFromBunny(extractFilenameFromCDNSafe(existingQrCode));
@@ -202,8 +206,10 @@ export async function action({ request }: ActionFunctionArgs) {
     if (newFile && newFile instanceof File && newFile.size > 0) {
         try {
             // Upload new file to BunnyCDN first
+            const { resolveUserUploadPath } = await import("~/services/upload.server");
+            const folderPath = await resolveUserUploadPath("model", modelId, "gallery");
             const buffer = Buffer.from(await newFile.arrayBuffer());
-            const imageUrl = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type);
+            const imageUrl = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type, folderPath, "gallery");
 
             if (isNewUpload) {
                 // Create new image record in database
@@ -593,7 +599,7 @@ export default function ModelProfilePage() {
         if (editingBank) {
             formData.append("actionType", "updateBank");
             formData.append("bankId", editingBank.id);
-            if (editingBank.qr_code && !qrCodeFile) {
+            if (editingBank.qr_code) {
                 formData.append("existing_qr_code", editingBank.qr_code);
             }
         } else {

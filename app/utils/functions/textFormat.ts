@@ -40,16 +40,24 @@ export function truncateText(
   return target + ellipsis;
 }
 
+/**
+ * Extract the storage path from a CDN URL for BunnyCDN operations.
+ * Supports both flat files (legacy) and folder-structured paths (new).
+ *
+ * Example:
+ *   "https://cdn.example.com/1710729600-profile.jpg" → "1710729600-profile.jpg"
+ *   "https://cdn.example.com/c-abc123-john/profile/avatar-1710729600.jpg" → "c-abc123-john/profile/avatar-1710729600.jpg"
+ */
 export function extractFilenameFromCDNSafe(url: string): string {
   if (!url || typeof url !== "string") {
     return "";
   }
   try {
-    const urlParts = url.split("/");
-    const filename = urlParts[urlParts.length - 1] || "";
-    return filename.split("?")[0];
-  } catch (error) {
-    console.error("Error extracting filename from URL:", error);
-    return "";
+    const parsed = new URL(url);
+    // pathname starts with "/" so remove it; also strip query params
+    return parsed.pathname.substring(1).split("?")[0];
+  } catch {
+    // Fallback: if not a valid URL, return as-is (minus query params)
+    return url.split("?")[0];
   }
 }

@@ -56,8 +56,10 @@ export async function action({ request }: Route.ActionArgs) {
             }
             // Handle new image upload
             else if (newProfile && newProfile instanceof File && newProfile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("customer", customerId, "avatar");
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
+                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type, folderPath, "avatar");
                 customerData.profile = url;
                 shouldDeleteOldProfile = !!profile;
             }

@@ -129,8 +129,10 @@ export async function action({ request }: ActionFunctionArgs): Promise<ActionRes
     }
 
     try {
+      const { resolveUserUploadPath } = await import("~/services/upload.server");
+      const folderPath = await resolveUserUploadPath("model", modelId, "qr");
       const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type, folderPath, "qr");
 
       await createModelBank(modelId, {
         qr_code: qrCodeUrl,
@@ -178,8 +180,10 @@ export async function action({ request }: ActionFunctionArgs): Promise<ActionRes
 
     try {
       // Step 1: Upload QR code to CDN
+      const { resolveUserUploadPath } = await import("~/services/upload.server");
+      const folderPath = await resolveUserUploadPath("model", modelId, "qr");
       const buffer = Buffer.from(await qrCodeFile.arrayBuffer());
-      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type);
+      const qrCodeUrl = await uploadFileToBunnyServer(buffer, qrCodeFile.name, qrCodeFile.type, folderPath, "qr");
 
       // Step 2: Create bank with uploaded QR code
       const newBank = await createModelBank(modelId, {

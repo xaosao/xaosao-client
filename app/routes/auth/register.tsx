@@ -16,7 +16,7 @@ import type { Gender } from "~/interfaces/base"
 import { validateCustomerSignupInputs } from "~/services/validation.server"
 import type { ICustomerSignupCredentials } from "~/interfaces"
 import { FieldValidationError } from "~/services/base.server"
-import { uploadFileToBunnyServer } from "~/services/upload.server"
+import { uploadFileToBunnyServer, migrateProfileToStructuredFolder } from "~/services/upload.server"
 import { compressImage } from "~/utils/imageCompression"
 
 const backgroundImages = [
@@ -95,6 +95,7 @@ export async function action({ request }: Route.ActionArgs) {
         return { success: false, error: true, messageKey: "register.errors.profileRequired" };
     }
 
+    // Upload profile image flat first (we need a valid URL for validation, then migrate to structured folder after registration)
     let profileUrl = "";
     if (newProfile && newProfile instanceof File && newProfile.size > 0) {
         // File size validation (max 10MB)
@@ -111,7 +112,6 @@ export async function action({ request }: Route.ActionArgs) {
         }
 
         try {
-            // Upload profile image to Bunny CDN
             const buffer = Buffer.from(await newProfile.arrayBuffer());
             profileUrl = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
         } catch (uploadError: any) {
@@ -162,6 +162,13 @@ export async function action({ request }: Route.ActionArgs) {
             await validateCustomerSignupInputs(signUpData);
             const res = await customerRegister(signUpData, ip, accessKey);
             console.log("RES::", res);
+
+            // Move profile image from flat storage to structured folder (non-blocking)
+            if (profileUrl) {
+                migrateProfileToStructuredFolder("customer", signUpData.whatsapp, profileUrl).catch((err) =>
+                    console.error("[Register] Customer profile migration failed:", err)
+                );
+            }
 
             // Auto-login returns a redirect response, manual flow returns success object
             // Just return whatever customerRegister returns

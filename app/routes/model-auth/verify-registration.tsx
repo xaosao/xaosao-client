@@ -14,6 +14,7 @@ import {
   storeModelRegistrationData,
   verifyModelRegistrationOTP,
 } from "~/services/model-auth.server";
+import { migrateProfileToStructuredFolder } from "~/services/upload.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -121,6 +122,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const result = await modelRegister(modelData, ip, accessKey);
 
     if (result.success) {
+      // Move profile image to structured folder (non-blocking)
+      migrateProfileToStructuredFolder("model", modelData.whatsapp, modelData.profile).catch((err) =>
+        console.error("[Register] Model profile migration failed:", err)
+      );
+
       // Clear registration session
       const clearCookie = await clearModelRegistrationSession(request);
 

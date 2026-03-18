@@ -71,6 +71,8 @@ export async function action({ request }: Route.ActionArgs) {
             // Handle multiple payment slip uploads (up to 3)
             const vouchers = formData.getAll("voucher");
             const paymentSlipUrls: string[] = [];
+            const { resolveUserUploadPath } = await import("~/services/upload.server");
+            const slipFolderPath = await resolveUserUploadPath("customer", customerId, "slip");
 
             for (const voucher of vouchers) {
                 if (voucher && voucher instanceof File && voucher.size > 0) {
@@ -84,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
                     }
 
                     const buffer = Buffer.from(await voucher.arrayBuffer());
-                    const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type);
+                    const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type, slipFolderPath, "slip");
                     paymentSlipUrls.push(url);
                 }
             }
