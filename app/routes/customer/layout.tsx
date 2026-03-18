@@ -273,7 +273,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
             <div className="w-1/5 p-6 hidden sm:flex flex-col items-start justify-between sm:sticky sm:top-0 sm:h-screen pb-10">
                 <div className="w-full">
                     <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
+                        <Link to="/customer/profile" className="flex items-center space-x-3">
                             <div className="relative">
                                 <div className="w-16 h-16 border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600">
                                     <img
@@ -290,7 +290,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                     Find your perfect match
                                 </p>
                             </div>
-                        </div>
+                        </Link>
                         <NotificationBell userType="customer" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
                     </div>
 

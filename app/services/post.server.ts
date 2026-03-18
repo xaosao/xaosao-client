@@ -130,6 +130,9 @@ export async function getPostsFeed(
             : { modelId: viewerId },
           select: { id: true },
         },
+        gifts: viewerType === "customer"
+          ? { where: { customerId: viewerId }, select: { id: true } }
+          : { where: { modelId: viewerId }, select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -138,10 +141,11 @@ export async function getPostsFeed(
     prisma.post.count({ where }),
   ]);
 
-  // Add `isInterested` flag for the viewer
+  // Add `isInterested` flag and `myGiftCount` for the viewer
   const postsWithInterest = posts.map((post) => ({
     ...post,
     isInterested: post.interests.length > 0,
+    myGiftCount: post.gifts?.length ?? 0,
     author: post.authorType === "customer" ? post.customer : post.model,
   }));
 

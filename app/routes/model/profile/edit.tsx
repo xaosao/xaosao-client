@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import type { Route } from "./+types/edit";
 import { AlertCircle, Camera, ChevronLeft, Loader, X } from "lucide-react";
-import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
+import { Form, redirect, useActionData, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
 import { useTranslation } from "react-i18next";
 
 // components
@@ -15,6 +15,7 @@ import { requireModelSession, getModelTokenFromSession } from "~/services/model-
 import { validateUpdateProfileInputs } from "~/services/validation.server";
 import { capitalize, extractFilenameFromCDNSafe } from "~/utils/functions/textFormat";
 import { deleteFileFromBunny, uploadFileToBunnyServer } from "~/services/upload.server";
+import { prisma } from "~/services/database.server";
 import { compressImage } from "~/utils/imageCompression";
 import { getModelOwnProfile, updateModelProfile, updateModelChatProfile } from "~/services/model-profile.server";
 import type { IModelProfileCredentials, IModelOwnProfileResponse } from "~/interfaces/model-profile";
@@ -42,6 +43,39 @@ export async function action({ request }: Route.ActionArgs) {
     const modelFormData = Object.fromEntries(formData) as Partial<IModelProfileCredentials>;
     const newProfile = formData.get("newProfile") as File | null;
     const profile = formData.get("profile");
+
+    // Handle profile image auto-upload (separate from full form save)
+    const intent = formData.get("intent");
+    if (intent === "updateProfileImage" && request.method === "PATCH") {
+        try {
+            const oldProfile = formData.get("profile") as string | null;
+            if (newProfile && newProfile instanceof File && newProfile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("model", modelId, "avatar");
+                const buffer = Buffer.from(await newProfile.arrayBuffer());
+                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type, folderPath, "avatar");
+
+                // Update only the profile field
+                await prisma.model.update({
+                    where: { id: modelId },
+                    data: { profile: url },
+                });
+
+                // Delete old file after DB update
+                if (oldProfile) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(oldProfile)).catch((err) =>
+                        console.error("[BunnyCDN] Failed to clean up old profile image:", err)
+                    );
+                }
+
+                return { success: true, newProfileUrl: url };
+            }
+            return { success: false, error: true, message: "No image provided" };
+        } catch (error: any) {
+            console.error("Error auto-uploading profile:", error);
+            return { success: false, error: true, message: error?.message || "Upload failed" };
+        }
+    }
 
     if (request.method === "PATCH") {
         try {
@@ -138,15 +172,35 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const navigation = useNavigation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const actionData = useActionData<typeof action>();
     const { modelData, modelId } = loaderData;
     const [image, setImage] = useState<string>("");
+    const [currentProfileUrl, setCurrentProfileUrl] = useState(modelData.profile || "");
     const [isCompressing, setIsCompressing] = useState(false);
     const [compressedFile, setCompressedFile] = useState<File | null>(null);
     const [imageError, setImageError] = useState<string | null>(null);
     const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
+    const profileFetcher = useFetcher<{ success?: boolean; newProfileUrl?: string; error?: boolean; message?: string }>();
+    const isUploadingProfile = profileFetcher.state !== "idle";
     const isSubmitting = isCustomSubmitting || (navigation.state !== "idle" && navigation.formMethod === "PATCH");
     const isLoading = navigation.state === "loading";
+
+    // Update local state when profile auto-upload succeeds
+    React.useEffect(() => {
+        if (profileFetcher.data?.success && profileFetcher.data.newProfileUrl) {
+            setImage(profileFetcher.data.newProfileUrl);
+            setCurrentProfileUrl(profileFetcher.data.newProfileUrl);
+            setCompressedFile(null);
+            setSearchParams((prev) => {
+                prev.set("toastMessage", "Profile image updated successfully!");
+                prev.set("toastType", "success");
+                return prev;
+            }, { replace: true });
+        } else if (profileFetcher.data?.error) {
+            setImageError(profileFetcher.data.message || "Upload failed");
+        }
+    }, [profileFetcher.data]);
 
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -167,12 +221,17 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
 
                 console.log('Compressed file:', { name: compressed.name, type: compressed.type, size: compressed.size });
 
-                // Store the compressed file for form submission
-                setCompressedFile(compressed);
-
-                // Create preview using URL.createObjectURL (better iOS compatibility)
+                // Show preview immediately
                 const previewUrl = URL.createObjectURL(compressed);
                 setImage(previewUrl);
+                setCompressedFile(compressed);
+
+                // Auto-upload profile image
+                const formData = new FormData();
+                formData.append("intent", "updateProfileImage");
+                formData.append("newProfile", compressed, compressed.name);
+                formData.append("profile", currentProfileUrl);
+                profileFetcher.submit(formData, { method: "PATCH", encType: "multipart/form-data" });
             } catch (error) {
                 console.error('Error compressing image:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
@@ -280,20 +339,20 @@ export default function ModelProfileEditPage({ loaderData }: ProfileEditProps) {
                     <div className="flex flex-col items-center justify-center space-y-2">
                         <div className="relative w-[100px] h-[100px] rounded-full flex items-center justify-center">
                             <img
-                                src={image ? image : modelData.profile ? modelData.profile : "/images/default.webp"}
+                                src={image ? image : currentProfileUrl ? currentProfileUrl : "/images/default.webp"}
                                 alt="Profile"
-                                className={`w-full h-full rounded-full object-cover shadow-md ${isCompressing ? 'opacity-50' : ''}`}
+                                className={`w-full h-full rounded-full object-cover shadow-md ${(isCompressing || isUploadingProfile) ? 'opacity-50' : ''}`}
                             />
-                            {isCompressing && (
+                            {(isCompressing || isUploadingProfile) && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <Loader className="w-6 h-6 animate-spin text-rose-500" />
                                 </div>
                             )}
-                            <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
+                            <label className="absolute bottom-1 right-1 bg-white p-1.5 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
                                 <Camera className="w-4 h-4 text-gray-700" />
-                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing} />
+                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing || isUploadingProfile} />
                             </label>
-                            <input className="hidden" name="profile" defaultValue={modelData.profile || ""} />
+                            <input type="hidden" name="profile" value={currentProfileUrl} />
                         </div>
                         {imageError && (
                             <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">

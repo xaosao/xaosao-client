@@ -21,6 +21,7 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
   const navigate = useNavigate();
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+  const [localGiftCount, setLocalGiftCount] = useState(post.myGiftCount ?? 0);
   const [, setSearchParams] = useSearchParams();
 
   const isToggling = fetcher.state !== "idle";
@@ -33,6 +34,7 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
       if (data.success) {
         setShowGiftModal(false);
         setSelectedGiftId(null);
+        setLocalGiftCount((prev) => prev + 1);
         setSearchParams((prev) => {
           prev.set("toastMessage", "posts.giftSentSuccess");
           prev.set("toastType", "success");
@@ -165,16 +167,21 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
           {/* Gift - only for model posts */}
           {isModelPost && gifts.length > 0 && (
             <button
-              className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
-              onClick={() => setShowGiftModal(true)}
+              className={`cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity ${localGiftCount ? "text-rose-500" : "text-gray-500"}`}
+              onClick={() => localGiftCount ? navigate(`/customer/posts/${post.id}`) : setShowGiftModal(true)}
               disabled={isSendingGift}
             >
               {isSendingGift ? (
-                <Loader className="h-4 w-4 animate-spin text-pink-400" />
+                <Loader className="h-4 w-4 animate-spin text-rose-400" />
               ) : (
-                <Gift className="h-4 w-4 text-pink-500" />
+                <Gift className={`h-4 w-4 ${localGiftCount ? "text-rose-500" : "text-pink-500"}`} />
               )}
               <span className="text-sm">{t("posts.gift", { defaultValue: "Gift" })}</span>
+              {!!localGiftCount && (
+                <span className="bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {localGiftCount}
+                </span>
+              )}
             </button>
           )}
 

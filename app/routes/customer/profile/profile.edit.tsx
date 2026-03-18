@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from 'react-i18next';
 import type { Route } from "./+types/profile.edit";
 import { AlertCircle, Camera, ChevronLeft, Loader, X } from "lucide-react";
-import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
+import { Form, redirect, useActionData, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
 
 // components
 import Modal from "~/components/ui/model";
@@ -16,6 +16,7 @@ import { validateUpdateProfileInputs } from "~/services/validation.server";
 import { getCustomerProfile, updateProfile, updateChatProfile } from "~/services/profile.server";
 import type { ICustomerCredentials, ICustomerResponse } from "~/interfaces/customer";
 import { deleteFileFromBunny, uploadFileToBunnyServer } from "~/services/upload.server";
+import { prisma } from "~/services/database.server";
 import { capitalize, extractFilenameFromCDNSafe } from "~/utils/functions/textFormat";
 import { compressImage } from "~/utils/imageCompression";
 
@@ -43,6 +44,39 @@ export async function action({ request }: Route.ActionArgs) {
     const newProfile = formData.get("newProfile") as File | null
     const profile = formData.get("profile")
     const deleteImage = formData.get("deleteImage") === "true"
+
+    // Handle profile image auto-upload (separate from full form save)
+    const intent = formData.get("intent");
+    if (intent === "updateProfileImage" && request.method === "PATCH") {
+        try {
+            const oldProfile = formData.get("profile") as string | null;
+            if (newProfile && newProfile instanceof File && newProfile.size > 0) {
+                const { resolveUserUploadPath } = await import("~/services/upload.server");
+                const folderPath = await resolveUserUploadPath("customer", customerId, "avatar");
+                const buffer = Buffer.from(await newProfile.arrayBuffer());
+                const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type, folderPath, "avatar");
+
+                // Update only the profile field
+                await prisma.customer.update({
+                    where: { id: customerId },
+                    data: { profile: url },
+                });
+
+                // Delete old file after DB update
+                if (oldProfile) {
+                    await deleteFileFromBunny(extractFilenameFromCDNSafe(oldProfile)).catch((err) =>
+                        console.error("[BunnyCDN] Failed to clean up old profile image:", err)
+                    );
+                }
+
+                return { success: true, newProfileUrl: url };
+            }
+            return { success: false, error: true, message: "No image provided" };
+        } catch (error: any) {
+            console.error("Error auto-uploading profile:", error);
+            return { success: false, error: true, message: error?.message || "Upload failed" };
+        }
+    }
 
     if (request.method === "PATCH") {
         try {
@@ -146,16 +180,35 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
     const { t } = useTranslation();
     const navigate = useNavigate()
     const navigation = useNavigation()
+    const [searchParams, setSearchParams] = useSearchParams()
     const actionData = useActionData<typeof action>()
     const { customerData, customerId } = loaderData
     const [image, setImage] = useState<string>("")
+    const [currentProfileUrl, setCurrentProfileUrl] = useState(customerData.profile || "")
     const [isCompressing, setIsCompressing] = useState(false)
     const [compressedFile, setCompressedFile] = useState<File | null>(null)
     const [imageError, setImageError] = useState<string | null>(null)
-    const [deleteImage, setDeleteImage] = useState(false)
     const [isCustomSubmitting, setIsCustomSubmitting] = useState(false)
+    const profileFetcher = useFetcher<{ success?: boolean; newProfileUrl?: string; error?: boolean; message?: string }>();
+    const isUploadingProfile = profileFetcher.state !== "idle";
     const isSubmitting = isCustomSubmitting || (navigation.state !== "idle" && navigation.formMethod === "PATCH")
     const isLoading = navigation.state === "loading"
+
+    // Update local state when profile auto-upload succeeds
+    React.useEffect(() => {
+        if (profileFetcher.data?.success && profileFetcher.data.newProfileUrl) {
+            setImage(profileFetcher.data.newProfileUrl);
+            setCurrentProfileUrl(profileFetcher.data.newProfileUrl);
+            setCompressedFile(null);
+            setSearchParams((prev) => {
+                prev.set("toastMessage", "Profile image updated successfully!");
+                prev.set("toastType", "success");
+                return prev;
+            }, { replace: true });
+        } else if (profileFetcher.data?.error) {
+            setImageError(profileFetcher.data.message || "Upload failed");
+        }
+    }, [profileFetcher.data]);
 
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -164,7 +217,6 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
             setIsCompressing(true);
             setImageError(null);
             setCompressedFile(null);
-            setDeleteImage(false); // Reset delete flag when uploading new image
 
             try {
                 // Compress image to max 2MB to avoid Vercel's 4.5MB body limit
@@ -177,12 +229,17 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
 
                 console.log('Compressed file:', { name: compressed.name, type: compressed.type, size: compressed.size });
 
-                // Store the compressed file for form submission
-                setCompressedFile(compressed);
-
-                // Create preview using URL.createObjectURL (better iOS compatibility)
+                // Show preview immediately
                 const previewUrl = URL.createObjectURL(compressed);
                 setImage(previewUrl);
+                setCompressedFile(compressed);
+
+                // Auto-upload profile image
+                const formData = new FormData();
+                formData.append("intent", "updateProfileImage");
+                formData.append("newProfile", compressed, compressed.name);
+                formData.append("profile", currentProfileUrl);
+                profileFetcher.submit(formData, { method: "PATCH", encType: "multipart/form-data" });
             } catch (error) {
                 console.error('Error compressing image:', error);
                 const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
@@ -195,27 +252,9 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
         }
     };
 
-    // Handle image deletion
-    const handleDeleteImage = () => {
-        setImage("");
-        setCompressedFile(null);
-        setDeleteImage(true);
-        setImageError(null);
-        // Clear the file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
-    };
-
-    // Handle new image upload (triggers file input)
-    const handleNewImage = () => {
-        setDeleteImage(false);
-        fileInputRef.current?.click();
-    };
-
     // Custom form submission to ensure compressed file is used
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        if (!compressedFile && !image && !deleteImage) {
+        if (!compressedFile && !image) {
             // No new image and not deleting, let the form submit normally
             return;
         }
@@ -319,44 +358,20 @@ export default function ProfileEditPage({ loaderData }: TransactionProps) {
                     <div className="flex flex-col items-center justify-center space-y-2">
                         <div className="relative w-[100px] h-[100px] rounded-full flex items-center justify-center">
                             <img
-                                src={deleteImage ? "/images/default.webp" : (image ? image : customerData.profile ? customerData.profile : "/images/default.webp")}
+                                src={image ? image : currentProfileUrl ? currentProfileUrl : "/images/default.webp"}
                                 alt="Profile"
-                                className={`w-full h-full rounded-full object-cover shadow-md ${isCompressing ? 'opacity-50' : ''}`}
+                                className={`w-full h-full rounded-full object-cover shadow-md ${(isCompressing || isUploadingProfile) ? 'opacity-50' : ''}`}
                             />
-                            {isCompressing && (
+                            {(isCompressing || isUploadingProfile) && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <Loader className="w-6 h-6 animate-spin text-rose-500" />
                                 </div>
                             )}
-                            {!deleteImage && (image || customerData.profile) ? (
-                                // Show action buttons when image exists
-                                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleNewImage}
-                                        disabled={isCompressing}
-                                        className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-blue-600 shadow-md disabled:opacity-50"
-                                    >
-                                        New
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleDeleteImage}
-                                        disabled={isCompressing}
-                                        className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-red-600 shadow-md disabled:opacity-50"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            ) : (
-                                // Show camera icon when no image
-                                <label className="absolute bottom-1 right-1 bg-white p-1 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
-                                    <Camera className="w-4 h-4 text-gray-700" />
-                                </label>
-                            )}
-                            <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing} />
-                            <input className="hidden" name="profile" defaultValue={customerData.profile} />
-                            <input type="hidden" name="deleteImage" value={deleteImage ? "true" : "false"} />
+                            <label className="absolute bottom-1 right-1 bg-white p-1.5 rounded-full cursor-pointer shadow-md hover:bg-gray-100">
+                                <Camera className="w-4 h-4 text-gray-700" />
+                                <input type="file" name="newProfile" accept="image/*" ref={fileInputRef} className="hidden" onChange={onFileChange} disabled={isCompressing || isUploadingProfile} />
+                            </label>
+                            <input type="hidden" name="profile" value={currentProfileUrl} />
                         </div>
                         {imageError && (
                             <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">

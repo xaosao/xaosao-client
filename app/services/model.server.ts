@@ -1131,6 +1131,12 @@ export async function getForyouModels(
       isContact: model.friend_contacts.length > 0,
     }));
 
+    // Shuffle to show different models each visit
+    for (let i = enhancedModels.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [enhancedModels[i], enhancedModels[j]] = [enhancedModels[j], enhancedModels[i]];
+    }
+
     // Apply pagination AFTER filtering
     const totalCount = enhancedModels.length;
     const paginatedModels = enhancedModels.slice(skip, skip + perPage);
@@ -1891,10 +1897,7 @@ export async function getForYouCustomers(
     };
   }
 
-  // Get total count for pagination
-  const totalCount = await prisma.customer.count({ where: whereClause });
-
-  // Get customers with their interactions
+  // Fetch ALL matching customers (for distance filtering + shuffle)
   const customers = await prisma.customer.findMany({
     where: whereClause,
     include: {
@@ -1914,9 +1917,7 @@ export async function getForYouCustomers(
       },
       friend_contacts: {
         where: {
-          // adderType: "MODEL",
           modelId: modelId,
-          // contactType: "CUSTOMER",
         },
         select: {
           id: true,
@@ -1925,15 +1926,12 @@ export async function getForYouCustomers(
         },
       },
     },
-    orderBy: [{ createdAt: "desc" }],
-    skip,
-    take: perPage,
   });
 
   // Calculate distance if coordinates provided
-  let customersWithDistance = customers;
+  let filteredCustomers = customers;
   if (maxDistance && modelLat && modelLng) {
-    customersWithDistance = customers.filter((customer) => {
+    filteredCustomers = customers.filter((customer) => {
       if (!customer.latitude || !customer.longitude) return false;
       const distance = calculateDistance(
         Number(customer.latitude),
@@ -1946,7 +1944,7 @@ export async function getForYouCustomers(
   }
 
   // Add derived fields (isContact, modelAction)
-  const enhancedCustomers = customersWithDistance.map((customer) => ({
+  const enhancedCustomers = filteredCustomers.map((customer) => ({
     ...customer,
     isContact: customer.friend_contacts.length > 0,
     modelAction:
@@ -1955,10 +1953,19 @@ export async function getForYouCustomers(
         : null,
   }));
 
+  // Shuffle to show different customers each visit
+  for (let i = enhancedCustomers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [enhancedCustomers[i], enhancedCustomers[j]] = [enhancedCustomers[j], enhancedCustomers[i]];
+  }
+
+  // Apply pagination AFTER filtering and shuffling
+  const totalCount = enhancedCustomers.length;
+  const paginatedCustomers = enhancedCustomers.slice(skip, skip + perPage);
   const totalPages = Math.ceil(totalCount / perPage);
 
   return {
-    customers: enhancedCustomers,
+    customers: paginatedCustomers,
     pagination: {
       currentPage: page,
       totalPages,

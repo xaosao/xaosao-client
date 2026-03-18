@@ -273,7 +273,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
             <div className="w-1/5 p-6 hidden sm:flex flex-col items-start justify-between sm:sticky sm:top-0 sm:h-screen pb-10">
                 <div className="w-full">
                     <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
+                        <Link to="/model/profile" className="flex items-center space-x-3">
                             <div className="relative">
                                 <div className="w-14 h-14 border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600">
                                     <img
@@ -290,7 +290,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                     Connect with customers
                                 </p>
                             </div>
-                        </div>
+                        </Link>
                         <NotificationBell userType="model" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
                     </div>
 

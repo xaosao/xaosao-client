@@ -10,6 +10,7 @@ import {
     Form,
     redirect,
     useActionData,
+    useFetcher,
     useLoaderData,
     useNavigate,
     useNavigation,
@@ -26,7 +27,6 @@ import {
 } from "~/components/ui/drawer";
 import CustomerCard from "./customerComponent";
 import EmptyPage from "~/components/ui/empty";
-import Pagination from "~/components/ui/pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // services
@@ -310,7 +310,88 @@ export async function action({ request }: ActionFunctionArgs) {
     );
 }
 
-// Page
+// ─── Infinite scroll hook ────────────────────────────────────────────────────
+
+function useInfiniteScroll(
+    initialItems: any[],
+    initialPagination: PaginationProps,
+    tabFlag: string,
+    pageParam: string,
+    searchParams: URLSearchParams,
+    dataKey: keyof LoaderReturn,
+    paginationKey: keyof LoaderReturn,
+) {
+    const fetcher = useFetcher<LoaderReturn>();
+    const [items, setItems] = React.useState<any[]>(initialItems);
+    const [page, setPage] = React.useState(initialPagination.currentPage);
+    const [hasMore, setHasMore] = React.useState(initialPagination.hasNextPage);
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+    const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+    // Reset when initial data changes (tab switch, filter change)
+    React.useEffect(() => {
+        setItems(initialItems);
+        setPage(initialPagination.currentPage);
+        setHasMore(initialPagination.hasNextPage);
+        setIsLoadingMore(false);
+    }, [initialItems, initialPagination.currentPage, initialPagination.hasNextPage]);
+
+    // When fetcher returns data, append new items
+    React.useEffect(() => {
+        if (fetcher.data && fetcher.state === "idle") {
+            const newItems = (fetcher.data as any)[dataKey] as any[];
+            const newPagination = (fetcher.data as any)[paginationKey] as PaginationProps;
+            if (newItems && newItems.length > 0) {
+                setItems(prev => {
+                    const existingIds = new Set(prev.map(i => i.id));
+                    const unique = newItems.filter(i => !existingIds.has(i.id));
+                    return [...prev, ...unique];
+                });
+            }
+            if (newPagination) {
+                setHasMore(newPagination.hasNextPage);
+            }
+            setIsLoadingMore(false);
+        }
+    }, [fetcher.data, fetcher.state, dataKey, paginationKey]);
+
+    // Load next page
+    const loadMore = React.useCallback(() => {
+        if (!hasMore || isLoadingMore || fetcher.state !== "idle") return;
+        setIsLoadingMore(true);
+        const nextPage = page + 1;
+        setPage(nextPage);
+
+        const params = new URLSearchParams(searchParams);
+        params.set(tabFlag, "true");
+        params.set(pageParam, String(nextPage));
+
+        fetcher.load(`/model/matches?${params.toString()}`);
+    }, [hasMore, isLoadingMore, fetcher, page, searchParams, tabFlag, pageParam]);
+
+    // IntersectionObserver on sentinel
+    React.useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, loadMore]);
+
+    return { items, hasMore, isLoadingMore, sentinelRef };
+}
+
+// ─── Page component ──────────────────────────────────────────────────────────
+
 export default function ModelMatchesPage() {
     const { t } = useTranslation();
     const navigation = useNavigation();
@@ -394,6 +475,28 @@ export default function ModelMatchesPage() {
         }
     }, [searchParams, navigate]);
 
+    // Infinite scroll for each tab
+    const foryou = useInfiniteScroll(
+        foryouCustomers, foryouPagination,
+        "forYouOnly", "page", searchParams,
+        "foryouCustomers", "foryouPagination"
+    );
+    const likeme = useInfiniteScroll(
+        likeMeCustomers, likemePagination,
+        "likeMeOnly", "likeMePage", searchParams,
+        "likeMeCustomers", "likemePagination"
+    );
+    const favourite = useInfiniteScroll(
+        myFavouriteCustomers, favouritePagination,
+        "favouriteOnly", "favouritePage", searchParams,
+        "myFavouriteCustomers", "favouritePagination"
+    );
+    const passed = useInfiniteScroll(
+        myPassCustomers, passPagination,
+        "passedOnly", "passedPage", searchParams,
+        "myPassCustomers", "passPagination"
+    );
+
     if (isSubmitting) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
@@ -404,6 +507,54 @@ export default function ModelMatchesPage() {
             </div>
         );
     }
+
+    const renderGrid = (
+        scroll: ReturnType<typeof useInfiniteScroll>,
+        emptyDesc: string,
+    ) => {
+        if (isLoading) {
+            return (
+                <div className="flex justify-center items-center min-h-[200px]">
+                    <Loader className="w-6 h-6 animate-spin text-rose-500" />
+                    &nbsp; {t('matches.loading')}
+                </div>
+            );
+        }
+
+        if (scroll.items.length === 0) {
+            return (
+                <EmptyPage
+                    title={t('matches.notFound')}
+                    description={emptyDesc}
+                />
+            );
+        }
+
+        return (
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 px-2">
+                    {scroll.items.map((customer) => (
+                        <CustomerCard
+                            key={customer.id}
+                            customer={customer}
+                            modelLatitude={modelLatitude}
+                            modelLongitude={modelLongitude}
+                            modelName={modelName}
+                        />
+                    ))}
+                </div>
+
+                {/* Sentinel for infinite scroll */}
+                <div ref={scroll.sentinelRef} className="h-4" />
+
+                {scroll.isLoadingMore && (
+                    <div className="flex justify-center py-4">
+                        <Loader className="w-5 h-5 animate-spin text-rose-500" />
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen relative">
@@ -648,166 +799,19 @@ export default function ModelMatchesPage() {
                             </Drawer>
                         </div>
 
-                        {isLoading ? (
-                            <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
-                            </div>
-                        ) : foryouCustomers.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 px-2">
-                                    {foryouCustomers.map((customer) => (
-                                        <CustomerCard
-                                            key={customer.id}
-                                            customer={customer}
-                                            modelLatitude={modelLatitude}
-                                            modelLongitude={modelLongitude}
-                                            modelName={modelName}
-                                        />
-                                    ))}
-                                </div>
-                                {foryouPagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={foryouPagination.currentPage}
-                                        totalPages={foryouPagination.totalPages}
-                                        totalCount={foryouPagination.totalCount}
-                                        limit={foryouPagination.limit}
-                                        hasNextPage={foryouPagination.hasNextPage}
-                                        hasPreviousPage={foryouPagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <EmptyPage
-                                title={t('matches.notFound')}
-                                description={t('matches.noResults')}
-                            />
-                        )}
+                        {renderGrid(foryou, t('matches.noResults'))}
                     </TabsContent>
 
                     <TabsContent value="likeme">
-                        {isLoading ? (
-                            <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
-                            </div>
-                        ) : likeMeCustomers.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {likeMeCustomers.map((customer) => (
-                                        <CustomerCard
-                                            key={customer.id}
-                                            customer={customer}
-                                            modelLatitude={modelLatitude}
-                                            modelLongitude={modelLongitude}
-                                            modelName={modelName}
-                                        />
-                                    ))}
-                                </div>
-                                {likemePagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={likemePagination.currentPage}
-                                        totalPages={likemePagination.totalPages}
-                                        totalCount={likemePagination.totalCount}
-                                        limit={likemePagination.limit}
-                                        hasNextPage={likemePagination.hasNextPage}
-                                        hasPreviousPage={likemePagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="likeMePage"
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <EmptyPage
-                                title={t('matches.notFound')}
-                                description={t('matches.noResults')}
-                            />
-                        )}
+                        {renderGrid(likeme, t('matches.noResults'))}
                     </TabsContent>
 
                     <TabsContent value="favourite">
-                        {isLoading ? (
-                            <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
-                            </div>
-                        ) : myFavouriteCustomers.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {myFavouriteCustomers.map((customer) => (
-                                        <CustomerCard
-                                            key={customer.id}
-                                            customer={customer}
-                                            modelLatitude={modelLatitude}
-                                            modelLongitude={modelLongitude}
-                                            modelName={modelName}
-                                        />
-                                    ))}
-                                </div>
-                                {favouritePagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={favouritePagination.currentPage}
-                                        totalPages={favouritePagination.totalPages}
-                                        totalCount={favouritePagination.totalCount}
-                                        limit={favouritePagination.limit}
-                                        hasNextPage={favouritePagination.hasNextPage}
-                                        hasPreviousPage={favouritePagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="favouritePage"
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <EmptyPage
-                                title={t('matches.notFound')}
-                                description={t('matches.noResults')}
-                            />
-                        )}
+                        {renderGrid(favourite, t('matches.noResults'))}
                     </TabsContent>
 
                     <TabsContent value="passed">
-                        {isLoading ? (
-                            <div className="flex justify-center items-center min-h-[200px]">
-                                <Loader className="w-6 h-6 animate-spin text-rose-500" />
-                                &nbsp; {t('matches.loading')}
-                            </div>
-                        ) : myPassCustomers.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {myPassCustomers.map((customer) => (
-                                        <CustomerCard
-                                            key={customer.id}
-                                            customer={customer}
-                                            modelLatitude={modelLatitude}
-                                            modelLongitude={modelLongitude}
-                                            modelName={modelName}
-                                        />
-                                    ))}
-                                </div>
-                                {passPagination.totalPages > 1 && (
-                                    <Pagination
-                                        currentPage={passPagination.currentPage}
-                                        totalPages={passPagination.totalPages}
-                                        totalCount={passPagination.totalCount}
-                                        limit={passPagination.limit}
-                                        hasNextPage={passPagination.hasNextPage}
-                                        hasPreviousPage={passPagination.hasPreviousPage}
-                                        baseUrl=""
-                                        searchParams={searchParams}
-                                        pageParam="passedPage"
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <EmptyPage
-                                title={t('matches.notFound')}
-                                description={t('matches.noResultsFound')}
-                            />
-                        )}
+                        {renderGrid(passed, t('matches.noResultsFound'))}
                     </TabsContent>
                 </Tabs>
             </div>

@@ -48,61 +48,66 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
   return (
     <div
       className={`border-b py-4 border-gray-300 rounded-sm bg-white ${!isActive ? "opacity-90" : ""} ${post.hasTip ? "sm:border-gray-300 border-yellow-300" : ""}`}>
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative flex-shrink-0">
-            {userProfile?.profile ? (
-              <img
-                src={userProfile.profile}
-                alt={authorName}
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-rose-100"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center">
-                <span className="text-white text-sm font-semibold">{authorName.charAt(0).toUpperCase()}</span>
-              </div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold truncate">{authorName}</span>
-              {serviceName && (
-                <span className="text-xs text-rose-500 font-medium truncate">{serviceName}</span>
+      <div
+        className="cursor-pointer hover:bg-gray-50 transition-colors"
+        onClick={() => navigate(`/${userType}/posts/${post.id}`)}
+      >
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative flex-shrink-0">
+              {userProfile?.profile ? (
+                <img
+                  src={userProfile.profile}
+                  alt={authorName}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-rose-100"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center">
+                  <span className="text-white text-sm font-semibold">{authorName.charAt(0).toUpperCase()}</span>
+                </div>
               )}
-              {post.hasTip && (
-                <span className="text-xs px-1.5 py-0 rounded-full bg-amber-100 text-amber-600 flex items-center gap-0.5">
-                  <Coins className="h-3 w-3" />
-                  {t("tipBadge", { defaultValue: "+Tip" })}
-                </span>
-              )}
-              <Badge
-                variant="outline"
-                className={`text-[10px] px-1.5 py-0 ${isActive
-                  ? "border-green-200 text-green-600"
-                  : isFulfilled
-                    ? "border-blue-200 text-blue-600"
-                    : "border-gray-200 text-gray-400"
-                  }`}
-              >
-                {isActive
-                  ? t("posts.statusActive", { defaultValue: "Active" })
-                  : isFulfilled
-                    ? t("posts.statusFulfilled", { defaultValue: "Fulfilled" })
-                    : t("posts.statusExpired", { defaultValue: "Expired" })}
-              </Badge>
             </div>
-            <span className="text-xs text-gray-400">{getTimeAgo(post.createdAt, t)}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold truncate">{authorName}</span>
+                {serviceName && (
+                  <span className="text-xs text-rose-500 font-medium truncate">{serviceName}</span>
+                )}
+                {post.hasTip && (
+                  <span className="text-xs px-1.5 py-0 rounded-full bg-amber-100 text-amber-600 flex items-center gap-0.5">
+                    <Coins className="h-3 w-3" />
+                    {t("tipBadge", { defaultValue: "+Tip" })}
+                  </span>
+                )}
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${isActive
+                    ? "border-green-200 text-green-600"
+                    : isFulfilled
+                      ? "border-blue-200 text-blue-600"
+                      : "border-gray-200 text-gray-400"
+                    }`}
+                >
+                  {isActive
+                    ? t("posts.statusActive", { defaultValue: "Active" })
+                    : isFulfilled
+                      ? t("posts.statusFulfilled", { defaultValue: "Fulfilled" })
+                      : t("posts.statusExpired", { defaultValue: "Expired" })}
+                </Badge>
+              </div>
+              <span className="text-xs text-gray-400">{getTimeAgo(post.createdAt, t)}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>
-        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-      </div>
+        <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>
+          <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+        </div>
 
-      {hasImages && (
-        <PostImageGallery images={post.images} />
-      )}
+        {hasImages && (
+          <PostImageGallery images={post.images} />
+        )}
+      </div>
 
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2">
