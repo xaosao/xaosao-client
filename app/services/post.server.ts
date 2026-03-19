@@ -133,6 +133,7 @@ export async function getPostsFeed(
         gifts: viewerType === "customer"
           ? { where: { customerId: viewerId }, select: { id: true } }
           : { where: { modelId: viewerId }, select: { id: true } },
+        _count: { select: { gifts: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -146,6 +147,7 @@ export async function getPostsFeed(
     ...post,
     isInterested: post.interests.length > 0,
     myGiftCount: post.gifts?.length ?? 0,
+    totalGiftCount: post._count?.gifts ?? 0,
     author: post.authorType === "customer" ? post.customer : post.model,
   }));
 

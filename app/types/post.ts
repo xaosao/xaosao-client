@@ -27,6 +27,7 @@ export interface PostItem {
     whatsapp?: number | null;
   } | null;
   myGiftCount?: number;
+  totalGiftCount?: number;
   _count?: { interests: number; gifts?: number };
 }
 

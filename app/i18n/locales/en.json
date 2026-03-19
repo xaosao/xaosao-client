@@ -1343,6 +1343,26 @@
         "address": "Address"
       }
     },
+    "verifyRegistration": {
+      "title": "Verify Your Phone Number",
+      "subtitle": "Enter the 6-digit code sent to",
+      "otpCode": "OTP Code",
+      "verify": "Verify & Register",
+      "verifying": "Verifying...",
+      "changeNumber": "Change Number",
+      "resendCode": "Resend Code",
+      "resending": "Resending...",
+      "resendIn": "Resend in ",
+      "seconds": "s",
+      "otpResent": "New OTP sent successfully!",
+      "notice": "We sent a verification code to your phone number via SMS. The code expires in 5 minutes.",
+      "sessionExpired": "Session expired. Please register again.",
+      "invalidOtpFormat": "Invalid OTP format. Please enter a 6-character code.",
+      "invalidOtp": "Invalid OTP code. Please try again.",
+      "otpExpired": "OTP has expired. Please request a new code.",
+      "resendFailed": "Failed to resend OTP. Please try again.",
+      "registrationSuccess": "Registration successful! Please wait for admin approval to login."
+    },
     "forgotPassword": {
       "title": "Forgot password?",
       "subtitle": "Enter your phone number and we'll send OTP to reset your password!",

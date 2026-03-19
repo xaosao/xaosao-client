@@ -1,10 +1,12 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useLoaderData, useNavigate, useSearchParams, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift } from "lucide-react";
+import { useLoaderData, useNavigate, useSearchParams, useFetcher, type LoaderFunctionArgs } from "react-router";
+import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, Send, Loader, X } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { requireUserSession } from "~/services/auths.server";
 import { getPostById, getCustomerBasicProfile } from "~/services/post.server";
+import { getActiveGifts } from "~/services/gift.server";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 
@@ -15,7 +17,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const { getPostGifts } = await import("~/services/gift.server");
 
-  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet, postGifts] = await Promise.all([
+  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet, postGifts, giftCatalog] = await Promise.all([
     getPostById(params.id!),
     getCustomerBasicProfile(customerId),
     hasActiveSubscription(customerId),
@@ -29,6 +31,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
       select: { totalBalance: true, totalSpend: true, totalRefunded: true },
     }),
     getPostGifts(params.id!),
+    getActiveGifts(),
   ]);
 
   if (!post) throw new Response("Post not found", { status: 404 });
@@ -44,15 +47,54 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     trialPackage,
     customerBalance: availableBalance,
     postGifts,
+    giftCatalog,
   };
 }
 
 export default function PostDetailPage() {
-  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, postGifts } = useLoaderData<typeof loader>();
+  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, postGifts, giftCatalog } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const giftFetcher = useFetcher();
+  const [searchParams, setSearchParams] = useSearchParams();
   const shouldShowSubscriptionFromUrl = searchParams.get("showSubscription") === "true";
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+  const [localGifts, setLocalGifts] = useState(postGifts ?? []);
+  const isSendingGift = giftFetcher.state !== "idle";
+
+  useEffect(() => {
+    if (giftFetcher.state === "idle" && giftFetcher.data) {
+      const data = giftFetcher.data as any;
+      if (data.success) {
+        setShowGiftModal(false);
+        setSelectedGiftId(null);
+        // Add the new gift to the local list
+        if (data.postGift) {
+          setLocalGifts((prev: any[]) => [data.postGift, ...prev]);
+        }
+        setSearchParams((prev) => {
+          prev.set("toastMessage", "posts.giftSentSuccess");
+          prev.set("toastType", "success");
+          return prev;
+        }, { replace: true });
+      } else if (data.error) {
+        setSearchParams((prev) => {
+          prev.set("toastMessage", data.error);
+          prev.set("toastType", "error");
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [giftFetcher.state, giftFetcher.data]);
+
+  const handleSendGift = () => {
+    if (!selectedGiftId) return;
+    giftFetcher.submit(
+      { giftId: selectedGiftId },
+      { method: "post", action: `/customer/posts/${post.id}/gift` }
+    );
+  };
 
   const {
     showSubscriptionModal,
@@ -201,15 +243,30 @@ export default function PostDetailPage() {
         </>
       )}
 
+
       {/* Gifts Sent Section */}
-      {postGifts && postGifts.length > 0 && (
+      {localGifts.length > 0 && (
         <>
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-1 mt-4">
-            <Gift className="h-4 w-4 text-pink-500" />
-            {t("posts.giftsSent", { defaultValue: "Gifts" })} ({postGifts.length})
-          </h2>
-          <div className="space-y-2">
-            {postGifts.map((pg: any) => {
+          <div className="w-full flex items-center justify-between">
+            <h2 className="text-sm font-bold mb-3 flex items-center gap-1 mt-4">
+              <Gift className="h-4 w-4 text-rose-500" />
+              {t("posts.giftsSent", { defaultValue: "Gifts" })} ({localGifts.length})
+            </h2>
+            {/* Send Gift Button */}
+            {post.authorType === "model" && giftCatalog.length > 0 && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowGiftModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg text-sm font-semibold bg-rose-500 hover:bg-rose-600 text-white transition-colors"
+                >
+                  <Gift className="h-4 w-4" />
+                  {t("posts.sendMoreGift", { defaultValue: "ສົ່ງຂອງຂວັນອີກ" })}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2 mt-4">
+            {localGifts.map((pg: any) => {
               const sender = pg.customer;
               const senderName = sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Customer";
               return (
@@ -243,6 +300,76 @@ export default function PostDetailPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Gift Modal */}
+      {showGiftModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setShowGiftModal(false); setSelectedGiftId(null); }}>
+          <div
+            className="bg-white w-full sm:max-w-sm sm:rounded-lg rounded-t-2xl max-h-[70vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div>
+                <h3 className="text-sm font-semibold">{t("posts.sendGift", { defaultValue: "Send a Gift" })}</h3>
+                <p className="text-xs text-gray-400">
+                  {t("posts.walletBalance", { defaultValue: "Balance" })}: {customerBalance.toLocaleString()} ₭
+                </p>
+              </div>
+              <button onClick={() => { setShowGiftModal(false); setSelectedGiftId(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              <div className="grid grid-cols-3 gap-3">
+                {giftCatalog.map((gift: any) => {
+                  const canAfford = customerBalance >= gift.price;
+                  const isSelected = selectedGiftId === gift.id;
+                  return (
+                    <button
+                      key={gift.id}
+                      disabled={!canAfford || isSendingGift}
+                      onClick={() => setSelectedGiftId(isSelected ? null : gift.id)}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${isSelected
+                        ? "border-pink-500 bg-pink-50 scale-[1.02]"
+                        : canAfford
+                          ? "border-gray-200 hover:border-pink-300 hover:bg-pink-50"
+                          : "border-gray-100 opacity-50 cursor-not-allowed"
+                        }`}
+                    >
+                      {gift.image ? (
+                        <img src={gift.image} alt={gift.name} className="w-10 h-10 object-contain" />
+                      ) : (
+                        <Gift className="w-10 h-10 text-pink-400" />
+                      )}
+                      <span className="text-xs font-medium truncate w-full text-center">{gift.name}</span>
+                      <span className="text-xs text-gray-500">{gift.price.toLocaleString()} ₭</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t">
+              <button
+                disabled={!selectedGiftId || isSendingGift}
+                onClick={handleSendGift}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${selectedGiftId && !isSendingGift
+                  ? "bg-pink-500 hover:bg-pink-600 text-white active:scale-[0.98]"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+              >
+                {isSendingGift ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {isSendingGift
+                  ? t("posts.sending", { defaultValue: "Sending..." })
+                  : t("posts.sendGift", { defaultValue: "Send a Gift" })}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {trialPackage && (

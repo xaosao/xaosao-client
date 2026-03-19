@@ -132,7 +132,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
       // Redirect to login with success message
       return redirect(
-        "/model-auth/login?tab=model&toastMessage=Registration+successful!+Please+wait+for+admin+approval+to+login.&toastType=success&toastDuration=5000",
+        "/model-auth/login?tab=model&toastMessage=modelAuth.verifyRegistration.registrationSuccess&toastType=success&toastDuration=5000",
         {
           headers: {
             "Set-Cookie": clearCookie,

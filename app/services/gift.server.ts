@@ -149,6 +149,10 @@ export async function sendGift(
         modelId,
         amount: gift.price,
       },
+      include: {
+        customer: { select: { id: true, firstName: true, lastName: true, profile: true } },
+        gift: { select: { id: true, name: true, image: true, price: true } },
+      },
     });
 
     await createAuditLogs({

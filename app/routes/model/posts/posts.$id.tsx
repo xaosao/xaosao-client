@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, useFetcher, type LoaderFunctionArgs } from "react-router";
-import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, X, Eye } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { getPostById, getModelBasicProfile } from "~/services/post.server";
@@ -10,13 +11,16 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const modelId = await requireModelSession(request);
   const { getPostGifts } = await import("~/services/gift.server");
 
-  const [post, modelProfile, postGifts] = await Promise.all([
+  const { getActiveGifts } = await import("~/services/gift.server");
+
+  const [post, modelProfile, postGifts, giftCatalog] = await Promise.all([
     getPostById(params.id!),
     getModelBasicProfile(modelId),
     getPostGifts(params.id!),
+    getActiveGifts(),
   ]);
   if (!post) throw new Response("Post not found", { status: 404 });
-  return { post, modelId, modelProfile, postGifts };
+  return { post, modelId, modelProfile, postGifts, giftCatalog };
 }
 
 export async function action({ params, request }: LoaderFunctionArgs) {
@@ -35,10 +39,11 @@ export async function action({ params, request }: LoaderFunctionArgs) {
 }
 
 export default function ModelPostDetailPage() {
-  const { post, modelId, modelProfile, postGifts } = useLoaderData<typeof loader>();
+  const { post, modelId, modelProfile, postGifts, giftCatalog } = useLoaderData<typeof loader>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const reactionFetcher = useFetcher();
+  const [showGiftCatalog, setShowGiftCatalog] = useState(false);
 
   const author = post.authorType === "customer" ? post.customer : post.model;
   const authorName = author ? `${author.firstName} ${author.lastName || ""}`.trim() : "User";
@@ -189,10 +194,21 @@ export default function ModelPostDetailPage() {
       {/* Gifts Received Section - model can react */}
       {post.model?.id === modelId && postGifts && postGifts.length > 0 && (
         <>
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2 mt-4">
-            <Gift className="h-4 w-4 text-pink-500" />
-            {t("posts.giftsReceived", { defaultValue: "Gifts Received" })} ({postGifts.length})
-          </h2>
+          <div className="flex items-center justify-between mt-4 mb-3">
+            <h2 className="text-sm font-bold flex items-center gap-2">
+              <Gift className="h-4 w-4 text-rose-500" />
+              {t("posts.giftsReceived", { defaultValue: "ຂອງຂວັນທີ່ໄດ້ຮັບ" })} ({postGifts.length})
+            </h2>
+            {giftCatalog.length > 0 && (
+              <button
+                onClick={() => setShowGiftCatalog(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-500 border border-rose-200 bg-rose-50 rounded-md hover:bg-rose-100 transition-colors"
+              >
+                <Eye className="h-3 w-3" />
+                {t("posts.viewGiftTypes", { defaultValue: "ເບິ່ງປະເພດຂອງຂວັນທັງໝົດ" })}
+              </button>
+            )}
+          </div>
           <div className="space-y-2">
             {postGifts.map((pg: any) => {
               const sender = pg.customer;
@@ -237,11 +253,10 @@ export default function ModelPostDetailPage() {
                               { method: "post" }
                             );
                           }}
-                          className={`text-base px-1 py-0.5 rounded transition-all ${
-                            currentReaction === r
+                          className={`text-base px-1 py-0.5 rounded transition-all ${currentReaction === r
                               ? "bg-pink-100 scale-110"
                               : "hover:bg-gray-100 opacity-50 hover:opacity-100"
-                          }`}
+                            }`}
                         >
                           {r === "love" ? "❤️" : r === "care" ? "🥰" : "🙏"}
                         </button>
@@ -261,6 +276,44 @@ export default function ModelPostDetailPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Gift Catalog Modal */}
+      {showGiftCatalog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowGiftCatalog(false)}>
+          <div
+            className="bg-white w-full sm:max-w-sm sm:rounded-lg rounded-t-2xl max-h-[70vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Gift className="h-4 w-4 text-rose-500" />
+                {t("posts.allGiftTypes", { defaultValue: "ຂອງຂວັນທັງໝົດ" })}
+              </h3>
+              <button onClick={() => setShowGiftCatalog(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[55vh]">
+              <div className="grid grid-cols-3 gap-3">
+                {giftCatalog.map((gift: any) => (
+                  <div
+                    key={gift.id}
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    {gift.image ? (
+                      <img src={gift.image} alt={gift.name} className="w-12 h-12 object-contain" />
+                    ) : (
+                      <Gift className="w-12 h-12 text-pink-400" />
+                    )}
+                    <span className="text-xs font-medium truncate w-full text-center">{gift.name}</span>
+                    <span className="text-xs font-semibold text-amber-600">{gift.price.toLocaleString()} ₭</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
