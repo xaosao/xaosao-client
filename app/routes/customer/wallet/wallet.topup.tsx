@@ -188,10 +188,10 @@ export default function WalletTopUpPage() {
 
     // Get return URL from sessionStorage on mount
     React.useEffect(() => {
-        const storedReturnUrl = sessionStorage.getItem("topup_return_url");
-        if (storedReturnUrl) {
-            setReturnUrl(storedReturnUrl);
-        }
+        try {
+            const storedReturnUrl = sessionStorage.getItem("topup_return_url");
+            if (storedReturnUrl) setReturnUrl(storedReturnUrl);
+        } catch {}
     }, []);
 
     const isSubmitting =
@@ -221,9 +221,10 @@ export default function WalletTopUpPage() {
 
     function closeHandler() {
         // Check for stored return URL
-        const returnUrl = sessionStorage.getItem("topup_return_url");
+        let returnUrl: string | null = null;
+        try { returnUrl = sessionStorage.getItem("topup_return_url"); } catch {}
         if (returnUrl) {
-            sessionStorage.removeItem("topup_return_url");
+            try { sessionStorage.removeItem("topup_return_url"); } catch {}
             navigate(returnUrl);
         } else {
             navigate("/customer/wallets");

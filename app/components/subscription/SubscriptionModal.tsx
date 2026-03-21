@@ -241,12 +241,13 @@ export function SubscriptionModal({
                   // Calculate deficit (trial price - customer balance)
                   const deficit = Math.max(trialPrice - customerBalance, 10000);
                   // Store the current page URL for return after top-up
-                  const bookingIntent = sessionStorage.getItem("booking_intent");
+                  let bookingIntent: string | null = null;
+                  try { bookingIntent = sessionStorage.getItem("booking_intent"); } catch {}
                   if (bookingIntent) {
                     const { modelId } = JSON.parse(bookingIntent);
-                    sessionStorage.setItem("topup_return_url", `/customer/user-profile/${modelId}`);
+                    try { sessionStorage.setItem("topup_return_url", `/customer/user-profile/${modelId}`); } catch {}
                   } else {
-                    sessionStorage.setItem("topup_return_url", window.location.pathname);
+                    try { sessionStorage.setItem("topup_return_url", window.location.pathname); } catch {}
                   }
                   navigate(`/customer/wallet-topup?amount=${deficit}&planId=${trialPlanId}`);
                   onClose();

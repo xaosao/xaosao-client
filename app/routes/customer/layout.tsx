@@ -148,7 +148,8 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         onNeedPermission: useCallback(() => {
             // Only show prompt on dashboard page, not on every navigation
             if (isDashboardPage) {
-                const dismissed = sessionStorage.getItem("locationPromptDismissed");
+                let dismissed: string | null = null;
+                try { dismissed = sessionStorage.getItem("locationPromptDismissed"); } catch {}
                 if (!dismissed) {
                     setShowLocationPrompt(true);
                 } else {
@@ -176,7 +177,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     // Close location prompt → advance to push notification step
     const closeLocationPrompt = useCallback(() => {
         setShowLocationPrompt(false);
-        sessionStorage.setItem("locationPromptDismissed", "true");
+        try { sessionStorage.setItem("locationPromptDismissed", "true"); } catch {}
         setLocationStepDone(true);
     }, []);
 
@@ -184,7 +185,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const handleLocationRequest = useCallback(() => {
         requestLocation();
         setShowLocationPrompt(false);
-        sessionStorage.setItem("locationPromptDismissed", "true");
+        try { sessionStorage.setItem("locationPromptDismissed", "true"); } catch {}
         setLocationStepDone(true);
     }, [requestLocation]);
 

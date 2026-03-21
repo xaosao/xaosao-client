@@ -52,76 +52,73 @@ function isPWAMode(): boolean {
          (window.navigator as any).standalone === true;
 }
 
+// Safe storage helpers — iOS Safari can throw on storage access (PWA, private browsing, quota exceeded)
+function safeGetItem(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSetItem(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
 // Force cache clear when version changes
 function useCacheClear() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedVersion = localStorage.getItem("app_version");
-    const lastCacheClear = localStorage.getItem("last_cache_clear");
-    const now = Date.now();
+    try {
+      const storedVersion = safeGetItem("app_version");
+      const lastCacheClear = safeGetItem("last_cache_clear");
+      const now = Date.now();
 
-    console.log(`[Cache] Version check - stored: ${storedVersion}, current: ${APP_VERSION}`);
-
-    // If version changed, clear caches (but don't auto-reload to avoid loops)
-    if (storedVersion && storedVersion !== APP_VERSION) {
-      console.log(`[Cache] Version changed from ${storedVersion} to ${APP_VERSION}, clearing caches...`);
-
-      // Clear caches without reload
-      if ("caches" in window) {
-        caches.keys().then((names) => {
-          console.log("[Cache] Clearing caches:", names);
-          Promise.all(names.map((name) => caches.delete(name)));
-        });
-      }
-
-      // Update stored version and clear timestamp
-      localStorage.setItem("app_version", APP_VERSION);
-      localStorage.setItem("last_cache_clear", now.toString());
-
-      // Force service worker to update (don't unregister — that destroys push subscriptions)
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            if (registration.active) {
-              registration.active.postMessage({ type: 'FORCE_UPDATE' });
-            }
-            registration.update();
-            console.log("[Cache] Service worker force-updated");
-          }
-        });
-      }
-    } else if (!storedVersion) {
-      // First time visit, just store the version
-      console.log("[Cache] First visit, storing version");
-      localStorage.setItem("app_version", APP_VERSION);
-      localStorage.setItem("last_cache_clear", now.toString());
-    }
-
-    // iOS-specific: Periodic cache clear every 24 hours to prevent stale cache buildup
-    if (isIOSPWA() && lastCacheClear) {
-      const hoursSinceLastClear = (now - parseInt(lastCacheClear)) / (1000 * 60 * 60);
-      if (hoursSinceLastClear >= 24) {
-        console.log("[Cache] iOS PWA: 24 hours passed, clearing caches...");
+      // If version changed, clear caches (but don't auto-reload to avoid loops)
+      if (storedVersion && storedVersion !== APP_VERSION) {
         if ("caches" in window) {
           caches.keys().then((names) => {
-            Promise.all(names.map((name) => caches.delete(name))).then(() => {
-              localStorage.setItem("last_cache_clear", now.toString());
-              console.log("[Cache] iOS PWA: Cache cleared successfully");
-            });
-          });
+            Promise.all(names.map((name) => caches.delete(name)));
+          }).catch(() => {});
+        }
+
+        safeSetItem("app_version", APP_VERSION);
+        safeSetItem("last_cache_clear", now.toString());
+
+        // Force service worker to update (don't unregister — that destroys push subscriptions)
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (const registration of registrations) {
+              if (registration.active) {
+                registration.active.postMessage({ type: 'FORCE_UPDATE' });
+              }
+              registration.update();
+            }
+          }).catch(() => {});
+        }
+      } else if (!storedVersion) {
+        safeSetItem("app_version", APP_VERSION);
+        safeSetItem("last_cache_clear", now.toString());
+      }
+
+      // iOS-specific: Periodic cache clear every 24 hours to prevent stale cache buildup
+      if (isIOSPWA() && lastCacheClear) {
+        const hoursSinceLastClear = (now - parseInt(lastCacheClear)) / (1000 * 60 * 60);
+        if (hoursSinceLastClear >= 24) {
+          if ("caches" in window) {
+            caches.keys().then((names) => {
+              Promise.all(names.map((name) => caches.delete(name))).then(() => {
+                safeSetItem("last_cache_clear", now.toString());
+              });
+            }).catch(() => {});
+          }
         }
       }
-    }
 
-    // Check for service worker updates on launch
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistration().then((registration) => {
-        if (registration) {
-          console.log("[PWA] Checking for service worker updates...");
-          registration.update();
-        }
-      });
+      // Check for service worker updates on launch
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistration().then((registration) => {
+          if (registration) registration.update();
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error("[Cache] useCacheClear failed:", e);
     }
   }, []);
 }
@@ -180,14 +177,18 @@ function usePWA() {
           console.error("[PWA] Service Worker registration failed:", error);
         });
 
-      // Reload page when new service worker takes control
+      // Reload page when new service worker takes control (with loop protection)
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          console.log('[PWA] Service worker controller changed, reloading...');
-          window.location.reload();
-        }
+        if (refreshing) return;
+        // Prevent reload loops: only reload if last reload was more than 10 seconds ago
+        try {
+          const lastReload = sessionStorage.getItem('sw_reload_ts');
+          if (lastReload && Date.now() - parseInt(lastReload) < 10000) return;
+          sessionStorage.setItem('sw_reload_ts', Date.now().toString());
+        } catch {}
+        refreshing = true;
+        window.location.reload();
       });
 
       // Listen for messages from service worker
@@ -195,7 +196,7 @@ function usePWA() {
         if (event.data && event.data.type === 'SW_UPDATED') {
           console.log('[PWA] Service worker updated to version:', event.data.version);
           // Clear localStorage cache version to trigger refresh on next load
-          localStorage.removeItem('app_version');
+          try { localStorage.removeItem('app_version'); } catch {}
         }
       });
     };

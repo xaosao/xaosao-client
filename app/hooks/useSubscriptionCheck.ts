@@ -47,13 +47,14 @@ export function useSubscriptionCheck({
     // Only check on mount if showOnMount is true (for dashboard)
     // Don't show if customer has active or pending subscription
     if (showOnMount && !hasActiveSubscription && !hasPendingSubscription) {
-      const wasShownInSession = sessionStorage.getItem(SESSION_KEY);
+      let wasShownInSession: string | null = null;
+      try { wasShownInSession = sessionStorage.getItem(SESSION_KEY); } catch {}
 
       if (!wasShownInSession) {
         // Show modal after a short delay for better UX
         const timer = setTimeout(() => {
           setShowSubscriptionModal(true);
-          sessionStorage.setItem(SESSION_KEY, "true");
+          try { sessionStorage.setItem(SESSION_KEY, "true"); } catch {}
         }, 1000);
 
         return () => clearTimeout(timer);
@@ -86,13 +87,14 @@ export function useSubscriptionCheck({
       const result = await response.json();
 
       // Clear session flag so modal can show again if needed
-      sessionStorage.removeItem(SESSION_KEY);
+      try { sessionStorage.removeItem(SESSION_KEY); } catch {}
 
       // Check for stored booking intent
-      const bookingIntent = sessionStorage.getItem("booking_intent");
+      let bookingIntent: string | null = null;
+      try { bookingIntent = sessionStorage.getItem("booking_intent"); } catch {}
       if (bookingIntent) {
         const { modelId, serviceId } = JSON.parse(bookingIntent);
-        sessionStorage.removeItem("booking_intent");
+        try { sessionStorage.removeItem("booking_intent"); } catch {}
         // Redirect to booking page
         window.location.href = `/customer/book-service/${modelId}/${serviceId}`;
       } else {

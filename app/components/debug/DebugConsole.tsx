@@ -21,6 +21,19 @@ function addLog(type: LogEntry["type"], message: string) {
   listeners.forEach((listener) => listener());
 }
 
+// Safe stringify that handles circular references and special objects
+function safeStringify(arg: unknown): string {
+  if (arg === null) return "null";
+  if (arg === undefined) return "undefined";
+  if (typeof arg === "string") return arg;
+  if (typeof arg !== "object") return String(arg);
+  try {
+    return JSON.stringify(arg, null, 2);
+  } catch {
+    return String(arg);
+  }
+}
+
 // Intercept console methods
 if (typeof window !== "undefined") {
   const originalLog = console.log;
@@ -28,54 +41,22 @@ if (typeof window !== "undefined") {
   const originalWarn = console.warn;
   const originalInfo = console.info;
 
-  console.log = (...args) => {
-    const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-      .join(" ");
-    // Only capture [Push] and [SW] logs
-    if (message.includes("[Push]") || message.includes("[SW]") || message.includes("[PushPrompt]")) {
-      addLog("log", message);
-    }
-    originalLog.apply(console, args);
+  const intercept = (type: LogEntry["type"], original: (...args: any[]) => void) => {
+    return (...args: any[]) => {
+      try {
+        const message = args.map(safeStringify).join(" ");
+        if (message.includes("[Push]") || message.includes("[SW]") || message.includes("[PushPrompt]")) {
+          addLog(type, message);
+        }
+      } catch { /* never crash the app from debug logging */ }
+      original.apply(console, args);
+    };
   };
 
-  console.error = (...args) => {
-    const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-      .join(" ");
-    if (message.includes("[Push]") || message.includes("[SW]") || message.includes("[PushPrompt]")) {
-      addLog("error", message);
-    }
-    originalError.apply(console, args);
-  };
-
-  console.warn = (...args) => {
-    const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-      .join(" ");
-    if (message.includes("[Push]") || message.includes("[SW]") || message.includes("[PushPrompt]")) {
-      addLog("warn", message);
-    }
-    originalWarn.apply(console, args);
-  };
-
-  console.info = (...args) => {
-    const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-      .join(" ");
-    if (message.includes("[Push]") || message.includes("[SW]") || message.includes("[PushPrompt]")) {
-      addLog("info", message);
-    }
-    originalInfo.apply(console, args);
-  };
+  console.log = intercept("log", originalLog);
+  console.error = intercept("error", originalError);
+  console.warn = intercept("warn", originalWarn);
+  console.info = intercept("info", originalInfo);
 }
 
 export function DebugConsole() {
@@ -102,18 +83,18 @@ export function DebugConsole() {
   useEffect(() => {
     // Check URL param or localStorage or iOS PWA
     if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const debugParam = urlParams.get("debug");
-      const stored = localStorage.getItem("debug-console");
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugParam = urlParams.get("debug");
+        const stored = localStorage.getItem("debug-console");
 
-      // If URL has debug=push, save to localStorage for PWA
-      if (debugParam === "push") {
-        localStorage.setItem("debug-console", "true");
-        setShowDebug(true);
-      } else if (stored === "true") {
-        // Only show if explicitly enabled via URL param or localStorage
-        setShowDebug(true);
-      }
+        if (debugParam === "push") {
+          localStorage.setItem("debug-console", "true");
+          setShowDebug(true);
+        } else if (stored === "true") {
+          setShowDebug(true);
+        }
+      } catch {}
     }
   }, []);
 

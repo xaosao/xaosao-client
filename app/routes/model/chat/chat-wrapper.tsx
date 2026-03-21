@@ -36,7 +36,7 @@ const ChatWrapper = () => {
    const handleIframeLoad = () => {
       setIsLoading(false);
       if (iframeRef.current?.contentWindow) {
-         const currentLang = localStorage.getItem("i18nextLng") || "en";
+         let currentLang = "en"; try { currentLang = localStorage.getItem("i18nextLng") || "en"; } catch {}
          iframeRef.current.contentWindow.postMessage(
             { type: "LANGUAGE_CHANGE", language: currentLang },
             "*"

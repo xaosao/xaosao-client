@@ -123,7 +123,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         if (now >= PROMO_END_DATE) return; // Promotion ended
 
         // Show once per session
-        const dismissed = sessionStorage.getItem("referral_promo_dismissed");
+        let dismissed: string | null = null;
+        try { dismissed = sessionStorage.getItem("referral_promo_dismissed"); } catch {}
         if (!dismissed) {
             setShowPromoPopup(true);
         }
@@ -148,7 +149,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
     const dismissPromo = useCallback(() => {
         setShowPromoPopup(false);
-        sessionStorage.setItem("referral_promo_dismissed", "true");
+        try { sessionStorage.setItem("referral_promo_dismissed", "true"); } catch {}
     }, []);
 
     // Auto-location tracking - updates server silently when location is available
@@ -159,8 +160,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
             // Only show prompt on main model page, not on every navigation
             if (isModelMainPage) {
                 // Check if user has already dismissed the prompt this session
-                const dismissed = sessionStorage.getItem("modelLocationPromptDismissed");
-                if (!dismissed) {
+                let mdismissed: string | null = null;
+                try { mdismissed = sessionStorage.getItem("modelLocationPromptDismissed"); } catch {}
+                if (!mdismissed) {
                     setShowLocationPrompt(true);
                 }
             }
@@ -170,7 +172,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     // Close location prompt and remember dismissal for this session
     const closeLocationPrompt = useCallback(() => {
         setShowLocationPrompt(false);
-        sessionStorage.setItem("modelLocationPromptDismissed", "true");
+        try { sessionStorage.setItem("modelLocationPromptDismissed", "true"); } catch {}
     }, []);
 
     // Handle location request from prompt

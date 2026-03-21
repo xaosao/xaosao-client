@@ -19,9 +19,7 @@ export default function LanguageSwitcher() {
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('i18nextLng', langCode);
-    }
+    try { localStorage.setItem('i18nextLng', langCode); } catch { /* iOS Safari */ }
   };
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];

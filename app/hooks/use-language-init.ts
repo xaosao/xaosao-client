@@ -11,7 +11,8 @@ export function useLanguageInit() {
   useEffect(() => {
     // Only run on client-side after hydration
     if (typeof window !== 'undefined') {
-      const storedLanguage = localStorage.getItem('i18nextLng');
+      let storedLanguage: string | null = null;
+      try { storedLanguage = localStorage.getItem('i18nextLng'); } catch { /* iOS Safari */ }
 
       // If there's a stored language and it's different from current, change it
       // Default to 'lo' if no language is stored

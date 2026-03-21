@@ -361,7 +361,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number) => {
         if (!hasActiveSubscription) {
             // Store booking intent in sessionStorage for post-subscription redirect
-            sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId }));
+            try { sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId })); } catch {}
             openSubscriptionModal();
         } else if (customerBalance < servicePrice) {
             // Show insufficient balance modal
@@ -1275,7 +1275,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         // Calculate deficit amount
                                         const deficit = Math.max(insufficientBalanceData.servicePrice - customerBalance, 10000);
                                         // Store return URL for after top-up
-                                        sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`);
+                                        try { sessionStorage.setItem("topup_return_url", `/customer/user-profile/${model.id}`); } catch {}
                                         navigate(`/customer/wallet-topup?amount=${deficit}`);
                                         setShowInsufficientBalanceModal(false);
                                     }}

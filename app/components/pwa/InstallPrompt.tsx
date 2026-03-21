@@ -54,9 +54,7 @@ export function InstallPrompt() {
     if (isStandalone()) return;
 
     // Check if user dismissed in this session
-    if (sessionStorage.getItem(STORAGE_KEY)) {
-      return;
-    }
+    try { if (sessionStorage.getItem(STORAGE_KEY)) return; } catch { return; }
 
     // Set iOS flag
     setIsIOSDevice(isIOS());
@@ -93,7 +91,7 @@ export function InstallPrompt() {
   };
 
   const handleDismiss = () => {
-    sessionStorage.setItem(STORAGE_KEY, "1");
+    try { sessionStorage.setItem(STORAGE_KEY, "1"); } catch {}
     setShowPrompt(false);
   };
 
