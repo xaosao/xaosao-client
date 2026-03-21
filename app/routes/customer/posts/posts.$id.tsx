@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, useSearchParams, useFetcher, type LoaderFunctionArgs } from "react-router";
 import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, Send, Loader, X } from "lucide-react";
@@ -9,6 +9,7 @@ import { getPostById, getCustomerBasicProfile } from "~/services/post.server";
 import { getActiveGifts } from "~/services/gift.server";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { BookingRequiredModal } from "~/components/BookingRequiredModal";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
@@ -120,18 +121,37 @@ export default function PostDetailPage() {
     ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
     : "";
 
-  const handleChat = (modelName: string, whatsapp: number) => {
+  // Booking required modal state
+  const [bookingRequiredModelId, setBookingRequiredModelId] = useState<string | null>(null);
+  const bookingCheckFetcher = useFetcher();
+  const pendingChatRef = useRef<{ modelName: string; whatsapp: number; modelId: string } | null>(null);
+
+  const handleChat = (modelName: string, whatsapp: number, modelId: string) => {
     if (!hasActiveSubscription) {
       openSubscriptionModal();
       return;
     }
-    const message = t("posts.customerChatMessage", {
-      modelName,
-      customerName,
-      defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
-    });
-    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+    // Check booking before allowing chat
+    pendingChatRef.current = { modelName, whatsapp, modelId };
+    bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
   };
+
+  useEffect(() => {
+    if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
+      const { modelName, whatsapp, modelId } = pendingChatRef.current;
+      pendingChatRef.current = null;
+      if ((bookingCheckFetcher.data as any).hasBooking) {
+        const message = t("posts.customerChatMessage", {
+          modelName,
+          customerName,
+          defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
+        });
+        window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+      } else {
+        setBookingRequiredModelId(modelId);
+      }
+    }
+  }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -229,7 +249,7 @@ export default function PostDetailPage() {
                         className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleChat(userName, user.whatsapp!);
+                          handleChat(userName, user.whatsapp!, user.id);
                         }}
                       >
                         <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}
@@ -265,39 +285,23 @@ export default function PostDetailPage() {
               </div>
             )}
           </div>
-          <div className="space-y-2 mt-4">
-            {localGifts.map((pg: any) => {
-              const sender = pg.customer;
-              const senderName = sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Customer";
-              return (
-                <div key={pg.id} className="flex items-center gap-3 border border-gray-200 rounded-sm px-4 py-2">
-                  {sender?.profile ? (
-                    <img src={sender.profile} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-pink-500">{senderName.charAt(0)}</span>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{senderName}</p>
-                    <p className="text-xs text-gray-400">{new Date(pg.createdAt).toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {pg.gift?.image ? (
-                      <img src={pg.gift.image} alt={pg.gift.name} className="w-7 h-7 object-contain" />
-                    ) : (
-                      <Gift className="w-5 h-5 text-pink-400" />
-                    )}
-                    <span className="text-xs text-gray-500">{pg.gift?.name}</span>
-                    {pg.reaction && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500">
-                        {pg.reaction === "love" ? "❤️" : pg.reaction === "care" ? "🥰" : "🙏"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {localGifts.map((pg: any) => (
+              <div key={pg.id} className="border border-gray-100 rounded-lg p-3 flex flex-col items-center text-center bg-gray-50">
+                {pg.gift?.image ? (
+                  <img src={pg.gift.image} alt={pg.gift.name} className="w-12 h-12 object-contain mb-1.5" />
+                ) : (
+                  <Gift className="w-12 h-12 text-pink-400 mb-1.5" />
+                )}
+                <span className="text-xs font-medium text-gray-700 truncate w-full">{pg.gift?.name}</span>
+                <span className="text-[10px] text-amber-600 font-semibold">{pg.gift?.price?.toLocaleString()} ₭</span>
+                {pg.reaction && (
+                  <span className="text-sm mt-1">
+                    {pg.reaction === "love" ? "❤️" : pg.reaction === "care" ? "🥰" : "🙏"}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -382,6 +386,12 @@ export default function PostDetailPage() {
           onSubscribe={handleSubscribe}
         />
       )}
+
+      <BookingRequiredModal
+        isOpen={!!bookingRequiredModelId}
+        onClose={() => setBookingRequiredModelId(null)}
+        modelId={bookingRequiredModelId || ""}
+      />
     </div>
   );
 }

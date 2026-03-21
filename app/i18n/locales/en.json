@@ -2567,6 +2567,7 @@
     "create.hasTipHint": "Let models know you'll tip",
     "create.submit": "Post & Notify",
     "create.profanityBlocked": "We do not allow inappropriate language in creating posts. Please review and try again!",
+    "create.phoneNotAllowed": "Phone numbers are not allowed in posts. Please remove the phone number and try again.",
     "create.contentRequired": "Please write something before posting.",
     "create.failed": "Failed to create post. Please try again.",
     "chat": "Chat",
@@ -2596,5 +2597,13 @@
     "gifts": "gifts",
     "giftThankYouChat": "Thank you so much, {{customerName}}, for the gift.\nIf you're interested, feel free to book me as your drinking companion. My name on the app is: {{modelName}}.",
     "chatWithGiftSender": "Chat"
+  },
+  "chat": {
+    "bookingRequired": {
+      "title": "Booking Required",
+      "description": "You need to book a service with this model before you can chat",
+      "bookNow": "Book Now",
+      "cancel": "Close"
+    }
   }
 }

@@ -5,7 +5,7 @@ import { ArrowLeft, Coins, Loader, Send } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { requireUserSession } from "~/services/auths.server";
 import { createPost, getActiveServices } from "~/services/post.server";
-import { checkProfanity } from "~/utils/profanityFilter";
+import { checkProfanity, containsPhoneNumber } from "~/utils/profanityFilter";
 
 interface LoaderReturn {
   services: { id: string; name: string }[];
@@ -24,6 +24,11 @@ export async function action({ request }: ActionFunctionArgs) {
   const content = formData.get("content") as string;
   if (!content?.trim()) {
     return { error: true, message: "posts.create.contentRequired" };
+  }
+
+  // Check for phone numbers
+  if (containsPhoneNumber(content.trim())) {
+    return { error: true, message: "posts.create.phoneNotAllowed" };
   }
 
   // Check profanity before creating post

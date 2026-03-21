@@ -18,6 +18,7 @@ interface ModelCardProps {
     customerLongitude?: number;
     hasActiveSubscription?: boolean;
     onOpenSubscriptionModal?: () => void;
+    onChatClick?: (whatsappNumber: number, modelId: string) => void;
     displayState?: {
         customerAction: "LIKE" | "PASS" | null;
         isContact: boolean;
@@ -35,6 +36,7 @@ export default function ModelCard({
     customerLongitude,
     hasActiveSubscription,
     onOpenSubscriptionModal,
+    onChatClick,
     displayState,
     onLike,
     onPass,
@@ -55,7 +57,7 @@ export default function ModelCard({
         isContact: model.isContact || false
     };
 
-    // Handler for WhatsApp button click with subscription check
+    // Handler for WhatsApp button click with subscription check + booking check
     const handleWhatsAppClick = (whatsappNumber: number, modelId: string) => {
         if (!hasActiveSubscription) {
             if (onOpenSubscriptionModal) {
@@ -63,8 +65,9 @@ export default function ModelCard({
             } else {
                 navigate("/customer/packages?toastMessage=Please+subscribe+to+a+package+to+contact+models&toastType=warning");
             }
+        } else if (onChatClick) {
+            onChatClick(whatsappNumber, modelId);
         } else {
-            // Track chat click for active subscribers
             onTrackActivity?.(modelId, "CLICK_CHAT");
             window.open(`https://wa.me/${whatsappNumber}`);
         }

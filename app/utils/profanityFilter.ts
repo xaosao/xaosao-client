@@ -273,3 +273,19 @@ export function checkProfanity(text: string): ProfanityResult {
 
   return { blocked: false };
 }
+
+/**
+ * Check if text contains a phone number.
+ * Strips all non-digit characters, then checks for sequences of 7+ digits.
+ * Catches formats like: 55892057, 020 5589 2057, +856 20 55892057, 20-5589-2057, etc.
+ */
+export function containsPhoneNumber(text: string): boolean {
+  if (!text) return false;
+  // Extract all digit sequences from the text and join them
+  const digitsOnly = text.replace(/[^\d]/g, "");
+  // If total digits in text is 7 or more, likely contains a phone number
+  if (digitsOnly.length >= 7) return true;
+  // Also check for digit sequences with separators (spaces, dashes, dots)
+  const phonePattern = /\d[\d\s\-\.]{5,}\d/;
+  return phonePattern.test(text);
+}

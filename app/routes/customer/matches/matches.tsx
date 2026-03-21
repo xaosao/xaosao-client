@@ -41,6 +41,7 @@ import {
 import { capitalize } from "~/utils/functions/textFormat";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { BookingRequiredModal } from "~/components/BookingRequiredModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
@@ -411,6 +412,28 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         trialPlanId: trialPackage?.id || "",
         showOnMount: false,
     });
+
+    // Booking required modal state
+    const [bookingRequiredModelId, setBookingRequiredModelId] = React.useState<string | null>(null);
+    const bookingCheckFetcher = useFetcher();
+    const pendingChatRef = React.useRef<{ whatsappNumber: number; modelId: string } | null>(null);
+
+    const handleChatClick = React.useCallback((whatsappNumber: number, modelId: string) => {
+        pendingChatRef.current = { whatsappNumber, modelId };
+        bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+    }, [bookingCheckFetcher]);
+
+    React.useEffect(() => {
+        if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
+            const { whatsappNumber, modelId } = pendingChatRef.current;
+            pendingChatRef.current = null;
+            if ((bookingCheckFetcher.data as any).hasBooking) {
+                window.open(`https://wa.me/${whatsappNumber}`);
+            } else {
+                setBookingRequiredModelId(modelId);
+            }
+        }
+    }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
     // Search state
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -1061,6 +1084,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                     customerLongitude={customerLongitude}
                                                     hasActiveSubscription={hasActiveSubscription}
                                                     onOpenSubscriptionModal={openSubscriptionModal}
+                                                    onChatClick={handleChatClick}
                                                     onLike={() => handleLike(model)}
                                                     onPass={() => handlePass(model)}
                                                     onAddFriend={() => handleAddFriend(model)}
@@ -1096,6 +1120,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 customerLongitude={customerLongitude}
                                                 hasActiveSubscription={hasActiveSubscription}
                                                 onOpenSubscriptionModal={openSubscriptionModal}
+                                                onChatClick={handleChatClick}
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
@@ -1139,6 +1164,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 customerLongitude={customerLongitude}
                                                 hasActiveSubscription={hasActiveSubscription}
                                                 onOpenSubscriptionModal={openSubscriptionModal}
+                                                onChatClick={handleChatClick}
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
@@ -1182,6 +1208,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 customerLongitude={customerLongitude}
                                                 hasActiveSubscription={hasActiveSubscription}
                                                 onOpenSubscriptionModal={openSubscriptionModal}
+                                                onChatClick={handleChatClick}
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
@@ -1225,6 +1252,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                 customerLongitude={customerLongitude}
                                                 hasActiveSubscription={hasActiveSubscription}
                                                 onOpenSubscriptionModal={openSubscriptionModal}
+                                                onChatClick={handleChatClick}
                                                 onLike={() => handleLike(model)}
                                                 onPass={() => handlePass(model)}
                                                 onAddFriend={() => handleAddFriend(model)}
@@ -1261,6 +1289,13 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                     onSubscribe={handleSubscribe}
                 />
             )}
+
+            {/* Booking Required Modal */}
+            <BookingRequiredModal
+                isOpen={!!bookingRequiredModelId}
+                onClose={() => setBookingRequiredModelId(null)}
+                modelId={bookingRequiredModelId || ""}
+            />
         </div>
     );
 }

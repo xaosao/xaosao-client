@@ -8,7 +8,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { requireModelSession } from "~/services/model-auth.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import { createPost, getModelBasicProfile } from "~/services/post.server";
-import { checkProfanity } from "~/utils/profanityFilter";
+import { checkProfanity, containsPhoneNumber } from "~/utils/profanityFilter";
 
 interface LoaderReturn {
   modelProfile: { firstName: string; lastName?: string | null; profile?: string | null };
@@ -27,6 +27,11 @@ export async function action({ request }: ActionFunctionArgs) {
   const content = formData.get("content") as string;
   if (!content?.trim()) {
     return Response.json({ error: true, message: "posts.create.contentRequired" });
+  }
+
+  // Check for phone numbers
+  if (containsPhoneNumber(content.trim())) {
+    return Response.json({ error: true, message: "posts.create.phoneNotAllowed" });
   }
 
   // Check profanity before processing images

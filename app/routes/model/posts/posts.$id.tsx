@@ -209,67 +209,39 @@ export default function ModelPostDetailPage() {
               </button>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
             {postGifts.map((pg: any) => {
-              const sender = pg.customer;
-              const senderName = sender ? `${sender.firstName} ${sender.lastName || ""}`.trim() : "Customer";
               const currentReaction = reactionFetcher.formData?.get("postGiftId") === pg.id
                 ? reactionFetcher.formData?.get("reaction") as string
                 : pg.reaction;
 
               return (
-                <div key={pg.id} className="border border-gray-200 rounded-sm px-4 py-2">
-                  <div className="flex items-center gap-3">
-                    {sender?.profile ? (
-                      <img src={sender.profile} alt="" className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                        <span className="text-xs font-semibold text-pink-500">{senderName.charAt(0)}</span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{senderName}</p>
-                      <p className="text-xs text-gray-400">{new Date(pg.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {pg.gift?.image ? (
-                        <img src={pg.gift.image} alt={pg.gift.name} className="w-6 h-6 object-contain" />
-                      ) : (
-                        <Gift className="w-5 h-5 text-pink-400" />
-                      )}
-                      <span className="text-xs text-gray-500">{pg.gift?.name}</span>
-                      <span className="text-xs font-medium text-amber-600">{pg.gift?.price?.toLocaleString()} ₭</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-100">
-                    <div className="flex items-center gap-1">
-                      {/* Reaction stickers */}
-                      {["love", "care", "thankyou"].map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => {
-                            reactionFetcher.submit(
-                              { postGiftId: pg.id, reaction: r },
-                              { method: "post" }
-                            );
-                          }}
-                          className={`text-base px-1 py-0.5 rounded transition-all ${currentReaction === r
-                              ? "bg-pink-100 scale-110"
-                              : "hover:bg-gray-100 opacity-50 hover:opacity-100"
-                            }`}
-                        >
-                          {r === "love" ? "❤️" : r === "care" ? "🥰" : "🙏"}
-                        </button>
-                      ))}
-                    </div>
-                    {sender?.whatsapp && (
+                <div key={pg.id} className="border border-gray-100 rounded-lg p-3 flex flex-col items-center text-center bg-gray-50">
+                  {pg.gift?.image ? (
+                    <img src={pg.gift.image} alt={pg.gift.name} className="w-12 h-12 object-contain mb-1.5" />
+                  ) : (
+                    <Gift className="w-12 h-12 text-pink-400 mb-1.5" />
+                  )}
+                  <span className="text-xs font-medium text-gray-700 truncate w-full">{pg.gift?.name}</span>
+                  <span className="text-[10px] text-amber-600 font-semibold">{pg.gift?.price?.toLocaleString()} ₭</span>
+                  <div className="flex items-center gap-0.5 mt-1.5">
+                    {["love", "care", "thankyou"].map((r) => (
                       <button
-                        onClick={() => handleGiftChat(senderName, sender.whatsapp!)}
-                        className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm border border-green-300 bg-green-50 text-green-500 rounded-md hover:opacity-60 transition-opacity"
+                        key={r}
+                        onClick={() => {
+                          reactionFetcher.submit(
+                            { postGiftId: pg.id, reaction: r },
+                            { method: "post" }
+                          );
+                        }}
+                        className={`text-sm px-1 rounded transition-all ${currentReaction === r
+                            ? "bg-pink-100 scale-110"
+                            : "hover:bg-gray-100 opacity-50 hover:opacity-100"
+                          }`}
                       >
-                        <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chatWithGiftSender", { defaultValue: "Chat" })}
+                        {r === "love" ? "❤️" : r === "care" ? "🥰" : "🙏"}
                       </button>
-                    )}
+                    ))}
                   </div>
                 </div>
               );

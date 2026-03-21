@@ -32,6 +32,7 @@ import { getUserTokenFromSession, requireUserSession } from '~/services/auths.se
 import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative } from '~/utils';
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { BookingRequiredModal } from "~/components/BookingRequiredModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getUserProfilePosts } from '~/services/post.server';
@@ -347,15 +348,33 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         fetcher.submit(formData, { method: "post" });
     };
 
-    // Handler for WhatsApp button click with subscription check
+    // Booking required modal state
+    const [showBookingRequired, setShowBookingRequired] = React.useState(false);
+    const bookingCheckFetcher = useFetcher();
+    const pendingChatRef = React.useRef<number | null>(null);
+
+    // Handler for WhatsApp button click with subscription + booking check
     const handleWhatsAppClick = (whatsappNumber: number) => {
         if (!hasActiveSubscription) {
             openSubscriptionModal();
-        } else {
-            trackActivity("CLICK_CHAT");
-            window.open(`https://wa.me/${whatsappNumber}`);
+            return;
         }
+        pendingChatRef.current = whatsappNumber;
+        bookingCheckFetcher.load(`/customer/check-booking?modelId=${model.id}`);
     };
+
+    React.useEffect(() => {
+        if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
+            const whatsappNumber = pendingChatRef.current;
+            pendingChatRef.current = null;
+            if ((bookingCheckFetcher.data as any).hasBooking) {
+                trackActivity("CLICK_CHAT");
+                window.open(`https://wa.me/${whatsappNumber}`);
+            } else {
+                setShowBookingRequired(true);
+            }
+        }
+    }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
     // Handler for book service button click with subscription and balance check
     const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number) => {
@@ -1166,6 +1185,13 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         onSubscribe={handleSubscribe}
                     />
                 )}
+
+                {/* Booking Required Modal */}
+                <BookingRequiredModal
+                    isOpen={showBookingRequired}
+                    onClose={() => setShowBookingRequired(false)}
+                    modelId={model.id}
+                />
 
                 {/* Insufficient Balance Modal */}
                 {showInsufficientBalanceModal && insufficientBalanceData && (

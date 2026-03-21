@@ -45,6 +45,7 @@ import { createCustomerInteraction, customerAddFriend } from "~/services/interac
 import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
 import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { BookingRequiredModal } from "~/components/BookingRequiredModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useScrollDirection } from "~/hooks/useScrollDirection";
@@ -500,21 +501,42 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         };
     };
 
-    // Handler for WhatsApp button click with subscription check
+    // Booking required modal state
+    const [bookingRequiredModelId, setBookingRequiredModelId] = useState<string | null>(null);
+    const bookingCheckFetcher = useFetcher();
+
+    // Handler for WhatsApp button click with subscription + booking check
     const handleWhatsAppClick = (whatsappNumber: number, modelId: string) => {
         if (!hasActiveSubscription) {
             openSubscriptionModal();
-        } else {
-            // Track chat click for active subscribers
-            const formData = new FormData();
-            formData.append("actionType", "trackActivity");
-            formData.append("trackAction", "CLICK_CHAT");
-            formData.append("modelId", modelId);
-            trackingFetcher.submit(formData, { method: "post" });
-
-            window.open(`https://wa.me/${whatsappNumber}`);
+            return;
         }
+        // Check if customer has active booking with this model
+        bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+        // Store pending chat info for after the check completes
+        pendingChatRef.current = { whatsappNumber, modelId };
     };
+
+    const pendingChatRef = useRef<{ whatsappNumber: number; modelId: string } | null>(null);
+
+    useEffect(() => {
+        if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
+            const { whatsappNumber, modelId } = pendingChatRef.current;
+            pendingChatRef.current = null;
+            if ((bookingCheckFetcher.data as any).hasBooking) {
+                // Has booking — allow chat
+                const formData = new FormData();
+                formData.append("actionType", "trackActivity");
+                formData.append("trackAction", "CLICK_CHAT");
+                formData.append("modelId", modelId);
+                trackingFetcher.submit(formData, { method: "post" });
+                window.open(`https://wa.me/${whatsappNumber}`);
+            } else {
+                // No booking — show modal
+                setBookingRequiredModelId(modelId);
+            }
+        }
+    }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
     // Optimistic UI Handlers
     const handleLike = (profile: ImodelsResponse | INearbyModelResponse) => {
@@ -2136,6 +2158,13 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     onSubscribe={handleSubscribe}
                 />
             )}
+
+            {/* Booking Required Modal */}
+            <BookingRequiredModal
+                isOpen={!!bookingRequiredModelId}
+                onClose={() => setBookingRequiredModelId(null)}
+                modelId={bookingRequiredModelId || ""}
+            />
         </div>
     );
 }
