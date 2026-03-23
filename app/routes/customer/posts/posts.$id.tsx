@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, useSearchParams, useFetcher, type LoaderFunctionArgs } from "react-router";
 import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, Send, Loader, X } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { requireUserSession } from "~/services/auths.server";
-import { getPostById, getCustomerBasicProfile } from "~/services/post.server";
+import { getPostById, getCustomerBasicProfile, getPostComments } from "~/services/post.server";
+import PostComments from "~/components/posts/PostComments";
 import { getActiveGifts } from "~/services/gift.server";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
-import { BookingRequiredModal } from "~/components/BookingRequiredModal";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
@@ -18,7 +18,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const { getPostGifts } = await import("~/services/gift.server");
 
-  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet, postGifts, giftCatalog] = await Promise.all([
+  const [post, customerProfile, hasSubscription, hasPending, trialPackage, wallet, postGifts, giftCatalog, comments] = await Promise.all([
     getPostById(params.id!),
     getCustomerBasicProfile(customerId),
     hasActiveSubscription(customerId),
@@ -33,6 +33,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     }),
     getPostGifts(params.id!),
     getActiveGifts(),
+    getPostComments(params.id!),
   ]);
 
   if (!post) throw new Response("Post not found", { status: 404 });
@@ -49,11 +50,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     customerBalance: availableBalance,
     postGifts,
     giftCatalog,
+    comments,
   };
 }
 
 export default function PostDetailPage() {
-  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, postGifts, giftCatalog } = useLoaderData<typeof loader>();
+  const { post, customerId, customerProfile, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, postGifts, giftCatalog, comments } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const giftFetcher = useFetcher();
@@ -121,37 +123,18 @@ export default function PostDetailPage() {
     ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
     : "";
 
-  // Booking required modal state
-  const [bookingRequiredModelId, setBookingRequiredModelId] = useState<string | null>(null);
-  const bookingCheckFetcher = useFetcher();
-  const pendingChatRef = useRef<{ modelName: string; whatsapp: number; modelId: string } | null>(null);
-
-  const handleChat = (modelName: string, whatsapp: number, modelId: string) => {
+  const handleChat = (modelName: string, whatsapp: number) => {
     if (!hasActiveSubscription) {
       openSubscriptionModal();
       return;
     }
-    // Check booking before allowing chat
-    pendingChatRef.current = { modelName, whatsapp, modelId };
-    bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+    const message = t("posts.customerChatMessage", {
+      modelName,
+      customerName,
+      defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
+    });
+    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
   };
-
-  useEffect(() => {
-    if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
-      const { modelName, whatsapp, modelId } = pendingChatRef.current;
-      pendingChatRef.current = null;
-      if ((bookingCheckFetcher.data as any).hasBooking) {
-        const message = t("posts.customerChatMessage", {
-          modelName,
-          customerName,
-          defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
-        });
-        window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
-      } else {
-        setBookingRequiredModelId(modelId);
-      }
-    }
-  }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -249,7 +232,7 @@ export default function PostDetailPage() {
                         className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleChat(userName, user.whatsapp!, user.id);
+                          handleChat(userName, user.whatsapp!);
                         }}
                       >
                         <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}
@@ -305,6 +288,14 @@ export default function PostDetailPage() {
           </div>
         </>
       )}
+
+      {/* Comments Section */}
+      <PostComments
+        comments={comments ?? []}
+        postId={post.id}
+        actionUrl={`/customer/posts/${post.id}/comment`}
+        currentUserProfile={customerProfile}
+      />
 
       {/* Gift Modal */}
       {showGiftModal && (
@@ -387,11 +378,6 @@ export default function PostDetailPage() {
         />
       )}
 
-      <BookingRequiredModal
-        isOpen={!!bookingRequiredModelId}
-        onClose={() => setBookingRequiredModelId(null)}
-        modelId={bookingRequiredModelId || ""}
-      />
     </div>
   );
 }

@@ -203,6 +203,7 @@ model customer {
   posts                 post[]
   postInterests         post_interest[]
   postGifts             post_gift[]
+  postComments          post_comment[]
 }
 
 model model {
@@ -295,6 +296,7 @@ model model {
   posts                 post[]
   postInterests         post_interest[]
   postGiftsReceived     post_gift[]
+  postComments          post_comment[]
 }
 
 // subscription
@@ -969,6 +971,7 @@ model post {
   service     service?        @relation(fields: [serviceId], references: [id])
   interests   post_interest[]
   gifts       post_gift[]
+  comments    post_comment[]
 }
 
 model post_interest {
@@ -1023,4 +1026,21 @@ model post_gift {
   gift       gift      @relation(fields: [giftId], references: [id])
   customer   customer  @relation(fields: [customerId], references: [id])
   model      model     @relation(fields: [modelId], references: [id])
+}
+
+model post_comment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId     String   @db.ObjectId
+  userType   String   // "customer" or "model"
+  customerId String?  @db.ObjectId
+  modelId    String?  @db.ObjectId
+  parentId   String?  @db.ObjectId // reply to another comment
+  content    String
+  createdAt  DateTime @default(now())
+
+  post       post           @relation(fields: [postId], references: [id])
+  customer   customer?      @relation(fields: [customerId], references: [id])
+  model      model?         @relation(fields: [modelId], references: [id])
+  parent     post_comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies    post_comment[] @relation("CommentReplies")
 }

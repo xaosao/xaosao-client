@@ -112,6 +112,8 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const revalidateNotificationTypes = [
         "new_post_match",
         "post_interest",
+        "post_comment",
+        "post_comment_reply",
         "booking_confirmed",
         "booking_rejected",
         "booking_completed",

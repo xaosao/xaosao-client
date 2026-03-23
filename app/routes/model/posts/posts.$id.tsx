@@ -4,7 +4,8 @@ import { useLoaderData, useNavigate, useFetcher, type LoaderFunctionArgs } from 
 import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, X, Eye } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
-import { getPostById, getModelBasicProfile } from "~/services/post.server";
+import { getPostById, getModelBasicProfile, getPostComments } from "~/services/post.server";
+import PostComments from "~/components/posts/PostComments";
 import { requireModelSession } from "~/services/model-auth.server";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -13,14 +14,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const { getActiveGifts } = await import("~/services/gift.server");
 
-  const [post, modelProfile, postGifts, giftCatalog] = await Promise.all([
+  const [post, modelProfile, postGifts, giftCatalog, comments] = await Promise.all([
     getPostById(params.id!),
     getModelBasicProfile(modelId),
     getPostGifts(params.id!),
     getActiveGifts(),
+    getPostComments(params.id!),
   ]);
   if (!post) throw new Response("Post not found", { status: 404 });
-  return { post, modelId, modelProfile, postGifts, giftCatalog };
+  return { post, modelId, modelProfile, postGifts, giftCatalog, comments };
 }
 
 export async function action({ params, request }: LoaderFunctionArgs) {
@@ -39,7 +41,7 @@ export async function action({ params, request }: LoaderFunctionArgs) {
 }
 
 export default function ModelPostDetailPage() {
-  const { post, modelId, modelProfile, postGifts, giftCatalog } = useLoaderData<typeof loader>();
+  const { post, modelId, modelProfile, postGifts, giftCatalog, comments } = useLoaderData<typeof loader>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const reactionFetcher = useFetcher();
@@ -249,6 +251,14 @@ export default function ModelPostDetailPage() {
           </div>
         </>
       )}
+
+      {/* Comments Section */}
+      <PostComments
+        comments={comments ?? []}
+        postId={post.id}
+        actionUrl={`/model/posts/${post.id}/comment`}
+        currentUserProfile={modelProfile}
+      />
 
       {/* Gift Catalog Modal */}
       {showGiftCatalog && (

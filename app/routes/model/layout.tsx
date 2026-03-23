@@ -188,6 +188,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         "booking_disputed",
         "new_post_match",
         "post_interest",
+        "post_comment",
+        "post_comment_reply",
     ];
 
     // Handle new notifications - refresh layout when booking/post-related, redirect for calls

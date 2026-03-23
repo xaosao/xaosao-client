@@ -101,6 +101,7 @@ export default [
     route("posts/:id/interested", "./routes/model/posts/posts.$id.interested.tsx"),
     route("posts/:id/delete", "./routes/model/posts/posts.$id.delete.tsx"),
     route("posts/:id/fulfill", "./routes/model/posts/posts.$id.fulfill.tsx"),
+    route("posts/:id/comment", "./routes/model/posts/posts.$id.comment.tsx"),
 
     // Referral program
     route("referral", "./routes/model/referral.tsx"),
@@ -153,6 +154,7 @@ export default [
     route("posts/:id/delete", "./routes/customer/posts/posts.$id.delete.tsx"),
     route("posts/:id/fulfill", "./routes/customer/posts/posts.$id.fulfill.tsx"),
     route("posts/:id/gift", "./routes/customer/posts/posts.$id.gift.tsx"),
+    route("posts/:id/comment", "./routes/customer/posts/posts.$id.comment.tsx"),
 
     route("dates-history", "./routes/customer/booking-history/booking.tsx"),
 

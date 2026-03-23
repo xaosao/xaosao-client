@@ -1,6 +1,6 @@
 import { prisma } from "./database.server";
 import { notifyUser } from "./unified-notification.server";
-import { checkProfanity } from "~/utils/profanityFilter";
+import { checkProfanity, containsPhoneNumber } from "~/utils/profanityFilter";
 
 // ==================== Types ====================
 
@@ -185,7 +185,7 @@ export async function getMyPosts(
       where,
       include: {
         service: { select: { id: true, name: true } },
-        _count: { select: { interests: true, gifts: true } },
+        _count: { select: { interests: true, gifts: true, comments: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -663,6 +663,147 @@ export async function getCustomerBasicProfile(customerId: string) {
 /**
  * Get a post for public sharing (no auth required) — minimal data for OG meta tags
  */
+// ==================== Comments ====================
+
+export async function createComment(
+  postId: string,
+  userId: string,
+  userType: "customer" | "model",
+  content: string,
+  parentId?: string
+) {
+  if (!content?.trim()) throw new Error("Comment content is required");
+
+  const trimmed = content.trim();
+
+  if (containsPhoneNumber(trimmed)) {
+    throw new Error("PHONE_NOT_ALLOWED");
+  }
+
+  const profanityCheck = checkProfanity(trimmed);
+  if (profanityCheck.blocked) {
+    throw new Error(`PROFANITY_BLOCKED:${profanityCheck.matchedWord || ""}`);
+  }
+
+  const comment = await prisma.post_comment.create({
+    data: {
+      postId,
+      userType,
+      customerId: userType === "customer" ? userId : undefined,
+      modelId: userType === "model" ? userId : undefined,
+      parentId: parentId || undefined,
+      content: trimmed,
+    },
+    include: {
+      customer: { select: { id: true, firstName: true, lastName: true, profile: true } },
+      model: { select: { id: true, firstName: true, lastName: true, profile: true } },
+    },
+  });
+
+  // Notify related people (post owner + parent comment author for replies)
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorType: true, customerId: true, modelId: true },
+    });
+    if (post) {
+      const commenterName = comment.customer
+        ? `${comment.customer.firstName} ${comment.customer.lastName || ""}`.trim()
+        : comment.model
+          ? `${comment.model.firstName} ${comment.model.lastName || ""}`.trim()
+          : "Someone";
+
+      const notifiedIds = new Set<string>(); // Track who we've notified to avoid duplicates
+
+      // 1. Notify post owner (unless commenting on own post)
+      const postOwnerId = post.authorType === "customer" ? post.customerId : post.modelId;
+      const isOwnPost =
+        (post.authorType === "customer" && userType === "customer" && post.customerId === userId) ||
+        (post.authorType === "model" && userType === "model" && post.modelId === userId);
+
+      if (!isOwnPost && postOwnerId) {
+        notifiedIds.add(postOwnerId);
+        notifyUser({
+          userType: post.authorType as "customer" | "model",
+          userId: postOwnerId,
+          notificationType: "post_comment",
+          title: "ຄໍາເຫັນໃໝ່",
+          message: `${commenterName} ໄດ້ສະແດງຄວາມຄິດເຫັນໃນໂພສຂອງທ່ານ`,
+          url: `/${post.authorType}/posts/${postId}`,
+          data: { postId },
+          skipSMS: true,
+        }).catch(() => {});
+      }
+
+      // 2. If this is a reply, notify the parent comment author too
+      if (parentId) {
+        const parentComment = await prisma.post_comment.findUnique({
+          where: { id: parentId },
+          select: { userType: true, customerId: true, modelId: true },
+        });
+        if (parentComment) {
+          const parentAuthorId = parentComment.userType === "customer" ? parentComment.customerId : parentComment.modelId;
+          const isReplyToSelf =
+            (parentComment.userType === userType) &&
+            (parentAuthorId === userId);
+
+          if (!isReplyToSelf && parentAuthorId && !notifiedIds.has(parentAuthorId)) {
+            notifyUser({
+              userType: parentComment.userType as "customer" | "model",
+              userId: parentAuthorId,
+              notificationType: "post_comment_reply",
+              title: "ຄໍາຕອບໃໝ່",
+              message: `${commenterName} ໄດ້ຕອບຄໍາເຫັນຂອງທ່ານ`,
+              url: `/${parentComment.userType}/posts/${postId}`,
+              data: { postId },
+              skipSMS: true,
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+  } catch {
+    // Don't fail the comment if notification fails
+  }
+
+  return comment;
+}
+
+export async function getPostComments(postId: string, limit = 200) {
+  // Fetch all comments for this post, then organize into tree in JS
+  // This avoids MongoDB issues with filtering on missing fields
+  const allComments = await prisma.post_comment.findMany({
+    where: { postId },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    include: {
+      customer: { select: { id: true, firstName: true, lastName: true, profile: true } },
+      model: { select: { id: true, firstName: true, lastName: true, profile: true } },
+    },
+  });
+
+  // Separate into top-level and replies
+  const topLevel: (typeof allComments[0] & { replies: typeof allComments })[] = [];
+  const replyMap = new Map<string, typeof allComments>();
+
+  for (const c of allComments) {
+    if (c.parentId) {
+      const existing = replyMap.get(c.parentId) || [];
+      existing.push(c);
+      replyMap.set(c.parentId, existing);
+    } else {
+      topLevel.push({ ...c, replies: [] });
+    }
+  }
+
+  // Attach replies to their parents
+  for (const comment of topLevel) {
+    comment.replies = replyMap.get(comment.id) || [];
+  }
+
+  return topLevel;
+}
+
 export async function getPostForShare(postId: string) {
   return prisma.post.findUnique({
     where: { id: postId },

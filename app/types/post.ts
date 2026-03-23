@@ -28,7 +28,7 @@ export interface PostItem {
   } | null;
   myGiftCount?: number;
   totalGiftCount?: number;
-  _count?: { interests: number; gifts?: number };
+  _count?: { interests: number; gifts?: number; comments?: number };
 }
 
 export interface UserProfile {

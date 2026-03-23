@@ -64,22 +64,8 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
     : null;
   const hasImages = post.images?.length > 0;
 
-  const customerName = customerProfile
-    ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
-    : "";
-
   // Only show gift button on model posts
   const isModelPost = post.authorType === "model";
-
-  const handleChat = () => {
-    if (!author?.whatsapp) return;
-    const message = t("posts.customerChatMessage", {
-      modelName: authorName,
-      customerName,
-      defaultValue: `Hi, ${authorName}.\nI'm ${customerName}, I see your post looking for a partner to hang out tonight.\nAre you still available? I'll book you.`,
-    });
-    window.open(`https://wa.me/${author.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
-  };
 
   const handleSendGift = () => {
     if (!selectedGiftId) return;
@@ -192,16 +178,19 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
             </button>
           )}
 
-          {/* Chat */}
-          {author?.whatsapp && (
-            <button
-              className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
-              onClick={handleChat}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm">{t("posts.chat", { defaultValue: "Chat" })}</span>
-            </button>
-          )}
+          {/* Comment */}
+          <button
+            className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
+            onClick={() => navigate(`/customer/posts/${post.id}`)}
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">{t("posts.comment", { defaultValue: "Comment" })}</span>
+            {(post._count?.comments ?? 0) > 0 && (
+              <span className="bg-gray-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {post._count?.comments}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Book Now */}
