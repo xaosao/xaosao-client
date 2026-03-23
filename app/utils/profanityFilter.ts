@@ -142,6 +142,9 @@ const LAO_CONTAINS = [
   "ຫີ",
   "ຫີໃຫຍ່",
   "ໂຄຍ",
+  "ອົມ",
+  "ເລຍ",
+  "ຫອຍ",
 ];
 
 // Common character substitutions for evasion (English only)
