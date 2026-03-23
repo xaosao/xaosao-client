@@ -7,9 +7,10 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const content = formData.get("content") as string;
   const parentId = (formData.get("parentId") as string) || undefined;
+  const replyToId = (formData.get("replyToId") as string) || undefined;
 
   try {
-    const comment = await createComment(params.id!, modelId, "model", content, parentId);
+    const comment = await createComment(params.id!, modelId, "model", content, parentId, replyToId);
     return { success: true, comment };
   } catch (error: any) {
     const msg = error?.message || "";

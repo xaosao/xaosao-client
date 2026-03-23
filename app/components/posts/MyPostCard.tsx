@@ -121,7 +121,7 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
             </button>
           ) : (
             <span className="text-sm text-gray-400">
-              {t("posts.noInterest", { defaultValue: "No interest yet" })}
+              {/* {t("posts.noInterest", { defaultValue: "No interest yet" })} */}
             </span>
           )}
           {giftCount > 0 && (

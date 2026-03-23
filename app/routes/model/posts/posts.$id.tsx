@@ -143,7 +143,7 @@ export default function ModelPostDetailPage() {
 
           {post.interests.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              {t("posts.noInterest", { defaultValue: "No one has shown interest yet." })}
+              {/* {t("posts.noInterest", { defaultValue: "No one has shown interest yet." })} */}
             </p>
           ) : (
             <div className="space-y-2">
@@ -237,8 +237,8 @@ export default function ModelPostDetailPage() {
                           );
                         }}
                         className={`text-sm px-1 rounded transition-all ${currentReaction === r
-                            ? "bg-pink-100 scale-110"
-                            : "hover:bg-gray-100 opacity-50 hover:opacity-100"
+                          ? "bg-pink-100 scale-110"
+                          : "hover:bg-gray-100 opacity-50 hover:opacity-100"
                           }`}
                       >
                         {r === "love" ? "❤️" : r === "care" ? "🥰" : "🙏"}

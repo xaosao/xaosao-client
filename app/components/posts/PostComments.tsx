@@ -61,7 +61,7 @@ export default function PostComments({ comments, postId, actionUrl, currentUserP
   const fetcher = useFetcher();
   const [localComments, setLocalComments] = useState<PostComment[]>(comments);
   const [commentText, setCommentText] = useState("");
-  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string; replyToId?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
   const isSending = fetcher.state !== "idle";
@@ -136,11 +136,12 @@ export default function PostComments({ comments, postId, actionUrl, currentUserP
 
     const formData: Record<string, string> = { content };
     if (parentId) formData.parentId = parentId;
+    if (replyingTo?.replyToId) formData.replyToId = replyingTo.replyToId;
     fetcher.submit(formData, { method: "post", action: actionUrl });
   };
 
-  const handleReply = (commentId: string, authorName: string) => {
-    setReplyingTo({ id: commentId, name: authorName });
+  const handleReply = (parentId: string, authorName: string, replyToId?: string) => {
+    setReplyingTo({ id: parentId, name: authorName, replyToId: replyToId || parentId });
     inputRef.current?.focus();
   };
 
@@ -278,7 +279,7 @@ export default function PostComments({ comments, postId, actionUrl, currentUserP
                             <span className="text-xs text-gray-400">{getTimeAgo(reply.createdAt)}</span>
                             {!reply.id.startsWith("temp-") && (
                               <button
-                                onClick={() => handleReply(comment.id, rName)}
+                                onClick={() => handleReply(comment.id, rName, reply.id)}
                                 className="text-xs font-semibold text-gray-500 hover:text-rose-500 transition-colors"
                               >
                                 {t("posts.reply", { defaultValue: "Reply" })}

@@ -196,7 +196,7 @@ export default function PostDetailPage() {
 
           {post.interests.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              {t("posts.noInterest", { defaultValue: "No one has shown interest yet." })}
+              {/* {t("posts.noInterest", { defaultValue: "No one has shown interest yet." })} */}
             </p>
           ) : (
             <div className="space-y-2">

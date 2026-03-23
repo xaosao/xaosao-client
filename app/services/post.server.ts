@@ -133,7 +133,7 @@ export async function getPostsFeed(
         gifts: viewerType === "customer"
           ? { where: { customerId: viewerId }, select: { id: true } }
           : { where: { modelId: viewerId }, select: { id: true } },
-        _count: { select: { gifts: true } },
+        _count: { select: { gifts: true, comments: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -670,7 +670,8 @@ export async function createComment(
   userId: string,
   userType: "customer" | "model",
   content: string,
-  parentId?: string
+  parentId?: string,
+  replyToId?: string
 ) {
   if (!content?.trim()) throw new Error("Comment content is required");
 
@@ -735,26 +736,27 @@ export async function createComment(
         }).catch(() => {});
       }
 
-      // 2. If this is a reply, notify the parent comment author too
-      if (parentId) {
-        const parentComment = await prisma.post_comment.findUnique({
-          where: { id: parentId },
+      // 2. If this is a reply, notify the actual comment author being replied to
+      const notifyCommentId = replyToId || parentId;
+      if (notifyCommentId) {
+        const repliedComment = await prisma.post_comment.findUnique({
+          where: { id: notifyCommentId },
           select: { userType: true, customerId: true, modelId: true },
         });
-        if (parentComment) {
-          const parentAuthorId = parentComment.userType === "customer" ? parentComment.customerId : parentComment.modelId;
+        if (repliedComment) {
+          const parentAuthorId = repliedComment.userType === "customer" ? repliedComment.customerId : repliedComment.modelId;
           const isReplyToSelf =
-            (parentComment.userType === userType) &&
+            (repliedComment.userType === userType) &&
             (parentAuthorId === userId);
 
           if (!isReplyToSelf && parentAuthorId && !notifiedIds.has(parentAuthorId)) {
             notifyUser({
-              userType: parentComment.userType as "customer" | "model",
+              userType: repliedComment.userType as "customer" | "model",
               userId: parentAuthorId,
               notificationType: "post_comment_reply",
               title: "ຄໍາຕອບໃໝ່",
               message: `${commenterName} ໄດ້ຕອບຄໍາເຫັນຂອງທ່ານ`,
-              url: `/${parentComment.userType}/posts/${postId}`,
+              url: `/${repliedComment.userType}/posts/${postId}`,
               data: { postId },
               skipSMS: true,
             }).catch(() => {});

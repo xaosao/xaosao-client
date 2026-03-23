@@ -144,6 +144,21 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
             </fetcher.Form>
           </div>
 
+          {/* Comment */}
+          <button
+            className="cursor-pointer flex items-center gap-1 p-2 hover:opacity-60 transition-opacity text-gray-500"
+            onClick={() => navigate(`/model/posts/${post.id}`)}
+          >
+            {(post._count?.comments ?? 0) > 0 ? (
+              <span className="bg-gray-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {post._count?.comments}
+              </span>
+            ) : (
+              <MessageCircle className="h-4 w-4" />
+            )}
+            <span className="text-sm">{t("posts.comment", { defaultValue: "Comment" })}</span>
+          </button>
+
           {author?.whatsapp && (
             <button
               className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
