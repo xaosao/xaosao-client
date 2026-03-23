@@ -99,6 +99,27 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
               <span className="text-xs text-gray-400">{getTimeAgo(post.createdAt, t)}</span>
             </div>
           </div>
+          {/* Action buttons - top right on mobile */}
+          {isActive && (
+            <div className="flex items-center gap-1 sm:hidden flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setConfirmAction("fulfill")}
+                className="cursor-pointer flex items-center justify-center gap-1 p-1.5 text-green-500 hover:bg-green-50 rounded-md transition-colors"
+              >
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm">{t("posts.fulfill", { defaultValue: "Done" })}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmAction("delete")}
+                className="cursor-pointer flex items-center justify-center gap-1 p-1.5 text-red-400 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="text-sm">{t("posts.delete", { defaultValue: "Delete" })}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className={`px-4 ${hasImages ? "pb-3" : "pb-4"}`}>
@@ -144,8 +165,9 @@ export default function MyPostCard({ post, userType, userProfile }: MyPostCardPr
           )}
         </div>
 
+        {/* Action buttons - bottom right on desktop only */}
         {isActive && (
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             <fetcher.Form ref={fulfillFormRef} method="post" action={`/${userType}/posts/${post.id}/fulfill`}>
               <button
                 type="button"

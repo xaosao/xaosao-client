@@ -68,15 +68,41 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
             )}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-sm font-semibold truncate">{authorName}</span>
               <span>-</span>
               {age && <span className="text-xs text-gray-400">{age} y</span>}
+              {/* Status badges - inline on mobile */}
+              <div className="flex items-center gap-1 sm:hidden">
+                {post.hasTip && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
+                    <Coins className="h-3 w-3" />
+                    {t("tipBadge", { defaultValue: "+Tip" })}
+                  </span>
+                )}
+                {serviceName && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-rose-100 text-rose-600">
+                    {serviceName}
+                  </span>
+                )}
+              </div>
             </div>
             <span className="text-xs text-gray-400">{timeAgo}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Chat button - top right on mobile */}
+          {author?.whatsapp && (
+            <button
+              className="sm:hidden cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
+              onClick={handleChat}
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}
+            </button>
+          )}
+        </div>
+        {/* Status badges - top right on desktop */}
+        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
           {post.hasTip && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
               <Coins className="h-3 w-3" />
@@ -159,9 +185,10 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
             <span className="text-sm">{t("posts.comment", { defaultValue: "Comment" })}</span>
           </button>
 
+          {/* Chat button - bottom right on desktop only */}
           {author?.whatsapp && (
             <button
-              className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
+              className="hidden sm:flex cursor-pointer text-gray-500 items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
               onClick={handleChat}
             >
               <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}

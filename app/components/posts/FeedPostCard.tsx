@@ -96,17 +96,42 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
             )}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold truncate">{authorName} -</span>
               {age && <span className="text-sm text-gray-400">{age}y</span>}
               {serviceName && (
                 <span className="text-xs text-rose-500 font-medium truncate">{serviceName}</span>
               )}
+              {/* Status badges - inline on mobile */}
+              <div className="flex items-center gap-1 sm:hidden">
+                {post.hasTip && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
+                    <Coins className="h-3 w-3" />
+                    {t("tipBadge", { defaultValue: "+Tip" })}
+                  </span>
+                )}
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">
+                  {t("posts.stillAvailable", { defaultValue: "Available" })}
+                </span>
+              </div>
             </div>
             <span className="text-xs text-gray-400">{timeAgo}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Book Now - top right on mobile */}
+          {author?.id && (
+            <button
+              className="sm:hidden cursor-pointer flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
+              onClick={() => navigate(`/customer/user-profile/${author.id}`)}
+            >
+              <CalendarCheck className="h-3.5 w-3.5" />
+              {t("posts.bookNow", { defaultValue: "Book Now" })}
+            </button>
+          )}
+        </div>
+        {/* Status badges - top right on desktop */}
+        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
           {post.hasTip && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 flex items-center gap-1">
               <Coins className="h-3 w-3" />
@@ -194,10 +219,10 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
           </button>
         </div>
 
-        {/* Book Now */}
+        {/* Book Now - bottom right on desktop only */}
         {author?.id && (
           <button
-            className="cursor-pointer flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
+            className="hidden sm:flex cursor-pointer items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
             onClick={() => navigate(`/customer/user-profile/${author.id}`)}
           >
             <CalendarCheck className="h-3.5 w-3.5" />
