@@ -137,7 +137,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
     });
 
     // Booking-related transaction identifiers that cannot be edited/deleted by users
-    const BOOKING_TRANSACTION_IDENTIFIERS = ['booking_hold', 'booking_earning', 'booking_refund'];
+    const BOOKING_TRANSACTION_IDENTIFIERS = ['booking_hold', 'booking_earning', 'booking_refund', 'return_fund'];
 
     // Helper function to check if transaction can be edited/deleted
     const canEditOrDelete = (transaction: ITransactionResponse) => {
