@@ -645,13 +645,9 @@ export default function ModelRegister() {
                   />
                   <span className="text-xs text-gray-600">
                     {t("modelAuth.register.acceptTerms", "I accept the")}{" "}
-                    <a href="/terms" target="_blank" className="text-rose-500 hover:text-rose-600 underline">
-                      {t("modelAuth.register.termsAndConditions", "Terms & Conditions")}
-                    </a>{" "}
-                    {t("modelAuth.register.and", "and")}{" "}
-                    <a href="/privacy" target="_blank" className="text-rose-500 hover:text-rose-600 underline">
-                      {t("modelAuth.register.privacyPolicy", "Privacy Policy")}
-                    </a>
+                    <Link to="/model-terms-conditions" className="text-rose-500 hover:text-rose-600 underline">
+                      {t("modelAuth.register.termsAndConditions", "Terms & Conditions")} {t("modelAuth.register.and", "and")}{" "} {t("modelAuth.register.privacyPolicy", "Privacy Policy")}
+                    </Link>
                   </span>
                 </label>
               </div>

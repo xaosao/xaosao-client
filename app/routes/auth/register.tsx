@@ -334,7 +334,7 @@ export default function SignUpPage() {
                     className="absolute top-4 left-1/2 transform -translate-x-1/2 w-11/12 max-h-[95vh] overflow-y-auto rounded-sm
                             bg-black/50 backdrop-blur-lg shadow-2xl py-6 px-4 sm:p-8 flex flex-col justify-start z-20
                             lg:top-0 lg:right-0 lg:left-auto lg:translate-x-0 lg:w-2/5 lg:h-full lg:max-h-full lg:rounded-none">
-                  
+
                     {loaderData?.referrerName && (
                         <div className="flex items-center gap-2 bg-rose-500 rounded-md p-2 mb-4 sm:mb-0">
                             <div className="p-1.5 bg-white/20 rounded-full">
@@ -346,7 +346,7 @@ export default function SignUpPage() {
                             </div>
                         </div>
                     )}
-                  
+
                     <div className={`${loaderData?.referrerName ? 'hidden sm:flex' : 'flex'} items-start justify-between`}>
                         <div className="space-y-2 mb-4 sm:my-6">
                             <h1 className="flex items-center justify-start text-md sm:text-lg font-bold text-white uppercase">
@@ -597,11 +597,8 @@ export default function SignUpPage() {
                             />
                             <Label htmlFor="terms" className="flex items-center justify-start text-gray-300 leading-tight">
                                 {t('register.acceptTerms')} <span className="hidden sm:block">{t('register.acceptTermsAll')}</span>
-                                <Link to="#" className="text-white hover:text-rose-600 underline">
-                                    {t('register.termsConditions')}
-                                </Link>
-                                <Link to="#" className="text-white hover:text-rose-600 underline">
-                                    {t('register.privacyPolicy')}
+                                <Link to="/customer-terms-conditions" className="text-white hover:text-rose-600 underline">
+                                    {t('register.termsConditions')} {t('register.privacyPolicy')}
                                 </Link>
                                 <span className="text-rose-500">*</span>
                             </Label>

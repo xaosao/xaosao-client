@@ -58,6 +58,10 @@ export default [
   route("model-logout", "./routes/model-logout.ts"),
   route("clear-session", "./routes/auth/clear-session.ts"),
 
+  // Terms and Conditions
+  route("customer-terms-conditions", "./routes/cus-terms-condition.tsx"),
+  route("model-terms-conditions", "./routes/model-terms-condition.tsx"),
+
   // Model authentication routes
   route("model-auth/login", "./routes/model-auth/login.tsx"),
   route("model-auth/register", "./routes/model-auth/register.tsx"),
