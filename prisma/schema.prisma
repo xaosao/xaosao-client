@@ -1025,9 +1025,9 @@ model post_interest {
   customer   customer? @relation(fields: [customerId], references: [id])
   model      model?    @relation(fields: [modelId], references: [id])
 
-  // One interest per user per post
-  @@unique([postId, customerId])
-  @@unique([postId, modelId])
+  // Indexes for fast lookups
+  @@index([postId, customerId])
+  @@index([postId, modelId])
 }
 
 // ==================== Gifts ====================
