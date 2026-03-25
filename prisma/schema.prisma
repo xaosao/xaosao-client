@@ -482,6 +482,10 @@ model wallet {
 
   customer   customer? @relation(fields: [customerId], references: [id])
   customerId String?   @db.ObjectId
+
+  @@index([customerId])
+  @@index([modelId])
+  @@index([status])
 }
 
 model transaction_history {
@@ -516,6 +520,12 @@ model transaction_history {
 
   User   user?   @relation(fields: [userId], references: [id])
   userId String? @db.ObjectId
+
+  @@index([customerId])
+  @@index([modelId])
+  @@index([status])
+  @@index([identifier])
+  @@index([createdAt])
 }
 
 model service {
@@ -664,6 +674,11 @@ model service_booking {
 
   modelServiceVariant   model_service_variant? @relation(fields: [modelServiceVariantId], references: [id])
   modelServiceVariantId String?                @db.ObjectId
+
+  @@index([status])
+  @@index([customerId])
+  @@index([modelId])
+  @@index([createdAt])
 }
 
 model session {
@@ -713,6 +728,9 @@ model conversation {
   messages     messages[]
 
   @@unique([customerId, modelId])
+  @@index([customerId])
+  @@index([modelId])
+  @@index([status])
 }
 
 model chat_session {
@@ -763,6 +781,9 @@ model messages {
   readAt    DateTime?
   editedAt  DateTime?
   createdAt DateTime?
+
+  @@index([conversationId])
+  @@index([sender])
 }
 
 model review {
@@ -846,6 +867,10 @@ model customer_notification {
 
   customer   customer @relation(fields: [customerId], references: [id])
   customerId String   @db.ObjectId
+
+  @@index([customerId])
+  @@index([customerId, isRead])
+  @@index([createdAt])
 }
 
 model model_notification {
@@ -859,6 +884,10 @@ model model_notification {
 
   model   model  @relation(fields: [modelId], references: [id])
   modelId String @db.ObjectId
+
+  @@index([modelId])
+  @@index([modelId, isRead])
+  @@index([createdAt])
 }
 
 // Push notification subscriptions for Web Push API
@@ -972,6 +1001,12 @@ model post {
   interests   post_interest[]
   gifts       post_gift[]
   comments    post_comment[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([modelId])
+  @@index([authorType])
+  @@index([createdAt])
 }
 
 model post_interest {
@@ -1026,6 +1061,9 @@ model post_gift {
   gift       gift      @relation(fields: [giftId], references: [id])
   customer   customer  @relation(fields: [customerId], references: [id])
   model      model     @relation(fields: [modelId], references: [id])
+
+  @@index([postId])
+  @@index([customerId])
 }
 
 model post_comment {
@@ -1043,4 +1081,8 @@ model post_comment {
   model      model?         @relation(fields: [modelId], references: [id])
   parent     post_comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies    post_comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([parentId])
+  @@index([createdAt])
 }
