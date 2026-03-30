@@ -11,6 +11,7 @@ import { getActiveGifts } from "~/services/gift.server";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
@@ -147,7 +148,7 @@ export default function PostDetailPage() {
           customerName,
           defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
         });
-        window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+        openWhatsApp(whatsapp, message);
       } else {
         setChatModalState({ modelId, reason: data.reason, whatsappNumber: whatsapp });
       }

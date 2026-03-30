@@ -5,6 +5,7 @@ import { Heart, MessageCircle, Loader, Coins, MapPin } from "lucide-react";
 import type { PostItem, UserProfile } from "~/types/post";
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
 import PostImageGallery from "~/components/posts/PostImageGallery";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 interface CustomerRequestCardProps {
   post: PostItem;
@@ -44,7 +45,7 @@ export default function CustomerRequestCard({ post, modelProfile }: CustomerRequ
       link: profileLink,
       defaultValue: `Hi, I'm ${modelName} and I'm ready to service you for the day and service you want.\nPlease booking at: ${profileLink}`,
     });
-    window.open(`https://wa.me/${author.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+    openWhatsApp(author.whatsapp, message);
   };
 
   return (

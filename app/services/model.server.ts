@@ -2663,3 +2663,51 @@ export async function deleteModelAccount(
     });
   }
 }
+
+/**
+ * Get set of model IDs that a customer can currently chat with.
+ * A customer can chat if they have: active booking, daily chat access today, or direct gift sent.
+ */
+export async function getChattableModelIds(customerId: string): Promise<Set<string>> {
+  const ids = new Set<string>();
+
+  try {
+    // Models with active bookings
+    const bookings = await prisma.service_booking.findMany({
+      where: { customerId, status: { in: ["pending", "confirmed"] } },
+      select: { modelId: true },
+    });
+    bookings.forEach((b) => b.modelId && ids.add(b.modelId));
+
+    // Models with daily chat access today (Laos timezone)
+    try {
+      const now = new Date();
+      const laosDate = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+      const todayStr = laosDate.toISOString().slice(0, 10);
+
+      const dailyAccess = await prisma.daily_chat_access.findMany({
+        where: { customerId, date: todayStr },
+        select: { modelId: true },
+      });
+      dailyAccess.forEach((d) => ids.add(d.modelId));
+    } catch {
+      // table may not exist yet
+    }
+
+    // Models who received direct gifts from this customer
+    try {
+      const directGifts = await prisma.direct_gift.findMany({
+        where: { customerId },
+        select: { modelId: true },
+        distinct: ["modelId"],
+      });
+      directGifts.forEach((g) => ids.add(g.modelId));
+    } catch {
+      // table may not exist yet
+    }
+  } catch (e) {
+    console.error("[getChattableModelIds] Error:", e);
+  }
+
+  return ids;
+}

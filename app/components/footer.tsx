@@ -1,6 +1,7 @@
 import { Link } from "react-router"
 import { useTranslation } from "react-i18next"
 import { Facebook, MessageCircle, PhoneForwarded, Youtube } from "lucide-react"
+import { openWhatsApp } from "~/utils/functions/whatsapp"
 
 const PHONE_NUMBER = "8562091082600"
 
@@ -8,7 +9,7 @@ export function Footer() {
   const { t } = useTranslation()
 
   const handleWhatsAppClick = () => {
-    window.open(`https://wa.me/${PHONE_NUMBER}`, "_blank")
+    openWhatsApp(PHONE_NUMBER)
   }
 
   const handlePhoneCall = () => {

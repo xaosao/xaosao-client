@@ -17,6 +17,7 @@ import QRCode from 'qrcode';
 // components
 import Modal from '~/components/ui/model';
 import { truncateText } from '~/utils/functions/textFormat';
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 import { getCustomerProfile } from '~/services/profile.server';
 import { requireModelSession } from '~/services/model-auth.server';
@@ -152,7 +153,7 @@ export default function ShareCustomerProfilePage({ loaderData }: ProfileSharePro
 
     const shareToWhatsApp = () => {
         const message = t("modelCustomerProfileShare.whatsappMessage", { name: customer.firstName, url });
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        openWhatsApp("", message);
     };
 
     const shareToFacebook = () => {

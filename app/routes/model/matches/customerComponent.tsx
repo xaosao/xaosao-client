@@ -10,6 +10,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 // utils
 import { calculateAgeFromDOB, calculateDistance, formatDistance } from "~/utils";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 interface CustomerCardProps {
     customer: any;
@@ -81,7 +82,7 @@ export default function CustomerCard({ customer, modelLatitude, modelLongitude, 
                                             customerName: customer.firstName || "",
                                             modelName: modelName || ""
                                         });
-                                        window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                                        openWhatsApp(customer.whatsapp, message);
                                     }}
                                 >
                                     <MessageSquareText className="w-4 h-4" />

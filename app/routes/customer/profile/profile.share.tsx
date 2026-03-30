@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 // components
 import Modal from '~/components/ui/model';
 import type { ICustomerResponse } from '~/interfaces/customer';
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 import { getCustomerProfile } from '~/services/profile.server';
 import { truncateText } from '~/utils/functions/textFormat';
 import { requireUserSession } from '~/services/auths.server';
@@ -104,7 +105,7 @@ export default function ShareProfilePage({ loaderData }: TransactionProps) {
 
     const shareToWhatsApp = () => {
         const message = t('profileShare.whatsappMessage', { name: customerData.firstName, url });
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        openWhatsApp("", message);
     };
 
     const shareToFacebook = () => {

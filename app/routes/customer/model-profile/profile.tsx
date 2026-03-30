@@ -33,6 +33,7 @@ import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative }
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getUserProfilePosts } from '~/services/post.server';
@@ -366,7 +367,7 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
             const data = bookingCheckFetcher.data as any;
             if (data.canChat) {
                 trackActivity("CLICK_CHAT");
-                window.open(`https://wa.me/${whatsappNumber}`);
+                openWhatsApp(whatsappNumber);
             } else {
                 setChatModalState({ reason: data.reason, whatsappNumber });
             }

@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge";
 import { getPostById, getModelBasicProfile, getPostComments } from "~/services/post.server";
 import PostComments from "~/components/posts/PostComments";
 import { requireModelSession } from "~/services/model-auth.server";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const modelId = await requireModelSession(request);
@@ -67,7 +68,7 @@ export default function ModelPostDetailPage() {
       link: profileLink,
       defaultValue: `Hi {{customerName}}. Interested in booking me as your drinking companion?\nI'm still available! Book me at: ${profileLink}`,
     });
-    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+    openWhatsApp(whatsapp, message);
   };
 
   // Locale-based gift thank you messages
@@ -80,7 +81,7 @@ export default function ModelPostDetailPage() {
   const handleGiftChat = (customerName: string, whatsapp: number) => {
     const template = giftThankYouMessages[i18n.language] || giftThankYouMessages["en"];
     const message = template.replace("{{customerName}}", customerName);
-    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+    openWhatsApp(whatsapp, message);
   };
 
   return (

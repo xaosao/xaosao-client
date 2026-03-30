@@ -39,6 +39,8 @@ import {
     getModelsByInteraction,
 } from "~/services/model.server";
 import { capitalize } from "~/utils/functions/textFormat";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
+import { getChattableModelIds } from "~/services/model.server";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
@@ -62,6 +64,7 @@ interface LoaderReturn {
         price: number;
     } | null;
     customerBalance: number;
+    chattableModelIds: string[];
 }
 
 interface ForyouModelsProps {
@@ -118,6 +121,10 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     // Calculate available balance: totalBalance - totalSpend + totalRefunded
     const customerAvailableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+
+    // Get chattable model IDs for green chat button
+    const chattableSet = hasSubscription ? await getChattableModelIds(customerId) : new Set<string>();
+    const chattableModelIds = Array.from(chattableSet);
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -197,6 +204,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: customerAvailableBalance,
+            chattableModelIds,
         } as LoaderReturn;
     }
 
@@ -219,6 +227,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: customerAvailableBalance,
+            chattableModelIds,
         } as LoaderReturn;
     }
 
@@ -243,6 +252,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: customerAvailableBalance,
+            chattableModelIds,
         } as LoaderReturn;
     }
 
@@ -265,6 +275,7 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasPendingSubscription: hasPending,
             trialPackage,
             customerBalance: customerAvailableBalance,
+            chattableModelIds,
         } as LoaderReturn;
     }
 
@@ -389,7 +400,9 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         hasPendingSubscription,
         trialPackage,
         customerBalance,
+        chattableModelIds,
     } = loaderData;
+    const chattableSet = new Set(chattableModelIds || []);
     const actionData = useActionData<typeof action>();
 
     // local UI state
@@ -429,7 +442,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
             pendingChatRef.current = null;
             const data = bookingCheckFetcher.data as any;
             if (data.canChat) {
-                window.open(`https://wa.me/${whatsappNumber}`);
+                openWhatsApp(whatsappNumber);
             } else {
                 setChatModalState({ modelId, reason: data.reason, whatsappNumber });
             }
@@ -1086,6 +1099,7 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                                                     hasActiveSubscription={hasActiveSubscription}
                                                     onOpenSubscriptionModal={openSubscriptionModal}
                                                     onChatClick={handleChatClick}
+                                                    canChat={chattableSet.has(model.id)}
                                                     onLike={() => handleLike(model)}
                                                     onPass={() => handlePass(model)}
                                                     onAddFriend={() => handleAddFriend(model)}

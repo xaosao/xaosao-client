@@ -40,11 +40,12 @@ import {
 // service and backend
 import { capitalize } from "~/utils/functions/textFormat";
 import { calculateAgeFromDOB, calculateDistance, formatDistance } from "~/utils";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 import { getUserTokenFromSession, requireUserSession } from "~/services/auths.server";
 import type { Gender, IAvailableStatus, IUserImages } from "~/interfaces/base";
 import { createCustomerInteraction, customerAddFriend } from "~/services/interaction.server";
 import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
-import { getModelsForCustomer, getNearbyModels, getVipModels } from "~/services/model.server";
+import { getModelsForCustomer, getNearbyModels, getVipModels, getChattableModelIds } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
@@ -67,6 +68,7 @@ interface LoaderReturn {
     nearbyModels: INearbyModelResponse[];
     nearbyPagination: NearbyPagination;
     vipModels: INearbyModelResponse[];
+    chattableModelIds: string[];
     trialPackage: {
         id: string;
         price: number;
@@ -172,6 +174,10 @@ export const loader: LoaderFunction = async ({ request }) => {
         console.error("[Discover] Failed to load VIP models:", e);
     }
 
+    // Get chattable model IDs for green chat button
+    const chattableSet = hasSubscription ? await getChattableModelIds(customerId) : new Set<string>();
+    const chattableModelIds = Array.from(chattableSet);
+
     // Generate seed based on customer ID and current hour
     const seed = generateSeed(customerId);
 
@@ -186,6 +192,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         nearbyModels: nearbyResult.models as INearbyModelResponse[],
         nearbyPagination: nearbyResult.pagination,
         vipModels: vipModelsResult as INearbyModelResponse[],
+        chattableModelIds,
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
@@ -293,7 +300,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, nearbyPagination, vipModels, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
+    const { models, nearbyModels, nearbyPagination, vipModels, chattableModelIds, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
+    const chattableSet = new Set(chattableModelIds || []);
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -538,7 +546,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 formData.append("trackAction", "CLICK_CHAT");
                 formData.append("modelId", modelId);
                 trackingFetcher.submit(formData, { method: "post" });
-                window.open(`https://wa.me/${whatsappNumber}`);
+                openWhatsApp(whatsappNumber);
             } else {
                 // Show appropriate modal based on reason
                 setChatModalState({ modelId, reason: data.reason || "gift_required", whatsappNumber });
@@ -1053,7 +1061,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 {model?.whatsapp && (
                                                     <button
                                                         type="button"
-                                                        className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                        className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                         onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                     >
                                                         <MessageSquareText className="w-4 h-4" />
@@ -2240,15 +2248,15 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <MapPin className="h-3 w-3 mr-1 text-rose-500 flex-shrink-0" />
                                             {model.address || (model.distance != null ? formatDistance(model.distance) : "")}
                                         </div>
-                                        <div className="flex items-start justify-start gap-2 mt-4">
+                                        <div className="flex items-start justify-start gap-2 mt-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
                                             {model.Images && model.Images.length > 0 ? (
-                                                model.Images.map((image: any, index: number) => (
+                                                model.Images.slice(0, 3).map((image: any, index: number) => (
                                                     image.name ? (
-                                                        <img key={image.name + index} src={image.name} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
+                                                        <img key={image.name + index} src={image.name} alt="Profile" className="w-24 h-24 flex-shrink-0 rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
                                                     ) : model.profile ? (
-                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-24 h-24 flex-shrink-0 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                                     ) : (
-                                                        <div key={`placeholder-${index}`} className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                                        <div key={`placeholder-${index}`} className="w-24 h-24 flex-shrink-0 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                                             <User className="w-8 h-8 text-white" />
                                                         </div>
                                                     )
@@ -2266,7 +2274,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
                                 <div className="flex space-x-2">
                                     {model?.whatsapp && (
-                                        <button type="button" className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10" onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}>
+                                        <button type="button" className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`} onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}>
                                             <MessageSquareText className="w-4 h-4" />
                                         </button>
                                     )}

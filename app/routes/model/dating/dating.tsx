@@ -13,6 +13,7 @@ import { getAllModelBookings } from "~/services/booking.server"
 import { requireModelSession } from "~/services/model-auth.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 import { useNotifications, type Notification } from "~/hooks/useNotifications"
+import { openWhatsApp } from "~/utils/functions/whatsapp"
 
 const statusConfig: Record<string, { label: string; className: string }> = {
    confirmed: {
@@ -423,7 +424,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                                 date: formatDate(String(booking.startDate)),
                                                 bookingUrl
                                              });
-                                             window.open(`https://wa.me/${booking.customer?.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                             openWhatsApp(booking.customer?.whatsapp, message);
                                           }}
                                           className="text-xs text-green-600 border-green-600 hover:bg-green-50"
                                        >
@@ -503,7 +504,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
          )}
 
          <button
-            onClick={() => window.open("https://wa.me/8562091082600", "_blank")}
+            onClick={() => openWhatsApp("8562091082600")}
             className="flex gap-2 cursor-pointer fixed bottom-16 right-4 sm:bottom-6 sm:right-4 z-50 p-2 sm:p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
          >
             <Headset size={16} className="animate-pulse" />

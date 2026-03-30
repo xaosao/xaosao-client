@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { MapPin, MessageSquareText, Heart, X, UserPlus, User, UserCheck } from "lucide-react";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 // swiper imports
 import "swiper/css";
@@ -28,6 +29,7 @@ interface ModelCardProps {
     onAddFriend?: (model: IForYouModelResponse) => void;
     onTrackActivity?: (modelId: string, action: string) => void;
     isFetching?: boolean;
+    canChat?: boolean;
 }
 
 export default function ModelCard({
@@ -42,7 +44,8 @@ export default function ModelCard({
     onPass,
     onAddFriend,
     onTrackActivity,
-    isFetching
+    isFetching,
+    canChat
 }: ModelCardProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -69,7 +72,7 @@ export default function ModelCard({
             onChatClick(whatsappNumber, modelId);
         } else {
             onTrackActivity?.(modelId, "CLICK_CHAT");
-            window.open(`https://wa.me/${whatsappNumber}`);
+            openWhatsApp(whatsappNumber);
         }
     };
 
@@ -118,7 +121,7 @@ export default function ModelCard({
                     {model?.whatsapp && (
                         <button
                             type="button"
-                            className="cursor-pointer bg-rose-100 text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full hover:bg-rose-500 hover:text-white"
+                            className={`cursor-pointer sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm p-1.5 rounded-full ${canChat ? "bg-green-100 text-green-600 hover:bg-green-500 hover:text-white" : "bg-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white"}`}
                             onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                         >
                             <MessageSquareText className="w-4 h-4" />

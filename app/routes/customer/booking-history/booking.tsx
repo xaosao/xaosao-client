@@ -14,6 +14,7 @@ import { requireUserSession } from "~/services/auths.server";
 import { getAllMyServiceBookings } from "~/services/booking.server"
 import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
 import { useNotifications, type Notification } from "~/hooks/useNotifications"
+import { openWhatsApp } from "~/utils/functions/whatsapp"
 
 const statusConfig: Record<string, { label: string; className: string }> = {
    pending: {
@@ -453,7 +454,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                                                    date: formatDate(String(booking.startDate)),
                                                    bookingUrl
                                                 });
-                                                window.open(`https://wa.me/${booking.model.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+                                                openWhatsApp(booking.model.whatsapp, message);
                                              }}
                                              className="text-xs h-8 text-green-600 border-green-600 hover:bg-green-50"
                                           >
@@ -566,7 +567,7 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
          })()}
 
          <button
-            onClick={() => window.open("https://wa.me/8562091082600", "_blank")}
+            onClick={() => openWhatsApp("8562091082600")}
             className="flex gap-2 cursor-pointer fixed bottom-16 right-4 sm:bottom-6 sm:right-4 z-50 p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
          >
             <Headset size={18} className="animate-bounce" />

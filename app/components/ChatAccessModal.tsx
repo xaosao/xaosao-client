@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useFetcher } from "react-router";
 import { Gift, X, Loader2, Wallet } from "lucide-react";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 interface GiftItem {
   id: string;
@@ -48,7 +49,7 @@ export function ChatAccessModal({
         onClose();
         onGiftSent?.();
         if (whatsappNumber) {
-          window.open(`https://wa.me/${whatsappNumber}`);
+          openWhatsApp(whatsappNumber);
         }
       } else if (sendFetcher.data.error) {
         setError(sendFetcher.data.error);

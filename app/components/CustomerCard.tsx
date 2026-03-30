@@ -10,6 +10,7 @@ import { Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { CustomerCardProps } from "~/interfaces/customer";
 import { formatDistance } from "~/utils";
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 export default function CustomerCard({
   customer,
@@ -118,7 +119,7 @@ export default function CustomerCard({
             {customer.whatsapp && (
               <button
                 type="button"
-                onClick={() => window.open(`https://wa.me/${customer.whatsapp}`)}
+                onClick={() => openWhatsApp(customer.whatsapp)}
                 className="bg-rose-500 hover:bg-rose-600 text-white cursor-pointer backdrop-blur-sm p-1.5 rounded-full transition-all duration-300 shadow-lg"
               >
                 <MessageSquareText className="w-3.5 h-3.5" />

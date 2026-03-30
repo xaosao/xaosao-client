@@ -17,6 +17,7 @@ import { requireModelSession, getModelTokenFromSession } from '~/services/model-
 import { getModelDashboardData } from '~/services/model.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
+import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 export const meta: MetaFunction = () => {
    return [
@@ -225,7 +226,7 @@ export default function CustomerProfilePage() {
                                  customerName: customer.firstName || "",
                                  modelName: modelName || ""
                               });
-                              window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                              openWhatsApp(customer.whatsapp, message);
                            }}
                         >
                            <MessageSquareText className="w-3 h-3" />
@@ -323,7 +324,7 @@ export default function CustomerProfilePage() {
                                  customerName: customer.firstName || "",
                                  modelName: modelName || ""
                               });
-                              window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(message)}`);
+                              openWhatsApp(customer.whatsapp, message);
                            }}
                            >
                               <MessageSquareText className="w-4 h-4" />
