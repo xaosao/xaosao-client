@@ -1445,7 +1445,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                         {model?.whatsapp && (
                                                             <button
                                                                 type="button"
-                                                                className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                                className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                                 onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                             >
                                                                 <MessageSquareText className="w-4 h-4" />
@@ -1559,7 +1559,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     {model?.whatsapp && (
                                                         <button
                                                             type="button"
-                                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                            className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                             onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
@@ -1677,7 +1677,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     {selectedProfile?.whatsapp && (
                                                         <button
                                                             type="button"
-                                                            className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                            className={`cursor-pointer p-2 rounded-full transition-colors ${chattableSet.has(selectedProfile.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                             onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
@@ -1711,7 +1711,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     {selectedProfile?.whatsapp && (
                                                         <button
                                                             type="button"
-                                                            className="cursor-pointer p-2 rounded-full bg-rose-100 text-rose-500 transition-colors"
+                                                            className={`cursor-pointer p-2 rounded-full transition-colors ${chattableSet.has(selectedProfile.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                             onClick={() => handleWhatsAppClick(selectedProfile.whatsapp, selectedProfile.id)}
                                                         >
                                                             <MessageSquareText className="w-4 h-4" />
@@ -1927,7 +1927,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             {model?.whatsapp && (
                                                 <button
                                                     type="button"
-                                                    className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                    className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                     onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                 >
                                                     <MessageSquareText className="w-4 h-4" />
@@ -2091,7 +2091,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                     {model?.whatsapp && (
                                         <button
                                             type="button"
-                                            className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10"
+                                            className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                             onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                         >
                                             <MessageSquareText className="w-4 h-4" />
@@ -2163,7 +2163,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             {model?.whatsapp && (
                                                 <button
                                                     type="button"
-                                                    className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                    className={`rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer ${chattableSet.has(model.id) ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-500"}`}
                                                     onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
                                                 >
                                                     <MessageSquareText className="w-4 h-4" />
@@ -2248,23 +2248,23 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <MapPin className="h-3 w-3 mr-1 text-rose-500 flex-shrink-0" />
                                             {model.address || (model.distance != null ? formatDistance(model.distance) : "")}
                                         </div>
-                                        <div className="flex items-start justify-start gap-2 mt-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                                        <div className="grid grid-cols-3 gap-2 mt-4 w-full">
                                             {model.Images && model.Images.length > 0 ? (
                                                 model.Images.slice(0, 3).map((image: any, index: number) => (
                                                     image.name ? (
-                                                        <img key={image.name + index} src={image.name} alt="Profile" className="w-24 h-24 flex-shrink-0 rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
+                                                        <img key={image.name + index} src={image.name} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
                                                     ) : model.profile ? (
-                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-24 h-24 flex-shrink-0 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                                     ) : (
-                                                        <div key={`placeholder-${index}`} className="w-24 h-24 flex-shrink-0 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                                        <div key={`placeholder-${index}`} className="w-full aspect-square rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                                             <User className="w-8 h-8 text-white" />
                                                         </div>
                                                     )
                                                 ))
                                             ) : model.profile ? (
-                                                <img src={model.profile} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                <img src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                             ) : (
-                                                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                                <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                                     <User className="w-8 h-8 text-white" />
                                                 </div>
                                             )}
