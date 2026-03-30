@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import MyPostCard from "~/components/posts/MyPostCard";
 import CustomerRequestCard from "~/components/posts/CustomerRequestCard";
 import CreateModelPostModal from "~/components/posts/CreateModelPostModal";
+import { ProfileCheckModal } from "~/components/ProfileCheckModal";
 
 import type { PostItem, UserProfile } from "~/types/post";
 import { requireModelSession } from "~/services/model-auth.server";
@@ -140,6 +141,7 @@ export default function ModelPostsPage({ loaderData }: PageProps) {
 
   return (
     <div className="pb-24 sm:pb-4 max-w-xl mx-auto">
+      <ProfileCheckModal />
       <div className="hidden sm:flex items-center justify-between px-4 py-3 pb-0 sm:pb-8">
         <h1 className="text-lg font-bold">{t("posts.title", { defaultValue: "Posts" })}</h1>
         <Button

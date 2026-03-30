@@ -76,6 +76,7 @@ export default [
   // Model dashboard routes
   route("model", "./routes/model/layout.tsx", [
     index("./routes/model/posts/posts.tsx"),
+    route("check-profile-images", "./routes/model/check-profile-images.ts"),
     route("matches", "./routes/model/matches/matches.tsx"),
     route("profile", "./routes/model/profile/profile.tsx"),
     route("profile/edit", "./routes/model/profile/edit.tsx"),
