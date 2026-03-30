@@ -120,6 +120,7 @@ export async function getModelsForCustomer(
         latitude: true,
         longitude: true,
         available_status: true,
+        vip: true,
         createdAt: true,
         updatedAt: true,
         Images: {
@@ -352,6 +353,7 @@ export async function getNearbyModels(
       rating: true,
       total_review: true,
       available_status: true,
+      vip: true,
       updatedAt: true,
       Images: {
         take: 3,
@@ -453,6 +455,83 @@ export async function getNearbyModels(
   };
 }
 
+// Get all VIP models (no gender filter)
+export async function getVipModels(customerId: string) {
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { latitude: true, longitude: true },
+  });
+
+  const models = await prisma.model.findMany({
+    where: {
+      status: "active",
+      vip: true,
+      isProfileHidden: { not: true },
+      ...OPEN_SERVICE_CONDITION,
+    },
+    orderBy: [{ rating: "desc" }, { updatedAt: "desc" }],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      dob: true,
+      gender: true,
+      bio: true,
+      whatsapp: true,
+      profile: true,
+      latitude: true,
+      longitude: true,
+      address: true,
+      status: true,
+      rating: true,
+      total_review: true,
+      available_status: true,
+      vip: true,
+      updatedAt: true,
+      Images: {
+        take: 5,
+        where: { status: "active" },
+        select: { id: true, name: true },
+        orderBy: { createdAt: "desc" },
+      },
+      customer_interactions: {
+        where: { customerId },
+        select: { action: true },
+      },
+      friend_contacts: {
+        where: {
+          adderType: "CUSTOMER",
+          customerId,
+          contactType: "MODEL",
+        },
+        select: { id: true, modelId: true, contactType: true },
+      },
+      ModelService: {
+        where: { status: "active", isAvailable: true },
+        select: { service: { select: { name: true } } },
+      },
+      _count: {
+        select: { customer_interactions: { where: { action: "LIKE" } } },
+      },
+    },
+  });
+
+  return models.map((m) => {
+    const distance = customer?.latitude && customer?.longitude && m.latitude && m.longitude
+      ? Number(calculateDistance(customer.latitude, customer.longitude, m.latitude, m.longitude).toFixed(2))
+      : null;
+
+    return {
+      ...m,
+      distance,
+      isContact: m.friend_contacts.length > 0,
+      customerAction: m.customer_interactions.length > 0 ? m.customer_interactions[0].action : null,
+      totalLikes: m._count.customer_interactions,
+      services: m.ModelService.filter((ms) => ms.service).map((ms) => ms.service!.name),
+    };
+  });
+}
+
 // Search ALL active models by firstName, lastName, or whatsapp number
 export async function searchModels(customerId: string, query: string) {
   const customer = await prisma.customer.findUnique({
@@ -498,6 +577,7 @@ export async function searchModels(customerId: string, query: string) {
       rating: true,
       total_review: true,
       available_status: true,
+      vip: true,
       updatedAt: true,
       Images: {
         take: 3,

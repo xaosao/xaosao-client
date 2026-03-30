@@ -573,8 +573,8 @@ export default function ModelWalletPage() {
                                 {transaction.createdAt.toDateString()}
                               </p>
                               <div className="flex items-center gap-2 mt-2">
-                                <p className={`font-bold text-base ${transaction.identifier === "withdrawal" ? "text-red-600" : "text-green-600"}`}>
-                                  {transaction.identifier === "withdrawal" ? "-" : "+"}
+                                <p className={`font-bold text-base ${["withdrawal", "booking_refund"].includes(transaction.identifier) ? "text-rose-500" : "text-green-600"}`}>
+                                  {["withdrawal", "booking_refund"].includes(transaction.identifier) ? "-" : "+"}
                                   {formatCurrency(transaction.amount)}
                                 </p>
                               </div>
@@ -638,12 +638,12 @@ export default function ModelWalletPage() {
 
                           <div className="flex items-center justify-center">
                             <p
-                              className={`font-semibold ${transaction.identifier === "withdrawal"
-                                ? "text-red-600"
+                              className={`font-semibold ${["withdrawal", "booking_refund"].includes(transaction.identifier)
+                                ? "text-rose-500"
                                 : "text-green-600"
                                 }`}
                             >
-                              {transaction.identifier === "withdrawal"
+                              {["withdrawal", "booking_refund"].includes(transaction.identifier)
                                 ? "-"
                                 : "+"}
                               {formatCurrency(transaction.amount)}

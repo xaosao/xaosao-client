@@ -207,6 +207,183 @@ export async function sendGift(
   }
 }
 
+// Send a gift directly to a model (not tied to a post)
+export async function sendDirectGift(
+  customerId: string,
+  modelId: string,
+  giftId: string
+) {
+  const auditBase = {
+    action: "SEND_DIRECT_GIFT",
+    customer: customerId,
+  };
+
+  try {
+    const gift = await prisma.gift.findFirst({
+      where: { id: giftId, status: "active" },
+    });
+
+    if (!gift) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Gift not found or inactive!",
+      });
+    }
+
+    // Verify model exists
+    const model = await prisma.model.findUnique({
+      where: { id: modelId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+
+    if (!model) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Model not found!",
+      });
+    }
+
+    // Check customer wallet balance
+    const customerWallet = await prisma.wallet.findFirst({
+      where: { customerId, status: "active" },
+      select: {
+        id: true,
+        totalBalance: true,
+        totalSpend: true,
+        totalRefunded: true,
+      },
+    });
+
+    if (!customerWallet) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "Wallet not found!",
+      });
+    }
+
+    const availableBalance =
+      (customerWallet.totalBalance || 0) -
+      (customerWallet.totalSpend || 0) +
+      (customerWallet.totalRefunded || 0);
+
+    if (availableBalance < gift.price) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message: "ຍອດເງິນບໍ່ພໍ! ກະລຸນາເຕີມເງິນກ່ອນ.",
+      });
+    }
+
+    // Deduct from customer wallet
+    await prisma.wallet.update({
+      where: { id: customerWallet.id },
+      data: { totalSpend: { increment: gift.price } },
+    });
+
+    // Create customer transaction (spending)
+    await prisma.transaction_history.create({
+      data: {
+        identifier: "gift",
+        amount: gift.price,
+        paymentSlip: [],
+        status: "approved",
+        comission: 0,
+        fee: 0,
+        customerId,
+        reason: `Gift "${gift.name}" sent directly to model`,
+      },
+    });
+
+    // Top up model wallet
+    const modelWallet = await prisma.wallet.findFirst({
+      where: { modelId, status: "active" },
+    });
+
+    if (modelWallet) {
+      await prisma.wallet.update({
+        where: { id: modelWallet.id },
+        data: { totalBalance: { increment: gift.price } },
+      });
+
+      await prisma.transaction_history.create({
+        data: {
+          identifier: "gift_earning",
+          amount: gift.price,
+          paymentSlip: [],
+          status: "approved",
+          comission: 0,
+          fee: 0,
+          modelId,
+          reason: `Gift "${gift.name}" received directly from customer`,
+        },
+      });
+    }
+
+    // Create direct_gift record
+    const directGift = await prisma.direct_gift.create({
+      data: {
+        giftId,
+        customerId,
+        modelId,
+        amount: gift.price,
+      },
+    });
+
+    await createAuditLogs({
+      ...auditBase,
+      description: `${customerId} sent direct gift "${gift.name}" (${gift.price} ₭) to model ${modelId}`,
+      status: "success",
+      onSuccess: directGift,
+    });
+
+    // Get customer name for notification
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { firstName: true, lastName: true },
+    });
+    const customerName = customer
+      ? `${customer.firstName} ${customer.lastName || ""}`.trim()
+      : "ລູກຄ້າ";
+
+    // Notify model
+    notifyUser({
+      userType: "model",
+      userId: modelId,
+      notificationType: "gift_received",
+      title: "ທ່ານໄດ້ຮັບຂອງຂວັນ!",
+      message: `${customerName} ໄດ້ສົ່ງ "${gift.name}" ໃຫ້ທ່ານ.`,
+      smsMessage: `XaoSao: ${customerName} ສົ່ງຂອງຂວັນ "${gift.name}" ໃຫ້ທ່ານ. ເປີດແອັບເພື່ອເບິ່ງ.`,
+      data: { giftId, customerId, directGiftId: directGift.id },
+      url: `/model/dating`,
+    }).catch((err) =>
+      console.error("[DirectGift] Failed to notify model:", err)
+    );
+
+    return { success: true, directGift };
+  } catch (error: any) {
+    console.error("SEND_DIRECT_GIFT_FAILED", error);
+    await createAuditLogs({
+      ...auditBase,
+      description: `${customerId} - Send direct gift failed!`,
+      status: "failed",
+      onError: error,
+    });
+
+    if (error instanceof FieldValidationError) {
+      throw error;
+    }
+
+    throw new FieldValidationError({
+      success: false,
+      error: true,
+      message: "Failed to send gift!",
+    });
+  }
+}
+
 // Get gifts sent to a specific post
 export async function getPostGifts(postId: string) {
   return prisma.post_gift.findMany({

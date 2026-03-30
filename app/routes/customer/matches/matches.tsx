@@ -41,7 +41,7 @@ import {
 import { capitalize } from "~/utils/functions/textFormat";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
-import { BookingRequiredModal } from "~/components/BookingRequiredModal";
+import { ChatAccessModal } from "~/components/ChatAccessModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 
 interface LoaderReturn {
@@ -413,8 +413,8 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         showOnMount: false,
     });
 
-    // Booking required modal state
-    const [bookingRequiredModelId, setBookingRequiredModelId] = React.useState<string | null>(null);
+    // Chat access modal state
+    const [chatModalState, setChatModalState] = React.useState<{ modelId: string; reason: string; whatsappNumber?: number } | null>(null);
     const bookingCheckFetcher = useFetcher();
     const pendingChatRef = React.useRef<{ whatsappNumber: number; modelId: string } | null>(null);
 
@@ -427,10 +427,11 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
             const { whatsappNumber, modelId } = pendingChatRef.current;
             pendingChatRef.current = null;
-            if ((bookingCheckFetcher.data as any).hasBooking) {
+            const data = bookingCheckFetcher.data as any;
+            if (data.canChat) {
                 window.open(`https://wa.me/${whatsappNumber}`);
             } else {
-                setBookingRequiredModelId(modelId);
+                setChatModalState({ modelId, reason: data.reason, whatsappNumber });
             }
         }
     }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
@@ -1290,11 +1291,20 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
                 />
             )}
 
-            {/* Booking Required Modal */}
-            <BookingRequiredModal
-                isOpen={!!bookingRequiredModelId}
-                onClose={() => setBookingRequiredModelId(null)}
-                modelId={bookingRequiredModelId || ""}
+            {/* Chat Access Modal */}
+            <ChatAccessModal
+                isOpen={!!chatModalState}
+                onClose={() => setChatModalState(null)}
+                modelId={chatModalState?.modelId || ""}
+                reason={chatModalState?.reason || ""}
+                whatsappNumber={chatModalState?.whatsappNumber}
+                onGiftSent={() => {
+                    setChatModalState(null);
+                    if (pendingChatRef.current) {
+                        const { modelId } = pendingChatRef.current;
+                        bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+                    }
+                }}
             />
         </div>
     );

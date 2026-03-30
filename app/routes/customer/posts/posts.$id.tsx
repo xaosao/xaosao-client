@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLoaderData, useNavigate, useSearchParams, useFetcher, type LoaderFunctionArgs } from "react-router";
 import { ArrowLeft, Calendar, Clock, Coins, MapPin, Users, Heart, MessageCircle, Gift, Send, Loader, X } from "lucide-react";
@@ -10,6 +10,7 @@ import PostComments from "~/components/posts/PostComments";
 import { getActiveGifts } from "~/services/gift.server";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { ChatAccessModal } from "~/components/ChatAccessModal";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
@@ -123,18 +124,35 @@ export default function PostDetailPage() {
     ? `${customerProfile.firstName} ${customerProfile.lastName || ""}`.trim()
     : "";
 
-  const handleChat = (modelName: string, whatsapp: number) => {
-    if (!hasActiveSubscription) {
-      openSubscriptionModal();
-      return;
-    }
-    const message = t("posts.customerChatMessage", {
-      modelName,
-      customerName,
-      defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
-    });
-    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+  // Chat access check
+  const [chatModalState, setChatModalState] = useState<{ modelId: string; reason: string; whatsappNumber?: number } | null>(null);
+  const chatCheckFetcher = useFetcher();
+  const pendingChatRef = useRef<{ modelName: string; whatsapp: number; modelId: string } | null>(null);
+
+  const handleChat = (modelName: string, whatsapp: number, modelId?: string) => {
+    const targetModelId = modelId || post.modelId;
+    if (!targetModelId) return;
+    pendingChatRef.current = { modelName, whatsapp, modelId: targetModelId };
+    chatCheckFetcher.load(`/customer/check-booking?modelId=${targetModelId}`);
   };
+
+  useEffect(() => {
+    if (chatCheckFetcher.state === "idle" && chatCheckFetcher.data && pendingChatRef.current) {
+      const { modelName, whatsapp, modelId } = pendingChatRef.current;
+      pendingChatRef.current = null;
+      const data = chatCheckFetcher.data as any;
+      if (data.canChat) {
+        const message = t("posts.customerChatMessage", {
+          modelName,
+          customerName,
+          defaultValue: `Hi {{modelName}}.\nI'm {{customerName}}, I see your post and I'm interested. Are you still available? I'd like to book you.`,
+        });
+        window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+      } else {
+        setChatModalState({ modelId, reason: data.reason, whatsappNumber: whatsapp });
+      }
+    }
+  }, [chatCheckFetcher.state, chatCheckFetcher.data]);
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -232,7 +250,7 @@ export default function PostDetailPage() {
                         className="cursor-pointer text-gray-500 flex items-center justify-center gap-1 px-2 py-1 hover:opacity-60 transition-opacity text-sm border border-green-300 bg-green-50 text-green-500 rounded-md"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleChat(userName, user.whatsapp!);
+                          handleChat(userName, user.whatsapp!, interest.userType === "model" ? user.id : undefined);
                         }}
                       >
                         <MessageCircle className="h-3.5 w-3.5" /> {t("posts.chat", { defaultValue: "Chat" })}
@@ -377,6 +395,22 @@ export default function PostDetailPage() {
           onSubscribe={handleSubscribe}
         />
       )}
+
+      {/* Chat Access Modal */}
+      <ChatAccessModal
+        isOpen={!!chatModalState}
+        onClose={() => setChatModalState(null)}
+        modelId={chatModalState?.modelId || ""}
+        reason={chatModalState?.reason || ""}
+        whatsappNumber={chatModalState?.whatsappNumber}
+        onGiftSent={() => {
+          setChatModalState(null);
+          if (pendingChatRef.current) {
+            const { modelId } = pendingChatRef.current;
+            chatCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+          }
+        }}
+      />
 
     </div>
   );

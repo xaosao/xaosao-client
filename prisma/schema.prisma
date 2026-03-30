@@ -204,6 +204,8 @@ model customer {
   postInterests         post_interest[]
   postGifts             post_gift[]
   postComments          post_comment[]
+  dailyChatAccess       daily_chat_access[]
+  directGifts           direct_gift[]
 }
 
 model model {
@@ -243,6 +245,7 @@ model model {
   defaultLanguage     String    @default("en") // 11
   defaultTheme        String    @default("light") // 12
   isProfileHidden     Boolean   @default(false) // Self-service profile visibility toggle
+  vip                 Boolean   @default(false) // VIP status set by admin
 
   // Model type for tiered commission system
   type                     String  @default("normal") // "normal", "special", "partner"
@@ -297,6 +300,8 @@ model model {
   postInterests         post_interest[]
   postGiftsReceived     post_gift[]
   postComments          post_comment[]
+  dailyChatAccess       daily_chat_access[]
+  directGiftsReceived   direct_gift[]
 }
 
 // subscription
@@ -1056,7 +1061,8 @@ model gift {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  postGifts post_gift[]
+  postGifts    post_gift[]
+  directGifts  direct_gift[]
 }
 
 model post_gift {
@@ -1100,4 +1106,37 @@ model post_comment {
   @@index([parentId])
   @@index([createdAt])
   @@index([postId, createdAt])
+}
+
+// ==================== Chat Access Tracking ====================
+
+model daily_chat_access {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  customerId String   @db.ObjectId
+  modelId    String   @db.ObjectId
+  date       String   // "2026-03-30" format (Laos timezone date)
+  createdAt  DateTime @default(now())
+
+  customer   customer @relation(fields: [customerId], references: [id])
+  model      model    @relation(fields: [modelId], references: [id])
+
+  @@unique([customerId, modelId, date])
+  @@index([customerId, date])
+}
+
+// ==================== Direct Gifts ====================
+
+model direct_gift {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  giftId     String   @db.ObjectId
+  customerId String   @db.ObjectId
+  modelId    String   @db.ObjectId
+  amount     Float
+  createdAt  DateTime @default(now())
+
+  gift       gift     @relation(fields: [giftId], references: [id])
+  customer   customer @relation(fields: [customerId], references: [id])
+  model      model    @relation(fields: [modelId], references: [id])
+
+  @@index([customerId, modelId])
 }

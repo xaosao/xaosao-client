@@ -12,6 +12,7 @@ import {
     ChevronRight,
     MessageSquareText,
     SlidersHorizontal,
+    Crown,
 } from "lucide-react";
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
@@ -43,9 +44,9 @@ import { getUserTokenFromSession, requireUserSession } from "~/services/auths.se
 import type { Gender, IAvailableStatus, IUserImages } from "~/interfaces/base";
 import { createCustomerInteraction, customerAddFriend } from "~/services/interaction.server";
 import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
-import { getModelsForCustomer, getNearbyModels } from "~/services/model.server";
+import { getModelsForCustomer, getNearbyModels, getVipModels } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
-import { BookingRequiredModal } from "~/components/BookingRequiredModal";
+import { ChatAccessModal } from "~/components/ChatAccessModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useScrollDirection } from "~/hooks/useScrollDirection";
@@ -65,6 +66,7 @@ interface LoaderReturn {
     hasPendingSubscription: boolean;
     nearbyModels: INearbyModelResponse[];
     nearbyPagination: NearbyPagination;
+    vipModels: INearbyModelResponse[];
     trialPackage: {
         id: string;
         price: number;
@@ -162,6 +164,14 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Get nearby models with pagination (initial page = 1, limit = 50)
     const nearbyResult = await getNearbyModels(customerId as string, filters, 50, { page: 1, limit: 50 });
 
+    // Get VIP models (all genders)
+    let vipModelsResult: any[] = [];
+    try {
+        vipModelsResult = await getVipModels(customerId);
+    } catch (e) {
+        console.error("[Discover] Failed to load VIP models:", e);
+    }
+
     // Generate seed based on customer ID and current hour
     const seed = generateSeed(customerId);
 
@@ -175,6 +185,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         models: shuffledModels,
         nearbyModels: nearbyResult.models as INearbyModelResponse[],
         nearbyPagination: nearbyResult.pagination,
+        vipModels: vipModelsResult as INearbyModelResponse[],
         latitude,
         longitude,
         hasActiveSubscription: hasSubscription,
@@ -282,7 +293,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, nearbyPagination, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
+    const { models, nearbyModels, nearbyPagination, vipModels, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
 
     // Filter drawer state
     const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -291,7 +302,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const isMobile = useIsMobile();
 
     // Gender tab state for mobile
-    const [genderTab, setGenderTab] = useState<"female" | "male">("female");
+    const [genderTab, setGenderTab] = useState<"female" | "male" | "vip">("female");
 
     // Subscription modal management
     const {
@@ -501,30 +512,27 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         };
     };
 
-    // Booking required modal state
-    const [bookingRequiredModelId, setBookingRequiredModelId] = useState<string | null>(null);
+    // Chat access modal state
+    const [chatModalState, setChatModalState] = useState<{ modelId: string; reason: string; whatsappNumber?: number } | null>(null);
     const bookingCheckFetcher = useFetcher();
 
-    // Handler for WhatsApp button click with subscription + booking check
+    // Handler for WhatsApp button click with chat access check
     const handleWhatsAppClick = (whatsappNumber: number, modelId: string) => {
-        if (!hasActiveSubscription) {
-            openSubscriptionModal();
-            return;
-        }
-        // Check if customer has active booking with this model
+        // Check chat access (subscription + booking + daily limit + gift)
         bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
-        // Store pending chat info for after the check completes
         pendingChatRef.current = { whatsappNumber, modelId };
     };
 
     const pendingChatRef = useRef<{ whatsappNumber: number; modelId: string } | null>(null);
 
     useEffect(() => {
+        try {
         if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
             const { whatsappNumber, modelId } = pendingChatRef.current;
             pendingChatRef.current = null;
-            if ((bookingCheckFetcher.data as any).hasBooking) {
-                // Has booking — allow chat
+            const data = bookingCheckFetcher.data as any;
+            if (data.canChat) {
+                // Access granted — open WhatsApp
                 const formData = new FormData();
                 formData.append("actionType", "trackActivity");
                 formData.append("trackAction", "CLICK_CHAT");
@@ -532,9 +540,12 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 trackingFetcher.submit(formData, { method: "post" });
                 window.open(`https://wa.me/${whatsappNumber}`);
             } else {
-                // No booking — show modal
-                setBookingRequiredModelId(modelId);
+                // Show appropriate modal based on reason
+                setChatModalState({ modelId, reason: data.reason || "gift_required", whatsappNumber });
             }
+        }
+        } catch (err) {
+            console.error("[Discover] Chat check error:", err);
         }
     }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
 
@@ -612,7 +623,9 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
         ? cachedModels.filter((m) => m.gender === genderTab)
         : cachedModels;
     const displayNearbyModels = isMobile
-        ? cachedNearbyModels.filter((m) => m.gender === genderTab)
+        ? genderTab === "vip"
+            ? [] // VIP tab uses vipModels, not nearbyModels
+            : cachedNearbyModels.filter((m) => m.gender === genderTab)
         : cachedNearbyModels;
 
     const selectedId = searchParams.get("profileId") || displayModels?.[0]?.id;
@@ -758,6 +771,18 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                 >
                                     {t('discover.male')}
                                 </button>
+                                {hasActiveSubscription && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setGenderTab("vip")}
+                                        className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "vip"
+                                            ? "text-amber-500 border-b-2 border-amber-500"
+                                            : "text-gray-500"
+                                            }`}
+                                    >
+                                        VIP
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -1154,10 +1179,22 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             >
                                 {t('discover.male')}
                             </button>
+                            {hasActiveSubscription && (
+                                <button
+                                    type="button"
+                                    onClick={() => setGenderTab("vip")}
+                                    className={`flex-1 py-2.5 text-sm font-medium text-center transition-colors ${genderTab === "vip"
+                                        ? "text-amber-500 border-b-2 border-amber-500"
+                                        : "text-gray-500"
+                                        }`}
+                                >
+                                    VIP
+                                </button>
+                            )}
                         </div>
                     )}
 
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2 p-3 sm:px-6 sm:py-3">
+                    <div className={`flex flex-col sm:flex-row items-start justify-between gap-2 p-3 sm:px-6 sm:py-3 ${genderTab === "vip" ? "hidden" : ""}`}>
                         <h1 className="hidden sm:block text-sm sm:text-xl text-rose-500 text-shadow-sm">
                             {t("modelDashboard.title")}
                         </h1>
@@ -1372,7 +1409,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                     </div>
                 </div>
                 {/* Spacer for fixed search bar */}
-                <div className="h-24 sm:h-14"></div>
+                <div className={genderTab === "vip" ? "h-10" : "h-24 sm:h-14"}></div>
 
                 {/* Search Results */}
                 {isSearching ? (
@@ -1552,7 +1589,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
 
                 <div
                     ref={scrollContainerRef}
-                    className={`px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6 ${isSearching ? "hidden" : ""}`}
+                    className={`px-2 sm:px-0 bg-gray-100 sm:bg-white flex items-center justify-start space-x-8 sm:space-x-10 overflow-x-auto overflow-y-hidden whitespace-nowrap mb-2 sm:mb-0 py-2 sm:py-6 ${isSearching || genderTab === "vip" ? "hidden" : ""}`}
                     style={{
                         msOverflowStyle: 'none',
                         scrollbarWidth: 'none',
@@ -1854,14 +1891,13 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             </div>
                         </div>
                     </div>
-                ) : !isSearching ? (
+                ) : !isSearching && genderTab !== "vip" ? (
                     <div className="text-center py-12">
                         <p className="text-gray-400 text-lg">{t('discover.clickProfile')}</p>
                     </div>
                 ) : null}
-            </div>
 
-            <div className={`flex flex-col items-start justify-start p-4 w-full space-y-4 ${isSearching ? "hidden" : ""}`}>
+            <div className={`flex flex-col items-start justify-start p-4 w-full space-y-4 ${isSearching || genderTab === "vip" ? "hidden" : ""}`}>
                 <div className="space-y-2">
                     <h1 className="text-sm sm:text-md sm:font-bold text-gray-700 uppercase text-shadow-md">{t('discover.nearbyYou')}</h1>
                     <p className="text-xs sm:text-sm font-normal text-gray-600">
@@ -2096,6 +2132,168 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 </div>
             </div>
 
+            {/* VIP Models Section - same UI as nearby */}
+            <div className={`flex flex-col items-start justify-start p-4 w-full space-y-4 ${genderTab !== "vip" ? "hidden" : ""}`}>
+                <div className="space-y-2">
+                    <h1 className="text-sm sm:text-md sm:font-bold text-amber-600 uppercase text-shadow-md">{t('discover.vipModels', { defaultValue: 'VIP MODELS' })}</h1>
+                    <p className="text-xs sm:text-sm font-normal text-gray-600">
+                        {t('discover.vipDescription', { defaultValue: 'ນາງແບບ VIP ທີ່ຖືກຄັດເລືອກພິເສດ ພ້ອມໃຫ້ບໍລິການທ່ານ' })}
+                    </p>
+                </div>
+
+                <div className="w-full hidden sm:block">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                        {vipModels?.map((model) => {
+                            const modelDisplayState = getModelState(model);
+                            return (
+                                <div
+                                    key={model.id}
+                                    className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden h-auto w-full group"
+                                >
+                                    <div>
+                                        <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                                            {model?.whatsapp && (
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer"
+                                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}
+                                                >
+                                                    <MessageSquareText className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            {modelDisplayState.isContact ? (
+                                                <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
+                                                    <UserCheck className="w-4 h-4" />
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer bg-gray-700 hover:bg-green-100 text-gray-300 hover:text-green-500"
+                                                    onClick={() => handleAddFriend(model)}
+                                                    disabled={fetcher.state !== "idle"}
+                                                >
+                                                    <UserPlus className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="relative h-full overflow-hidden">
+                                        <div
+                                            onClick={() => navigate(`/customer/user-profile/${model.id}`)}
+                                            className="w-full h-[30vh]"
+                                        >
+                                            {model.Images[0]?.name ? (
+                                                <img src={model.Images[0].name} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                            ) : model.profile ? (
+                                                <img src={model.profile} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                            ) : (
+                                                <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
+                                                    <User className="w-16 h-16 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                                        <div className="absolute bottom-4 left-4 right-4 text-white sm:opacity-0 sm:group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 space-y-1">
+                                            <div className="flex items-start gap-2 justify-start flex-col">
+                                                <h2 className="flex items-center justify-start text-md" style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
+                                                    <User size={16} />&nbsp;{model.firstName}&nbsp;{model.lastName},
+                                                </h2>
+                                                <p className="flex items-center justify-start gap-2 text-sm text-white" style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.8)" }}>
+                                                    <Calendar size={16} /> {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center text-sm opacity-90 mb-3">
+                                                <MapPin className="h-4 w-4 mr-1" />
+                                                {model.address || (model.distance != null ? formatDistance(model.distance) : "")}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="block sm:hidden w-full space-y-8">
+                    {vipModels?.map((model) => {
+                        const modelDisplayState = getModelState(model);
+                        return (
+                            <div key={model.id} className="flex items-start justify-between pb-4 border-b">
+                                <div className="flex items-start justify-start gap-2">
+                                    {model.profile ? (
+                                        <img src={model.profile} alt="Profile" className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                    ) : (
+                                        <div className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                            <User className="w-7 h-7 text-gray-400" />
+                                        </div>
+                                    )}
+                                    <div className="space-y-0.5 text-gray-500">
+                                        <h2 className="flex items-center justify-start text-sm sm:text-md text-black">
+                                            <User size={14} />&nbsp;{model.firstName}&nbsp;{model.lastName}
+                                        </h2>
+                                        <div className="flex items-start justify-start gap-2">
+                                            <p className="text-sm flex items-center">
+                                                <Calendar size={12} />&nbsp; {calculateAgeFromDOB(model.dob)} {t('discover.yearsOld')},
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center text-sm opacity-90 truncate max-w-[220px]">
+                                            <MapPin className="h-3 w-3 mr-1 text-rose-500 flex-shrink-0" />
+                                            {model.address || (model.distance != null ? formatDistance(model.distance) : "")}
+                                        </div>
+                                        <div className="flex items-start justify-start gap-2 mt-4">
+                                            {model.Images && model.Images.length > 0 ? (
+                                                model.Images.map((image: any, index: number) => (
+                                                    image.name ? (
+                                                        <img key={image.name + index} src={image.name} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
+                                                    ) : model.profile ? (
+                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                    ) : (
+                                                        <div key={`placeholder-${index}`} className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                                            <User className="w-8 h-8 text-white" />
+                                                        </div>
+                                                    )
+                                                ))
+                                            ) : model.profile ? (
+                                                <img src={model.profile} alt="Profile" className="w-24 h-24 rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                            ) : (
+                                                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
+                                                    <User className="w-8 h-8 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex space-x-2">
+                                    {model?.whatsapp && (
+                                        <button type="button" className="rounded-lg py-1.5 px-2 bg-rose-100 text-rose-500 shadow-lg transition-all duration-300 cursor-pointer z-10" onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp, model.id)}>
+                                            <MessageSquareText className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {modelDisplayState.isContact ? (
+                                        <div className="rounded-lg py-1.5 px-2 bg-green-100 text-green-500 shadow-lg z-10">
+                                            <UserCheck className="w-4 h-4" />
+                                        </div>
+                                    ) : (
+                                        <button type="button" className="rounded-lg py-1.5 px-2 shadow-lg transition-all duration-300 cursor-pointer z-10 bg-gray-700 hover:bg-rose-100 text-gray-300 hover:text-rose-500" onClick={() => handleAddFriend(model)} disabled={fetcher.state !== "idle"}>
+                                            <UserPlus className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {vipModels.length === 0 && (
+                    <div className="w-full text-center py-16">
+                        <Crown className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium">{t('discover.noVipModels', { defaultValue: 'No VIP models available yet' })}</p>
+                    </div>
+                )}
+            </div>
+            </div>
+
             {/* Image Lightbox */}
             {selectedIndex !== null && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
@@ -2159,11 +2357,21 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                 />
             )}
 
-            {/* Booking Required Modal */}
-            <BookingRequiredModal
-                isOpen={!!bookingRequiredModelId}
-                onClose={() => setBookingRequiredModelId(null)}
-                modelId={bookingRequiredModelId || ""}
+            {/* Chat Access Modal */}
+            <ChatAccessModal
+                isOpen={!!chatModalState}
+                onClose={() => setChatModalState(null)}
+                modelId={chatModalState?.modelId || ""}
+                reason={chatModalState?.reason || ""}
+                whatsappNumber={chatModalState?.whatsappNumber}
+                onGiftSent={() => {
+                    setChatModalState(null);
+                    // Re-trigger chat check after gift sent
+                    if (pendingChatRef.current) {
+                        const { modelId } = pendingChatRef.current;
+                        bookingCheckFetcher.load(`/customer/check-booking?modelId=${modelId}`);
+                    }
+                }}
             />
         </div>
     );

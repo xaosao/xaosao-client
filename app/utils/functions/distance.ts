@@ -24,7 +24,8 @@ export function calculateDistance(
   return Math.round(distance * 100) / 100; // 2 decimal places
 }
 
-export function formatDistance(distanceKm: number): string {
+export function formatDistance(distanceKm: number | null | undefined): string {
+  if (distanceKm == null) return "";
   if (distanceKm < 1) {
     const meters = Math.round(distanceKm * 1000);
     return `${meters} m`;
