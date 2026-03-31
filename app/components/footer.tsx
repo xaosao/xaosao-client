@@ -48,17 +48,15 @@ export function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="mb-4">
               <h3 className="text-lg text-white">{t('footer.tagline')}</h3>
-              <div className="w-12 sm:w-16 h-0.5 bg-rose-500 rounded-full"></div>
             </div>
             <p className="text-gray-300 leading-relaxed text-sm max-w-md">
               {t('footer.description')}
             </p>
           </div>
 
-          <div className="flex flex-col items-start sm:items-center justify-center space-x-2 cursor-pointer">
+          <div className="flex flex-col items-start sm:items-start justify-center space-x-2 cursor-pointer">
             <div className="mb-4">
               <h3 className="text-lg text-white">{t('footer.socialLinks')}</h3>
-              <div className="w-12 sm:w-16 h-0.5 bg-rose-500 mb-4 sm:mb-4 rounded-full"></div>
             </div>
             <div className="space-y-3 sm:space-y-4">
               <Link

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
-import { useTranslation } from "react-i18next";
 import { Play, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 // components
 import { Header } from "~/components/header";
@@ -9,100 +9,99 @@ import { Button } from "~/components/ui/button";
 
 interface VideoItem {
    id: string;
-   titleKey: string;
-   descriptionKey: string;
-   url: string; // iframe embed URL for mobile
-   directUrl: string; // direct MP4 URL for desktop
+   title: string;
+   description: string;
+   url: string; // iframe embed URL (fallback)
+   directUrl: string; // direct video URL (local or CDN)
    thumbnail?: string;
    duration: string;
+   isLocal?: boolean; // true = use native <video> player
 }
 
 const modelVideos: VideoItem[] = [
    {
       id: "model-1",
-      titleKey: "videoTutorials.companionVideos.register.title",
-      descriptionKey: "videoTutorials.companionVideos.register.description",
+      title: "ການຕິດຕັ້ງແອັບ ແລະ ສະໝັກບັນຊີ",
+      description: "ແນະນຳວິທີລົງທະບຽນເປັນນາງແບບໃນ XaoSao ແບບລະອຽດ ຕັ້ງແຕ່ການກອກຂໍ້ມູນ, ອັບໂຫຼດຮູບພາບ, ຢືນຢັນເບີໂທລະສັບ ຈົນສຳເລັດ",
       url: "https://iframe.mediadelivery.net/play/575603/2fd8c2bf-ac85-48b5-9db9-552ffcbe23ee",
-      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/register.mp4",
-      duration: "9:01"
+      directUrl: "https://xs-images.b-cdn.net/videos/model-register.mov",
+      thumbnail: "https://xs-images.b-cdn.net/videos/model-register-thumbnail.webp",
+      duration: "2:42",
+      isLocal: true,
    },
    {
       id: "model-2",
-      titleKey: "videoTutorials.companionVideos.referral.title",
-      descriptionKey: "videoTutorials.companionVideos.referral.description",
+      title: "ວິທີກູ້ຄືນລະຫັດຜ່ານ",
+      description: "ວິທີຣີເຊັດລະຫັດຜ່ານເມື່ອລືມ ຜ່ານລະບົບ OTP ທາງເບີໂທລະສັບ ເພື່ອຕັ້ງລະຫັດໃໝ່ ແລະ ເຂົ້າສູ່ລະບົບໄດ້ອີກຄັ້ງ",
       url: "https://iframe.mediadelivery.net/play/575603/378e7288-9562-40c3-817f-549bf5eaa719",
-      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/refferal.mp4",
-      duration: "1:29"
+      directUrl: "https://xs-images.b-cdn.net/videos/model-forgot-password.mp4",
+      thumbnail: "https://xs-images.b-cdn.net/videos/model-forgot-password-thumbnail.webp",
+      duration: "1:18",
+      isLocal: true,
    },
    {
       id: "model-3",
-      titleKey: "videoTutorials.companionVideos.serviceBank.title",
-      descriptionKey: "videoTutorials.companionVideos.serviceBank.description",
+      title: "ການຮັບການຈອງ ແລະ ໂພສເພື່ອຫາຄູ່",
+      description: "ແນະນຳວິທີຮັບການຈອງຈາກລູກຄ້າ, ການຢືນຢັນ ຫຼື ປະຕິເສດການຈອງ ແລະ ວິທີສ້າງໂພສເພື່ອໂຄສະນາບໍລິການ ແລະ ຫາລູກຄ້າໃໝ່",
       url: "https://iframe.mediadelivery.net/play/575603/bc260cc5-981f-44d1-abb8-106c866d12ea",
-      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/service_bank_images.mp4",
-      duration: "4:37"
+      directUrl: "https://xs-images.b-cdn.net/videos/model-accept-booking-post.mov",
+      thumbnail: "https://xs-images.b-cdn.net/videos/model-booking-post-thumbnail.webp",
+      duration: "1:27",
+      isLocal: true,
    },
-   {
-      id: "model-4",
-      titleKey: "videoTutorials.companionVideos.booking.title",
-      descriptionKey: "videoTutorials.companionVideos.booking.description",
-      url: "https://iframe.mediadelivery.net/play/575603/5431ad85-94eb-4c6f-9106-25e4cf53ff00",
-      directUrl: "https://xs-images.b-cdn.net/xaosao-model-video/booking.mp4",
-      duration: "8:34"
-   }
 ];
 
 const customerVideos: VideoItem[] = [
    {
       id: "customer-1",
-      titleKey: "videoTutorials.customerVideos.register.title",
-      descriptionKey: "videoTutorials.customerVideos.register.description",
+      title: "ການຕິດຕັ້ງແອັບ ແລະ ສະໝັກບັນຊີໃໝ່",
+      description: "ແນະນຳວິທີລົງທະບຽນເປັນລູກຄ້າໃນ XaoSao ຕັ້ງແຕ່ການຕິດຕັ້ງແອັບ, ສ້າງບັນຊີ, ກອກຂໍ້ມູນສ່ວນຕົວ ແລະ ຢືນຢັນເບີໂທລະສັບ",
       url: "https://iframe.mediadelivery.net/play/575603/6dbd5d24-0f5e-426e-972a-d642b793059f",
-      directUrl: "https://xs-images.b-cdn.net/customer-video/Register.mp4",
-      duration: "6:06"
+      directUrl: "https://xs-images.b-cdn.net/videos/customer-register.mov",
+      thumbnail: "https://xs-images.b-cdn.net/videos/customer-register-thumbnail.webp",
+      duration: "6:06",
+      isLocal: true,
    },
    {
       id: "customer-2",
-      titleKey: "videoTutorials.customerVideos.forgotPassword.title",
-      descriptionKey: "videoTutorials.customerVideos.forgotPassword.description",
+      title: "ວິທີກູ້ຄືນລະຫັດຜ່ານ",
+      description: "ວິທີກູ້ຄືນລະຫັດຜ່ານເມື່ອລືມ ຜ່ານລະບົບຢືນຢັນ OTP ທາງເບີໂທລະສັບ ແລະ ຕັ້ງລະຫັດໃໝ່ໄດ້ງ່າຍໆ",
       url: "https://iframe.mediadelivery.net/play/575603/1f607b15-6876-49f3-8895-c44a7e7052cd",
-      directUrl: "https://xs-images.b-cdn.net/customer-video/Customer-forgot-password-02.mp4",
-      duration: "2:39"
+      directUrl: "https://xs-images.b-cdn.net/videos/customer-forgot-password.mp4",
+      thumbnail: "https://xs-images.b-cdn.net/videos/customer-forgot-password-thumbnail.webp",
+      duration: "2:39",
+      isLocal: true,
    },
    {
       id: "customer-3",
-      titleKey: "videoTutorials.customerVideos.booking.title",
-      descriptionKey: "videoTutorials.customerVideos.booking.description",
+      title: "ວິທີເຕີມເງິນ ແລະ ຈອງນາງແບບ",
+      description: "ແນະນຳວິທີເຕີມເງິນເຂົ້າ Wallet, ເລືອກບໍລິການ, ຊຳລະເງິນ ແລະ ຈອງນາງແບບ ຈົນຮອດການຢືນຢັນການຈອງສຳເລັດ",
       url: "https://iframe.mediadelivery.net/play/575603/da8e13bb-ad53-451a-83fb-bb6543bb2f32",
-      directUrl: "https://xs-images.b-cdn.net/customer-video/booking.mp4",
-      duration: "7:46"
-   },
-   {
-      id: "customer-4",
-      titleKey: "videoTutorials.customerVideos.overview.title",
-      descriptionKey: "videoTutorials.customerVideos.overview.description",
-      url: "https://iframe.mediadelivery.net/play/575603/81e99e33-e21e-4716-a305-558fde0439c1",
-      directUrl: "https://xs-images.b-cdn.net/customer-video/overview.mp4",
-      duration: "4:22"
+      directUrl: "https://xs-images.b-cdn.net/videos/customer-booking-deposit.mov",
+      thumbnail: "https://xs-images.b-cdn.net/videos/customer-booking-deposit-thumbnail.webp",
+      duration: "7:46",
+      isLocal: true,
    }
 ];
 
 interface VideoCardProps {
    video: VideoItem;
    onClick: () => void;
-   t: (key: string) => string;
 }
 
-function VideoCard({ video, onClick, t }: VideoCardProps) {
+function VideoCard({ video, onClick }: VideoCardProps) {
    return (
       <div
-         className="group cursor-pointer border rounded-xl hover:border-rose-500"
+         className="group cursor-pointer border border-gray-500 rounded-md hover:border-rose-500"
          onClick={onClick}
       >
-         <div className="relative aspect-video bg-gradient-to-br from-rose-500/20 via-gray-800 to-gray-900 rounded-xl overflow-hidden mb-3 shadow-lg">
+         <div className="relative aspect-video bg-gradient-to-br from-rose-500/20 via-gray-800 to-gray-900 rounded-t-md overflow-hidden mb-3 shadow-lg">
+            {video.thumbnail && (
+               <img src={video.thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+            )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-rose-500/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform duration-300">
-                  <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white ml-1" fill="white" />
+               <div className="w-12 h-12 rounded-full bg-rose-500/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform duration-300">
+                  <Play className="w-4 h-4 text-white ml-1" fill="white" />
                </div>
             </div>
 
@@ -113,10 +112,10 @@ function VideoCard({ video, onClick, t }: VideoCardProps) {
 
          <div className="space-y-1 px-3 pb-6">
             <h3 className="font-semibold text-gray-500 text-md sm:text-md line-clamp-2 group-hover:text-rose-500 transition-colors">
-               {t(video.titleKey)}
+               {video.title}
             </h3>
             <p className="text-gray-500 text-sm sm:text-base mt-2">
-               {t(video.descriptionKey)}
+               {video.description}
             </p>
          </div>
       </div>
@@ -129,17 +128,7 @@ interface VideoModalProps {
 }
 
 function VideoModal({ video, onClose }: VideoModalProps) {
-   const [isMobile, setIsMobile] = useState(false);
-
-   // Detect mobile on mount
-   useEffect(() => {
-      const checkMobile = () => {
-         setIsMobile(window.innerWidth < 768);
-      };
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      return () => window.removeEventListener('resize', checkMobile);
-   }, []);
+   const videoRef = useRef<HTMLVideoElement>(null);
 
    // Handle escape key to close modal
    useEffect(() => {
@@ -160,34 +149,70 @@ function VideoModal({ video, onClose }: VideoModalProps) {
       };
    }, [video]);
 
+   // Auto-fullscreen on mobile for native video
+   useEffect(() => {
+      if (video?.isLocal && videoRef.current) {
+         const el = videoRef.current;
+         el.play().catch(() => { });
+         // Request fullscreen on mobile
+         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+         if (isMobile) {
+            try {
+               if (el.requestFullscreen) {
+                  el.requestFullscreen();
+               } else if ((el as any).webkitEnterFullscreen) {
+                  (el as any).webkitEnterFullscreen();
+               }
+            } catch { }
+         }
+      }
+   }, [video]);
+
    if (!video) return null;
 
+   // Native video player for local files
+   if (video.isLocal) {
+      return (
+         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+            <button
+               onClick={onClose}
+               className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+            >
+               <X className="w-6 h-6" />
+            </button>
+
+            <video
+               ref={videoRef}
+               src={video.directUrl}
+               className="w-full h-full object-contain"
+               controls
+               autoPlay
+               playsInline
+               preload="auto"
+               onEnded={onClose}
+            />
+         </div>
+      );
+   }
+
+   // Iframe fallback for BunnyCDN Stream
    return (
-      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
          <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors"
+            className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
          >
             <X className="w-6 h-6" />
          </button>
 
-         {isMobile ? (
-            // Use BunnyCDN Stream iframe for mobile (handles transcoding)
+         <div className="w-full h-full sm:w-auto sm:h-full sm:aspect-video">
             <iframe
-               src={`${video.url}?autoplay=true&muted=true&preload=true`}
-               className="w-full h-full"
+               src={`${video.url}?autoplay=true&preload=true&responsive=true`}
+               className="w-full h-full border-0"
                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                allowFullScreen
             />
-         ) : (
-            // Use native video for desktop
-            <video
-               src={video.directUrl}
-               className="max-w-full max-h-full"
-               controls
-               autoPlay
-            />
-         )}
+         </div>
       </div>
    );
 }
@@ -252,7 +277,6 @@ export default function VideoTutorialsPage() {
                      key={video.id}
                      video={video}
                      onClick={() => setSelectedVideo(video)}
-                     t={t}
                   />
                ))}
             </div>

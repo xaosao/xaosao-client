@@ -23,6 +23,7 @@ import { HeroBackground } from "~/components/hero-background";
 import { Footer } from "~/components/footer";
 import { getPublicServices } from "~/services/service.server";
 import { getPublicHotModels } from "~/services/model.server";
+import type { HotModel } from "~/types/model";
 
 // Service icon mapping based on service name
 const getServiceIcon = (serviceName: string) => {
@@ -81,21 +82,6 @@ const calculateAgeFromDOB = (dob: string | Date): number => {
   }
   return age;
 };
-
-interface HotModel {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  dob: Date;
-  gender: string;
-  bio: string | null;
-  profile: string | null;
-  rating: number;
-  total_review: number;
-  address: string | null;
-  available_status: string;
-  Images: { id: string; name: string }[];
-}
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate()
@@ -220,17 +206,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <Button
                 size="lg"
                 className="flex cursor-pointer w-auto border-border bg-rose-500 hover:bg-rose-500 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium shadow-xl hover:shadow-pink-500/25 transition-all duration-300 transform hover:scale-105 border-0 rounded-lg"
-                // onClick={() => navigate(hasCustomerToken ? "/customer" : "/login")}
                 onClick={() => navigate("/model-auth/login")}
               >
                 <LogIn className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                 {hasCustomerToken ? t('home.myAccount') : t('home.login')}
               </Button>
             </div>
-
-            {/* <p className="text-white/80 text-xs sm:text-sm">
-              {t('home.customerLoginHint', { defaultValue: '👆 For customers looking for companions' })}
-            </p> */}
           </div>
 
           {services && services.length > 0 && (
@@ -287,18 +268,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {/* Hot Models Preview Section */}
       {hotModels && hotModels.length > 0 && (
-        <section className="py-12 sm:py-16 bg-white">
+        <section className="py-12 sm:py-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
           <div className="max-w-6xl mx-auto px-4">
-            {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-rose-500" />
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white">
                     {t('home.hotModels.title', { defaultValue: 'Hot Companions' })}
                   </h2>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-white">
                   {t('home.hotModels.subtitle', { defaultValue: 'Discover our most popular companions' })}
                 </p>
               </div>
@@ -311,7 +291,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </Button>
             </div>
 
-            {/* Models Horizontal Scroll */}
             <div
               ref={scrollContainerRef}
               className="flex items-center justify-start space-x-6 overflow-x-auto overflow-y-hidden whitespace-nowrap py-4"
@@ -328,12 +307,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 >
                   <div
                     className={`text-center overflow-hidden space-y-2 transition-colors ${selectedProfile?.id === model.id
-                      ? "text-rose-500 border-b-2 border-rose-500 pb-1"
+                      ? "text-rose-500 border-b-1 border-rose-500 pb-1"
                       : ""
                       }`}
                   >
                     <div
-                      className={`border-3 ${selectedProfile?.id === model.id
+                      className={`border-1 ${selectedProfile?.id === model.id
                         ? "border-rose-500"
                         : "border-gray-300"
                         } rounded-full w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center hover:border-rose-500 overflow-hidden transition-colors`}
@@ -350,7 +329,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                         </div>
                       )}
                     </div>
-                    <p className="text-xs sm:text-sm truncate max-w-[80px]">{model.firstName}</p>
+                    <p className="text-xs sm:text-sm truncate max-w-[80px] text-white">{model.firstName}</p>
                   </div>
                 </div>
               ))}
@@ -368,7 +347,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     }}
                     pagination={{ clickable: true }}
                     spaceBetween={10}
-                    className="w-full h-80 sm:h-96 custom-swiper1 border-2 border-rose-500 rounded-lg"
+                    className="w-full h-80 sm:h-96 custom-swiper1 rounded-md"
                   >
                     {selectedProfile?.Images?.length ? (
                       selectedProfile.Images.map((img) => (
@@ -512,12 +491,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Header */}
-          <div className="text-center mb-12 sm:mb-16">
-            <div className="inline-flex items-center gap-2 bg-rose-500/20 border border-rose-500/30 rounded-full px-4 py-2 mb-4">
-              <Sparkles className="w-4 h-4 text-rose-400" />
-              <span className="text-rose-300 text-sm font-medium">{t('home.modelTypes.badge', { defaultValue: 'Companion Tiers' })}</span>
-            </div>
+          <div className="text-center mb-4 sm:mb-8">
             <h2 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
               {t('home.modelTypes.title', { defaultValue: 'Grow Your Earnings' })}
             </h2>
@@ -549,13 +523,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           {/* Model Type Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Normal Model */}
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-rose-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1">
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-md overflow-hidden hover:border-rose-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-rose-500/10 hover:-translate-y-1">
               {/* Header */}
               <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-white" />
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{t('home.modelTypes.normal.name', { defaultValue: 'Normal' })}</h3>
@@ -582,7 +556,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     <div className="flex items-start gap-2">
                       <Gift className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-gray-300">
-                        <span className="text-rose-400 font-bold">50,000 KIP</span> {t('home.modelTypes.normal.bonus', { defaultValue: 'per referral (up to 20 people)' })}
+                        <span className="text-rose-400 font-bold">10,000 KIP</span> {t('home.modelTypes.normal.bonus', { defaultValue: 'per referral (up to 20 people)' })}
                       </span>
                     </div>
                     <div className="flex items-start gap-2">
@@ -603,12 +577,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Special Model */}
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-amber-500/30 rounded-xl overflow-hidden hover:border-amber-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1">
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-amber-500/30 rounded-md overflow-hidden hover:border-amber-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-1">
               {/* Header */}
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <Star className="w-6 h-6 text-white" />
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Star className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">{t('home.modelTypes.special.name', { defaultValue: 'Special' })}</h3>
@@ -665,12 +639,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Partner Model */}
-            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-purple-500/30 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1">
+            <div className="group relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-purple-500/30 rounded-md overflow-hidden hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1">
               {/* Header */}
               <div className="bg-gradient-to-r from-purple-500 to-violet-600 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <Crown className="w-6 h-6 text-white" />
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Crown className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">{t('home.modelTypes.partner.name', { defaultValue: 'Partner' })}</h3>
@@ -725,21 +699,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* CTA */}
-          <div className="text-center mt-12 sm:mt-16">
-            <Button
-              size="lg"
-              className="cursor-pointer bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white px-8 py-4 text-sm shadow-xl shadow-rose-500/25 hover:shadow-rose-500/40 transition-all duration-300 transform hover:scale-105 border-0 rounded-xl"
-              onClick={() => navigate("/model-auth/register")}
-            >
-              <Gift className="w-4 h-4" />
-              {t('home.modelTypes.cta', { defaultValue: 'Start Earning Now' })}
-            </Button>
-            <p className="text-gray-500 text-sm mt-4">
-              {t('home.modelTypes.ctaHint', { defaultValue: 'Join as a companion and start your referral journey today' })}
-            </p>
           </div>
         </div>
       </section>
