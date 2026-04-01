@@ -28,6 +28,18 @@ const refineSafe = (schema: z.ZodString) =>
     })
     .refine(blockInjection, { message: "Potentially unsafe input detected." });
 
+// Block restricted names (case-insensitive, ignores spaces)
+const blockedNames = ["xaosao", "ເຊົ່າສາວ"];
+const isBlockedName = (value: string) => {
+  const normalized = value.replace(/\s+/g, "").toLowerCase();
+  return !blockedNames.some((name) => normalized.includes(name.toLowerCase()));
+};
+
+const refineNameSafe = (schema: z.ZodString) =>
+  refineSafe(schema).refine(isBlockedName, {
+    message: "ຊື່ນີ້ບໍ່ສາມາດໃຊ້ໄດ້. ກະລຸນາໃຊ້ຊື່ອື່ນ.",
+  });
+
 // ====================== Admin sign input validate
 const signInSchema = z.object({
   rememberMe: z.boolean(),
@@ -54,12 +66,12 @@ export function validateSignInInputs(input: ICustomerSigninCredentials) {
 
 // ====================== Admin sign input validate:
 const customerSignUpSchema = z.object({
-  firstName: refineSafe(
+  firstName: refineNameSafe(
     z
       .string()
       .max(20, "Invalid first name. Must be at most 20 characters long.")
   ),
-  lastName: refineSafe(
+  lastName: refineNameSafe(
     z.string().max(20, "Invalid last name. Must be at most 20 characters long.")
   ),
   password: refineSafe(
@@ -181,7 +193,7 @@ export function validateTopUpInputs(input: ITransactionCredentials) {
 
 // ====================== Validate cusotmer profile inputs:
 const updateProfileSchema = z.object({
-  firstName: refineSafe(
+  firstName: refineNameSafe(
     z
       .string()
       .max(20, "Invalid first name. Must be at most 20 characters long.")
@@ -190,7 +202,10 @@ const updateProfileSchema = z.object({
     .string()
     .max(20, "Invalid last name. Must be at most 20 characters long.")
     .nullable()
-    .optional(),
+    .optional()
+    .refine((val) => !val || isBlockedName(val), {
+      message: "ຊື່ນີ້ບໍ່ສາມາດໃຊ້ໄດ້. ກະລຸນາໃຊ້ຊື່ອື່ນ.",
+    }),
   dob: z.coerce.date().refine((date) => !isNaN(date.getTime()), {
     message: "Invalid date format. Please enter a valid date.",
   }),

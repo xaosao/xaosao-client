@@ -349,16 +349,16 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "ມີບັນຫາເກີດຂຶ້ນ!";
+  let details = "ລະບົບພົບບັນຫາບາງຢ່າງ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "ບໍ່ພົບໜ້ານີ້" : "ມີບັນຫາເກີດຂຶ້ນ!";
     details =
       error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+        ? "ໜ້າທີ່ທ່ານຊອກຫາບໍ່ມີຢູ່ໃນລະບົບ."
+        : "ລະບົບພົບບັນຫາບາງຢ່າງ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.";
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
@@ -461,19 +461,19 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            Clear Cache & Reload
+            ລ້າງຂໍ້ມູນ ແລະ ໂຫຼດໃໝ່
           </button>
 
           <button
             onClick={handleGoHome}
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
           >
-            Go to Home
+            ກັບໄປໜ້າຫຼັກ
           </button>
         </div>
 
         <p className="text-xs text-gray-500 mt-6">
-          If this issue persists, try closing and reopening the app.
+          ຖ້າບັນຫາຍັງຄົງຢູ່, ກະລຸນາປິດແອັບ ແລະ ເປີດໃໝ່ອີກຄັ້ງ.
         </p>
       </div>
     </main>

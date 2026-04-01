@@ -1,24 +1,22 @@
 /**
- * Open WhatsApp chat.
- * On mobile: uses direct link (no target="_blank" which Safari blocks).
+ * Open WhatsApp chat without navigating away from the current page.
+ * On iOS Safari: uses window.open (must be called from user gesture context).
+ * On Android: uses window.open with fallback.
  * On desktop: opens in new tab.
  */
 export function openWhatsApp(number: number | string, message?: string) {
   const url = message
-    ? `https://wa.me/${number}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/${number}`;
+    ? `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(message)}`
+    : `https://api.whatsapp.com/send?phone=${number}`;
 
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(
-    typeof navigator !== "undefined" ? navigator.userAgent : ""
-  );
+  // window.open in the same call stack as user click event is NOT blocked by Safari.
+  // This opens WhatsApp in a new tab/app without replacing the current page.
+  // When the user returns, the app page is still intact.
+  const newWindow = window.open(url, "_blank");
 
-  if (isMobile) {
-    // On mobile, open in same tab — WhatsApp app will intercept the URL
-    // Using setTimeout to avoid iOS blocking the navigation
-    setTimeout(() => {
-      window.location.assign(url);
-    }, 100);
-  } else {
-    window.open(url, "_blank");
+  // If popup was blocked (shouldn't happen when called from click handler),
+  // fall back to location.href as last resort.
+  if (!newWindow) {
+    window.location.href = url;
   }
 }

@@ -83,6 +83,18 @@ const refineSafe = (schema: z.ZodString) =>
       message: "modelAuth.validation.invalidInputDetected",
     });
 
+// Block restricted names (case-insensitive, ignores spaces)
+const blockedNames = ["xaosao", "ເຊົ່າສາວ"];
+const isBlockedName = (value: string) => {
+  const normalized = value.replace(/\s+/g, "").toLowerCase();
+  return !blockedNames.some((name) => normalized.includes(name.toLowerCase()));
+};
+
+const refineNameSafe = (schema: z.ZodString) =>
+  refineSafe(schema).refine(isBlockedName, {
+    message: "ຊື່ນີ້ບໍ່ສາມາດໃຊ້ໄດ້. ກະລຸນາໃຊ້ຊື່ອື່ນ.",
+  });
+
 /**
  * Sanitizes phone number input
  * - Removes all non-digit characters
@@ -161,7 +173,7 @@ export function validateModelSignInInputs(input: IModelSigninCredentials) {
 
 const modelSignUpSchema = z
   .object({
-    firstName: refineSafe(
+    firstName: refineNameSafe(
       z
         .string()
         .min(2, "modelAuth.validation.firstNameMinLength")
@@ -176,6 +188,9 @@ const modelSignUpSchema = z
       .max(50, "modelAuth.validation.lastNameMaxLength")
       .regex(/^[a-zA-Z\s\u0E80-\u0EFF]*$/, {
         message: "modelAuth.validation.lastNameLettersOnly",
+      })
+      .refine((val) => !val || isBlockedName(val), {
+        message: "ຊື່ນີ້ບໍ່ສາມາດໃຊ້ໄດ້. ກະລຸນາໃຊ້ຊື່ອື່ນ.",
       })
       .optional()
       .or(z.literal("")),

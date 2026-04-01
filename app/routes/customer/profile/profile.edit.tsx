@@ -160,7 +160,7 @@ export async function action({ request }: Route.ActionArgs) {
                     return {
                         success: false,
                         error: true,
-                        message: `${firstKey}: ${firstMessage}`,
+                        message: firstMessage,
                     };
                 }
             }

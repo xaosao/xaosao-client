@@ -194,8 +194,8 @@ export async function action({ request }: Route.ActionArgs) {
                 }
             }
             console.log("Generic error, first value:", Object.values(error)[0]);
-            const value = Object.values(error)[0];
-            return { success: false, error: true, message: value as string, messageKey: "register.errors.somethingWentWrong" };
+            const value = Object.values(error)[0] as string;
+            return { success: false, error: true, message: value };
         }
     }
     return { success: false, error: true, messageKey: "register.errors.invalidRequest" };
