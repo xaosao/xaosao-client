@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useFetcher, useNavigate, useSearchParams } from "react-router";
 import { Heart, MessageCircle, Loader, CalendarCheck, Coins, Gift, X, Send } from "lucide-react";
+import { BlurImage } from "~/components/ui/blur-image";
 
 import { calculateAgeFromDOB, getTimeAgo } from "~/utils";
 import type { PostItem, UserProfile, GiftItem } from "~/types/post";
@@ -84,7 +85,8 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
         >
           <div className="relative flex-shrink-0">
             {author?.profile ? (
-              <img
+              <BlurImage
+                isHidden={author?.profileHiddenByAdmin}
                 src={author.profile}
                 alt={authorName}
                 className="w-9 h-9 rounded-full object-cover ring-2 ring-rose-100"

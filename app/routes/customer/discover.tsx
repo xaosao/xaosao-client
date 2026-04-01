@@ -47,6 +47,7 @@ import { createCustomerInteraction, customerAddFriend } from "~/services/interac
 import type { ImodelsResponse, INearbyModelResponse } from "~/interfaces";
 import { getModelsForCustomer, getNearbyModels, getVipModels, getChattableModelIds } from "~/services/model.server";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
+import { BlurImage } from "~/components/ui/blur-image";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -1027,7 +1028,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         <div key={model.id} className="flex items-start justify-between pb-4 border-b">
                                             <div className="flex items-start justify-start gap-2">
                                                 {model.profile ? (
-                                                    <img
+                                                    <BlurImage
+                                                        isHidden={model.profileHiddenByAdmin}
                                                         src={model.profile}
                                                         alt="Profile"
                                                         className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
@@ -1479,7 +1481,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                                 className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                             />
                                                         ) : model.profile ? (
-                                                            <img
+                                                            <BlurImage
+                                                                isHidden={model.profileHiddenByAdmin}
                                                                 src={model.profile}
                                                                 alt={model.firstName}
                                                                 className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -1525,7 +1528,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             <div key={model.id} className="flex items-start justify-between pb-4 border-b">
                                                 <div className="flex items-start justify-start gap-2">
                                                     {model.profile ? (
-                                                        <img
+                                                        <BlurImage
+                                                            isHidden={model.profileHiddenByAdmin}
                                                             src={model.profile}
                                                             alt="Profile"
                                                             className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
@@ -1625,7 +1629,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                         } rounded-full w-20 h-20 flex items-center justify-center hover:border-rose-500 overflow-hidden`}
                                 >
                                     {data?.profile ? (
-                                        <img
+                                        <BlurImage
+                                            isHidden={data?.profileHiddenByAdmin}
                                             src={data.profile}
                                             alt="Profile"
                                             className="w-full h-full rounded-full object-cover"
@@ -1748,7 +1753,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                     <SwiperSlide>
                                         {selectedProfile.profile ? (
                                             <div className="relative">
-                                                <img
+                                                <BlurImage
+                                                    isHidden={selectedProfile.profileHiddenByAdmin}
                                                     src={selectedProfile.profile}
                                                     alt={selectedProfile.firstName}
                                                     className="w-full h-96 object-cover cursor-pointer"
@@ -1961,7 +1967,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                 />
                                             ) : model.profile ? (
-                                                <img
+                                                <BlurImage
+                                                    isHidden={model.profileHiddenByAdmin}
                                                     src={model.profile}
                                                     alt={model.firstName}
                                                     className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -2007,7 +2014,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             <div key={model.id} className="flex items-start justify-between pb-4 border-b">
                                 <div className="flex items-start justify-start gap-2">
                                     {model.profile ? (
-                                        <img
+                                        <BlurImage
+                                            isHidden={model.profileHiddenByAdmin}
                                             src={model.profile}
                                             alt="Profile"
                                             className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer"
@@ -2050,7 +2058,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             onClick={() => { setImages(model.Images), setSelectedIndex(index) }}
                                                         />
                                                     ) : model.profile ? (
-                                                        <img
+                                                        <BlurImage
+                                                            isHidden={model.profileHiddenByAdmin}
                                                             key={`profile-${index}`}
                                                             src={model.profile}
                                                             alt="Profile"
@@ -2068,7 +2077,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     )
                                                 ))
                                             ) : model.profile ? (
-                                                <img
+                                                <BlurImage
+                                                    isHidden={model.profileHiddenByAdmin}
                                                     src={model.profile}
                                                     alt="Profile"
                                                     className="w-24 h-24 rounded-2xl object-cover cursor-pointer"
@@ -2193,7 +2203,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             {model.Images[0]?.name ? (
                                                 <img src={model.Images[0].name} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                             ) : model.profile ? (
-                                                <img src={model.profile} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                                <BlurImage isHidden={model.profileHiddenByAdmin} src={model.profile} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                             ) : (
                                                 <div className="cursor-pointer w-full h-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center">
                                                     <User className="w-16 h-16 text-white" />
@@ -2229,7 +2239,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                             <div key={model.id} className="flex items-start justify-between pb-4 border-b">
                                 <div className="flex items-start justify-start gap-2">
                                     {model.profile ? (
-                                        <img src={model.profile} alt="Profile" className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                        <BlurImage isHidden={model.profileHiddenByAdmin} src={model.profile} alt="Profile" className="w-14 h-14 border-1 border-gray-600 rounded-full object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                     ) : (
                                         <div className="w-14 h-14 border-1 border-gray-600 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                             <User className="w-7 h-7 text-gray-400" />
@@ -2254,7 +2264,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     image.name ? (
                                                         <img key={image.name + index} src={image.name} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => { setImages(model.Images), setSelectedIndex(index) }} />
                                                     ) : model.profile ? (
-                                                        <img key={`profile-${index}`} src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                        <BlurImage isHidden={model.profileHiddenByAdmin} key={`profile-${index}`} src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                                     ) : (
                                                         <div key={`placeholder-${index}`} className="w-full aspect-square rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                                             <User className="w-8 h-8 text-white" />
@@ -2262,7 +2272,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                     )
                                                 ))
                                             ) : model.profile ? (
-                                                <img src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
+                                                <BlurImage isHidden={model.profileHiddenByAdmin} src={model.profile} alt="Profile" className="w-full aspect-square rounded-2xl object-cover cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)} />
                                             ) : (
                                                 <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center cursor-pointer" onClick={() => navigate(`/customer/user-profile/${model.id}`)}>
                                                     <User className="w-8 h-8 text-white" />

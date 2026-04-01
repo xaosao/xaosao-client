@@ -45,6 +45,7 @@ import { capitalize, getFirstWord, extractFilenameFromCDNSafe } from '~/utils/fu
 import { getModelOwnProfile, createModelImage, deleteModelImage, updateModelImage, getModelBanks, createModelBank, updateModelBank, deleteModelBank, setDefaultBank, toggleProfileVisibility } from '~/services/model-profile.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
+import { BlurImage } from '~/components/ui/blur-image';
 
 const MAX_IMAGES = 6;
 
@@ -697,7 +698,8 @@ export default function ModelProfilePage() {
                             className="flex-shrink-0 cursor-pointer"
                             onClick={() => setShowProfileFullscreen(true)}
                         >
-                            <img
+                            <BlurImage
+                                isHidden={model?.profileHiddenByAdmin}
                                 src={model?.profile || undefined}
                                 alt={`${model.firstName}${model.lastName ? `-${model.lastName}` : ''}`}
                                 className="w-32 h-32 rounded-full object-cover border-2 border-rose-500 hover:opacity-90 transition-opacity"
@@ -833,6 +835,21 @@ export default function ModelProfilePage() {
                             : t("modelSettings.profileVisibility.hideProfile", { defaultValue: "Hide Profile" })}
                     </Button>
                 </div>
+
+                {/* Admin hidden images warning */}
+                {model?.profileHiddenByAdmin && (
+                    <div className="mx-2 sm:mx-0 mb-4 px-4 py-3 rounded-lg border bg-red-50 border-red-300 flex items-center gap-3">
+                        <Info className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-medium text-red-700">
+                                {t("modelProfile.adminHiddenTitle", { defaultValue: "ຮູບພາບຂອງທ່ານຖືກເຊື່ອງໂດຍຜູ້ດູແລລະບົບ" })}
+                            </p>
+                            <p className="text-xs text-red-600 mt-0.5">
+                                {t("modelProfile.adminHiddenDesc", { defaultValue: "ຮູບພາບຂອງທ່ານບໍ່ເໝາະສົມ ແລະ ຖືກເຊື່ອງຈາກລູກຄ້າ. ກະລຸນາອັບໂຫຼດຮູບໃໝ່ທີ່ເໝາະສົມ." })}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="pb-4">
                     <Tabs value={activeTab} onValueChange={(value) => {
@@ -1495,7 +1512,8 @@ export default function ModelProfilePage() {
                         >
                             <X size={32} />
                         </button>
-                        <img
+                        <BlurImage
+                            isHidden={model?.profileHiddenByAdmin}
                             src={model.profile}
                             alt={`${model.firstName}${model.lastName ? ` ${model.lastName}` : ''}`}
                             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"

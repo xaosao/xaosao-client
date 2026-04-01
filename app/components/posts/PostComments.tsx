@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useFetcher } from "react-router";
 import { MessageCircle, Send, Loader, Users, Reply } from "lucide-react";
+import { BlurImage } from "~/components/ui/blur-image";
 
 interface CommentAuthor {
   id: string;
   firstName: string;
   lastName?: string | null;
   profile?: string | null;
+  profileHiddenByAdmin?: boolean;
 }
 
 interface PostComment {
@@ -49,6 +51,11 @@ function getAuthorName(comment: PostComment): string {
 function getAuthorProfile(comment: PostComment): string | null | undefined {
   const author = comment.userType === "customer" ? comment.customer : comment.model;
   return author?.profile;
+}
+
+function isAuthorHidden(comment: PostComment): boolean {
+  const author = comment.userType === "customer" ? comment.customer : comment.model;
+  return !!author?.profileHiddenByAdmin;
 }
 
 // Count total comments including replies
@@ -193,7 +200,7 @@ export default function PostComments({ comments, postId, actionUrl, currentUserP
                   {/* Left column: avatar + vertical line */}
                   <div className="flex flex-col items-center mr-2 flex-shrink-0">
                     {profile ? (
-                      <img src={profile} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      <BlurImage isHidden={isAuthorHidden(comment)} src={profile} alt="" className="w-8 h-8 rounded-full object-cover" />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                         <Users className="h-4 w-4 text-gray-400" />
@@ -264,7 +271,7 @@ export default function PostComments({ comments, postId, actionUrl, currentUserP
                       {/* Reply avatar + bubble */}
                       <div className="flex gap-2 flex-1 min-w-0">
                         {rProfile ? (
-                          <img src={rProfile} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                          <BlurImage isHidden={isAuthorHidden(reply)} src={rProfile} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                             <Users className="h-3.5 w-3.5 text-gray-400" />

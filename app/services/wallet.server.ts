@@ -790,6 +790,7 @@ export async function withdrawFunds(
 ) {
   if (!modelId) throw new Error("Missing model id!");
   if (!amount || amount <= 0) throw new Error("Invalid withdrawal amount!");
+  if (amount < 10000) throw new Error("Minimum withdrawal amount is 10,000 LAK");
 
   const auditBase = {
     action: "WITHDRAW_FUNDS",

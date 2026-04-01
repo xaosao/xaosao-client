@@ -30,6 +30,7 @@ export async function getModelOwnProfile(modelId: string) {
         address: true,
         available_status: true,
         profile: true,
+        profileHiddenByAdmin: true,
         latitude: true,
         longitude: true,
         location: true,

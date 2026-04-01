@@ -174,6 +174,7 @@ model customer {
   // Referral tracking - which model referred this customer
   referredByModelId  String?   @db.ObjectId // Model who referred this customer (for special/partner commission)
 
+  profileHiddenByAdmin  Boolean   @default(false) // Admin hides inappropriate profile image
   status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -244,8 +245,9 @@ model model {
   sendWhatsappNoti    Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
   defaultLanguage     String    @default("en") // 11
   defaultTheme        String    @default("light") // 12
-  isProfileHidden     Boolean   @default(false) // Self-service profile visibility toggle
-  vip                 Boolean   @default(false) // VIP status set by admin
+  isProfileHidden          Boolean   @default(false) // Self-service profile visibility toggle
+  profileHiddenByAdmin     Boolean   @default(false) // Admin hides inappropriate profile image
+  vip                      Boolean   @default(false) // VIP status set by admin
 
   // Model type for tiered commission system
   type                     String  @default("normal") // "normal", "special", "partner"

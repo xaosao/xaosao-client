@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import { X, Camera, Upload, AlertTriangle, Loader2, CheckCircle, ImagePlus } from "lucide-react";
+import { BlurImage } from "~/components/ui/blur-image";
 import { useTranslation } from "react-i18next";
 import { compressImage } from "~/utils/imageCompression";
 
@@ -14,6 +15,7 @@ interface ProfileCheckData {
   needsAttention: boolean;
   profileOk: boolean;
   profileUrl: string | null;
+  profileHiddenByAdmin?: boolean;
   galleryImages: ImageStatus[];
   galleryCount: number;
   brokenGalleryImages: string[];
@@ -152,14 +154,27 @@ export function ProfileCheckModal() {
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {/* Admin hidden warning */}
+          {data.profileHiddenByAdmin && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-3">
+              <p className="text-sm text-red-700 font-medium">
+                {t("profileCheck.adminHidden", {
+                  defaultValue: "ຮູບພາບຂອງທ່ານຖືກເຊື່ອງໂດຍຜູ້ດູແລລະບົບ ເນື່ອງຈາກບໍ່ເໝາະສົມ. ກະລຸນາອັບໂຫຼດຮູບໃໝ່ທີ່ເໝາະສົມ.",
+                })}
+              </p>
+            </div>
+          )}
+
           {/* Warning message */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-sm text-amber-800">
-              {t("profileCheck.warning", {
-                defaultValue: "ຮູບໂປຣໄຟລ໌ ຫຼື ຮູບພາບຂອງທ່ານບາງຮູບໄດ້ສູນຫາຍ. ກະລຸນາອັບໂຫຼດໃໝ່ເພື່ອໃຫ້ລູກຄ້າສາມາດເຫັນໂປຣໄຟລ໌ຂອງທ່ານ.",
-              })}
-            </p>
-          </div>
+          {!data.profileHiddenByAdmin && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-sm text-amber-800">
+                {t("profileCheck.warning", {
+                  defaultValue: "ຮູບໂປຣໄຟລ໌ ຫຼື ຮູບພາບຂອງທ່ານບາງຮູບໄດ້ສູນຫາຍ. ກະລຸນາອັບໂຫຼດໃໝ່ເພື່ອໃຫ້ລູກຄ້າສາມາດເຫັນໂປຣໄຟລ໌ຂອງທ່ານ.",
+                })}
+              </p>
+            </div>
+          )}
 
           {/* Profile Image */}
           <div>
@@ -177,7 +192,7 @@ export function ProfileCheckModal() {
             <div className="flex items-center gap-4">
               <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex-shrink-0">
                 {profileDisplayUrl ? (
-                  <img src={profileDisplayUrl} alt="Profile" className="w-full h-full object-cover" />
+                  <BlurImage isHidden={data.profileHiddenByAdmin} src={profileDisplayUrl} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Camera className="h-8 w-8 text-gray-300" />

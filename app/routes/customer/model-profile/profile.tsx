@@ -38,6 +38,7 @@ import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
+import { BlurImage } from '~/components/ui/blur-image';
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
@@ -544,7 +545,8 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             className="flex-shrink-0 cursor-pointer"
                             onClick={() => setShowProfileFullscreen(true)}
                         >
-                            <img
+                            <BlurImage
+                                isHidden={model?.profileHiddenByAdmin}
                                 src={model?.profile || undefined}
                                 alt={`${model.firstName}${model.lastName ? `-${model.lastName}` : ''}`}
                                 className="w-32 h-32 rounded-full object-cover border-2 border-rose-500 hover:opacity-90 transition-opacity"
@@ -1163,7 +1165,8 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                         >
                             <X size={32} />
                         </button>
-                        <img
+                        <BlurImage
+                            isHidden={model?.profileHiddenByAdmin}
                             src={model.profile}
                             alt={`${model.firstName}${model.lastName ? ` ${model.lastName}` : ''}`}
                             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-lg"

@@ -36,6 +36,7 @@ export interface IModelOwnProfileResponse {
   address: string | null;
   available_status: string;
   profile: string | null;
+  profileHiddenByAdmin?: boolean;
   latitude: number | null;
   longitude: number | null;
   location: any;

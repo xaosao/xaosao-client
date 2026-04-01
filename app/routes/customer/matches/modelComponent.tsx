@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { MapPin, MessageSquareText, Heart, X, UserPlus, User, UserCheck } from "lucide-react";
+import { BlurImage } from "~/components/ui/blur-image";
 import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 // swiper imports
@@ -101,7 +102,8 @@ export default function ModelCard({
                     ) : (
                         <SwiperSlide>
                             {model.profile ? (
-                                <img
+                                <BlurImage
+                                    isHidden={model.profileHiddenByAdmin}
                                     src={model.profile}
                                     alt={model.firstName}
                                     className="w-full h-full object-cover"

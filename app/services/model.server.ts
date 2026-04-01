@@ -115,6 +115,7 @@ export async function getModelsForCustomer(
         whatsapp: true,
         address: true,
         profile: true,
+        profileHiddenByAdmin: true,
         rating: true,
         total_review: true,
         latitude: true,
@@ -346,6 +347,7 @@ export async function getNearbyModels(
       bio: true,
       whatsapp: true,
       profile: true,
+      profileHiddenByAdmin: true,
       latitude: true,
       longitude: true,
       address: true,
@@ -419,6 +421,7 @@ export async function getNearbyModels(
 
       return {
         ...m,
+        profile: m.profile,
         distance: Number(distance.toFixed(2)),
         isContact: m.friend_contacts.length > 0,
         customerAction:
@@ -479,6 +482,7 @@ export async function getVipModels(customerId: string) {
       bio: true,
       whatsapp: true,
       profile: true,
+      profileHiddenByAdmin: true,
       latitude: true,
       longitude: true,
       address: true,
@@ -523,6 +527,7 @@ export async function getVipModels(customerId: string) {
 
     return {
       ...m,
+      profile: m.profile,
       distance,
       isContact: m.friend_contacts.length > 0,
       customerAction: m.customer_interactions.length > 0 ? m.customer_interactions[0].action : null,
@@ -570,6 +575,7 @@ export async function searchModels(customerId: string, query: string) {
       bio: true,
       whatsapp: true,
       profile: true,
+      profileHiddenByAdmin: true,
       latitude: true,
       longitude: true,
       address: true,
@@ -624,6 +630,7 @@ export async function searchModels(customerId: string, query: string) {
 
     return {
       ...m,
+      profile: m.profile,
       distance,
       isContact: m.friend_contacts.length > 0,
       customerAction:
@@ -679,6 +686,7 @@ export async function getHotModels(customerId: string, limit: number = 10) {
         bio: true,
         whatsapp: true,
         profile: true,
+        profileHiddenByAdmin: true,
         rating: true,
         total_review: true,
         latitude: true,
@@ -789,6 +797,7 @@ export async function getHotModels(customerId: string, limit: number = 10) {
 
       return {
         ...model,
+        profile: model.profile,
         distance: distance ? Number(distance.toFixed(2)) : null,
         customerAction:
           model.customer_interactions.length > 0
@@ -834,6 +843,7 @@ export async function getPublicHotModels(limit: number = 12) {
         gender: true,
         bio: true,
         profile: true,
+        profileHiddenByAdmin: true,
         rating: true,
         total_review: true,
         address: true,
@@ -882,6 +892,7 @@ export async function getPublicHotModels(limit: number = 12) {
 
       return {
         ...model,
+        profile: model.profile,
         hotScore,
       };
     });
@@ -915,6 +926,7 @@ export async function getModelProfile(modelId: string, customerId: string) {
         address: true,
         available_status: true,
         profile: true,
+        profileHiddenByAdmin: true,
         status: true,
         rating: true,
         total_review: true,
@@ -991,6 +1003,7 @@ export async function getModelProfile(modelId: string, customerId: string) {
     // Derive extra fields
     return {
       ...model,
+      profile: model.profile,
       isContact: model.friend_contacts.length > 0,
       customerAction:
         model.customer_interactions.length > 0
@@ -1135,6 +1148,7 @@ export async function getForyouModels(
         lastName: true,
         dob: true,
         profile: true,
+        profileHiddenByAdmin: true,
         whatsapp: true,
         latitude: true,
         longitude: true,
@@ -1204,6 +1218,7 @@ export async function getForyouModels(
     // Add derived fields (isContact, customerAction)
     const enhancedModels = filteredModels.map((model) => ({
       ...model,
+      profile: model.profile,
       customerAction:
         model.customer_interactions.length > 0
           ? model.customer_interactions[0].action
@@ -1268,6 +1283,7 @@ export async function getLikeMeModels(
           lastName: true,
           dob: true,
           profile: true,
+          profileHiddenByAdmin: true,
           whatsapp: true,
           latitude: true,
           longitude: true,
@@ -1325,6 +1341,7 @@ export async function getLikeMeModels(
     // Add derived field: isContact
     const enhancedModels = models.map((model) => ({
       ...model,
+      profile: model.profile,
       isContact: model.friend_contacts.length > 0,
     }));
 
@@ -1375,6 +1392,7 @@ export async function getModelsByInteraction(
           lastName: true,
           dob: true,
           profile: true,
+          profileHiddenByAdmin: true,
           whatsapp: true,
           latitude: true,
           longitude: true,
@@ -1425,6 +1443,7 @@ export async function getModelsByInteraction(
     // Add derived field: isContact
     const enhancedModels = models.map((model) => ({
       ...model,
+      profile: model.profile,
       isContact: model.friend_contacts.length > 0,
     }));
 

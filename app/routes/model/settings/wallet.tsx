@@ -340,6 +340,12 @@ export default function ModelWalletPage() {
       }));
       return false;
     }
+    if (rawAmount < 10000) {
+      setWithdrawError(t("modelWallet.errors.minimumAmount", {
+        defaultValue: "ຈຳນວນເງິນຖອນຂັ້ນຕ່ຳແມ່ນ 10,000 ກີບ"
+      }));
+      return false;
+    }
     if (rawAmount <= 0) {
       setWithdrawError(t("modelWallet.errors.invalidAmount", {
         defaultValue: "Please enter a valid amount"

@@ -22,6 +22,7 @@ export interface PostItem {
     firstName: string;
     lastName?: string;
     profile?: string;
+    profileHiddenByAdmin?: boolean;
     gender?: string;
     dob?: string;
     whatsapp?: number | null;

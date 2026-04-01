@@ -27,6 +27,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       firstName: true,
       lastName: true,
       profile: true,
+      profileHiddenByAdmin: true,
       Images: {
         where: { status: "active" },
         select: { id: true, name: true },
@@ -58,12 +59,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const galleryCount = model.Images.length;
   const needsMoreImages = galleryCount < 6;
 
-  const needsAttention = !profileOk || brokenGalleryImages.length > 0 || needsMoreImages;
+  const profileHiddenByAdmin = !!model.profileHiddenByAdmin;
+  const needsAttention = !profileOk || brokenGalleryImages.length > 0 || needsMoreImages || profileHiddenByAdmin;
 
   return {
     needsAttention,
     profileOk,
     profileUrl: model.profile,
+    profileHiddenByAdmin,
     galleryImages: galleryResults,
     galleryCount,
     brokenGalleryImages: brokenGalleryImages.map((r) => r.id),
@@ -93,7 +96,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
       await prisma.model.update({
         where: { id: modelId },
-        data: { profile: url },
+        data: { profile: url, profileHiddenByAdmin: false },
       });
 
       // Delete old profile from CDN

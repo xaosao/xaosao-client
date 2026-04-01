@@ -6,6 +6,7 @@ import { useLoaderData, useFetcher, useNavigate, redirect, useNavigation } from 
 
 // service and components:
 import CustomerCard from "~/components/CustomerCard";
+import { ProfileCheckModal } from "~/components/ProfileCheckModal";
 import { modelAddFriend } from "~/services/interaction.server";
 import { getForYouCustomers, createModelInteraction } from "~/services/model.server";
 import { requireModelSession, getModelTokenFromSession } from "~/services/model-auth.server";
@@ -144,6 +145,7 @@ export default function ModelDashboard() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 flex items-center justify-center">
+      <ProfileCheckModal />
       <div>
         <div className="mb-8 space-y-1 sm:space-y-2">
           <h1 className="text-lg sm:text-xl text-rose-500 text-shadow-sm">

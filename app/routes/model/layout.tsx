@@ -31,6 +31,7 @@ import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 
 // services
+import { BlurImage } from "~/components/ui/blur-image";
 import { capitalize } from "~/utils/functions/textFormat";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
@@ -43,6 +44,7 @@ interface ModelData {
     firstName: string;
     lastName?: string;
     profile: string;
+    profileHiddenByAdmin?: boolean;
     available_status: string;
     rating: number;
     total_review: number;
@@ -280,7 +282,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                         <Link to="/model/profile" className="flex items-center space-x-3">
                             <div className="relative">
                                 <div className="w-14 h-14 border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600">
-                                    <img
+                                    <BlurImage
+                                        isHidden={modelData.profileHiddenByAdmin}
                                         src={modelData.profile}
                                         alt="Profile"
                                         className="w-full h-full rounded-full object-cover cursor-pointer"
@@ -346,7 +349,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                             className="flex items-center gap-2 min-w-0"
                         >
                             <div className="relative flex-shrink-0">
-                                <img
+                                <BlurImage
+                                    isHidden={modelData.profileHiddenByAdmin}
                                     src={modelData.profile}
                                     alt="Profile"
                                     className="w-10 h-10 min-w-10 min-h-10 rounded-full object-cover border border-rose-300 aspect-square"

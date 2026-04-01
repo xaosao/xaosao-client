@@ -19,6 +19,7 @@ export interface ImodelsResponse {
   longitude: number | null;
   rating: number;
   profile: string | null;
+  profileHiddenByAdmin?: boolean;
   createdAt: Date;
   customerAction: string | null;
   Images: IUserImages[];
@@ -112,6 +113,7 @@ export interface ISinglemodelProfileResponse {
   available_status: IAvailableStatus;
   rating: number;
   profile: string | null;
+  profileHiddenByAdmin?: boolean;
   status: string;
   total_review: number;
   createdAt: Date;
@@ -144,6 +146,7 @@ export interface IForYouModelResponse {
   dob: Date;
   gender?: string;
   profile: string | null;
+  profileHiddenByAdmin?: boolean;
   latitude: number | null;
   longitude: number | null;
   status: string;

@@ -12,6 +12,7 @@ import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
 import { openWhatsApp } from "~/utils/functions/whatsapp";
+import { BlurImage } from "~/components/ui/blur-image";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const customerId = await requireUserSession(request);
@@ -168,7 +169,7 @@ export default function PostDetailPage() {
       <div className="p-2 border border-rose-300 rounded-md bg-rose-50">
         <div className="flex items-center gap-3 mb-3">
           {author?.profile ? (
-            <img src={author.profile} alt={authorName} className="w-12 h-12 rounded-full object-cover border" />
+            <BlurImage isHidden={author?.profileHiddenByAdmin} src={author.profile} alt={authorName} className="w-12 h-12 rounded-full object-cover border" />
           ) : (
             <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
               <Users className="h-6 w-6 text-rose-400" />
@@ -235,7 +236,7 @@ export default function PostDetailPage() {
                   >
                     <div className="p-3 flex items-center gap-3">
                       {user.profile ? (
-                        <img src={user.profile} alt="" className="w-10 h-10 rounded-full object-cover border" />
+                        <BlurImage isHidden={user?.profileHiddenByAdmin} src={user.profile} alt="" className="w-10 h-10 rounded-full object-cover border" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
                           <Users className="h-5 w-5 text-gray-400" />

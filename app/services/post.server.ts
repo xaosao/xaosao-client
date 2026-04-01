@@ -118,10 +118,10 @@ export async function getPostsFeed(
       where,
       include: {
         customer: {
-          select: { id: true, firstName: true, lastName: true, profile: true, gender: true, dob: true, whatsapp: true },
+          select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, gender: true, dob: true, whatsapp: true },
         },
         model: {
-          select: { id: true, firstName: true, lastName: true, profile: true, gender: true, dob: true, whatsapp: true },
+          select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, gender: true, dob: true, whatsapp: true },
         },
         service: { select: { id: true, name: true } },
         interests: {
@@ -239,29 +239,31 @@ export async function getUserProfilePosts(
  * Get a single post with full details
  */
 export async function getPostById(postId: string) {
-  return prisma.post.findUnique({
+  const post = await prisma.post.findUnique({
     where: { id: postId },
     include: {
       customer: {
-        select: { id: true, firstName: true, lastName: true, profile: true, gender: true, dob: true, whatsapp: true },
+        select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, gender: true, dob: true, whatsapp: true },
       },
       model: {
-        select: { id: true, firstName: true, lastName: true, profile: true, gender: true, dob: true, whatsapp: true },
+        select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, gender: true, dob: true, whatsapp: true },
       },
       service: { select: { id: true, name: true } },
       interests: {
         include: {
           customer: {
-            select: { id: true, firstName: true, lastName: true, profile: true, whatsapp: true },
+            select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, whatsapp: true },
           },
           model: {
-            select: { id: true, firstName: true, lastName: true, profile: true, whatsapp: true },
+            select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true, whatsapp: true },
           },
         },
         orderBy: { createdAt: "desc" },
       },
     },
   });
+
+  return post;
 }
 
 /**
@@ -779,8 +781,8 @@ export async function getPostComments(postId: string, limit = 200) {
     orderBy: { createdAt: "asc" },
     take: limit,
     include: {
-      customer: { select: { id: true, firstName: true, lastName: true, profile: true } },
-      model: { select: { id: true, firstName: true, lastName: true, profile: true } },
+      customer: { select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true } },
+      model: { select: { id: true, firstName: true, lastName: true, profile: true, profileHiddenByAdmin: true } },
     },
   });
 

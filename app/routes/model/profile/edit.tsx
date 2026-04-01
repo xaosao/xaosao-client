@@ -55,10 +55,10 @@ export async function action({ request }: Route.ActionArgs) {
                 const buffer = Buffer.from(await newProfile.arrayBuffer());
                 const url = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type, folderPath, "avatar");
 
-                // Update only the profile field
+                // Update profile and reset admin hidden flag
                 await prisma.model.update({
                     where: { id: modelId },
-                    data: { profile: url },
+                    data: { profile: url, profileHiddenByAdmin: false },
                 });
 
                 // Delete old file after DB update
