@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Form, Link, Outlet, redirect, useFetcher, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
@@ -14,6 +14,8 @@ import {
     User2Icon,
     Wallet,
     X,
+    Copy,
+    Check,
 } from "lucide-react";
 import {
     Dialog,
@@ -35,6 +37,7 @@ import { BlurImage } from "~/components/ui/blur-image";
 import { capitalize } from "~/utils/functions/textFormat";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
+import { ensureReferralCode } from "~/services/referral.server";
 import { requireModelSession } from "~/services/model-auth.server";
 import { getModelUnreadCount, getModelNotifications } from "~/services/notification.server";
 import { getModelPendingBookingCount } from "~/services/booking.server";
@@ -59,6 +62,7 @@ interface LoaderReturn {
     hasServices: boolean;
     hasEnabledNotifications: boolean;
     isProfileHidden: boolean;
+    referralLink: string;
 }
 
 interface LayoutProps {
@@ -69,11 +73,12 @@ export const loader: LoaderFunction = async ({ request }) => {
     const modelId = await requireModelSession(request);
 
     try {
-        const [modelData, unreadNotifications, notifications, pendingBookingCount] = await Promise.all([
+        const [modelData, unreadNotifications, notifications, pendingBookingCount, referralCode] = await Promise.all([
             getModelDashboardData(modelId),
             getModelUnreadCount(modelId).catch(() => 0),
             getModelNotifications(modelId, { limit: 10 }).catch(() => []),
             getModelPendingBookingCount(modelId).catch(() => 0),
+            ensureReferralCode(modelId).catch(() => ""),
         ]);
 
         const initialNotifications: Notification[] = (notifications || []).map((n) => ({
@@ -94,7 +99,10 @@ export const loader: LoaderFunction = async ({ request }) => {
 
         const isProfileHidden = modelData?.isProfileHidden === true;
 
-        return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden };
+        const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:5176/";
+        const referralLink = referralCode ? `${baseUrl}model-auth/register?ref=${referralCode}` : "";
+
+        return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink };
     } catch (error) {
         console.error("[ModelLayout] Loader error:", error);
         throw redirect("/model-auth/login");
@@ -105,7 +113,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden } = loaderData;
+    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink } = loaderData;
     const profileHiddenFetcher = useFetcher();
     const { t, i18n } = useTranslation();
 
@@ -115,43 +123,12 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     // Location prompt modal state
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 
-    // Referral promotion popup - show until March 31, 2026
-    const PROMO_END_DATE = new Date("2026-04-01T00:00:00");
-    const [showPromoPopup, setShowPromoPopup] = useState(false);
-    const [promoCountdown, setPromoCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
-
-    useEffect(() => {
-        const now = new Date();
-        if (now >= PROMO_END_DATE) return; // Promotion ended
-
-        // Show once per session
-        let dismissed: string | null = null;
-        try { dismissed = sessionStorage.getItem("referral_promo_dismissed"); } catch {}
-        if (!dismissed) {
-            setShowPromoPopup(true);
-        }
-
-        // Update countdown
-        const updateCountdown = () => {
-            const diff = PROMO_END_DATE.getTime() - Date.now();
-            if (diff <= 0) {
-                setShowPromoPopup(false);
-                return;
-            }
-            setPromoCountdown({
-                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                minutes: Math.floor((diff / (1000 * 60)) % 60),
-            });
-        };
-        updateCountdown();
-        const interval = setInterval(updateCountdown, 60000);
-        return () => clearInterval(interval);
-    }, []);
+    // Referral promotion popup - show every time after login
+    const [showPromoPopup, setShowPromoPopup] = useState(true);
+    const [promoCopied, setPromoCopied] = useState(false);
 
     const dismissPromo = useCallback(() => {
         setShowPromoPopup(false);
-        try { sessionStorage.setItem("referral_promo_dismissed", "true"); } catch {}
     }, []);
 
     // Auto-location tracking - updates server silently when location is available
@@ -498,37 +475,49 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                             </div>
 
                             <div>
-                                <h2 className="text-lg font-bold">{t('referralPromo.title', { defaultValue: 'ໂປຣໂມຊັ່ນແນະນຳໃກ້ໝົດ!' })}</h2>
+                                <h2 className="text-lg font-bold">{t('referralPromo.title', { defaultValue: 'ໂປຣໂມຊັ່ນແນະນຳໝູ່ເພື່ອນ!' })}</h2>
                                 <p className="text-sm text-white/90 mt-2">
                                     {t('referralPromo.description', {
-                                        defaultValue: 'ຮັບ 50,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄົນ ກຳລັງຈະໝົດເຂດ! ຫຼັງຈາກ 01/04/2026 ຈະໄດ້ຮັບພຽງ 10,000 ກີບ ເທົ່ານັ້ນ.'
+                                        defaultValue: 'ແນະນຳໝູ່ເພື່ອນມາລົງທະບຽນ ແລະ ຮັບ 10,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄົນທີ່ຖືກອະນຸມັດ!'
                                     })}
                                 </p>
                             </div>
 
-                            {/* Countdown */}
-                            <div className="flex justify-center gap-3">
-                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
-                                    <p className="text-xl font-bold">{promoCountdown.days}</p>
-                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.days', { defaultValue: 'ມື້' })}</p>
+                            {/* Referral Link */}
+                            {referralLink && (
+                                <div className="bg-white/15 rounded-xl p-3">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={referralLink}
+                                            className="flex-1 text-xs bg-transparent text-white truncate outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(referralLink).catch(() => {});
+                                                setPromoCopied(true);
+                                                setTimeout(() => setPromoCopied(false), 2000);
+                                            }}
+                                            className="p-1.5 hover:bg-white/20 rounded-md transition-colors"
+                                        >
+                                            {promoCopied ? <Check className="w-4 h-4 text-green-300" /> : <Copy className="w-4 h-4 text-white" />}
+                                        </button>
+                                    </div>
+                                    {promoCopied && (
+                                        <p className="text-xs text-green-300 mt-1">{t('referralPromo.copied', { defaultValue: 'ຄັດລອກລິ້ງແລ້ວ!' })}</p>
+                                    )}
                                 </div>
-                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
-                                    <p className="text-xl font-bold">{promoCountdown.hours}</p>
-                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.hours', { defaultValue: 'ຊົ່ວໂມງ' })}</p>
-                                </div>
-                                <div className="bg-white/20 rounded-lg px-3 py-2 min-w-[60px]">
-                                    <p className="text-xl font-bold">{promoCountdown.minutes}</p>
-                                    <p className="text-[10px] text-white/80 uppercase">{t('referralPromo.minutes', { defaultValue: 'ນາທີ' })}</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="flex flex-col gap-2 pt-2">
+                            <div className="flex flex-col gap-2 pt-1">
                                 <button
                                     type="button"
                                     onClick={() => { dismissPromo(); navigate("/model/referral"); }}
                                     className="w-full py-2.5 bg-white text-rose-600 font-bold rounded-lg hover:bg-white/90 transition-colors"
                                 >
-                                    {t('referralPromo.referNow', { defaultValue: 'ແນະນຳເລີຍ!' })}
+                                    {t('referralPromo.referNow', { defaultValue: 'ເບິ່ງລາຍລະອຽດ' })}
                                 </button>
                                 <button
                                     type="button"

@@ -172,7 +172,7 @@ export default function ModelReferralPage() {
                     icon: Users,
                     label: t('modelReferral.modelTypes.normal', 'Normal'),
                     color: 'bg-gray-100 text-gray-700',
-                    description: t('modelReferral.modelTypes.normalDesc', '50,000 Kip per referral')
+                    description: t('modelReferral.modelTypes.normalDesc', '10,000 Kip per referral')
                 };
         }
     };
@@ -312,7 +312,7 @@ export default function ModelReferralPage() {
                                 )}
                                 <p className="text-xs text-white/70 mt-1">
                                     {referralStats.modelType === 'normal'
-                                        ? t('modelReferral.earnPerModel', 'Earn 50,000 Kip for each approved model')
+                                        ? t('modelReferral.earnPerModel', 'Earn 10,000 Kip for each approved model')
                                         : t('modelReferral.earnCommissionPerModel', 'Earn {rate}% of each referred model\'s bookings', { rate: referralStats.modelType === 'partner' ? 4 : 2 })}
                                 </p>
                             </div>
@@ -540,7 +540,7 @@ export default function ModelReferralPage() {
                                             {model.status === 'active' ? 'Approved' : model.status === 'pending' ? 'Pending' : model.status}
                                         </span>
                                         {model.status === 'active' && referralStats.modelType === 'normal' && (
-                                            <p className="text-xs text-green-600 mt-1 font-medium">+50,000 Kip</p>
+                                            <p className="text-xs text-green-600 mt-1 font-medium">+10,000 Kip</p>
                                         )}
                                         {model.status === 'active' && isSpecialOrPartner && (
                                             <p className="text-xs text-blue-600 mt-1 font-medium">{referralStats.modelType === 'partner' ? '4%' : '2%'} commission</p>
