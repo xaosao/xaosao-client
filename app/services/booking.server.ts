@@ -1348,6 +1348,7 @@ export async function getAllMyServiceBookings(customerId: string) {
         completionToken: true,
         hasTip: true,
         modelCheckedInAt: true,
+        createdAt: true,
         model: {
           select: {
             id: true,

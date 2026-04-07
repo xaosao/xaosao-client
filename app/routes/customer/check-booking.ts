@@ -44,11 +44,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
         status: "active",
         endDate: { gte: new Date() },
       },
-      select: { id: true },
+      select: { id: true, plan: { select: { durationDays: true } } },
     });
 
     if (!subscription) {
       return { canChat: false, reason: "subscribe", hasBooking: false, hasSubscription: false };
+    }
+
+    // Unlimited chat for 1-week+ subscribers (durationDays > 1)
+    // 24h package (durationDays === 1) still has the 2 free chat limit
+    const isUnlimited = (subscription.plan?.durationDays ?? 1) > 1;
+    if (isUnlimited) {
+      return {
+        canChat: true,
+        reason: "unlimited",
+        hasBooking: false,
+        hasSubscription: true,
+        unlimited: true,
+      };
     }
 
     // Check if model is VIP (safe - defaults to false if field doesn't exist)

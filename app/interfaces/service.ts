@@ -93,6 +93,7 @@ export type IServiceBooking = {
   };
   hasTip: boolean;
   isContact: boolean;
+  createdAt?: Date | string;
 };
 
 export interface ISingleServiceBooking {

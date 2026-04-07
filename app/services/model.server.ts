@@ -2691,6 +2691,29 @@ export async function getChattableModelIds(customerId: string): Promise<Set<stri
   const ids = new Set<string>();
 
   try {
+    // Check for unlimited subscription (1week, 1month, 3months — durationDays > 1)
+    // 24h package (durationDays === 1) is NOT unlimited.
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        customerId,
+        status: "active",
+        endDate: { gte: new Date() },
+      },
+      select: { plan: { select: { durationDays: true } } },
+    });
+
+    const isUnlimited = subscription && (subscription.plan?.durationDays ?? 1) > 1;
+
+    if (isUnlimited) {
+      // Unlimited subscribers can chat with any active model — return all model IDs
+      const allModels = await prisma.model.findMany({
+        where: { status: "active" },
+        select: { id: true },
+      });
+      allModels.forEach((m) => ids.add(m.id));
+      return ids;
+    }
+
     // Models with active bookings
     const bookings = await prisma.service_booking.findMany({
       where: { customerId, status: { in: ["pending", "confirmed"] } },

@@ -50,7 +50,7 @@ export default function Toast() {
             searchParams.delete("toastMessage");
             searchParams.delete("toastType");
             searchParams.delete("toastDuration");
-            navigate({ search: searchParams.toString() }, { replace: true });
+            navigate({ search: searchParams.toString() }, { replace: true, preventScrollReset: true });
          }, duration);
 
          return () => clearTimeout(timer);

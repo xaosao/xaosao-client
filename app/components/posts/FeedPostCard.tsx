@@ -42,13 +42,13 @@ export default function FeedPostCard({ post, customerProfile, gifts = [], wallet
           prev.set("toastMessage", "posts.giftSentSuccess");
           prev.set("toastType", "success");
           return prev;
-        }, { replace: true });
+        }, { replace: true, preventScrollReset: true });
       } else if (data.error) {
         setSearchParams((prev) => {
           prev.set("toastMessage", data.error);
           prev.set("toastType", "error");
           return prev;
-        }, { replace: true });
+        }, { replace: true, preventScrollReset: true });
       }
     }
   }, [giftFetcher.state, giftFetcher.data]);

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from "~/components/ui/card"
 // interface and service
 import { getAllModelBookings } from "~/services/booking.server"
 import { requireModelSession } from "~/services/model-auth.server"
-import { calculateAgeFromDOB, formatCurrency, formatDate } from "~/utils"
+import { calculateAgeFromDOB, formatCurrency, formatDate, getTimeAgo } from "~/utils"
 import { useNotifications, type Notification } from "~/hooks/useNotifications"
 import { openWhatsApp } from "~/utils/functions/whatsapp"
 
@@ -47,6 +47,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
    disputed: {
       label: "Disputed",
       className: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+   },
+   admin_refunded: {
+      label: "Refunded by Admin",
+      className: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20",
    },
 }
 
@@ -246,6 +250,11 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                               <div className="space-y-2 flex-1">
                                  <h3 className="text-md leading-tight text-balance">
                                     {getServiceName(booking)}
+                                    {booking.status === "pending" && booking.createdAt && (
+                                       <span className="ml-2 text-xs font-normal text-gray-400 italic">
+                                          · {getTimeAgo(String(booking.createdAt), t)}
+                                       </span>
+                                    )}
                                  </h3>
                               </div>
 

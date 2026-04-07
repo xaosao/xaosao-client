@@ -458,7 +458,8 @@
       "completed": "เสร็จสิ้น",
       "cancelled": "ยกเลิก",
       "rejected": "ปฏิเสธ",
-      "disputed": "มีข้อพิพาท"
+      "disputed": "มีข้อพิพาท",
+      "admin_refunded": "คืนเงินโดยผู้ดูแล"
     },
     "detail": {
       "title": "บริการจองนัดหมาย:",

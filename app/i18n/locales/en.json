@@ -447,7 +447,8 @@
       "completed": "Completed",
       "cancelled": "Cancelled",
       "rejected": "Rejected",
-      "disputed": "Disputed"
+      "disputed": "Disputed",
+      "admin_refunded": "Refunded by Admin"
     },
     "detail": {
       "title": "Date booking service:",

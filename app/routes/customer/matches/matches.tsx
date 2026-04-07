@@ -294,6 +294,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         hasPendingSubscription: hasPending,
         trialPackage,
         customerBalance: customerAvailableBalance,
+        chattableModelIds,
     } as LoaderReturn;
 };
 
