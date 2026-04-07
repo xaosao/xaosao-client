@@ -117,7 +117,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // OTP verified - create model account
   try {
-    const { otp: _otp, otpExpiry: _exp, ip, accessKey, ...modelData } = registrationData;
+    const { otp: _otp, otpExpiry: _exp, ip, accessKey, services, ...modelData } = registrationData as any;
 
     const result = await modelRegister(modelData, ip, accessKey);
 
@@ -126,6 +126,31 @@ export async function action({ request }: ActionFunctionArgs) {
       migrateProfileToStructuredFolder("model", modelData.whatsapp, modelData.profile).catch((err) =>
         console.error("[Register] Model profile migration failed:", err)
       );
+
+      // Apply selected services to the newly created model
+      if (services && Array.isArray(services) && services.length > 0 && (result as any).data?.id) {
+        const newModelId = (result as any).data.id;
+        const { applyForService } = await import("~/services/service.server");
+        for (const svc of services) {
+          try {
+            await applyForService(
+              newModelId,
+              svc.serviceId,
+              {
+                customRate: svc.customRate,
+                customHourlyRate: svc.customHourlyRate,
+                customOneTimePrice: svc.customOneTimePrice,
+                customOneNightPrice: svc.customOneNightPrice,
+                customMinuteRate: svc.customMinuteRate,
+              },
+              svc.massageVariants,
+              svc.serviceLocation
+            );
+          } catch (svcErr) {
+            console.error("[Register] Failed to apply service:", svc.serviceId, svcErr);
+          }
+        }
+      }
 
       // Clear registration session
       const clearCookie = await clearModelRegistrationSession(request);

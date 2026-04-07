@@ -153,7 +153,13 @@ const modelRegistrationSessionStorage = createCookieSessionStorage({
 // Store model registration data temporarily in session (before OTP verification)
 export async function storeModelRegistrationData(
   request: Request,
-  data: IModelSignupCredentials & { otp: string; otpExpiry: number; ip: string; accessKey: string }
+  data: IModelSignupCredentials & {
+    otp: string;
+    otpExpiry: number;
+    ip: string;
+    accessKey: string;
+    services?: ISignupService[];
+  }
 ) {
   const session = await modelRegistrationSessionStorage.getSession(
     request.headers.get("Cookie")
@@ -168,8 +174,25 @@ export async function getModelRegistrationData(request: Request) {
     request.headers.get("Cookie")
   );
   return session.get("registrationData") as
-    | (IModelSignupCredentials & { otp: string; otpExpiry: number; ip: string; accessKey: string })
+    | (IModelSignupCredentials & {
+        otp: string;
+        otpExpiry: number;
+        ip: string;
+        accessKey: string;
+        services?: ISignupService[];
+      })
     | null;
+}
+
+export interface ISignupService {
+  serviceId: string;
+  customRate?: number;
+  customHourlyRate?: number;
+  customOneTimePrice?: number;
+  customOneNightPrice?: number;
+  customMinuteRate?: number;
+  massageVariants?: { name: string; pricePerHour: number }[];
+  serviceLocation?: string;
 }
 
 // Clear model registration session
@@ -766,6 +789,7 @@ export async function modelRegister(
       success: true,
       error: false,
       message: "modelAuth.serverMessages.registrationSuccess",
+      data: { id: model.id },
     };
   } catch (error: any) {
     console.log("INSERT_MODEL_DATA_FAILED", error);

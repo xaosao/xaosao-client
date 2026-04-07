@@ -125,9 +125,21 @@ const sanitizePhoneNumber = (value: unknown): number => {
  * - Common Lao phone prefixes: 20, 30, etc.
  */
 const phoneNumberSchema = z
-  .union([z.string(), z.number()])
-  .transform(sanitizePhoneNumber)
-  .refine((val) => val >= 1000000000 && val <= 9999999999, {
+  .union([z.string(), z.number()], {
+    message: "modelAuth.validation.invalidLaoPhoneNumber",
+  })
+  .transform((val, ctx) => {
+    try {
+      return sanitizePhoneNumber(val);
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "modelAuth.validation.invalidLaoPhoneNumber",
+      });
+      return z.NEVER;
+    }
+  })
+  .refine((val) => !isNaN(val) && val >= 1000000000 && val <= 9999999999, {
     message: "modelAuth.validation.phoneNumberExactly10Digits",
   })
   .refine(

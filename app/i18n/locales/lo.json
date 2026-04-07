@@ -1308,6 +1308,8 @@
     "register": {
       "title": "ສ້າງບັນຊີໂມເດວ!",
       "subtitle": "ຂໍ້ມູນຂ້າງລຸ່ມນີ້ຈະສະແດງໃນໂປຣໄຟລ໌ຂອງທ່ານ ແລະ ສາມາດປ່ຽນແປງໄດ້ໃນພາຍຫຼັງ",
+      "next": "ຕໍ່ໄປ",
+      "back": "ກັບຄືນ",
       "profileImage": "ຮູບໂປຣໄຟລ໌",
       "profileImageRequired": "ກະລຸນາອັບໂຫຼດຮູບໂປຣໄຟລ໌",
       "tapToUpload": "ແຕະເພື່ອອັບໂຫຼດ",
@@ -1534,7 +1536,7 @@
       "invalidPhoneNumberType": "ປະເພດເບີໂທລະສັບບໍ່ຖືກຕ້ອງ",
       "phoneNumberDigitsOnly": "ເບີໂທລະສັບຕ້ອງມີສະເພາະຕົວເລກເທົ່ານັ້ນ",
       "phoneNumberExactly10Digits": "ເບີໂທລະສັບຕ້ອງມີ 10 ຕົວເລກພໍດີ",
-      "invalidLaoPhoneNumber": "ກະລຸນາປ້ອນເບີໂທລະສັບລາວທີ່ຖືກຕ້ອງ",
+      "invalidLaoPhoneNumber": "ເບີໂທລະສັບຂອງທ່ານບໍ່ຖືກຕ້ອງ",
       "passwordMinLength": "ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 8 ຕົວອັກສອນ",
       "passwordTooLong": "ລະຫັດຜ່ານຍາວເກີນໄປ",
       "firstNameMinLength": "ຊື່ຕ້ອງມີຢ່າງໜ້ອຍ 2 ຕົວອັກສອນ",

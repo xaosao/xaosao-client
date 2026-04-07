@@ -1278,6 +1278,8 @@
     },
     "register": {
       "title": "Companion Registration",
+      "next": "Next",
+      "back": "Back",
       "profileImage": "Please choose your profile image",
       "profileImageRequired": "Profile image is required. Please upload a photo.",
       "profileImageSizeError": "Profile image must be less than 10MB",
