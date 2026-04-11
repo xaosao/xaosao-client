@@ -235,6 +235,12 @@ model model {
   twofactorOTP        String? //@unique
   twofactorExpiry     DateTime? @default(now())
   twofactorEnabled    Boolean?  @default(false)
+
+  // Phone verification — set to true after the model successfully verifies
+  // the OTP sent to their WhatsApp number during registration. Login is
+  // blocked until this is true (in addition to the admin-approval status check).
+  isPhoneVerified     Boolean   @default(false)
+
   interests           Json? // 2
   relationshipStatus  String? // 3
   career              String? // 5
@@ -262,6 +268,16 @@ model model {
   totalReferredModels      Int     @default(0) // Count of models referred by this model
   totalReferredCustomers   Int     @default(0) // Count of customers referred by this model
   totalReferralEarnings    Float   @default(0) // Total earnings from booking referral commissions (for partner condition)
+
+  // OAuth (synced from xs_backend)
+  googleId       String?
+  oauthProvider  String?
+
+  // Profile / presence (synced from xs_backend)
+  city           String?
+  coverPhotoUrl  String?
+  isOnline       Boolean   @default(false)
+  lastOnlineAt   DateTime?
 
   status    ModelStatus @default(pending)
   createdAt DateTime    @default(now())
@@ -1141,4 +1157,43 @@ model direct_gift {
   model      model    @relation(fields: [modelId], references: [id])
 
   @@index([customerId, modelId])
+}
+
+// ==================== System Feedback (Bug Reports / Feature Requests) ====================
+
+enum FeedbackType {
+  bug
+  feature_request
+  general
+  payment_issue
+  performance
+  other
+}
+
+enum FeedbackStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+model system_feedback {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String         @db.ObjectId
+  userType        String         // "customer" or "model"
+  type            FeedbackType   @default(general)
+  subject         String
+  description     String
+  screenshotUrls  String[]
+  deviceInfo      String?
+  appVersion      String?
+  status          FeedbackStatus @default(open)
+  adminResponse   String?
+  resolvedById    String?        @db.ObjectId
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }
