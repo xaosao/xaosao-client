@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Route } from "./+types/wallet.topup";
-import { Form, redirect, useActionData, useLoaderData, useNavigate, useNavigation, useSubmit, type LoaderFunction } from "react-router";
-import { AlertCircle, Check, CheckCircle, Clock, Copy, Download, ImageIcon, Loader, QrCode, Upload, X } from "lucide-react";
+import { Form, redirect, useActionData, useFetcher, useLoaderData, useNavigate, useNavigation, useSubmit, type LoaderFunction } from "react-router";
+import { AlertCircle, AlertTriangle, Check, CheckCircle, Clock, Copy, Download, ImageIcon, Loader, QrCode, Upload, X } from "lucide-react";
 
 // components
 import Modal from "~/components/ui/model";
@@ -14,23 +14,21 @@ import type { ITransactionCredentials } from "~/interfaces/transaction";
 import { formatCurrency, formatCurrency1 } from "~/utils";
 import { compressImage } from "~/utils/imageCompression";
 
-// Constants for file upload limits
-const MAX_FILE_SIZE_MB = 50; // Maximum file size before compression (50MB - generous limit)
-const COMPRESSED_MAX_SIZE_MB = 3; // Target size after compression (safely under Vercel's 4.5MB limit with buffer for form data)
+const MAX_FILE_SIZE_MB = 50;
+const COMPRESSED_MAX_SIZE_MB = 3;
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const url = new URL(request.url);
     const suggestedAmount = url.searchParams.get("amount");
     const planId = url.searchParams.get("planId");
+    const intentId = url.searchParams.get("intentId");
+    const resumeStep = url.searchParams.get("resumeStep");
 
-    // If this is a subscription top-up, check if customer already has pending subscription
     if (planId) {
         const { hasPendingSubscription } = await import("~/services/package.server");
         const hasPending = await hasPendingSubscription(customerId);
-
         if (hasPending) {
-            // Redirect back with error message
             const returnUrl = url.searchParams.get("returnUrl") || "/customer/wallets";
             return redirect(`${returnUrl}?toastMessage=errors.pendingSubscriptionExists&toastType=error`);
         }
@@ -39,36 +37,47 @@ export const loader: LoaderFunction = async ({ request }) => {
     return {
         suggestedAmount: suggestedAmount ? parseInt(suggestedAmount, 10) : null,
         planId: planId || null,
+        intentId: intentId || null,
+        resumeStep: resumeStep ? Number(resumeStep) : null,
     };
 };
 
 export async function action({ request }: Route.ActionArgs) {
-    const { topUpWallet } = await import("~/services/wallet.server");
-    const { createPendingSubscription } = await import("~/services/package.server");
     const customerId = await requireUserSession(request);
     const formData = await request.formData();
+    const _action = formData.get("_action");
+
+    // ── Create intent (called when customer enters step 2) ──────────────────
+    if (_action === "create_intent") {
+        try {
+            const { createTopUpIntent } = await import("~/services/wallet.server");
+            const amount = Number(formData.get("amount"));
+            const intent = await createTopUpIntent(amount, customerId);
+            return { success: true, intentId: intent.id };
+        } catch (error: any) {
+            return { success: false, error: true, message: error.message || "Failed to save intent" };
+        }
+    }
+
+    // ── Main submit (step 3 — slip upload) ──────────────────────────────────
+    const { topUpWallet } = await import("~/services/wallet.server");
+    const { createPendingSubscription } = await import("~/services/package.server");
     const transactionData = Object.fromEntries(formData) as Partial<ITransactionCredentials>;
     const amount = formData.get("amount");
-    const voucher = formData.get("voucher");
     const planId = formData.get("planId") as string | null;
+    const intentId = formData.get("intentId") as string | null;
 
     if (request.method === "POST") {
         try {
-            // Server-side amount validation
             const numericAmount = Number(amount);
             const url = new URL(request.url);
             const suggestedAmount = url.searchParams.get("amount");
             const minAmount = suggestedAmount ? Math.max(Number(suggestedAmount), 10000) : 10000;
 
             if (!numericAmount || numericAmount < minAmount) {
-                return {
-                    success: false,
-                    error: true,
-                    message: `wallet.topup.minimumAmount`,
-                };
+                return { success: false, error: true, message: `wallet.topup.minimumAmount` };
             }
 
-            // Handle multiple payment slip uploads (up to 3)
             const vouchers = formData.getAll("voucher");
             const paymentSlipUrls: string[] = [];
             const { resolveUserUploadPath } = await import("~/services/upload.server");
@@ -84,81 +93,50 @@ export async function action({ request }: Route.ActionArgs) {
                             message: `File is too large (${fileSizeMB.toFixed(1)}MB). Please compress the image or use a smaller file.`,
                         };
                     }
-
                     const buffer = Buffer.from(await voucher.arrayBuffer());
                     const url = await uploadFileToBunnyServer(buffer, voucher.name, voucher.type, slipFolderPath, "slip");
                     paymentSlipUrls.push(url);
                 }
             }
 
-            // Payment slip is always required
             if (paymentSlipUrls.length === 0) {
-                return {
-                    success: false,
-                    error: true,
-                    message: "wallet.topup.paymentSlipRequired",
-                };
+                return { success: false, error: true, message: "wallet.topup.paymentSlipRequired" };
             }
 
             transactionData.amount = numericAmount;
             transactionData.paymentSlip = paymentSlipUrls;
             await validateTopUpInputs(transactionData as ITransactionCredentials);
-            const res = await topUpWallet(paymentSlipUrls, Number(amount), customerId);
+            const res = await topUpWallet(paymentSlipUrls, Number(amount), customerId, intentId || undefined);
+
             if (res.id) {
-                // If planId exists, create a pending subscription linked to this transaction
                 if (planId) {
                     try {
                         await createPendingSubscription(customerId, planId, res.id);
                     } catch (subscriptionError: any) {
                         console.error("Error creating pending subscription:", subscriptionError);
-
-                        // If it's a pending subscription error, show error to user
                         if (subscriptionError?.payload?.message?.includes("pending subscription")) {
-                            return {
-                                success: false,
-                                error: true,
-                                message: subscriptionError.payload.message,
-                            };
+                            return { success: false, error: true, message: subscriptionError.payload.message };
                         }
-
-                        // For other errors, continue with transaction success
-                        // The transaction is already created
-                        console.warn("Non-blocking subscription error, continuing with transaction");
                     }
                 }
 
-                // Check for return URL in the form data
                 const returnUrl = formData.get("return_url") as string;
                 if (returnUrl) {
                     return redirect(`${returnUrl}?toastMessage=wallet.topup.depositSuccess&toastType=success`);
                 }
                 return redirect(`/customer/wallets?toastMessage=wallet.topup.depositSuccess&toastType=success`);
             }
-
         } catch (error: any) {
             console.error("Error updating customer:", error);
-            if (error?.payload) {
-                return error.payload;
-            }
+            if (error?.payload) return error.payload;
             if (error && typeof error === "object" && !Array.isArray(error)) {
                 const keys = Object.keys(error);
                 if (keys.length > 0) {
                     const firstKey = keys[0];
-                    const firstMessage = (error as Record<string, any>)[firstKey];
-
-                    return {
-                        success: false,
-                        error: true,
-                        message: `${firstKey}: ${firstMessage}`,
-                    };
+                    return { success: false, error: true, message: `${firstKey}: ${(error as any)[firstKey]}` };
                 }
             }
-
-            return {
-                success: false,
-                error: true,
-                message: error || "Failed to create new top-up!",
-            };
+            return { success: false, error: true, message: error || "Failed to create new top-up!" };
         }
     }
     return { success: false, error: true, message: "Invalid request method!" };
@@ -171,11 +149,12 @@ export default function WalletTopUpPage() {
     const submit = useSubmit();
     const actionData = useActionData<typeof action>();
     const loaderData = useLoaderData<typeof loader>();
+    const intentFetcher = useFetcher<{ success: boolean; intentId?: string }>();
 
-    const { suggestedAmount, planId } = loaderData;
-    const MIN_AMOUNT = suggestedAmount || 10000; // Use suggested amount or default to 10,000
+    const { suggestedAmount, planId, intentId: loaderIntentId, resumeStep } = loaderData;
+    const MIN_AMOUNT = suggestedAmount || 10000;
 
-    const [step, setStep] = React.useState<number>(1);
+    const [step, setStep] = React.useState<number>(resumeStep || 1);
     const [dragOver, setDragOver] = React.useState<boolean>(false);
     const [amount, setAmount] = React.useState<number>(suggestedAmount || 0);
     const [paymentMethod, setPaymentMethod] = React.useState<string>("qr");
@@ -183,10 +162,20 @@ export default function WalletTopUpPage() {
     const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
     const [previewSlips, setPreviewSlips] = React.useState<string[]>([]);
     const [isCompressing, setIsCompressing] = React.useState<boolean>(false);
-    const MAX_SLIPS = 3;
+    const [uploadError, setUploadError] = React.useState<string | null>(null);
+    const [showExamplePreview, setShowExamplePreview] = React.useState(false);
     const [returnUrl, setReturnUrl] = React.useState<string>("");
 
-    // Get return URL from sessionStorage on mount
+    // intentId — from URL (resume flow) or created fresh when entering step 2
+    const [intentId, setIntentId] = React.useState<string | null>(loaderIntentId);
+
+    // Warning modal state
+    // pendingAction: 'proceed' = going step1→2,  'goback' = going step2→1
+    const [showSlipWarning, setShowSlipWarning] = React.useState(false);
+    const [pendingAction, setPendingAction] = React.useState<'proceed' | 'goback' | null>(null);
+
+    const MAX_SLIPS = 3;
+
     React.useEffect(() => {
         try {
             const storedReturnUrl = sessionStorage.getItem("topup_return_url");
@@ -194,9 +183,14 @@ export default function WalletTopUpPage() {
         } catch {}
     }, []);
 
-    const isSubmitting =
-        navigation.state !== "idle" && navigation.formMethod === "POST";
+    // When the intent fetcher returns a new intentId, store it
+    React.useEffect(() => {
+        if (intentFetcher.data?.success && intentFetcher.data.intentId) {
+            setIntentId(intentFetcher.data.intentId);
+        }
+    }, [intentFetcher.data]);
 
+    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
 
@@ -211,24 +205,62 @@ export default function WalletTopUpPage() {
             icon: QrCode,
             description: t('wallet.topup.qrCodeDescription'),
         },
-        // {
-        //     id: "bank",
-        //     name: t('wallet.topup.bankTransfer'),
-        //     icon: Building2,
-        //     description: t('wallet.topup.bankTransferDescription'),
-        // },
     ];
 
     function closeHandler() {
-        // Check for stored return URL
-        let returnUrl: string | null = null;
-        try { returnUrl = sessionStorage.getItem("topup_return_url"); } catch {}
-        if (returnUrl) {
+        let storedUrl: string | null = null;
+        try { storedUrl = sessionStorage.getItem("topup_return_url"); } catch {}
+        if (storedUrl) {
             try { sessionStorage.removeItem("topup_return_url"); } catch {}
-            navigate(returnUrl);
+            navigate(storedUrl);
         } else {
             navigate("/customer/wallets");
         }
+    }
+
+    // Intercept step transitions that need the warning modal
+    function handleContinue() {
+        if (step === 1) {
+            // Show warning before proceeding to step 2
+            setPendingAction('proceed');
+            setShowSlipWarning(true);
+        } else if (step === 2) {
+            setStep(3);
+        } else if (step === 3) {
+            handleManualSubmit();
+        }
+    }
+
+    function handleBack() {
+        if (step === 2) {
+            // Show warning before going back to step 1
+            setPendingAction('goback');
+            setShowSlipWarning(true);
+        } else if (step > 1) {
+            setStep(step - 1);
+        }
+    }
+
+    // Called when the customer confirms the warning modal
+    function handleWarningConfirm() {
+        setShowSlipWarning(false);
+        if (pendingAction === 'proceed') {
+            // Create the intent record and move to step 2
+            const fd = new FormData();
+            fd.append("_action", "create_intent");
+            fd.append("amount", String(amount));
+            intentFetcher.submit(fd, { method: "post" });
+            setStep(2);
+        } else if (pendingAction === 'goback') {
+            setStep(1);
+        }
+        setPendingAction(null);
+    }
+
+    function handleWarningCancel() {
+        setShowSlipWarning(false);
+        setPendingAction(null);
+        // Stay exactly where we are — no step change
     }
 
     const downloadQR = () => {
@@ -251,15 +283,9 @@ export default function WalletTopUpPage() {
         const droppedFiles = Array.from(e.dataTransfer.files).filter(
             file => file.type.startsWith("image/") || file.type === "application/pdf"
         );
-        if (droppedFiles.length > 0) {
-            handleFileUpload(droppedFiles);
-        }
+        if (droppedFiles.length > 0) handleFileUpload(droppedFiles);
     };
 
-    const [uploadError, setUploadError] = React.useState<string | null>(null);
-    const [showExamplePreview, setShowExamplePreview] = React.useState(false);
-
-    // Check if file is WebP format
     const isWebpFile = (file: File): boolean => {
         const type = file.type.toLowerCase();
         const name = file.name.toLowerCase();
@@ -268,14 +294,11 @@ export default function WalletTopUpPage() {
 
     const handleFileUpload = async (files: File[]) => {
         setUploadError(null);
-
         const remaining = MAX_SLIPS - uploadedFiles.length;
         if (remaining <= 0) {
             setUploadError(t('wallet.topup.maxSlipsReached', { defaultValue: `Maximum ${MAX_SLIPS} payment slips allowed.` }));
             return;
         }
-
-        // Trim to remaining slots
         const filesToProcess = files.slice(0, remaining);
         if (files.length > remaining) {
             setUploadError(t('wallet.topup.someFilesSkipped', { defaultValue: `Only ${remaining} more slip(s) allowed. Extra files were skipped.` }));
@@ -285,34 +308,20 @@ export default function WalletTopUpPage() {
         const newPreviews: string[] = [];
 
         for (const file of filesToProcess) {
-            // Block WebP files
             if (isWebpFile(file)) {
                 setUploadError(t('wallet.topup.webpNotSupported', { defaultValue: 'WebP format is not supported. Please use JPG or PNG instead.' }));
                 continue;
             }
-
-            // Check file size limit (before compression)
             const fileSizeMB = file.size / (1024 * 1024);
             if (fileSizeMB > MAX_FILE_SIZE_MB) {
-                setUploadError(t('wallet.topup.fileTooLarge', {
-                    defaultValue: `File is too large (${fileSizeMB.toFixed(1)}MB). Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.`,
-                    size: fileSizeMB.toFixed(1),
-                    maxSize: MAX_FILE_SIZE_MB
-                }));
+                setUploadError(t('wallet.topup.fileTooLarge', { defaultValue: `File is too large (${fileSizeMB.toFixed(1)}MB). Maximum allowed size is ${MAX_FILE_SIZE_MB}MB.`, size: fileSizeMB.toFixed(1), maxSize: MAX_FILE_SIZE_MB }));
                 continue;
             }
-
-            // For images, compress if needed
             let processedFile = file;
             if (file.type.startsWith("image/") && file.type !== "application/pdf") {
                 try {
                     setIsCompressing(true);
-                    processedFile = await compressImage(file, {
-                        maxWidth: 1920,
-                        maxHeight: 1920,
-                        quality: 0.8,
-                        maxSizeMB: COMPRESSED_MAX_SIZE_MB,
-                    });
+                    processedFile = await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.8, maxSizeMB: COMPRESSED_MAX_SIZE_MB });
                 } catch (compressionError: any) {
                     console.error('[TopUp] Compression error:', compressionError);
                     setUploadError(compressionError.message || t('wallet.topup.compressionFailed', { defaultValue: 'Failed to process image. Please try a different file.' }));
@@ -321,20 +330,12 @@ export default function WalletTopUpPage() {
                     setIsCompressing(false);
                 }
             }
-
-            // Final size check after compression
             const finalSizeMB = processedFile.size / (1024 * 1024);
             if (finalSizeMB > 4) {
-                setUploadError(t('wallet.topup.fileTooLargeAfterCompression', {
-                    defaultValue: `File is still too large after compression (${finalSizeMB.toFixed(1)}MB). Please use a smaller image.`,
-                    size: finalSizeMB.toFixed(1)
-                }));
+                setUploadError(t('wallet.topup.fileTooLargeAfterCompression', { defaultValue: `File is still too large after compression (${finalSizeMB.toFixed(1)}MB). Please use a smaller image.`, size: finalSizeMB.toFixed(1) }));
                 continue;
             }
-
             processedFiles.push(processedFile);
-
-            // Create preview using URL.createObjectURL (better iOS compatibility)
             newPreviews.push(URL.createObjectURL(processedFile));
         }
 
@@ -342,8 +343,6 @@ export default function WalletTopUpPage() {
             const allFiles = [...uploadedFiles, ...processedFiles];
             setUploadedFiles(allFiles);
             setPreviewSlips(prev => [...prev, ...newPreviews]);
-
-            // Sync all files with the hidden input for form submission
             if (fileInputRef.current) {
                 const dt = new DataTransfer();
                 allFiles.forEach(f => dt.items.add(f));
@@ -354,10 +353,7 @@ export default function WalletTopUpPage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (files && files.length > 0) {
-            handleFileUpload(Array.from(files));
-        }
-        // Reset input value so the same files can be selected again
+        if (files && files.length > 0) handleFileUpload(Array.from(files));
         if (e.target) e.target.value = "";
     };
 
@@ -367,8 +363,6 @@ export default function WalletTopUpPage() {
         setUploadedFiles(newFiles);
         setPreviewSlips(newPreviews);
         setUploadError(null);
-
-        // Sync remaining files with the hidden input
         if (fileInputRef.current) {
             const dt = new DataTransfer();
             newFiles.forEach(f => dt.items.add(f));
@@ -376,36 +370,25 @@ export default function WalletTopUpPage() {
         }
     };
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setDragOver(true);
-    };
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragOver(true); };
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragOver(false); };
 
-    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setDragOver(false);
-    };
-
-    // Manual submit to avoid DataTransfer/file input issues on mobile browsers
     const handleManualSubmit = () => {
         const formData = new FormData();
         formData.append("amount", String(amount ?? 0));
         if (planId) formData.append("planId", planId);
         if (returnUrl) formData.append("return_url", returnUrl);
+        if (intentId) formData.append("intentId", intentId);
         uploadedFiles.forEach(file => formData.append("voucher", file));
         submit(formData, { method: "post", encType: "multipart/form-data" });
     };
 
     const canProceed = () => {
         switch (step) {
-            case 1:
-                return amount && amount >= MIN_AMOUNT;
-            case 2:
-                return paymentMethod;
-            case 3:
-                return uploadedFiles.length > 0 && !uploadError && !isCompressing;
-            default:
-                return false;
+            case 1: return amount && amount >= MIN_AMOUNT;
+            case 2: return paymentMethod;
+            case 3: return uploadedFiles.length > 0 && !uploadError && !isCompressing;
+            default: return false;
         }
     };
 
@@ -425,14 +408,8 @@ export default function WalletTopUpPage() {
                                     value={amount != null ? amount.toLocaleString() : ""}
                                     onChange={(e) => {
                                         const rawValue = e.target.value.replace(/,/g, '');
-                                        if (rawValue === '') {
-                                            setAmount(0);
-                                        } else {
-                                            const numValue = Number(rawValue);
-                                            if (!isNaN(numValue)) {
-                                                setAmount(numValue);
-                                            }
-                                        }
+                                        if (rawValue === '') { setAmount(0); }
+                                        else { const n = Number(rawValue); if (!isNaN(n)) setAmount(n); }
                                     }}
                                     placeholder={t('wallet.topup.amountPlaceholder')}
                                     className={`block w-full p-4 py-2 border rounded-md text-md font-semibold focus:ring-1 focus:ring-rose-200 focus:border-rose-500 outline-none transition-colors ${amount > 0 && amount < MIN_AMOUNT ? 'border-red-500' : 'border-gray-300'}`}
@@ -440,14 +417,10 @@ export default function WalletTopUpPage() {
                             </div>
                             {amount > 0 && amount < MIN_AMOUNT && (
                                 <p className="text-xs text-red-500 mt-1">
-                                    {t('wallet.topup.minimumAmount', {
-                                        defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`,
-                                        amount: MIN_AMOUNT.toLocaleString()
-                                    })}
+                                    {t('wallet.topup.minimumAmount', { defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`, amount: MIN_AMOUNT.toLocaleString() })}
                                 </p>
                             )}
                         </div>
-
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
                                 {t('wallet.topup.quickAmount')} (Kip)
@@ -458,10 +431,7 @@ export default function WalletTopUpPage() {
                                         type="button"
                                         key={quickAmount}
                                         onClick={() => setAmount(quickAmount)}
-                                        className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${amount === quickAmount
-                                            ? "border-rose-500 bg-rose-500 text-white"
-                                            : "border-gray-200 hover:border-rose-500 hover:text-rose-500"
-                                            }`}
+                                        className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${amount === quickAmount ? "border-rose-500 bg-rose-500 text-white" : "border-gray-200 hover:border-rose-500 hover:text-rose-500"}`}
                                     >
                                         {formatCurrency1(quickAmount)}
                                     </button>
@@ -481,15 +451,9 @@ export default function WalletTopUpPage() {
                                         key={method.id}
                                         type="button"
                                         onClick={() => setPaymentMethod(method.id)}
-                                        className={`cursor-pointer w-full py-2 px-4 border rounded-md flex items-start sm:items-center space-x-3 transition-colors ${paymentMethod === method.id
-                                            ? "border-rose-500 bg-rose-50"
-                                            : "border-gray-200 hover:border-gray-300"
-                                            }`}
+                                        className={`cursor-pointer w-full py-2 px-4 border rounded-md flex items-start sm:items-center space-x-3 transition-colors ${paymentMethod === method.id ? "border-rose-500 bg-rose-50" : "border-gray-200 hover:border-gray-300"}`}
                                     >
-                                        <method.icon
-                                            className={`hidden sm:block h-6 w-6 ${paymentMethod === method.id ? "text-rose-500" : "text-gray-400"
-                                                }`}
-                                        />
+                                        <method.icon className={`hidden sm:block h-6 w-6 ${paymentMethod === method.id ? "text-rose-500" : "text-gray-400"}`} />
                                         <div className="text-left">
                                             <div className="text-sm font-medium text-gray-900">{method.name}</div>
                                             <div className="text-xs sm:text-sm text-gray-500">{method.description}</div>
@@ -528,14 +492,12 @@ export default function WalletTopUpPage() {
                                             <div className="text-sm font-medium">{bankName}</div>
                                         </div>
                                     </div>
-
                                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <div className="text-sm text-gray-600">{t('wallet.topup.accountName')}</div>
                                             <div className="text-sm font-medium">{accountName}</div>
                                         </div>
                                     </div>
-
                                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <div className="text-sm text-gray-600">{t('wallet.topup.accountNumber')}</div>
@@ -552,6 +514,14 @@ export default function WalletTopUpPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Reminder shown inline on step 2 so customer never forgets */}
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-amber-700">
+                                {t('wallet.topup.slipReminderInline', { defaultValue: 'ຫຼັງຈາກໂອນເງິນສຳເລັດ, ກະລຸນາກັບມາອັບໂຫລດໃບຊຳລະເງິນໃນຂັ້ນຕອນຕໍ່ໄປ.' })}
+                            </p>
+                        </div>
                     </div>
                 );
 
@@ -580,19 +550,11 @@ export default function WalletTopUpPage() {
                                 </div>
                             )}
 
-                            {/* Drop zone / Add more area */}
                             <div
                                 onDrop={handleDrop}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
-                                className={`border-2 border-dashed rounded-xl p-2 text-center transition-colors ${dragOver
-                                    ? "border-rose-500 bg-rose-50"
-                                    : isCompressing
-                                        ? "border-blue-500 bg-blue-50"
-                                        : uploadedFiles.length >= MAX_SLIPS
-                                            ? "border-gray-200 bg-gray-50"
-                                            : "border-gray-300 hover:border-gray-400"
-                                    }`}
+                                className={`border-2 border-dashed rounded-xl p-2 text-center transition-colors ${dragOver ? "border-rose-500 bg-rose-50" : isCompressing ? "border-blue-500 bg-blue-50" : uploadedFiles.length >= MAX_SLIPS ? "border-gray-200 bg-gray-50" : "border-gray-300 hover:border-gray-400"}`}
                             >
                                 {isCompressing ? (
                                     <div className="space-y-4 py-4">
@@ -619,11 +581,7 @@ export default function WalletTopUpPage() {
                                                 }
                                             </div>
                                             <div className="text-sm text-gray-500 mt-1">
-                                                {t('wallet.topup.slipCount', {
-                                                    defaultValue: `${uploadedFiles.length}/${MAX_SLIPS} slips uploaded`,
-                                                    current: uploadedFiles.length,
-                                                    max: MAX_SLIPS
-                                                })}
+                                                {t('wallet.topup.slipCount', { defaultValue: `${uploadedFiles.length}/${MAX_SLIPS} slips uploaded`, current: uploadedFiles.length, max: MAX_SLIPS })}
                                             </div>
                                         </div>
                                         <label
@@ -646,9 +604,7 @@ export default function WalletTopUpPage() {
                                 />
                             </div>
 
-                            <p className="text-xs text-gray-500 mt-2">
-                                {t('wallet.topup.supportedFormats')}
-                            </p>
+                            <p className="text-xs text-gray-500 mt-2">{t('wallet.topup.supportedFormats')}</p>
                             {uploadError && (
                                 <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-lg">
                                     <p className="text-red-600 text-xs text-center">{uploadError}</p>
@@ -656,33 +612,22 @@ export default function WalletTopUpPage() {
                             )}
                         </div>
 
-                        {/* Example payment slip - hidden when files are uploaded */}
-                        {uploadedFiles.length === 0 && <div className="rounded-lg p-3">
-                            <div className="flex items-center space-x-2 mb-2">
-                                <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                <p className="text-xs font-medium text-blue-700">
-                                    {t('wallet.topup.exampleSlip', { defaultValue: 'Example payment slip' })}
-                                </p>
+                        {uploadedFiles.length === 0 && (
+                            <div className="rounded-lg p-3">
+                                <div className="flex items-center space-x-2 mb-2">
+                                    <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                    <p className="text-xs font-medium text-blue-700">
+                                        {t('wallet.topup.exampleSlip', { defaultValue: 'Example payment slip' })}
+                                    </p>
+                                </div>
+                                <button type="button" onClick={() => setShowExamplePreview(true)} className="w-full cursor-pointer">
+                                    <img src="/images/payment.jpg" alt="Example payment slip" className="max-h-40 object-contain object-left rounded-md bg-white" />
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowExamplePreview(true)}
-                                className="w-full cursor-pointer"
-                            >
-                                <img
-                                    src="/images/payment.jpg"
-                                    alt="Example payment slip"
-                                    className="max-h-40 object-contain object-left rounded-md bg-white"
-                                />
-                            </button>
-                        </div>}
+                        )}
 
-                        {/* Fullscreen example preview */}
                         {showExamplePreview && (
-                            <div
-                                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-                                onClick={() => setShowExamplePreview(false)}
-                            >
+                            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowExamplePreview(false)}>
                                 <button
                                     type="button"
                                     onClick={() => setShowExamplePreview(false)}
@@ -690,12 +635,7 @@ export default function WalletTopUpPage() {
                                 >
                                     <X className="h-6 w-6" />
                                 </button>
-                                <img
-                                    src="/images/payment.jpg"
-                                    alt="Example payment slip"
-                                    className="max-w-full max-h-[85vh] object-contain rounded-lg"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
+                                <img src="/images/payment.jpg" alt="Example payment slip" className="max-w-full max-h-[85vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
                             </div>
                         )}
 
@@ -717,9 +657,7 @@ export default function WalletTopUpPage() {
                             <CheckCircle className="h-6 w-6 text-green-500" />
                         </div>
                         <h3 className="text-md font-semibold text-gray-900 mb-2">{t('wallet.topup.requestSubmitted')}</h3>
-                        <p className="text-sm text-gray-600">
-                            {t('wallet.topup.requestSubmittedDescription')}
-                        </p>
+                        <p className="text-sm text-gray-600">{t('wallet.topup.requestSubmittedDescription')}</p>
                     </div>
                 );
 
@@ -730,11 +668,51 @@ export default function WalletTopUpPage() {
 
     return (
         <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-2 sm:px-4 sm:p-0 border">
+            {/* ── Slip warning modal ─────────────────────────────────────── */}
+            {showSlipWarning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            </div>
+                            <h3 className="text-base font-semibold text-gray-900">
+                                {t('wallet.topup.warningTitle', { defaultValue: 'ຈຳໄວ້!' })}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                            {t('wallet.topup.warningMessage', {
+                                defaultValue: 'ຫຼັງຈາກທ່ານໂອນເງິນສຳເລັດ, ທ່ານ​ຕ້ອງ​ກັບ​ມາ​ອັບ​ໂຫລດ​ໃບ​ຊຳ​ລະ​ເງິນ ເພື່ອ​ສຳ​ເລັດ​ການ​ເຕີມ​ເງິນ. ຖ້າ​ທ່ານ​ບໍ່​ອັບ​ໂຫລດ, ຍອດ​ເງິນ​ຂອງ​ທ່ານ​ຈະ​ບໍ່​ຖືກ​ອັບ​ເດດ.',
+                            })}
+                        </p>
+                        <div className="flex gap-3 pt-1">
+                            <button
+                                type="button"
+                                onClick={handleWarningCancel}
+                                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                                {pendingAction === 'proceed'
+                                    ? t('wallet.topup.warningCancel', { defaultValue: 'ຍ້ອນກັບ' })
+                                    : t('wallet.topup.warningStay', { defaultValue: 'ຢູ່ໜ້ານີ້' })}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleWarningConfirm}
+                                className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-medium hover:bg-rose-600 transition-colors cursor-pointer"
+                            >
+                                {pendingAction === 'proceed'
+                                    ? t('wallet.topup.warningProceed', { defaultValue: 'ເຂົ້າໃຈແລ້ວ, ດຳເນີນຕໍ່' })
+                                    : t('wallet.topup.warningGoBack', { defaultValue: 'ເຂົ້າໃຈແລ້ວ, ຍ້ອນກັບ' })}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Form method="post" encType="multipart/form-data" className="space-y-4 mt-10 sm:mt-0">
-                {/* Hidden field for return URL */}
                 {returnUrl && <input type="hidden" name="return_url" value={returnUrl} />}
-                {/* Hidden field for planId (subscription flow) */}
                 {planId && <input type="hidden" name="planId" value={planId} />}
+                {intentId && <input type="hidden" name="intentId" value={intentId} />}
 
                 <div className="space-y-1">
                     <h1 className="text-lg text-gray-800">
@@ -751,9 +729,7 @@ export default function WalletTopUpPage() {
                     {actionData?.error && (
                         <div className="mb-4 p-3 bg-red-100 border border-red-500 rounded-lg flex items-center space-x-2 backdrop-blur-sm">
                             <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                            <span className="text-red-500 text-sm">
-                                {capitalize(t(actionData.message))}
-                            </span>
+                            <span className="text-red-500 text-sm">{capitalize(t(actionData.message))}</span>
                         </div>
                     )}
                 </div>
@@ -763,25 +739,25 @@ export default function WalletTopUpPage() {
                         {[1, 2, 3, 4].map((stepNum) => (
                             <div
                                 key={stepNum}
-                                className={`w-2 h-2 rounded-full ${stepNum === step ? "bg-rose-500" : stepNum < step ? "bg-green-500" : "bg-gray-300"
-                                    }`}
+                                className={`w-2 h-2 rounded-full ${stepNum === step ? "bg-rose-500" : stepNum < step ? "bg-green-500" : "bg-gray-300"}`}
                             />
                         ))}
                     </div>
 
                     <div className="flex space-x-3">
-                        {step === 1 &&
+                        {step === 1 && (
                             <button
                                 type="button"
                                 onClick={() => navigate("/customer/wallets")}
                                 className="cursor-pointer px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                             >
                                 {t('wallet.topup.close')}
-                            </button>}
+                            </button>
+                        )}
                         {step > 1 && step < 4 && (
                             <button
                                 type="button"
-                                onClick={() => setStep(step - 1)}
+                                onClick={handleBack}
                                 className="cursor-pointer px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                             >
                                 {t('wallet.topup.back')}
@@ -791,7 +767,7 @@ export default function WalletTopUpPage() {
                         {step < 4 ? (
                             <button
                                 type="button"
-                                onClick={step === 3 ? handleManualSubmit : () => setStep(step + 1)}
+                                onClick={handleContinue}
                                 disabled={!canProceed()}
                                 className="flex items-center justify-center text-sm cursor-pointer px-6 py-2 bg-rose-500 text-white rounded-md hover:bg-rose-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                             >

@@ -12,6 +12,8 @@ import {
     FilePenLine,
     MoreVertical,
     XCircle,
+    AlertTriangle,
+    ArrowRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
@@ -23,6 +25,9 @@ import { capitalize } from '~/utils/functions/textFormat';
 import { useNotifications, type Notification } from '~/hooks/useNotifications';
 
 const statusConfig: Record<string, { className: string }> = {
+    awaiting_slip: {
+        className: "bg-amber-100 text-amber-700",
+    },
     pending: {
         className: "bg-amber-100 text-amber-600",
     },
@@ -49,13 +54,14 @@ import type { ITransactionResponse } from '~/interfaces/transaction';
 import { Button } from '~/components/ui/button';
 import Pagination from '~/components/ui/pagination';
 import { requireUserSession } from '~/services/auths.server';
-import { getCustomerTransactions, getCustomerWalletSummary } from '~/services/wallet.server';
+import { getCustomerTransactions, getCustomerWalletSummary, getAwaitingSlipIntent } from '~/services/wallet.server';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu';
 
 interface LoaderReturn {
     wallet: IWalletResponse;
     transactions: ITransactionResponse[];
     pagination: PaginationProps;
+    awaitingSlipIntent: { id: string; amount: number; createdAt: string } | null;
 }
 
 interface TransactionProps {
@@ -68,10 +74,13 @@ export const loader: LoaderFunction = async ({ request }) => {
     const page = Number(url.searchParams.get("page") || 1);
     const take = 10;
 
-    const wallet = await getCustomerWalletSummary(customerId)
+    const [wallet, { transactions, pagination }, awaitingSlipIntent] = await Promise.all([
+        getCustomerWalletSummary(customerId),
+        getCustomerTransactions(customerId, page, take),
+        getAwaitingSlipIntent(customerId),
+    ]);
 
-    const { transactions, pagination } = await getCustomerTransactions(customerId, page, take);
-    return { wallet, transactions, pagination }
+    return { wallet, transactions, pagination, awaitingSlipIntent }
 }
 
 export default function WalletPage({ loaderData }: TransactionProps) {
@@ -83,7 +92,8 @@ export default function WalletPage({ loaderData }: TransactionProps) {
     const {
         wallet,
         transactions,
-        pagination
+        pagination,
+        awaitingSlipIntent,
     } = loaderData;
     // Only show full-page loading when NOT navigating to modal routes (detail, edit, delete, top-up)
     const isNavigatingToAction = navigation.location?.pathname.startsWith("/customer/wallets/") ||
@@ -136,6 +146,12 @@ export default function WalletPage({ loaderData }: TransactionProps) {
         return matchesTab;
     });
 
+    const STATUS_LABELS: Record<string, string> = {
+        awaiting_slip: 'ລໍຖ້າໃບຊໍາລະ',
+    };
+    const statusLabel = (status: string) =>
+        t(`walletStatus.${status}`, { defaultValue: STATUS_LABELS[status] ?? capitalize(status) });
+
     // Booking-related transaction identifiers that cannot be edited/deleted by users
     const BOOKING_TRANSACTION_IDENTIFIERS = ['booking_hold', 'booking_earning', 'booking_refund', 'return_fund'];
 
@@ -158,6 +174,32 @@ export default function WalletPage({ loaderData }: TransactionProps) {
 
     return (
         <div className="min-h-screen p-2 sm:p-6">
+            {/* ── Awaiting-slip banner (desktop only — mobile uses the global fixed banner in layout) ── */}
+            {awaitingSlipIntent && (
+                <Link
+                    to={`/customer/wallet-topup?intentId=${awaitingSlipIntent.id}&resumeStep=3&amount=${awaitingSlipIntent.amount}`}
+                    className="hidden sm:flex items-center gap-3 mb-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-xl hover:bg-amber-100 transition-colors"
+                >
+                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-amber-800">
+                            {t('wallet.awaitingSlip.title', { defaultValue: 'ການໂອນເງິນຍັງບໍ່ສຳເລັດ' })}
+                        </p>
+                        <p className="text-xs text-amber-600 truncate">
+                            {t('wallet.awaitingSlip.description', {
+                                defaultValue: `ອັດໂຫລດໃບຊຳລະສຳລັບການເຕີມເງິນ ${formatCurrency(awaitingSlipIntent.amount)} ກີບ`,
+                                amount: formatCurrency(awaitingSlipIntent.amount),
+                            })}
+                        </p>
+                    </div>
+                    <span className="text-xs font-medium text-amber-700 whitespace-nowrap">
+                        {t('wallet.awaitingSlip.action', { defaultValue: 'ອັບໂຫລດດຽວນີ້ →' })}
+                    </span>
+                </Link>
+            )}
+
             <div className="mx-auto space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                     <div className="lg:col-span-3 bg-gradient-to-r from-rose-600 to-rose-400 rounded-2xl py-4 px-6 text-white relative overflow-hidden">
@@ -258,46 +300,57 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                 </div>
                                                 <div className="mt-2">
                                                     <span className={`inline-block text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}>
-                                                        {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
+                                                        {statusLabel(transaction.status)}
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
-                                        {canEditOrDelete(transaction) && (
-                                            <div onClick={(e) => e.preventDefault()}>
-                                                {transaction.identifier === 'recharge' ? (
-                                                    <Link to={`delete/${transaction.id}`}>
-                                                        <Button variant="ghost" size="sm" className="text-red-500 h-8 px-2 gap-1">
-                                                            <XCircle className="h-3.5 w-3.5" />
-                                                            <span className="text-xs">{t('wallet.menu.cancel', { defaultValue: 'Cancel' })}</span>
-                                                        </Button>
-                                                    </Link>
-                                                ) : (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
-                                                                <MoreVertical className="h-4 w-4" />
-                                                                <span className="sr-only">More</span>
+                                        <div onClick={(e) => e.preventDefault()} className="flex items-center gap-1">
+                                            {/* Continue action for awaiting_slip */}
+                                            {transaction.status === 'awaiting_slip' && transaction.identifier === 'recharge' && (
+                                                <Link to={`/customer/wallet-topup?intentId=${transaction.id}&resumeStep=3&amount=${transaction.amount}`}>
+                                                    <Button variant="ghost" size="sm" className="text-rose-500 h-8 px-2 gap-1">
+                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                        <span className="text-xs">{t('wallet.menu.continue', { defaultValue: 'ສຶບຕໍ່' })}</span>
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                            {canEditOrDelete(transaction) && (
+                                                <>
+                                                    {transaction.identifier === 'recharge' ? (
+                                                        <Link to={`delete/${transaction.id}`}>
+                                                            <Button variant="ghost" size="sm" className="text-red-500 h-8 px-2 gap-1">
+                                                                <XCircle className="h-3.5 w-3.5" />
+                                                                <span className="text-xs">{t('wallet.menu.cancel', { defaultValue: 'Cancel' })}</span>
                                                             </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent className="w-48" align="end" forceMount>
-                                                            <DropdownMenuItem className="text-sm">
-                                                                <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                                    <FilePenLine className="mr-2 h-3 w-3" />
-                                                                    <span>{t('wallet.menu.edit')}</span>
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-sm">
-                                                                <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
-                                                                    <Trash className="mr-2 h-3 w-3" />
-                                                                    <span>{t('wallet.menu.delete')}</span>
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                )}
-                                            </div>
-                                        )}
+                                                        </Link>
+                                                    ) : (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="sm" className="text-gray-500 h-8 w-8 p-0">
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                    <span className="sr-only">More</span>
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent className="w-48" align="end" forceMount>
+                                                                <DropdownMenuItem className="text-sm">
+                                                                    <Link to={`edit/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                        <FilePenLine className="mr-2 h-3 w-3" />
+                                                                        <span>{t('wallet.menu.edit')}</span>
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-sm">
+                                                                    <Link to={`delete/${transaction.id}`} className="text-gray-500 flex space-x-2 w-full">
+                                                                        <Trash className="mr-2 h-3 w-3" />
+                                                                        <span>{t('wallet.menu.delete')}</span>
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                     </Link>
                                 </div>
 
@@ -330,7 +383,7 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <p className={`text-center text-xs px-2 py-1 rounded-sm ${statusConfig[transaction.status]?.className || 'bg-gray-100 text-gray-600'}`}>
-                                            {t(`walletStatus.${transaction.status}`, { defaultValue: capitalize(transaction.status) })}
+                                            {statusLabel(transaction.status)}
                                         </p>
 
                                         <DropdownMenu>
@@ -347,6 +400,14 @@ export default function WalletPage({ loaderData }: TransactionProps) {
                                                         <span>{t('wallet.menu.viewDetails')}</span>
                                                     </Link>
                                                 </DropdownMenuItem>
+                                                {transaction.status === 'awaiting_slip' && transaction.identifier === 'recharge' && (
+                                                    <DropdownMenuItem className="text-sm">
+                                                        <Link to={`/customer/wallet-topup?intentId=${transaction.id}&resumeStep=3&amount=${transaction.amount}`} className="text-rose-500 flex space-x-2 w-full">
+                                                            <ArrowRight className="mr-2 h-3 w-3" />
+                                                            <span>{t('wallet.menu.continue', { defaultValue: 'ສຶບຕໍ່' })}</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
                                                 {canEditOrDelete(transaction) && transaction.identifier === 'recharge' ? (
                                                     <DropdownMenuItem className="text-sm">
                                                         <Link to={`delete/${transaction.id}`} className="text-red-500 flex space-x-2 w-full">

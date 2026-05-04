@@ -168,6 +168,10 @@ model customer {
   sendSMSNoti        Boolean   @default(true) // 8 - default ON for new users
   sendPushNoti       Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
   sendWhatsappNoti   Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  // Per-type push mute list — when a notification type is in this array,
+  // the xs_backend notification service skips push delivery (the in-app
+  // row is still written so the user can see it in their feed).
+  mutedNotificationTypes String[] @default([])
   defaultLanguage    String    @default("en") // 11
   defaultTheme       String    @default("light") // 12
 
@@ -196,6 +200,9 @@ model customer {
   model_interactions    model_interactions[]
   walletId              String?                 @db.ObjectId
   reports               reports[]
+  // User-to-user abuse reports (separate from `reports` which is contact-support)
+  user_reports_filed    user_report[]           @relation("ReporterCustomer")
+  user_reports_received user_report[]           @relation("ReportedCustomer")
   friend_contacts       friend_contacts[]
   service_booking       service_booking[]
   subscription          subscription[]
@@ -249,6 +256,10 @@ model model {
   sendSMSNoti         Boolean   @default(true) // 8 - default ON for new users
   sendPushNoti        Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
   sendWhatsappNoti    Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  // Per-type push mute list — see `customer.mutedNotificationTypes`.
+  mutedNotificationTypes String[] @default([])
+  // Firebase Cloud Messaging token (synced from xs_backend) — used for push delivery.
+  fcmToken            String?
   defaultLanguage     String    @default("en") // 11
   defaultTheme        String    @default("light") // 12
   isProfileHidden          Boolean   @default(false) // Self-service profile visibility toggle
@@ -278,6 +289,9 @@ model model {
   coverPhotoUrl  String?
   isOnline       Boolean   @default(false)
   lastOnlineAt   DateTime?
+
+  // Pre-computed recommendation score (0..1) — updated hourly by xs_backend
+  recommendationScore Float @default(0)
 
   status    ModelStatus @default(pending)
   createdAt DateTime    @default(now())
@@ -310,6 +324,9 @@ model model {
   customer_interactions customer_interactions[]
   model_interactions    model_interactions[]
   reports               reports[]
+  // User-to-user abuse reports (separate from `reports` which is contact-support)
+  user_reports_filed    user_report[]           @relation("ReporterModel")
+  user_reports_received user_report[]           @relation("ReportedModel")
   friend_contacts       friend_contacts[]
   service_booking       service_booking[]
   banks                 banks[]
@@ -393,6 +410,62 @@ model reports {
 
   customer   customer? @relation(fields: [customerId], references: [id])
   customerId String?   @db.ObjectId
+}
+
+/// User-to-user abuse report. Distinct from `reports` (contact-support).
+/// Filed by either a customer OR a model against either a customer OR a model.
+/// Exactly one of reporter{Customer,Model}Id is set; same for reported.
+model user_report {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // --- Reporter -----------------------------------------------------
+  reporterType       String                          // "customer" | "model"
+  reporterCustomerId String?  @db.ObjectId
+  reporterModelId    String?  @db.ObjectId
+
+  // --- Reported -----------------------------------------------------
+  reportedType       String                          // "customer" | "model"
+  reportedCustomerId String?  @db.ObjectId
+  reportedModelId    String?  @db.ObjectId
+
+  // --- Content ------------------------------------------------------
+  // reason values:
+  //   harassment | scam_or_fraud | spam | fake_profile | underage
+  //   violence_or_threats | inappropriate_content | no_show | other
+  reason             String
+  description        String
+  evidenceUrls       String[]                        // optional screenshot URLs
+
+  // --- Optional context (what the report is about) ------------------
+  // relatedType: "booking" | "chat_message" | "post" | "profile" | null
+  relatedType        String?
+  relatedId          String?  @db.ObjectId
+
+  // --- Admin review / lifecycle ------------------------------------
+  // status:     pending | under_review | resolved | dismissed
+  // resolution: warning_issued | content_removed | account_suspended |
+  //             account_banned | no_violation | insufficient_evidence | other
+  status             String   @default("pending")
+  resolution         String?
+  adminNotes         String?
+  reviewedById       String?  @db.ObjectId
+  reviewedAt         DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Back-relations
+  reporterCustomer   customer? @relation("ReporterCustomer", fields: [reporterCustomerId], references: [id])
+  reporterModel      model?    @relation("ReporterModel",    fields: [reporterModelId],    references: [id])
+  reportedCustomer   customer? @relation("ReportedCustomer", fields: [reportedCustomerId], references: [id])
+  reportedModel      model?    @relation("ReportedModel",    fields: [reportedModelId],    references: [id])
+
+  @@index([status, createdAt])
+  @@index([reporterType, reporterCustomerId])
+  @@index([reporterType, reporterModelId])
+  @@index([reportedType, reportedCustomerId])
+  @@index([reportedType, reportedModelId])
+  @@index([createdAt])
 }
 
 model images {
@@ -685,6 +758,11 @@ model service_booking {
   customerPeerId    String?     // Customer's PeerJS peer ID
   modelPeerId       String?     // Model's PeerJS peer ID
 
+  // Model's review of customer (set after booking is completed)
+  modelRating       Int?
+  modelComment      String?
+  modelReviewedAt   DateTime?
+
   // Soft delete fields
   customerHidden Boolean @default(false) // Hidden from customer's booking history
   modelHidden    Boolean @default(false) // Hidden from model's booking history
@@ -747,13 +825,43 @@ model conversation {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   status String @default("active")
 
+  // Per-side block flags. `status` is "blocked" whenever either flag is
+  // true; both flags can be true at once (mutual block).
+  blockedByCustomer Boolean @default(false)
+  blockedByModel    Boolean @default(false)
+
   model   model?  @relation(fields: [modelId], references: [id])
   modelId String? @db.ObjectId
 
   customer   customer? @relation(fields: [customerId], references: [id])
   customerId String?   @db.ObjectId
 
-  lastMessage  DateTime?
+  // Optional booking this conversation is tied to (xs_backend only).
+  bookingId String? @db.ObjectId
+
+  lastMessage         DateTime?
+  lastMessageText     String?
+  lastMessageType     String?
+  lastMessageMediaUrl String?
+  lastMessageSenderId String?   @db.ObjectId
+
+  customerUnreadCount Int @default(0)
+  modelUnreadCount    Int @default(0)
+
+  // Per-user settings / flags
+  customerArchived      Boolean @default(false)
+  modelArchived         Boolean @default(false)
+  customerNotifications Boolean @default(true)
+  modelNotifications    Boolean @default(true)
+  customerPinned        Boolean @default(false)
+  modelPinned           Boolean @default(false)
+
+  // Per-user soft delete
+  customerDeleted   Boolean   @default(false)
+  modelDeleted      Boolean   @default(false)
+  customerDeletedAt DateTime?
+  modelDeletedAt    DateTime?
+
   createdAt    DateTime       @default(now())
   updatedAt    DateTime?      @updatedAt
   chat_session chat_session[]
@@ -806,8 +914,20 @@ model messages {
   fileName         String?
   fileSize         String?
   isRead           Boolean @default(false)
+  /// @deprecated — legacy global delete flag. New deletes use the per-side
+  /// `customerDeleted` / `modelDeleted` flags below instead.
   isDeleted        Boolean @default(false)
   replyToMessageId String? @db.ObjectId
+
+  // Per-side soft delete. Either participant may hide a message from
+  // their own view at any time; the other side still sees it and the row
+  // is never removed from storage.
+  customerDeleted   Boolean   @default(false)
+  modelDeleted      Boolean   @default(false)
+  customerDeletedAt DateTime?
+  modelDeletedAt    DateTime?
+
+  metadata Json?
 
   sendAt    DateTime
   readAt    DateTime?

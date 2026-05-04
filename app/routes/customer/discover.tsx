@@ -135,11 +135,11 @@ export const loader: LoaderFunction = async ({ request }) => {
         prisma.subscription_plan.findFirst({
             where: { name: "24-Hour Trial", status: "active" },
             select: { id: true, price: true },
-        }),
+        }).catch(() => null),
         prisma.wallet.findFirst({
             where: { customerId },
             select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }),
+        }).catch(() => null),
     ]);
 
     // Parse filter parameters from URL

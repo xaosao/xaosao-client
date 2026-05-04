@@ -11,6 +11,8 @@ import {
     Settings,
     HandHeart,
     LogOut,
+    AlertTriangle,
+    X,
 } from "lucide-react";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { requireVerifiedUserSession } from "~/services/auths.server";
@@ -37,6 +39,7 @@ interface LoaderReturn {
         price: number;
     } | null;
     customerBalance: number;
+    awaitingSlipIntent: { id: string; amount: number } | null;
 }
 
 interface TransactionProps {
@@ -50,7 +53,9 @@ export const loader: LoaderFunction = async ({ request }) => {
         const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
         const { prisma } = await import("~/services/database.server");
 
-        const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
+        const { getAwaitingSlipIntent } = await import("~/services/wallet.server");
+
+        const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet, awaitingSlipIntent] = await Promise.all([
             getCustomerProfile(customerId),
             getCustomerUnreadCount(customerId).catch(() => 0),
             getCustomerNotifications(customerId, { limit: 10 }).catch(() => []),
@@ -64,6 +69,7 @@ export const loader: LoaderFunction = async ({ request }) => {
                 where: { customerId },
                 select: { totalBalance: true, totalSpend: true, totalRefunded: true },
             }).catch(() => null),
+            getAwaitingSlipIntent(customerId).catch(() => null),
         ]);
 
         const initialNotifications: Notification[] = (notifications || []).map((n) => ({
@@ -91,6 +97,9 @@ export const loader: LoaderFunction = async ({ request }) => {
             hasEnabledNotifications,
             trialPackage,
             customerBalance: availableBalance,
+            awaitingSlipIntent: awaitingSlipIntent
+                ? { id: awaitingSlipIntent.id, amount: awaitingSlipIntent.amount }
+                : null,
         };
     } catch (error) {
         console.error("[CustomerLayout] Loader error:", error);
@@ -105,8 +114,24 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance } = loaderData;
+    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance, awaitingSlipIntent } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Awaiting-slip banner — shown once per intent, dismissed until next login
+    const [showSlipBanner, setShowSlipBanner] = useState(false);
+    useEffect(() => {
+        if (!awaitingSlipIntent) return;
+        let dismissed = false;
+        try { dismissed = !!sessionStorage.getItem(`slip_banner_dismissed_${awaitingSlipIntent.id}`); } catch {}
+        if (!dismissed) setShowSlipBanner(true);
+    }, [awaitingSlipIntent?.id]);
+
+    const dismissSlipBanner = () => {
+        if (awaitingSlipIntent) {
+            try { sessionStorage.setItem(`slip_banner_dismissed_${awaitingSlipIntent.id}`, '1'); } catch {}
+        }
+        setShowSlipBanner(false);
+    };
 
     // Notification types that should trigger data refresh
     const revalidateNotificationTypes = [
@@ -370,6 +395,35 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     <Outlet />
                 </main>
             </div>
+
+            {/* ── Awaiting-slip floating banner (mobile only, above bottom nav) ── */}
+            {showSlipBanner && awaitingSlipIntent && !hideMobileNav && (
+                <div className="fixed bottom-[58px] left-2 right-2 z-40 sm:hidden">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-300 rounded-xl shadow-lg">
+                        <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                        </div>
+                        <Link
+                            to={`/customer/wallet-topup?intentId=${awaitingSlipIntent.id}&resumeStep=3&amount=${awaitingSlipIntent.amount}`}
+                            className="flex-1 min-w-0"
+                        >
+                            <p className="text-xs font-semibold text-amber-800 leading-tight">
+                                {t('wallet.awaitingSlip.title', { defaultValue: 'ການໂອນເງິນຍັງບໍ່ສຳເລັດ' })}
+                            </p>
+                            <p className="text-[11px] text-amber-600 truncate">
+                                {t('wallet.awaitingSlip.action', { defaultValue: 'ກົດເພື່ອອັບໂຫລດໃບຊໍາລະ →' })}
+                            </p>
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={dismissSlipBanner}
+                            className="w-6 h-6 flex items-center justify-center rounded-full text-amber-400 hover:bg-amber-100 transition-colors flex-shrink-0 cursor-pointer"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* ✅ Mobile Bottom Navigation (hidden on realtime-chat) */}
             {!hideMobileNav && (

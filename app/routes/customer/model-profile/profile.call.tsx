@@ -29,7 +29,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
    // Get customer wallet balance
    const wallet = await prisma.wallet.findFirst({
       where: { customerId, status: "active" },
-   });
+   }).catch(() => null);
 
    return { service, walletBalance: wallet?.totalBalance || 0 };
 }

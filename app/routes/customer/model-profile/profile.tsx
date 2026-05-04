@@ -77,7 +77,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         prisma.wallet.findFirst({
             where: { customerId },
             select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }),
+        }).catch(() => null),
         prisma.transaction_history.findFirst({
             where: { customerId, identifier: "recharge", status: "pending", customerHidden: { not: true } },
             select: { id: true },

@@ -79,7 +79,8 @@ export async function createWallet(data: IWalletCredentials, userId: string) {
 export async function topUpWallet(
   paymentSlip: string[],
   amount: number,
-  userId: string
+  userId: string,
+  intentId?: string
 ) {
   if (!amount || amount <= 0) throw new Error("Invalid top-up amount!");
   if (amount < 10000) {
@@ -137,17 +138,22 @@ export async function topUpWallet(
       });
     }
 
-    const createTopUpTransaction = await prisma.transaction_history.create({
-      data: {
-        identifier: "recharge",
-        amount,
-        paymentSlip,
-        status: "pending",
-        comission: 0,
-        fee: 0,
-        customerId: userId,
-      },
-    });
+    const createTopUpTransaction = intentId
+      ? await prisma.transaction_history.update({
+          where: { id: intentId },
+          data: { paymentSlip, status: "pending" },
+        })
+      : await prisma.transaction_history.create({
+          data: {
+            identifier: "recharge",
+            amount,
+            paymentSlip,
+            status: "pending",
+            comission: 0,
+            fee: 0,
+            customerId: userId,
+          },
+        });
 
     if (createTopUpTransaction.id) {
       await createAuditLogs({
@@ -933,9 +939,30 @@ export async function getModelWalletSummary(modelId: string) {
     });
 
     if (!wallet) {
-      const error = new Error("The wallet does not exist!") as any;
-      error.status = 404;
-      throw error;
+      // Auto-create wallet for this model instead of throwing.
+      // This handles models registered via xs_backend that don't have a wallet yet.
+      const newWallet = await prisma.wallet.create({
+        data: {
+          modelId,
+          totalBalance: 0,
+          totalPending: 0,
+          totalSpend: 0,
+          totalWithdraw: 0,
+          totalRefunded: 0,
+          totalRecharge: 0,
+          totalDeposit: 0,
+          status: "active",
+        },
+      });
+
+      return {
+        ...newWallet,
+        totalIncome: 0,
+        totalAvailable: 0,
+        pendingBalance: 0,
+        totalWithdrawn: 0,
+        withdrawableBalance: 0,
+      };
     }
 
     // Model wallet fields:
@@ -1097,4 +1124,42 @@ export async function deductFromWallet(
       message: "Failed to deduct from wallet!",
     });
   }
+}
+
+// Creates an "awaiting_slip" intent record when the customer reaches step 2.
+// Any previous stale intent for the same customer is soft-deleted first.
+export async function createTopUpIntent(amount: number, customerId: string) {
+  if (!amount || amount < 10000) throw new Error("Invalid amount");
+
+  await prisma.transaction_history.updateMany({
+    where: { customerId, status: "awaiting_slip", customerHidden: { not: true } },
+    data: { customerHidden: true },
+  });
+
+  return prisma.transaction_history.create({
+    data: {
+      identifier: "recharge",
+      amount,
+      paymentSlip: [],
+      status: "awaiting_slip",
+      comission: 0,
+      fee: 0,
+      customerId,
+    },
+  });
+}
+
+// Returns the most recent awaiting_slip intent within the last 24 h, or null.
+export async function getAwaitingSlipIntent(customerId: string) {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return prisma.transaction_history.findFirst({
+    where: {
+      customerId,
+      status: "awaiting_slip",
+      customerHidden: { not: true },
+      createdAt: { gte: cutoff },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, amount: true, createdAt: true },
+  });
 }

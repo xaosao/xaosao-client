@@ -114,7 +114,7 @@ export const loader: LoaderFunction = async ({ request }) => {
         prisma.wallet.findFirst({
             where: { customerId },
             select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }),
+        }).catch(() => null),
     ]);
     const customerLatitude = customer?.latitude || 0;
     const customerLongitude = customer?.longitude || 0;

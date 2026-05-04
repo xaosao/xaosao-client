@@ -40,7 +40,7 @@ export const loader: LoaderFunction = async ({ params, request }) => {
    const wallet = await prisma.wallet.findFirst({
       where: { customerId },
       select: { totalBalance: true },
-   });
+   }).catch(() => null);
 
    return {
       customerData,

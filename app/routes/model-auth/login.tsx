@@ -420,9 +420,9 @@ export default function UnifiedLogin() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${isCustomer
+                className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none [transform:translateZ(0)] [-webkit-appearance:none] ${isCustomer
                   ? "bg-rose-500 shadow-lg shadow-rose-200/50 hover:shadow-rose-300/60 hover:-translate-y-0.5 active:translate-y-0"
-                  : "bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black shadow-lg shadow-gray-300/30 hover:shadow-gray-400/40 hover:-translate-y-0.5 active:translate-y-0"
+                  : "bg-gray-900 hover:bg-black shadow-lg shadow-gray-300/30 hover:shadow-gray-400/40 hover:-translate-y-0.5 active:translate-y-0"
                   }`}
               >
                 {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}

@@ -33,7 +33,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     prisma.wallet.findFirst({
       where: { customerId },
       select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-    }),
+    }).catch(() => null),
     getPostGifts(params.id!),
     getActiveGifts(),
     getPostComments(params.id!),
