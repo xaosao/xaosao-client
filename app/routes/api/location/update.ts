@@ -35,6 +35,8 @@ export const action: ActionFunction = async ({ request }) => {
       return Response.json({ error: "Coordinates out of range" }, { status: 400 });
     }
 
+    const now = new Date();
+
     if (userType === "model") {
       const modelId = await getModelFromSession(request);
       if (!modelId) {
@@ -46,7 +48,8 @@ export const action: ActionFunction = async ({ request }) => {
         data: {
           latitude,
           longitude,
-          updatedAt: new Date(),
+          locationUpdatedAt: now,
+          updatedAt: now,
         },
       });
 
@@ -62,14 +65,15 @@ export const action: ActionFunction = async ({ request }) => {
         data: {
           latitude,
           longitude,
-          updatedAt: new Date(),
+          locationUpdatedAt: now,
+          updatedAt: now,
         },
       });
 
       console.log(`Customer ${customerId} location updated: (${latitude}, ${longitude})`);
     }
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, locationUpdatedAt: now.toISOString() });
   } catch (error) {
     console.error("LOCATION_UPDATE_FAILED", error);
     return Response.json({ error: "Failed to update location" }, { status: 500 });

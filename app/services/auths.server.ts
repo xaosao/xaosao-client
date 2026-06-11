@@ -538,9 +538,23 @@ async function registerUserWithoutOTP(
 export async function customerRegister(
   customerData: ICustomerSignupCredentials,
   ip: string,
-  accessKey: string
+  accessKey: string,
+  profileFile?: { buffer: Buffer; name: string; type: string }
 ) {
   if (!customerData) throw new Error("Missing creation data!");
+
+  // If a raw profile file was provided, upload it to BunnyCDN now.
+  // The resulting URL replaces customerData.profile (which may be empty).
+  // We upload to the flat avatars/ folder here — the route action moves it
+  // to the structured per-user folder after registration completes.
+  if (profileFile) {
+    const { uploadFileToBunnyServer } = await import("~/services/upload.server");
+    customerData.profile = await uploadFileToBunnyServer(
+      profileFile.buffer,
+      profileFile.name,
+      profileFile.type
+    );
+  }
 
   try {
     const existingCustomer = await prisma.customer.findFirst({

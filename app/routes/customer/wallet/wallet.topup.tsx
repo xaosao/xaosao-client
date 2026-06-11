@@ -34,11 +34,23 @@ export const loader: LoaderFunction = async ({ request }) => {
         }
     }
 
+    // Fetch payment QR code URL from DB (falls back to static image if not set)
+    let paymentQrUrl = "/images/qr-code.jpeg";
+    try {
+        const { prisma } = await import("~/services/database.server");
+        const qrConfig = await prisma.system_config.findUnique({
+            where: { key: "payment_qr_code" },
+            select: { value: true },
+        });
+        if (qrConfig?.value) paymentQrUrl = qrConfig.value;
+    } catch {}
+
     return {
         suggestedAmount: suggestedAmount ? parseInt(suggestedAmount, 10) : null,
         planId: planId || null,
         intentId: intentId || null,
         resumeStep: resumeStep ? Number(resumeStep) : null,
+        paymentQrUrl,
     };
 };
 
@@ -151,7 +163,7 @@ export default function WalletTopUpPage() {
     const loaderData = useLoaderData<typeof loader>();
     const intentFetcher = useFetcher<{ success: boolean; intentId?: string }>();
 
-    const { suggestedAmount, planId, intentId: loaderIntentId, resumeStep } = loaderData;
+    const { suggestedAmount, planId, intentId: loaderIntentId, resumeStep, paymentQrUrl } = loaderData;
     const MIN_AMOUNT = suggestedAmount || 10000;
 
     const [step, setStep] = React.useState<number>(resumeStep || 1);
@@ -265,7 +277,7 @@ export default function WalletTopUpPage() {
 
     const downloadQR = () => {
         const link = document.createElement("a");
-        link.href = "/images/qr-code.jpeg";
+        link.href = paymentQrUrl;
         link.download = "payment-qr-code.jpeg";
         link.click();
     };
@@ -466,7 +478,7 @@ export default function WalletTopUpPage() {
                         {paymentMethod === "qr" && (
                             <div className="bg-white border border-dashed border-gray-200 rounded-xl p-6 text-center">
                                 <div className="w-48 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                                    <img src="/images/qr-code.jpeg" alt="QR-code" className="w-full h-auto object-contain" />
+                                    <img src={paymentQrUrl} alt="QR-code" className="w-full h-auto object-contain" />
                                 </div>
                                 <button
                                     type="button"

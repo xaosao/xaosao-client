@@ -16,7 +16,7 @@ import type { Gender } from "~/interfaces/base"
 import { validateCustomerSignupInputs } from "~/services/validation.server"
 import type { ICustomerSignupCredentials } from "~/interfaces"
 import { FieldValidationError } from "~/services/base.server"
-import { uploadFileToBunnyServer, migrateProfileToStructuredFolder } from "~/services/upload.server"
+import { migrateProfileToStructuredFolder } from "~/services/upload.server"
 import { compressImage } from "~/utils/imageCompression"
 
 const backgroundImages = [
@@ -95,30 +95,26 @@ export async function action({ request }: Route.ActionArgs) {
         return { success: false, error: true, messageKey: "register.errors.profileRequired" };
     }
 
-    // Upload profile image flat first (we need a valid URL for validation, then migrate to structured folder after registration)
-    let profileUrl = "";
-    if (newProfile && newProfile instanceof File && newProfile.size > 0) {
-        // File size validation (max 10MB)
-        if (newProfile.size > 10 * 1024 * 1024) {
-            return { success: false, error: true, messageKey: "register.errors.profileTooLarge" };
-        }
-
-        // File type validation (relaxed for iOS compatibility - iOS may report heic/heif or empty type)
-        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif", ""];
-        const fileExtension = newProfile.name.toLowerCase().split('.').pop();
-        const allowedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
-        if (!allowedTypes.includes(newProfile.type) && !allowedExtensions.includes(fileExtension || "")) {
-            return { success: false, error: true, messageKey: "register.errors.invalidImageFormat" };
-        }
-
-        try {
-            const buffer = Buffer.from(await newProfile.arrayBuffer());
-            profileUrl = await uploadFileToBunnyServer(buffer, newProfile.name, newProfile.type);
-        } catch (uploadError: any) {
-            console.error("Profile upload error:", uploadError);
-            return { success: false, error: true, messageKey: "register.errors.uploadFailed" };
-        }
+    // File size validation (max 10MB)
+    if (newProfile.size > 10 * 1024 * 1024) {
+        return { success: false, error: true, messageKey: "register.errors.profileTooLarge" };
     }
+
+    // File type validation (relaxed for iOS compatibility — iOS may report heic/heif or empty type)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif", ""];
+    const fileExtension = newProfile.name.toLowerCase().split('.').pop();
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
+    if (!allowedTypes.includes(newProfile.type) && !allowedExtensions.includes(fileExtension || "")) {
+        return { success: false, error: true, messageKey: "register.errors.invalidImageFormat" };
+    }
+
+    // Pass the raw file buffer to the service — it uploads to BunnyCDN itself.
+    const profileBuffer = Buffer.from(await newProfile.arrayBuffer());
+    const profileFile = {
+        buffer: profileBuffer,
+        name: newProfile.name,
+        type: newProfile.type,
+    };
 
     // Get referrer ID from form (passed from loader via hidden input)
     const referrerId = formData.get("referrerId") as string | null;
@@ -130,7 +126,7 @@ export async function action({ request }: Route.ActionArgs) {
         gender: gender,
         dob: formData.get("dob") as string,
         password: formData.get("password") as string,
-        profile: profileUrl,
+        profile: "", // Filled in by customerRegister after BunnyCDN upload
         referredByModelId: referrerId || undefined,
     };
 
@@ -159,13 +155,15 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (request.method === "POST") {
         try {
-            await validateCustomerSignupInputs(signUpData);
-            const res = await customerRegister(signUpData, ip, accessKey);
+            // Note: validate before the file upload happens — service will reject
+            // empty profile via validation rules in customerRegister.
+            await validateCustomerSignupInputs({ ...signUpData, profile: "placeholder" });
+            const res = await customerRegister(signUpData, ip, accessKey, profileFile);
             console.log("RES::", res);
 
             // Move profile image from flat storage to structured folder (non-blocking)
-            if (profileUrl) {
-                migrateProfileToStructuredFolder("customer", signUpData.whatsapp, profileUrl).catch((err) =>
+            if (signUpData.profile) {
+                migrateProfileToStructuredFolder("customer", signUpData.whatsapp, signUpData.profile).catch((err) =>
                     console.error("[Register] Customer profile migration failed:", err)
                 );
             }

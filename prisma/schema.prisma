@@ -141,6 +141,7 @@ model customer {
   password           String
   latitude           Float
   longitude          Float
+  locationUpdatedAt  DateTime?
   country            String
   ip                 String?
   whatsapp           Int?
@@ -214,6 +215,12 @@ model customer {
   postComments          post_comment[]
   dailyChatAccess       daily_chat_access[]
   directGifts           direct_gift[]
+
+  // Hot-path indexes — login & admin listing fan out across these
+  @@index([status, createdAt])
+  @@index([resetToken])
+  @@index([referredByModelId])
+  @@index([createdAt])
 }
 
 model model {
@@ -231,6 +238,7 @@ model model {
   profile             String?
   latitude            Float?
   longitude           Float?
+  locationUpdatedAt   DateTime?
   location            Json?
   hourly_rate_talking Float?
   hourly_rate_video   Float?
@@ -337,6 +345,13 @@ model model {
   postComments          post_comment[]
   dailyChatAccess       daily_chat_access[]
   directGiftsReceived   direct_gift[]
+
+  // Hot-path indexes — login, discover feeds, "online now" lists
+  @@index([status, createdAt])
+  @@index([resetToken])
+  @@index([referredById])
+  @@index([status, gender])
+  @@index([status, lastOnlineAt])
 }
 
 // subscription
@@ -375,6 +390,9 @@ model subscription {
   updatedAt DateTime @updatedAt
 
   history subscription_history[]
+
+  @@index([customerId, status, endDate])
+  @@index([status, endDate])
 }
 
 // This is for the history or log check:
@@ -395,6 +413,8 @@ model subscription_history {
   status        String   @default("completed") // completed, canceled, refunded
 
   createdAt DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }
 
 model reports {
@@ -410,6 +430,10 @@ model reports {
 
   customer   customer? @relation(fields: [customerId], references: [id])
   customerId String?   @db.ObjectId
+
+  @@index([type, createdAt])
+  @@index([customerId, createdAt])
+  @@index([modelId, createdAt])
 }
 
 /// User-to-user abuse report. Distinct from `reports` (contact-support).
@@ -511,6 +535,8 @@ model customer_interactions {
   updatedAt DateTime @updatedAt
 
   @@unique([customerId, modelId, action])
+  @@index([modelId, action, createdAt])
+  @@index([customerId, action, createdAt])
 }
 
 // model like customer
@@ -527,6 +553,8 @@ model model_interactions {
   updatedAt DateTime @updatedAt
 
   @@unique([customerId, modelId])
+  @@index([modelId, action, createdAt])
+  @@index([customerId, action, createdAt])
 }
 
 model friend_contacts {
@@ -543,23 +571,25 @@ model friend_contacts {
   updatedAt DateTime @updatedAt
 
   @@unique([modelId, customerId])
+  @@index([customerId, createdAt])
+  @@index([modelId, createdAt])
 }
 
 model wallet {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   // For Customer: total approved recharges | For Model: total approved earnings
-  totalBalance  Float    @default(0)
+  totalBalance  Float?   @default(0)
   // For Model only: pending earnings from confirmed bookings (0 for customers)
-  totalPending  Float    @default(0)
+  totalPending  Float?   @default(0)
   // For Customer only: total spent on bookings/subscriptions (0 for models)
-  totalSpend    Float    @default(0)
+  totalSpend    Float?   @default(0)
   // For Model only: total approved withdrawals (0 for customers)
-  totalWithdraw Float    @default(0)
+  totalWithdraw Float?   @default(0)
   // For Customer only: total refunded amount (0 for models)
-  totalRefunded Float    @default(0)
+  totalRefunded Float?   @default(0)
   // Deprecated fields - kept for backwards compatibility
-  totalRecharge Float    @default(0)
-  totalDeposit  Float    @default(0)
+  totalRecharge Float?   @default(0)
+  totalDeposit  Float?   @default(0)
   status        String   @default("active")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -871,6 +901,8 @@ model conversation {
   @@index([customerId])
   @@index([modelId])
   @@index([status])
+  @@index([customerId, lastMessage])
+  @@index([modelId, lastMessage])
 }
 
 model chat_session {
@@ -955,6 +987,10 @@ model review {
 
   customer   customer? @relation(fields: [customerId], references: [id])
   customerId String    @db.ObjectId
+
+  @@index([modelId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([sessionId])
 }
 
 model audit_logs {
@@ -974,6 +1010,15 @@ model audit_logs {
 
   user   user?   @relation(fields: [userId], references: [id])
   userId String? @db.ObjectId
+
+  // Performance — this is the biggest collection in the DB (~123K rows and
+  // growing) and was previously unindexed. See xs_backend/scripts/create-indexes.js
+  @@index([userId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([customerId, createdAt])
+  @@index([action, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
 }
 
 model setting {
@@ -1024,6 +1069,9 @@ model customer_notification {
   @@index([customerId])
   @@index([customerId, isRead])
   @@index([createdAt])
+  @@index([customerId, createdAt])
+  @@index([customerId, isRead, createdAt])
+  @@index([customerId, type, createdAt])
 }
 
 model model_notification {
@@ -1041,6 +1089,9 @@ model model_notification {
   @@index([modelId])
   @@index([modelId, isRead])
   @@index([createdAt])
+  @@index([modelId, createdAt])
+  @@index([modelId, isRead, createdAt])
+  @@index([modelId, type, createdAt])
 }
 
 // Push notification subscriptions for Web Push API
@@ -1222,6 +1273,8 @@ model post_gift {
 
   @@index([postId])
   @@index([customerId])
+  @@index([postId, createdAt])
+  @@index([modelId, createdAt])
 }
 
 model post_comment {
@@ -1277,6 +1330,8 @@ model direct_gift {
   model      model    @relation(fields: [modelId], references: [id])
 
   @@index([customerId, modelId])
+  @@index([modelId, createdAt])
+  @@index([customerId, createdAt])
 }
 
 // ==================== System Feedback (Bug Reports / Feature Requests) ====================
@@ -1316,4 +1371,15 @@ model system_feedback {
 
   @@index([userId])
   @@index([status])
+}
+
+// ==================== System Configuration ====================
+
+model system_config {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

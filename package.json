@@ -7,7 +7,8 @@
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "migrate:phone-verified": "npx tsx scripts/migrate-model-phone-verified.ts"
+    "migrate:phone-verified": "npx tsx scripts/migrate-model-phone-verified.ts",
+    "seed:payment-qr": "npx tsx scripts/seed-payment-qr-code.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
