@@ -595,7 +595,7 @@ export default function SignUpPage() {
                             />
                             <Label htmlFor="terms" className="flex items-center justify-start text-gray-300 leading-tight">
                                 {t('register.acceptTerms')} <span className="hidden sm:block">{t('register.acceptTermsAll')}</span>
-                                <Link to="/customer-terms-conditions" className="text-white hover:text-rose-600 underline">
+                                <Link to="/terms-conditions?type=customer" className="text-white hover:text-rose-600 underline">
                                     {t('register.termsConditions')} {t('register.privacyPolicy')}
                                 </Link>
                                 <span className="text-rose-500">*</span>

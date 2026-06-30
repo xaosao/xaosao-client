@@ -47,6 +47,9 @@ export default [
   route("api/call/booking", "./routes/api/call/booking.ts"),
   route("api/call/register-peer", "./routes/api/call/register-peer.ts"),
 
+  // public marketing pages
+  route("deactivate", "./routes/deactivate.tsx"),
+
   // authentication routes
   route("video-tutorials", "./routes/video-tutorials.tsx"),
   route("login", "./routes/auth/login.tsx"),
@@ -58,7 +61,10 @@ export default [
   route("model-logout", "./routes/model-logout.ts"),
   route("clear-session", "./routes/auth/clear-session.ts"),
 
-  // Terms and Conditions
+  // Legal — unified terms + privacy
+  route("terms-conditions", "./routes/terms-conditions.tsx"),
+  route("privacy-policy", "./routes/privacy-policy.tsx"),
+  // Legacy redirects (kept so external links don't 404)
   route("customer-terms-conditions", "./routes/cus-terms-condition.tsx"),
   route("model-terms-conditions", "./routes/model-terms-condition.tsx"),
 

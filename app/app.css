@@ -306,3 +306,17 @@
     object-fit: cover;
   }
 }
+
+/* Floating notification cards on the phone mockup
+   (AppPromoSection). Two delayed copies so cards bob out of sync. */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 3.5s ease-in-out infinite;
+}
+.animate-bounce-slow-delay {
+  animation: bounce-slow 3.5s ease-in-out infinite;
+  animation-delay: 1.5s;
+}

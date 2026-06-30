@@ -167,8 +167,8 @@ model customer {
   education          String? // 6
   sendMailNoti       Boolean   @default(true) // 7
   sendSMSNoti        Boolean   @default(true) // 8 - default ON for new users
-  sendPushNoti       Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
-  sendWhatsappNoti   Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  sendPushNoti       Boolean   @default(true) // 9 - default ON (user can opt out)
+  sendWhatsappNoti   Boolean   @default(true) // 10 - default ON (user can opt out)
   // Per-type push mute list — when a notification type is in this array,
   // the xs_backend notification service skips push delivery (the in-app
   // row is still written so the user can see it in their feed).
@@ -262,8 +262,8 @@ model model {
   education           String? // 6
   sendMailNoti        Boolean   @default(true) // 7
   sendSMSNoti         Boolean   @default(true) // 8 - default ON for new users
-  sendPushNoti        Boolean   @default(false) // 9 - default OFF, modal will prompt to enable
-  sendWhatsappNoti    Boolean   @default(false) // 10 - WhatsApp notifications via Twilio
+  sendPushNoti        Boolean   @default(true) // 9 - default ON (user can opt out)
+  sendWhatsappNoti    Boolean   @default(true) // 10 - default ON (user can opt out)
   // Per-type push mute list — see `customer.mutedNotificationTypes`.
   mutedNotificationTypes String[] @default([])
   // Firebase Cloud Messaging token (synced from xs_backend) — used for push delivery.
