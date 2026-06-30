@@ -1,18 +1,47 @@
 {
   "footer": {
     "tagline": "Purpose of the System",
-    "description": "Allow customers to search for shops or companions conveniently and quickly to access services more easily and increase the number of customers for you in your career field. Gain business advantages and choose to serve according to your own satisfaction. The system is easy to use, safe and risk-free.",
+    "description": "Lao's #1 companion platform — discover verified Sao, book a date, share your moments.",
     "socialLinks": "Contact Us",
     "whatsapp": "WhatsApp",
     "phoneCall": "Phone Call",
-    "copyright": "Copyright © Xaosao 2025"
+    "copyright": "© 2026 XaoSao. All rights reserved.",
+    "location": "Vientiane Capital, Lao PDR",
+    "hours": "Mon–Fri · 08:30–17:30",
+    "availableOn": "Available on your phone",
+    "appStorePrefix": "Download on",
+    "googlePlayPrefix": "Get it on",
+    "comingSoon": "COMING SOON",
+    "followUs": "Follow XaoSao",
+    "scrollTop": "Scroll to top",
+    "col": {
+      "app": "The app",
+      "company": "Company",
+      "legal": "Legal"
+    },
+    "app": {
+      "ios": "Download for iOS",
+      "android": "Download for Android",
+      "tour": "App tour",
+      "faq": "FAQ"
+    },
+    "company": {
+      "about": "About us",
+      "contact": "Contact"
+    },
+    "legal": {
+      "terms": "Terms & conditions",
+      "privacy": "Privacy policy"
+    }
   },
   "header": {
     "login": "Login",
     "companionLogin": "Companion Login",
     "forCompanions": "For Companions",
     "companion": "Companion",
-    "myAccount": "My Account"
+    "myAccount": "My Account",
+    "downloadApp": "Download app",
+    "download": "App"
   },
   "home": {
     "slogans": {
@@ -35,6 +64,89 @@
     "customerLoginHint": "For customers looking for companions 👆",
     "areYouCompanion": "Are you a companion?",
     "companionLoginHere": "Login here",
+    "heroBadge": "Lao's #1 companion platform",
+    "heroTitleLine1": "Find someone",
+    "heroTitleLine2": "to share",
+    "heroTitleAccent": "your moments",
+    "heroSubtitleNew": "Discover verified companions across Laos. Book a date, a drink, or a trip — all from one beautifully simple app.",
+    "heroCtaPrimary": "Get started",
+    "heroCtaSecondary": "Watch how it works",
+    "heroTrustCaption": "Trusted by 12,000+ users",
+    "hero": {
+      "onlineNow": "Online now",
+      "deviceTitle": "Available on",
+      "matchTitle": "You have a new match!",
+      "matchSubtitle": "Open the app to chat"
+    },
+    "stats": {
+      "companions": "Companions",
+      "bookings": "Bookings completed",
+      "cities": "Cities served",
+      "rating": "Avg. rating"
+    },
+    "servicesTag": "Our services",
+    "servicesTitle": "Whatever the occasion, we have a match.",
+    "servicesAll": "Browse all services",
+    "exploreLink": "Explore",
+    "how": {
+      "tag": "How it works",
+      "titleLead": "Find your match in",
+      "titleAccent": "three simple steps.",
+      "subtitle": "Same simple flow whether you're meeting for a drink, a trip, or just a great conversation. Payment is protected end-to-end.",
+      "signup": {
+        "title": "Sign up & verify",
+        "desc": "Create your account with your phone number, set a profile photo, and you're ready to discover in under a minute."
+      },
+      "discover": {
+        "title": "Discover & connect",
+        "desc": "Browse verified Sao nearby. Filter by service, age, location, and start chatting instantly when you find a match."
+      },
+      "book": {
+        "title": "Book & enjoy",
+        "desc": "Choose a service, pay securely through wallet, and meet your companion. Payment is held until you confirm."
+      }
+    },
+    "featured": {
+      "tag": "Featured",
+      "title": "Meet the Sao everyone's talking about.",
+      "viewAll": "View all",
+      "spotlight": "Spotlight"
+    },
+    "appPromo": {
+      "tag": "Mobile App",
+      "title": "Download the XaoSao app today",
+      "subtitle": "The full experience — manage bookings, chat, notifications and wallet, all in one app.",
+      "realtime": {
+        "title": "Real-time notifications",
+        "desc": "Get notified instantly when there's a new message, booking, or status update."
+      },
+      "nearby": {
+        "title": "Search nearby",
+        "desc": "Find Sao near you with precise GPS — convenient, safe, fast."
+      },
+      "secure": {
+        "title": "Secure payment",
+        "desc": "Pay through the in-app wallet — see your balance and full transaction history."
+      },
+      "googlePlayPrefix": "GET IT ON",
+      "appStorePrefix": "Download on the",
+      "apkPrefix": "Android only",
+      "apkLabel": "Direct APK"
+    },
+    "testimonial": {
+      "quote": "XaoSao made meeting someone new feel effortless. The booking is smooth, the people are real, and the experience is honestly delightful.",
+      "name": "Souksavanh K.",
+      "role": "Customer in Vientiane"
+    },
+    "finalCta": {
+      "title": "Your next match is one tap away.",
+      "subtitle": "Join thousands of people finding meaningful moments through XaoSao.",
+      "primary": "Create your account",
+      "companion": "I'm a companion"
+    },
+    "modelTypes": {
+      "tag": "For companions"
+    },
     "benefits": {
       "badge": "Referral Program",
       "title": "Earn Rewards by Referring Friends",
@@ -2617,6 +2729,485 @@
       "description": "You need to book a service with this model before you can chat",
       "bookNow": "Book Now",
       "cancel": "Close"
+    }
+  },
+  "deactivate": {
+    "tag": "Deactivate account",
+    "title": "We're sorry to see you go.",
+    "subtitle": "Deactivating your XaoSao account is permanent. Take a moment to read what happens — there might be a softer option below that fits better.",
+    "outcomes": {
+      "tag": "What happens",
+      "titleLead": "When you deactivate,",
+      "titleAccent": "everything goes.",
+      "profile": {
+        "title": "Your profile disappears",
+        "desc": "Your photos, bio, and listing are removed from Discover and search. No one can find or contact you."
+      },
+      "data": {
+        "title": "Your data is deleted",
+        "desc": "Messages, posts, ratings, and wallet history are permanently erased. We keep only what the law requires."
+      },
+      "bookings": {
+        "title": "Active bookings cancelled",
+        "desc": "Pending and confirmed bookings will be cancelled and refunded. Completed bookings stay in the other party's history."
+      },
+      "permanent": {
+        "title": "It's permanent",
+        "desc": "You cannot recover the account. If you change your mind later you'll need to sign up again from scratch."
+      }
+    },
+    "alts": {
+      "tag": "Before you go",
+      "title": "Maybe try one of these first.",
+      "subtitle": "These options keep your account safe so you don't have to start over later.",
+      "pause": {
+        "title": "Pause your profile",
+        "desc": "Hide your profile temporarily without losing any data. Resume any time with one tap.",
+        "cta": "Pause instead"
+      },
+      "mute": {
+        "title": "Mute notifications",
+        "desc": "Too many pings? Turn off push, SMS, or email — keep your account, lose the noise.",
+        "cta": "Notification settings"
+      },
+      "support": {
+        "title": "Talk to support",
+        "desc": "Stuck on something? Our team might be able to help before you go.",
+        "cta": "Contact us"
+      }
+    },
+    "confirm": {
+      "tag": "Confirm deactivation",
+      "title": "Verify and confirm.",
+      "subtitle": "Enter the phone number and password for the account you want to deactivate.",
+      "reasonLabel": "Why are you leaving?",
+      "optional": "optional",
+      "accountType": "Account type",
+      "customer": "Customer",
+      "model": "Companion",
+      "phoneLabel": "Phone number",
+      "passwordLabel": "Password",
+      "submit": "Deactivate account",
+      "submitting": "Deactivating…",
+      "cancel": "Take me back"
+    },
+    "reasons": {
+      "notUseful": "Not useful for me right now",
+      "privacy": "Privacy concerns",
+      "notifs": "Too many notifications",
+      "found": "I found a partner",
+      "bad": "Bad experience on the platform",
+      "other": "Something else"
+    },
+    "success": {
+      "title": "Your account has been deactivated.",
+      "desc": "We're sorry to see you go. If you change your mind later, you'll need to sign up again from scratch.",
+      "home": "Back to home"
+    },
+    "help": {
+      "title": "Need help instead?",
+      "desc": "Reach out — we'll do our best to make things right before you leave.",
+      "call": "Call",
+      "email": "Email"
+    },
+    "errors": {
+      "missingFields": "Please fill in all required fields.",
+      "invalidUserType": "Please choose a valid account type.",
+      "invalidPhone": "Please enter a valid phone number.",
+      "invalidCredentials": "Phone number or password is incorrect.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "legal": {
+    "eyebrow": "Legal",
+    "lastUpdated": "Last updated",
+    "terms": {
+      "title": "Terms & Conditions",
+      "subtitleEn": "Terms & Conditions"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "subtitleEn": "Privacy Policy"
+    },
+    "crossLinkTerms": "Looking for our terms & conditions?",
+    "crossLinkPrivacy": "Looking for our privacy policy?",
+    "viewTerms": "Read terms & conditions",
+    "viewPrivacy": "Read privacy policy"
+  },
+  "terms": {
+    "intro": {
+      "title": "Introduction",
+      "body": "In modern life, we rarely have time to visit and meet people the way we used to, and online living has become a daily part of most people's lives. XaoSao was built as a platform that facilitates services, makes things convenient, and covers the use of the system including the mobile app, website, and other related services, in compliance with the rules. Please read the terms thoroughly before registering or using the service, so you understand your rights when using the system."
+    },
+    "about": {
+      "title": "What does Xaosao do?",
+      "items": {
+        "1": "We are a system or platform that acts as a convenient intermediary for finding friends, finding a partner, booking companions, and booking massages so that you can also earn extra income in your free time. It connects men and women in the places where you are, making contact within and across borders possible at any time.",
+        "2": "Men and women can book each other as friends or for massages at various massage shops, and chat with each other to build trust.",
+        "3": "Xaosao is not a prostitution system or any kind of scam."
+      }
+    },
+    "registration": {
+      "title": "I. Account Registration",
+      "items": {
+        "1": "Applicants must be 18 years of age or older;",
+        "2": "Registration is free of charge;",
+        "3": "Information and photos must belong to yourself;",
+        "4": "Applicants must voluntarily register to use the system;",
+        "5": "All applicants have the right to use services according to their own preference, in services that suit them;",
+        "6": "Applicants must have integrity: keep appointments, or notify in advance if unable to attend;",
+        "7": "Applicants may register 2 accounts: one as a companion (service provider) and one as a customer (service user). The same information may be used for both accounts;",
+        "8": "Applicants must pay according to the steps in the XaoSao system rules, in order to search and make bookings;",
+        "9": "You grant the system access to your personal information without prior notice;",
+        "10": "You accept policy changes without prior notice;",
+        "11": "The system will review and confirm — or decline to confirm — based on the applicant's information under appropriate and correct conditions only. Confirmation may take up to 3 days;",
+        "12": "If you are approved and confirmed as a member, but then act against a user — for example: coercion, physical harassment, or behavior contrary to the law and to XaoSao's policy — your account will be removed from the system immediately, and legal action will be taken."
+      }
+    },
+    "prohibitions": {
+      "title": "II. Prohibitions",
+      "items": {
+        "1": "Posting pornographic images of yourself or others on the system is strictly prohibited;",
+        "2": "Using inappropriate or impolite language in comments is strictly prohibited;",
+        "3": "Selling words or doing anything illegal on the system is strictly prohibited;",
+        "4": "Deception, taking the images or information of others and using them in harmful ways (e.g., posting damaging criticism or doing anything illegal) without permission from the owner is strictly prohibited."
+      }
+    },
+    "dispute": {
+      "title": "III. Dispute Resolution",
+      "items": {
+        "1": "If a user has a dispute on any matter, they must gather relevant evidence such as images, audio, video, and other supporting information, and submit a written complaint to XaoSao within 15 business days;",
+        "2": "The system will be the inspector of such disputes — why, who, and so on;",
+        "3": "Our team will serve as a neutral mediator between the disputing parties, per XaoSao's policy and conditions;",
+        "4": "Both parties must cooperate fully and provide relevant details such as images, conversation records, or other related evidence to the system;",
+        "5": "If mediation cannot reach an agreement, with cooperation from both parties, the dispute will be referred to the relevant authorities under the laws of the Lao PDR;",
+        "6": "The system is responsible only within the scope of the services defined in the system. If anyone violates by using services beyond what the system defines, and any problem follows, the system bears no responsibility for damages or legal consequences."
+      }
+    },
+    "closure": {
+      "title": "IV. Account Closure",
+      "items": {
+        "1": "Users may delete their own account themselves. The usage history, account balance, and all records will be removed from the system. If within 30 days the account owner does not submit a written request for account recovery, the system will delete the account permanently;",
+        "2": "For permanent deletion, the system will notify by email or phone in advance, 7 days before the deletion;",
+        "3": "Accounts inactive for 3 months will be deleted automatically by the system, but the system will notify by email or phone 15 days in advance;",
+        "4": "Accounts may be suspended or closed in case of fraud, multiple-account creation, misuse of the system in unlawful ways, or violation of system policies;",
+        "customer": "Any balance remaining in an account that is deleted by the user, or removed for policy violation, cannot be withdrawn: (1) If the account is self-deleted, the system will not return any remaining balance; (2) If the system deletes the account due to non-compliance with conditions or unlawful conduct, the system will not pay back the remaining balance and will additionally charge damages caused by the user.",
+        "companion": "If you are approved and confirmed as a member but do not open at least 1 service for booking, the system will hide your profile within 7 days from the day of confirmation. After that, if you do not contact the system within 30 days to reactivate, your account will be permanently removed from the system."
+      }
+    },
+    "refund": {
+      "title": "V. Refunds",
+      "intro": "Refunds are available under the following conditions:",
+      "items": {
+        "1": "Minimum withdrawal: 100,000 KIP;",
+        "2": "Processing fee for refunds: 10% of the amount being refunded;",
+        "3": "Processing time: within 7 days;",
+        "4": "Please contact admin directly to process refunds."
+      }
+    },
+    "customerBenefits": {
+      "title": "VI. Benefits You Receive",
+      "items": {
+        "1": "Quickly meet your needs;",
+        "2": "Save time;",
+        "3": "Many options to book companions and build connections;",
+        "4": "Build social familiarity and increase understanding with society."
+      }
+    },
+    "companionBenefits": {
+      "title": "VI. Benefits You Receive",
+      "items": {
+        "1": "Income from providing services per appointment;",
+        "2": "Commission at each tier set by the system;",
+        "3": "Promotional bonuses from the system;",
+        "4": "Make new friends and increase social understanding."
+      },
+      "note": "Note: You can withdraw any time with no minimum, and you can always check your income account."
+    },
+    "badges": {
+      "customer": "Customer",
+      "companion": "Companion"
+    }
+  },
+  "privacy": {
+    "intro": "According to the Electronic Data Protection Law No. 25/SPS dated 12 May 2017 (\"the Law\"), which is enforced to protect the privacy rights of personal data owners, the collection, use, or disclosure of personal data must comply with the requirements and conditions set out by law. To process personal data through XaoSao's activities lawfully, we have established a privacy policy to ensure that you, as the data owner, are aware of and acknowledge the importance of the personal data protection that XaoSao will provide under the law.",
+    "definitions": {
+      "title": "Definitions",
+      "law": {
+        "term": "Law",
+        "def": "Refers to the Law on Personal Data Protection, ministerial regulations, announcements, guidelines, or measures issued under the authority of the Personal Data Protection Law of 2017."
+      },
+      "policy": {
+        "term": "Policy",
+        "def": "Refers to the policy of OkardTech Co., Ltd."
+      },
+      "account": {
+        "term": "Account",
+        "def": "Refers to the unique account created so you can access our services or parts of our services."
+      },
+      "application": {
+        "term": "Application",
+        "def": "Refers to XaoSao, the software product the company provides."
+      },
+      "country": {
+        "term": "Country",
+        "def": "Refers to the full sovereignty of any nation."
+      },
+      "device": {
+        "term": "Device",
+        "def": "Refers to any device that can access the service such as a computer, mobile phone, or digital tablet."
+      },
+      "system": {
+        "term": "System",
+        "def": "Refers to Xaosao."
+      },
+      "personalData": {
+        "term": "Personal data",
+        "def": "Any information relating to an identified or identifiable individual."
+      },
+      "service": {
+        "term": "Service",
+        "def": "Refers to the application."
+      },
+      "customer": {
+        "term": "Customer (service user)",
+        "def": "Refers to the person who pays."
+      },
+      "companion": {
+        "term": "Companion (service provider)",
+        "def": "Refers to those who accept work, earn income, and the general public who register accounts to accept work."
+      },
+      "usageData": {
+        "term": "Usage data",
+        "def": "Refers to data collected automatically, whether from using the service or from the service's own infrastructure (e.g., the length of time spent in the system)."
+      },
+      "you": {
+        "term": "You",
+        "def": "The individual who accesses and uses the service, the company, or any other legal entity on whose behalf such individual accesses and uses the service within the system."
+      },
+      "agreement": {
+        "term": "Agreement",
+        "def": "Refers to the terms of use and policies of the system that have been clearly defined."
+      },
+      "thirdParty": {
+        "term": "Third party",
+        "def": "Refers to persons or organizations that are not principal parties to the agreement or use of the XaoSao system, such as banks, government agencies, and others."
+      },
+      "registration": {
+        "term": "Account registration",
+        "def": "Refers to completing relevant personal information into the system fields fully."
+      },
+      "processing": {
+        "term": "Processing of personal data",
+        "def": "Refers to the collection, use, disclosure, or any act regarding personal data or sensitive personal data, including but not limited to transmitting, transferring, destroying, deleting, and others."
+      }
+    },
+    "processing": {
+      "title": "Processing of Personal Data",
+      "body": "In collecting, using, or disclosing personal data under XaoSao's policy, you agree to comply with the following requirements and conditions:"
+    },
+    "collection": {
+      "title": "Collection of Personal Data",
+      "body": "The company will collect your personal data per its purposes and in compliance with the law. The system may collect your personal data through the XaoSao membership form directly or through the following channels:",
+      "channels": {
+        "1": "Registration via phone number",
+        "2": "Registration via email",
+        "3": "Registration via Facebook",
+        "4": "Registration via Google"
+      },
+      "moreSources": "In addition, we will collect your personal data and that of others (if applicable) from communication channels, confirmed to be lawful disclosure or provision of personal data on XaoSao.",
+      "otherSourcesLead": "Where your personal data is obtained from other sources, we will, within 30 days from the date your personal data is stored in the system:",
+      "otherSources": {
+        "1": "Notify you about the collection of personal data from other sources;",
+        "2": "Obtain your consent, except where collection is permitted by law;",
+        "3": "Notify you of the new collection purpose for the use or disclosure of personal data, such as creating and managing user accounts in XaoSao;",
+        "4": "Notify you of the cases in which you are required to provide personal data to comply with the law or contract, where personal data is required to perform a contract, and of the consequences of not providing personal data;",
+        "5": "Notify you of the type of personal data that will be collected, the collection period, and the retention period;",
+        "6": "Notify you of the types of persons or entities to whom personal data may be disclosed, such as the name, location, and contact details of the data protection officer;",
+        "7": "Notify you of your legal rights."
+      }
+    },
+    "dataTypes": {
+      "title": "Types of Personal Data",
+      "items": {
+        "1": "Identity data including: applicant's photos, first name, last name, age, date of birth, and others;",
+        "2": "Contact information including: address, phone number, email address, and others;",
+        "3": "XaoSao account information including: username, complete usage history, and others;",
+        "4": "Identity verification including: customer data must include phone numbers, and others;",
+        "5": "Transaction and financial data including: top-up history, payments, refunds, service charges, and others."
+      }
+    },
+    "purposes": {
+      "title": "Purposes of the Privacy Policy",
+      "items": {
+        "1": "To create and manage user accounts with XaoSao",
+        "2": "To pay service fees",
+        "3": "To provide after-service support",
+        "4": "To collect feedback",
+        "5": "To comply with XaoSao's terms and conditions",
+        "6": "To prevent inappropriate or wrongful use that violates terms and conditions, e.g., preventing user data leaks and user misconduct;",
+        "7": "To exercise legal rights or resolve disputes that may arise from the use of XaoSao;",
+        "8": "Compliance with state laws and regulations;",
+        "9": "Conducting marketing and promotional activities in a non-public manner;",
+        "10": "To improve products, services, or user experiences in identifiable ways."
+      }
+    },
+    "withoutConsent": {
+      "title": "Collection of Personal Data Without Consent",
+      "body1": "To prevent threats to your life, body, and health, such as analyzing or assessing the ability to participate in providing or using the service.",
+      "body2": "To perform a contract to which you are a party in response to a request before entering into such a contract, such as creating and managing user accounts in the XaoSao system."
+    },
+    "requestedConsent": {
+      "title": "Collection From Requested Consent",
+      "body1": "In cases where the company cannot collect personal data without consent, which includes: collecting personal data for marketing and promotion purposes, improving products and services, or improving user experiences, etc.",
+      "body2": "The system will notify you of the purpose of collection, use, and disclosure of personal data when necessary and will consider your freedom to give or withhold consent.",
+      "body3": "The system will not collect, use, or disclose the personal data of those who have not reached the legal age, for example: users under 18 will not be confirmed.",
+      "body4": "If the system finds that personal data has been collected from someone under 18 years of age, the system will delete or destroy that personal data immediately."
+    },
+    "compliantTerms": {
+      "title": "Processing Personal Data in Compliance With Terms",
+      "body": "The system needs to process your personal data for the purpose of governing usage to comply with the terms and conditions. If any party (whether a companion or customer) violates the terms and conditions before registering, you have acknowledged and agreed that these terms have been duly set. If a person exercises the right to object to processing, request deletion, suspension of use, or other rights of others, that person may be restricted from access to XaoSao."
+    },
+    "requiredDisclosures": {
+      "title": "Information You Must Be Notified Of When We Collect Personal Data",
+      "body": "The system will inform you in detail at the time of collection, unless you already know them, including:",
+      "items": {
+        "1": "The purpose of the collection and the use or disclosure of personal data — we inform you of cases where you need to use personal data to comply with the law, where personal data is required to perform a contract, and the possible consequences of not using the personal data;",
+        "2": "The personal data to be collected, the collection period, and the retention period;",
+        "3": "The types of persons or entities to whom collected personal data may be disclosed;",
+        "4": "Information about us, such as our name, contact address, and how to contact the data protection officer;",
+        "5": "Your legal rights."
+      }
+    },
+    "use": {
+      "title": "Use of Personal Data",
+      "body": "The system will use your personal data for the purposes for which it must be collected or as permitted by law."
+    },
+    "disclosure": {
+      "title": "Disclosure of Personal Data",
+      "body1": "The system may disclose or transmit your personal data to the board, shareholders, employees, subcontractors, or internal personnel for purposes necessary under defined conditions for collecting personal data or as required by law. In addition, the system may disclose or forward your personal data to affiliates, subsidiaries, or new companies that the company has founded.",
+      "body2": "The company may disclose or send your personal data to external parties (\"personal data processors\"), including overseas server providers, external service users, business partners, or government agencies, etc.",
+      "body3": "The system will cover and oversee personal data to ensure we comply with the personal data protection standards required by law through a contract or personal data processing agreement."
+    },
+    "crossBorder": {
+      "title": "Cross-Border Data Disclosure",
+      "body": "Where your personal data is disclosed or transferred to a destination country or international organization receiving personal data, we will apply personal data protection standards not lower than those required by law, through a contract or personal data processing agreement, except:",
+      "items": {
+        "1": "We receive your consent by informing you of insufficient personal data protection standards of the destination country or international organization collecting personal data;",
+        "2": "It complies with the law;",
+        "3": "It is necessary for the performance of a contract to which you are a party or for taking steps at your request prior to entering into the contract;",
+        "4": "It is necessary for the performance of a contract between you and another person for your benefit;",
+        "5": "It is necessary for substantial public interest;",
+        "6": "The system will cover and guide the practice of personal data to perform the following functions: collect, use, and disclose personal data per the purposes in the guidance received from the system."
+      }
+    },
+    "retention": {
+      "title": "Personal Data Retention Period",
+      "body1": "The system will retain your personal data for the period necessary to access the service in your account, or for the necessary period defined in this policy or by law.",
+      "body2": "Where you delete your account, the system will retain your personal data for the period necessary to achieve the purposes set in this policy or by law."
+    },
+    "rights": {
+      "title": "Your Rights Over Your Personal Data",
+      "intro": "You may exercise the following rights regarding your personal data:",
+      "withdraw": {
+        "title": "Right to withdraw consent",
+        "body": "You have the right to withdraw the consent you provided to the system to process your personal data. However, withdrawal or removal from the system will not affect lawful collection, use, and disclosure of your personal data during the period in which you had given consent."
+      },
+      "access": {
+        "title": "Right to access and request copies of personal data",
+        "body": "You have the right to access and request copies of your personal data in a generally readable or usable form, and personal data that can be used or disclosed automatically."
+      },
+      "transfer": {
+        "title": "Right to request transmission or transfer of personal data",
+        "body": "You have the right to request that the system transmit or transfer your personal data in a readable, usable form, and personal data that can be used or disclosed automatically to another data controller."
+      },
+      "correct": {
+        "title": "Right to correct personal data",
+        "body": "You have the right to ask the system to correct your personal data to ensure it is accurate, current, complete, and not misleading."
+      },
+      "object": {
+        "title": "Right to object to the processing of personal data",
+        "body": "You have the right to object to the collection, use, or disclosure of your personal data that the system processes for the following purposes:",
+        "items": {
+          "1": "Public interest;",
+          "2": "Exercise of state authority;",
+          "3": "Direct marketing;",
+          "4": "Scientific and historical research or statistics."
+        }
+      },
+      "delete": {
+        "title": "Right to request deletion, anonymization, or destruction of personal data",
+        "body": "You have the right to request deletion, destruction, and anonymization of personal data in the following cases:",
+        "items": {
+          "1": "When the personal data is no longer necessary for the purpose for which it was processed;",
+          "2": "When there is no legal basis to process your personal data;",
+          "3": "When you exercise your right to withdraw consent to the processing of your personal data and the company has no legal authority to continue processing it;",
+          "4": "When you object to the processing of your personal data and the company must comply with your request."
+        }
+      },
+      "restrict": {
+        "title": "Right to restrict the use of personal data",
+        "body": "You have the right to request that your personal data be restricted from use in the following cases:",
+        "items": {
+          "1": "While we examine and correct the accuracy of your personal data to ensure it is correct, complete, and not misleading;",
+          "2": "While exercising your right to object to the collection, use, and disclosure of your personal data during the verification period;",
+          "3": "When personal data is no longer necessary to retain for processing, but you may still request that it be retained for the purposes of legal claims, compliance, exercise of legal claims, or defense of legal claims."
+        }
+      },
+      "complaint": {
+        "title": "Right to file a complaint",
+        "body": "If you believe your personal data is being processed in a manner inconsistent with the purpose for which it was collected or as permitted by law, you have the right to file a complaint with the company regarding the processing of your personal data.",
+        "rowsLead": "You may exercise the right to request the system act on your request through your account or via the system's email per the details below:",
+        "rows": {
+          "row1": "Data subject right · Contact channel · Processing time (within days);",
+          "row2": "Self-service on the XaoSao website (within 7 days);",
+          "row3": "Right to request access and obtain copies of personal data (immediate);",
+          "row4": "Right to request transmission or transfer of personal data (within 30 days);",
+          "row5": "Right to request correction of personal data (immediate);",
+          "row6": "Right to object to the processing of personal data (within 30 days);",
+          "row7": "Right to request deletion or destruction of personal data (within 30 days);",
+          "row8": "Right to suspend the use of personal data (within 30 days)."
+        },
+        "note": "Note: Processing time is counted from the date XaoSao receives complete documents.",
+        "support": "In addition, if you have any questions or recommendations regarding the processing of your personal data, you can contact the system's data protection officer through the contact channels provided.",
+        "refusal": "Xaosao reserves the right to refuse to comply with your request if it is unreasonable or if the company has legal grounds to continue processing your personal data. Where XaoSao cannot comply with your request, the system will record the data request along with the reason in the personal data processing register.",
+        "eea": "Additionally, if you reside in the European Economic Area (EEA), in addition to the rights mentioned above, you also have the right to file a complaint with your local data protection authority."
+      }
+    },
+    "cookies": {
+      "title": "Personal Tracking Technologies (Cookies)",
+      "body": "The system uses cookies or similar technologies to identify and track website users or accesses to the XaoSao website in order to improve user experience, improve service access, or provide appropriate advertising. If you do not want to be tracked by cookies, you can manage your cookie settings."
+    },
+    "security": {
+      "title": "Data Security",
+      "body1": "Xaosao has established appropriate security measures to prevent loss, unauthorized access, use, alteration, modification, or disclosure of personal data, or improper conduct. Such measures will be reviewed when necessary or when technology changes, to ensure data integrity in maintaining appropriate security. These measures preserve confidentiality, integrity, and availability of information to prevent loss, access, use, alteration, modification, or disclosure.",
+      "body2": "In addition, the company will establish personal data security measures including administrative, technical, and physical safeguards. These measures prevent inappropriate access to personal data (access control), receive spam, spyware, or viruses. You can report incidents that may affect the security of XaoSao via phone or WhatsApp.",
+      "body3": "Xaosao has established a tracking system to delete or destroy personal data under the following conditions:",
+      "items": {
+        "1": "When the collection, use, and disclosure period has expired.",
+        "2": "When personal data is not relevant or no longer necessary to retain.",
+        "3": "When the data owner requests it or withdraws consent — unless the personal data is collected for use or disclosure for the purposes of exercising freedom of expression, archiving documents of historical record, archiving or related to research or statistics, performing duties for public interest, complying with the law for a specific purpose, establishing legal claims and complying with or defending legal claims."
+      }
+    },
+    "breach": {
+      "title": "Personal Data Breach Notification",
+      "body": "Where a breach of your personal data occurs, XaoSao will notify the Office of the Personal Data Protection Commission without delay, within 72 hours of becoming aware of the breach, where feasible. If the breach is likely to result in a high risk to your rights and freedoms, the company will notify you of the breach and provide remediation measures without delay through various channels such as: website, message, email, telephone, and others."
+    },
+    "externalSites": {
+      "title": "Policies of Sites Linked to Other Parties",
+      "body": "This policy applies to the use of the service, which may include links to other websites not owned or controlled by XaoSao. Please understand that the XaoSao system is not responsible for the privacy practices of other websites. Therefore, XaoSao recommends that you contact or study the third party's personal data protection policy carefully before providing your personal data to a third party processing personal data."
+    },
+    "changes": {
+      "title": "Changes to the Privacy Policy",
+      "body1": "Xaosao may update this policy from time to time. You can review the terms and conditions of the updated policy on the XaoSao website per the details below:",
+      "body2": "This policy was last revised and takes effect on 30 March 2026."
+    },
+    "contact": {
+      "title": "Contact Support",
+      "intro": "You can contact support directly at:",
+      "email": "Email",
+      "phone": "Phone",
+      "whatsapp": "WhatsApp"
     }
   }
 }

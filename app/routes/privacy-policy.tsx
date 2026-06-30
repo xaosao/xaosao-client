@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { MetaFunction } from "react-router";
 import { Header } from "~/components/header";
 import { Footer } from "~/components/footer";
@@ -15,565 +16,416 @@ export const meta: MetaFunction = () => [
 
 const LAST_UPDATED = "30 / 03 / 2026";
 
+/** Same `useList` shape as terms-conditions — see that file for notes. */
+function useList(prefix: string, count: number, t: (k: string) => string) {
+  return Array.from({ length: count }, (_, i) => t(`${prefix}.${i + 1}`));
+}
+
+// Keys for each `<dt>/<dd>` term in the definitions block. Kept ordered.
+const DEFINITION_KEYS = [
+  "law",
+  "policy",
+  "account",
+  "application",
+  "country",
+  "device",
+  "system",
+  "personalData",
+  "service",
+  "customer",
+  "companion",
+  "usageData",
+  "you",
+  "agreement",
+  "thirdParty",
+  "registration",
+  "processing",
+] as const;
+
+const COMPLAINT_ROWS = [
+  "row1",
+  "row2",
+  "row3",
+  "row4",
+  "row5",
+  "row6",
+  "row7",
+  "row8",
+] as const;
+
 /**
  * Unified Privacy Policy page.
  *
  * Identical content for customers and companions — both audiences see
- * the same data-handling rules. Sourced from the legacy scanned
- * documents and rewritten as semantic HTML.
+ * the same data-handling rules. Content lives in the `privacy.*` i18n
+ * namespace with full EN / LO / TH translations.
  */
 export default function PrivacyPolicy() {
+  const { t } = useTranslation();
+
+  const collectionChannels = useList("privacy.collection.channels", 4, t);
+  const otherSources = useList("privacy.collection.otherSources", 7, t);
+  const dataTypes = useList("privacy.dataTypes.items", 5, t);
+  const purposes = useList("privacy.purposes.items", 10, t);
+  const requiredDisclosures = useList("privacy.requiredDisclosures.items", 5, t);
+  const crossBorderItems = useList("privacy.crossBorder.items", 6, t);
+  const objectItems = useList("privacy.rights.object.items", 4, t);
+  const deleteItems = useList("privacy.rights.delete.items", 4, t);
+  const restrictItems = useList("privacy.rights.restrict.items", 3, t);
+  const securityItems = useList("privacy.security.items", 3, t);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 pt-24 sm:pt-32 pb-16">
         <article className="max-w-4xl mx-auto px-6 lg:px-8">
-          {/* Header */}
           <header className="text-center mb-12">
             <div className="inline-flex items-center bg-rose-50 text-rose-600 px-4 py-1.5 rounded-full mb-4">
               <span className="text-xs font-semibold uppercase tracking-[0.18em]">
-                Legal
+                {t("legal.eyebrow")}
               </span>
             </div>
             <h1 className="font-serif text-4xl sm:text-5xl text-gray-900 leading-tight tracking-tight">
-              ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ
+              {t("legal.privacy.title")}
             </h1>
             <p className="mt-3 text-gray-400 text-sm">
-              Privacy Policy · ອັບເດດຫຼ້າສຸດ {LAST_UPDATED}
+              {t("legal.privacy.subtitleEn")} · {t("legal.lastUpdated")}{" "}
+              {LAST_UPDATED}
             </p>
           </header>
 
           <div className="bg-white rounded-3xl space-y-10 leading-relaxed text-gray-700">
-            {/* Intro */}
             <section>
-              <p>
-                ອີງຕາມກົດໝາຍວ່າດ້ວຍການປົກປ້ອງຂໍ້ມູນເອເລັກໂທຣນິກ ສະບັບເລກທີ່ 25/ສພຊ
-                ອັນທີ 12 ພຶດສະພາ 2017 ("ກົດໝາຍ") ຖືກບັງຄັບໃຊ້ ເພື່ອແນໃສ່ປົກປ້ອງສິດຄວາມເປັນສ່ວນຕົວຂອງເຈົ້າຂອງຂໍ້ມູນສ່ວນຕົວ,
-                ການເກັບກຳ, ການນຳໃຊ້, ຫຼື ການເປີດເຜີຍຂໍ້ມູນສ່ວນຕົວຕ້ອງປະຕິບັດຕາມຂໍ້ກຳນົດ ແລະ
-                ເງື່ອນໄຂທີ່ກຳນົດໄວ້ໂດຍກົດໝາຍ. ເພື່ອໃຫ້ການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຜ່ານການເຄື່ອນໄຫວດຳເນີນ
-                ກິດຈະກຳຂອງແພລດຟອມເຊົ່າສາວ ຖືກຕ້ອງຕາມກົດໝາຍ, ລະບົບໄດ້ສ້າງຕັ້ງນະໂຍບາຍຄວາມເປັນ
-                ສ່ວນຕົວ ເພື່ອຮັບປະກັນວ່າ ທ່ານເປັນເຈົ້າຂອງຂໍ້ມູນສ່ວນຕົວໄດ້ຮັບຮູ້ ແລະ
-                ຮັບຮູ້ເຖິງຄວາມສຳຄັນຂອງການປົກປ້ອງຂໍ້ມູນສ່ວນຕົວທີ່ລະບົບເຊົ່າສາວຈະສະໜອງໃຫ້ຕາມກົດໝາຍ.
-              </p>
+              <p>{t("privacy.intro")}</p>
             </section>
 
-            {/* Definitions */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ນິຍາມຄຳສັບ</h2>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.definitions.title")}
+              </h2>
               <dl className="space-y-3">
-                <div>
-                  <dt className="font-bold text-gray-900">ກົດໝາຍ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງ ກົດໝາຍວ່າດ້ວຍການປົກປ້ອງຂໍ້ມູນສ່ວນຕົວ,
-                    ກົດລະບຽບຂອງກະຊວງ, ປະກາດ, ຄຳແນະນຳ ຫຼື ມາດຕະການທີ່ອອກພາຍໃຕ້
-                    ອຳນາດຂອງກົດໝາຍ ວ່າດ້ວຍການປົກປ້ອງຂໍ້ມູນສ່ວນບຸກຄົນ ປີ 2017.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ນະໂຍບາຍ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງ ນະໂຍບາຍຂອງບໍລິສັດ ໂອກາດເທັກ ຈຳກັດ</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ບັນຊີ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງບັນຊີທີ່ເປັນເອກະລັກທີ່ສ້າງຂຶ້ນເພື່ອໃຫ້ທ່ານເຂົ້າເຖິງການບໍລິການ ຫຼື ບາງສ່ວນຂອງການບໍລິການຂອງພວກເຮົາ.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">Application</dt>
-                  <dd className="ml-4">ໝາຍເຖິງ ເຊົ່າສາວ, ໂຄງການຊອບແອທີບໍລິສັດສະໜອງໃຫ້.</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ປະເທດ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງອະທິປະໄຕອັນຄົບຖ້ວນຂອງຊາດໃດໜຶ່ງ</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ອຸປະກອນ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງອຸປະກອນໃດໆກໍຕາມທີ່ສາມາດເຂົ້າເຖິງການບໍລິການເຊັ່ນ: ຄອມພິວເຕີ,
-                    ໂທລະສັບມືຖື ຫຼື ແທັບເລັດດິຈິຕອນ.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ລະບົບ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງ Xaosao</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ຂໍ້ມູນສ່ວນຕົວ</dt>
-                  <dd className="ml-4">ແມ່ນຂໍ້ມູນໃດໆທີ່ກ່ຽວຂ້ອງກັບບຸກຄົນທີ່ລະບຸຕົວຕົນ ຫຼື ສາມາດລະບຸຕົວຕົນໄດ້.</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ການບໍລິການ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງແອັບພລິເຄຊັນ.</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ຜູ້ໃຊ້ບໍລິການ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງຄົນຜູ້ຈ່າຍເງິນ.</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ຜູ້ໃຫ້ບໍລິການ</dt>
-                  <dd className="ml-4">ໝາຍເຖິງຜູ້ຮັບງານ, ຜູ້ມີລາຍຮັບ ແລະ ບຸກຄົນທົ່ວໄປທີ່ສະໝັກເຂົ້າບັນຊີຮັບງານ.</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ຂໍ້ມູນການນຳໃຊ້</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງຂໍ້ມູນທີ່ເກັບໄດ້ໂດຍອັດຕະໂນມັດ, ບໍ່ວ່າຈະມາຈາກການໃຊ້ບໍລິການ ຫຼື
-                    ຈາກໂຄງສ້າງພື້ນຖານຂອງການບໍລິການເອງ (ຕົວຢ່າງ: ໄລຍະເວລາຂອງການເຂົ້າເບິ່ງໃນລະບົບ).
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ທ່ານ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງບຸກຄົນທີ່ເຂົ້າເຖິງ, ນຳໃຊ້ການບໍລິການ, ບໍລິສັດ, ນິຕິບຸກຄົນອື່ນ
-                    ໃນນາມທີ່ບຸກຄົນດັ່ງກ່າວເຂົ້າເຖິງ ແລະ ບຸກຄົນທີ່ເຂົ້າໃຊ້ການບໍລິການໃນລະບົບ.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ຂໍ້ຕົກລົງ</dt>
-                  <dd className="ml-4">ໝາຍຄວາມວ່າ ເງື່ອນໄຂການນຳໃຊ້ ແລະ ນະໂຍບາຍຂອງລະບົບທີ່ໄດ້ກຳນົດໄວ້ຢ່າງຊັດເຈນ</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ພາກສ່ວນທີ່ສາມ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງບຸກຄົນ ຫຼື ອົງການອື່ນໆ ທີ່ບໍ່ແມ່ນຄູ່ສັນຍາຫຼັກ
-                    ໃນຂໍ້ຕົກລົງ ຫຼື ການນຳໃຊ້ລະບົບເຊົ່າສາວເຊັ່ນ: ທະນາຄານ, ທະນາຄານ, ພາກລັດ ແລະ ອື່ນໆ
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ສະໝັກບັນຊີ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງການຕື່ມຂໍ້ມູນສ່ວນຕົວທີ່ກ່ຽວຂ້ອງກັບຕົວເອງ ໃສ່ໃນລະບົບທີ່ວາງໄວ້ໃຫ້ຄົບຖ້ວນ.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-gray-900">ການປະມວນຜົນຂໍ້ມູນສ່ວນບຸກຄົນ</dt>
-                  <dd className="ml-4">
-                    ໝາຍເຖິງການເກັບກຳ, ນຳໃຊ້, ການເປີດເຜີຍ ຫຼື ການກະທຳໃດໆກ່ຽວກັບຂໍ້ມູນສ່ວນຕົວ
-                    ຫຼື ຂໍ້ມູນສ່ວນຕົວທີ່ລະອຽດອ່ອນ. ຊຶ່ງລວມທັງບໍ່ຈຳກັດການໃນການສົ່ງຕໍ່, ໂອນ,
-                    ທຳລາຍ, ລົບ ແລະ ອື່ນໆ.
-                  </dd>
-                </div>
+                {DEFINITION_KEYS.map((key) => (
+                  <div key={key}>
+                    <dt className="font-bold text-gray-900">
+                      {t(`privacy.definitions.${key}.term`)}
+                    </dt>
+                    <dd className="ml-4">
+                      {t(`privacy.definitions.${key}.def`)}
+                    </dd>
+                  </div>
+                ))}
               </dl>
             </section>
 
-            {/* Data processing */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ</h2>
-              <p>
-                ໃນການເກັບກຳ, ການນຳໃຊ້ ຫຼື ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ ພາຍໃຕ້ນະໂຍບາຍຂອງເຊົ່າສາວ
-                ໄດ້ຕົກລົງເຫັນດີທີ່ຈະປະຕິບັດຕາມຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂດັ່ງຕໍ່ໄປນີ້:
-              </p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.processing.title")}
+              </h2>
+              <p>{t("privacy.processing.body")}</p>
             </section>
 
-            {/* Collection */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການເກັບກຳຂໍ້ມູນສ່ວນຕົວ</h3>
-              <p className="mb-3">
-                ບໍລິສັດ ຈະເກັບກຳຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ຕາມຈຸດປະສົງ ແລະ ໃຫ້ສອດຄ່ອງກັບກົດໝາຍ.
-                ລະບົບອາດຈະເກັບກຳຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ຜ່ານໃບສະໝັກສະມາຊິກ xaosao ໂດຍກົງ ຫຼື
-                ຜ່ານຊ່ອງທາງອື່ນໆດັ່ງຕໍ່ໄປນີ້:
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.collection.title")}
+              </h3>
+              <p className="mb-3">{t("privacy.collection.body")}</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ລົງທະບຽນຜ່ານເບີໂທລະສັບ</li>
-                <li>ການລົງທະບຽນຜ່ານອີເມວ</li>
-                <li>ລົງທະບຽນຜ່ານແອັບພລິເຄຊັນ Facebook</li>
-                <li>ການລົງທະບຽນຜ່ານແອັບພລິເຄຊັນ Google</li>
+                {collectionChannels.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
-              <p className="mt-3">
-                ນອກຈາກນັ້ນ, ຈະເກັບກຳຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ແລະ ຂອງຄົນອື່ນໆ (ຖ້າມີ)
-                ຈາກຊ່ອງທາງການສື່ສານ. ໂດຍໄດ້ຮັບການຍັ້ງຍືນວ່າ ການເປີດເຜີຍ ຫຼື
-                ການສະໜອງຂໍ້ມູນສ່ວນຕົວຂອງຄົນອື່ນໃນ xaosao ແມ່ນຖືກຕ້ອງຕາມກົດໝາຍ.
-              </p>
-              <p className="mt-3">
-                ໃນກໍລະນີ ທີ່ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ໄດ້ມາຈາກທາງອື່ນ, ພວກເຮົາຈະດຳເນີນການພາຍໃນ 30 ມື້
-                ນັບຕັ້ງແຕ່ວັນທີຂໍ້ມູນສ່ວນຕົວຂອງທ່ານຖືກເກັບໄວ້ໃນລະບົບຄື:
-              </p>
+              <p className="mt-3">{t("privacy.collection.moreSources")}</p>
+              <p className="mt-3">{t("privacy.collection.otherSourcesLead")}</p>
               <ul className="list-disc pl-6 space-y-1 mt-2">
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ ກ່ຽວກັບການເກັບກຳຂໍ້ມູນສ່ວນຕົວຈາກແຫຼ່ງອື່ນໆ;</li>
-                <li>ໄດ້ຮັບການຍິນຍອມເຫັນດີຈາກທ່ານ ແລະ ເວັ້ນເສຍແຕ່ ໄດ້ຮັບອະນຸຍາດໃຫ້ເກັບກຳຕາມກົດໝາຍ;</li>
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ ກ່ຽວກັບຈຸດປະສົງຂອງການເກັບກຳໃໝ່ ສຳລັບການນຳໃຊ້ ຫຼື ການເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນເຊັ່ນ: ການສ້າງ ແລະ ການຄຸ້ມຄອງບັນຊີຜູ້ໃຊ້ໃນ xaosao;</li>
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ ກ່ຽວກັບກໍລະນີທີ່ທ່ານຈຳເປັນຕ້ອງໃຫ້ຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອປະຕິບັດຕາມກົດໝາຍ ຫຼື ສັນຍາ ໃນບ່ອນທີ່ຈຳເປັນຕ້ອງໃຫ້ຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອເຮັດສັນຍາ ແລະ ແຈ້ງໃຫ້ທ່ານຮູ້ເຖິງຜົນສະທ້ອນທີ່ອາດຈະເປັນໄປໄດ້ຂອງການບໍ່ໃຫ້ຂໍ້ມູນສ່ວນບຸກຄົນ;</li>
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ກ່ຽວກັບປະເພດຂອງຂໍ້ມູນສ່ວນບຸກຄົນ ທີ່ຈະໄດ້ຮັບການເກັບກຳ, ໄລຍະເວລາຂອງການເກັບກຳ ແລະ ໄລຍະການເກັບກຳ;</li>
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ກ່ຽວກັບປະເພດຂອງບຸກຄົນ ຫຼື ໜ່ວຍງານທີ່ຂໍ້ມູນສ່ວນບຸກຄົນ ອາດຈະໄດ້ຮັບການເປີດເຜີຍເຊັ່ນ: ຊື່, ສະຖານທີ່ ແລະ ຂໍ້ມູນຕິດຕໍ່ສຳລັບເຈົ້າໜ້າທີ່ປົກປ້ອງຂໍ້ມູນສ່ວນຕົວ;</li>
-                <li>ແຈ້ງໃຫ້ທ່ານຮັບຮູ້ກ່ຽວກັບສິດທິທາງກົດໝາຍຂອງທ່ານ.</li>
+                {otherSources.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Data types */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ປະເພດຂອງຂໍ້ມູນສ່ວນຕົວ</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.dataTypes.title")}
+              </h3>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ຂໍ້ມູນການລະບຸຕົວຕົນລວມມີ: ຮູບພາບຂອງຜູ້ສະໝັກ, ຊື່, ນາມສະກຸນ, ອາຍຸ, ວັນເດືອນປີເກີດ ແລະ ອື່ນໆ;</li>
-                <li>ຂໍ້ມູນຕິດຕໍ່ປະກອບມີ: ທີ່ຢູ່, ເບີໂທລະສັບ, ທີ່ຢູ່ອີເມວ ແລະ ອື່ນໆ;</li>
-                <li>ຂໍ້ມູນບັນຊີ xaosao ປະກອບມີ: ບັນຊີຜູ້ໃຊ້, ປະຫວັດການນຳໃຊ້ທີ່ສົມບູນ ແລະ ອື່ນໆ;</li>
-                <li>ຫຼັກຖານການລະບຸຕົວຕົນປະກອບມີ: ຂໍ້ມູນຂອງຜູ້ໃຊ້ບໍລິການຕ້ອງມີເບີໂທ ແລະ ອື່ນໆ;</li>
-                <li>ຂໍ້ມູນທຸລະກຳ ແລະ ການເງິນປະກອບມີ: ປະຫວັດການເຕີມເງິນ, ຈ່າຍເງິນ, ຄືນເງິນ, ຈ່າຍຄ່າບໍລິການ ແລະ ອື່ນໆ.</li>
+                {dataTypes.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Privacy purposes */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ຈຸດປະສົງຂອງນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.purposes.title")}
+              </h3>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ເພື່ອສ້າງ ແລະ ຈັດການບັນຊີຜູ້ໃຊ້ກັບ xaosao</li>
-                <li>ເພື່ອຈ່າຍຄ່າທຳນຽມການໃຊ້ບໍລິການ</li>
-                <li>ເພື່ອສະໜອງການບໍລິການຫຼັງການໃຊ້ບໍລິການ</li>
-                <li>ເພື່ອເກັບກຳຂໍ້ຄິດເຫັນ</li>
-                <li>ເພື່ອປະຕິບັດຕາມຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂຂອງ xaosao</li>
-                <li>ເພື່ອປ້ອງກັນການນຳໃຊ້ໃນທາງທີ່ເໝາະສົມ ແລະ ຖືກຕ້ອງ, ບໍ່ລະເມີດຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ ເຊັ່ນ: ການປ້ອງກັນຂໍ້ມູນຂອງຜູ້ໃຊ້ບໍລິການທີ່ຮົ່ວໄຫຼ ແລະ ການລະທຳຂອງຜູ້ໃຊ້ບໍລິການທີ່ບໍ່ເໝາະສົມ;</li>
-                <li>ເພື່ອໃຊ້ສິດທາງດ້ານກົດໝາຍ ຫຼື ແກ້ໄຂຂໍ້ຂັດແຍ່ງທີ່ອາດຈະເກີດຂຶ້ນຈາກການນຳໃຊ້ xaosao;</li>
-                <li>ປະຕິບັດຕາມກົດໝາຍ ແລະ ລະບຽບການຂອງລັດ;</li>
-                <li>ດຳເນີນກິດຈະກຳການຕະຫຼາດ ແລະ ການສົ່ງເສີມໃນລັກສະນະທີ່ບໍ່ເປີດເຜີຍ;</li>
-                <li>ເພື່ອປັບປຸງຜະລິດຕະພັນ, ບໍລິການ ຫຼື ປະສົບການຂອງຜູ້ໃຊ້ ໃນລັກສະນະທີ່ສາມາດກຳນົດໄດ້.</li>
+                {purposes.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Without consent */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ເກັບກຳຂໍ້ມູນສ່ວນບຸກຄົນໂດຍບໍ່ມີການຍິນຍອມເຫັນດີ</h3>
-              <p>
-                ເພື່ອປ້ອງກັນສະຫວັດດີພາບຂູ່ຕໍ່ຊີວິດ ແລະ ຮ່າງກາຍ ທາງດ້ານສຸຂະພາບຂອງທ່ານເຊັ່ນ: ການວິເຄາະ ຫຼື
-                ການປະເມີນຄວາມສາມາດໃນການເຂົ້າຮ່ວມໃນການໃຫ້ບໍລິການ ແລະ ການໃຊ້ບໍລິການ.
-              </p>
-              <p className="mt-3">
-                ເພື່ອປະຕິບັດສັນຍາ ທີ່ທ່ານເປັນຝ່າຍປະຕິບັດຕາມຄຳຮ້ອງຂອງຂໍ ກ່ອນທີ່ຈະເຂົ້າໄປໃນສັນຍາດັ່ງກ່າວເຊັ່ນ:
-                ການສ້າງ ແລະ ການຄຸ້ມຄອງບັນຊີຜູ້ໃຊ້ໃນລະບົບ xaosao.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.withoutConsent.title")}
+              </h3>
+              <p>{t("privacy.withoutConsent.body1")}</p>
+              <p className="mt-3">{t("privacy.withoutConsent.body2")}</p>
             </section>
 
-            {/* From requested consent */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການເກັບກຳຂໍ້ມູນຈາກການຮ້ອງຂໍການຍິນຍອມ</h3>
-              <p>
-                ໃນກໍລະນີທີ່ບໍລິສັດບໍ່ສາມາດເກັບກຳຂໍ້ມູນສ່ວນບຸກຄົນ ໂດຍບໍ່ມີການຍິນຍອມເຫັນດີ ຊຶ່ງປະກອບມີ:
-                ການລວບລວມຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອຈຸດປະສົງການຕະຫຼາດ ແລະ ການໂຄສະນາ, ການປັບປຸງຜະລິດຕະພັນ
-                ແລະ ການບໍລິການ ຫຼື ການປັບປຸງປະສົບການຂອງຜູ້ໃຊ້ ແລະ ອື່ນໆ.
-              </p>
-              <p className="mt-3">
-                ລະບົບຈະແຈ້ງໃຫ້ທ່ານຊາບກ່ຽວກັບຈຸດປະສົງຂອງການເກັບກຳ, ການນຳໃຊ້,
-                ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ ໃນເວລາທີ່ມີຄວາມຈຳເປັນ ແລະ
-                ຈະພິຈາລະນາສິດເສລິພາບຂອງທ່ານໃນການໃຫ້ການຍິນຍອມເຫັນດີ ຫຼື ບໍ່.
-              </p>
-              <p className="mt-3">
-                ລະບົບຈະບໍ່ເກັບກຳ, ນຳໃຊ້ ຫຼື ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນຂອງຜູ້ທີ່ຍັງບໍ່ທັນໄດ້ເຖິງອາຍຸ ທີ່ທາງກົດໝາຍ
-                ບໍ່ອະນຸຍາດເຊັ່ນ: ໃນກໍລະນີທີ່ຜູ້ທີ່ມີອາຍຸບໍ່ເຖິງ 18 ປີ ແມ່ນຈະບໍ່ໄດ້ຮັບການຍືນຍັນ.
-              </p>
-              <p className="mt-3">
-                ຖ້າລະບົບຮູ້ວ່າ ຂໍ້ມູນສ່ວນຕົວໄດ້ຖືກເກັບກຳຈາກຜູ້ທີ່ອາຍຸບໍ່ເຖິງ 18 ປີ ແມ່ນລະບົບຈະລົບ
-                ຫຼື ທຳລາຍຂໍ້ມູນສ່ວນຕົວໃນທັນທີ.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.requestedConsent.title")}
+              </h3>
+              <p>{t("privacy.requestedConsent.body1")}</p>
+              <p className="mt-3">{t("privacy.requestedConsent.body2")}</p>
+              <p className="mt-3">{t("privacy.requestedConsent.body3")}</p>
+              <p className="mt-3">{t("privacy.requestedConsent.body4")}</p>
             </section>
 
-            {/* Compliant with terms */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ ໃຫ້ສອດຄ່ອງກັບຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ</h3>
-              <p>
-                ລະບົບມີຄວາມຕ້ອງການທີ່ຈະປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ເພື່ອຈຸດປະສົງໃນການຄອບຄຸມການນຳ
-                ໃຊ້ໃຫ້ເປັນໄປຕາມຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ. ຖ້າບຸກຄົນໃດທີ່ລະເມີດຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ
-                ບໍ່ວ່າ, ຜູ້ໃຫ້ບໍລິການ ຫຼື ຜູ້ໃຊ້ບໍລິການ ກ່ອນຈະສະໝັກ ທ່ານໄດ້ຮັບຮູ້ ແລະ
-                ຕົກລົງເຫັນດີວ່າ ຂໍ້ກຳນົດເຫຼົ່ານີ້ມີເປັນທີ່ຮຽບຮ້ອຍແລ້ວ. ຖ້າວ່າ ມີບຸກຄົນອື່ນໃຊ້ສິດ
-                ໃນການຄັດຄ້ານການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ, ຮ້ອງຂໍໃຫ້ລົບ ຫຼື ທຳລາຍຂໍ້ມູນສ່ວນຕົວ,
-                ໂຈະການໃຊ້ຂໍ້ມູນສ່ວນຕົວ ແລະ ສິດອື່ນໆຂອງຄົນອື່ນ ແມ່ນບຸກຄົນນັ້ນ ອາດຈະຖືກຈຳກັດສິດທິໃນການເຂົ້າເຖິງ xaosao ໄດ້.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.compliantTerms.title")}
+              </h3>
+              <p>{t("privacy.compliantTerms.body")}</p>
             </section>
 
-            {/* Required disclosures */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ຂໍ້ມູນທີ່ຕ້ອງໄດ້ຮັບການແຈ້ງ ໃນເວລາທີ່ເກັບກຳຂໍ້ມູນສ່ວນບຸກຄົນ</h3>
-              <p className="mb-3">
-                ລະບົບຈະແຈ້ງໃຫ້ທ່ານຮັບຮູ້ລາຍລະອຽດ ໃນເວລາເກັບກຳຂໍ້ມູນສ່ວນຕົວ ເວັ້ນເສຍແຕ່ວ່າ ທ່ານຮັບຮູ້ລາຍລະອຽດເຫຼົ່ານີ້ດີແລ້ວເຊັ່ນ:
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.requiredDisclosures.title")}
+              </h3>
+              <p className="mb-3">{t("privacy.requiredDisclosures.body")}</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ຈຸດປະສົງຂອງການເກັບກຳ ແລະ ການນຳໃຊ້ ຫຼື ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ ແມ່ນພວກເຮົາແຈ້ງໃຫ້ທ່ານຮັບຮູ້ ກ່ຽວກັບກໍລະນີ ທີ່ທ່ານຈຳເປັນຕ້ອງໃຊ້ຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອປະຕິບັດຕາມກົດໝາຍ, ບ່ອນທີ່ມັນຈຳເປັນຕ້ອງໃຊ້ຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອເຮັດສັນຍາ ແລະ ລວມທັງຜົນກະທົບທີ່ອາດຈະເກີດຂຶ້ນ ຂອງການບໍ່ໃຊ້ຂໍ້ມູນສ່ວນບຸກຄົນ;</li>
-                <li>ຂໍ້ມູນສ່ວນບຸກຄົນທີ່ຈະເກັບກຳ, ໄລຍະເວລາທີ່ຈະເກັບກຳ ແລະ ໄລຍະເວລາທີ່ຂໍ້ມູນຈະຖືກເກັບກຳ;</li>
-                <li>ປະເພດຂອງບຸກຄົນ ຫຼື ໜ່ວຍງານທີ່ເກັບກຳຂໍ້ມູນສ່ວນຕົວອາດຈະຖືກເປີດເຜີຍ;</li>
-                <li>ຂໍ້ມູນກ່ຽວກັບເຮົາເຊັ່ນ: ຊື່, ທີ່ຢູ່ຕິດຕໍ່ ແລະ ວິທີການຕິດຕໍ່ກັບເຈົ້າໜ້າທີ່ປົກປ້ອງຂໍ້ມູນສ່ວນຕົວ;</li>
-                <li>ສິດທິທາງດ້ານກົດໝາຍຂອງເຈົ້າ.</li>
+                {requiredDisclosures.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Use */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການໃຊ້ຂໍ້ມູນສ່ວນບຸກຄົນ</h3>
-              <p>
-                ລະບົບຈະໃຊ້ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ສຳລັບຈຸດປະສົງທີ່ຈຳເປັນຕ້ອງເກັບກຳ ຫຼື ໄດ້ຮັບອະນຸຍາດໂດຍກົດໝາຍ.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.use.title")}
+              </h3>
+              <p>{t("privacy.use.body")}</p>
             </section>
 
-            {/* Disclosure */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ</h3>
-              <p className="mb-3">
-                ລະບົບອາດຈະເປີດເຜີຍ ຫຼື ສົ່ງຂໍ້ມູນສ່ວນຕົວຂອງທ່ານໃຫ້ຄະນະທຳມະການ, ຜູ້ຖືທຸ້ນ, ພະນັກງານ,
-                ຜູ້ຮັບເໝົາຍ່ອຍ ຫຼືບຸກຄະລາກອນພາຍໃນ ເພື່ອຈຸດປະສົງທີ່ຈຳເປັນພາຍໃຕ້ເງື່ອນໄຂທີ່ກຳນົດ
-                ສຳລັບການລວບລວມຂໍ້ມູນສ່ວນບຸກຄົນ ຫຼື ຕາມກົດໝາຍທີ່ກຳນົດໄວ້. ນອກຈາກນັ້ນ, ລະບົບອາດຈະເປີດເຜີຍ ຫຼື
-                ສົ່ງຕໍ່ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານໃຫ້ກັບບໍລິສັດໃນເຄືອ, ບໍລິສັດຍ່ອຍ ຫຼື ບໍລິສັດສ້າງຕັ້ງໃໝ່ທີ່ບໍລິສັດຖືທຸ້ນ.
-              </p>
-              <p className="mb-3">
-                ບໍລິສັດອາດຈະເປີດເຜີຍ ຫຼື ສົ່ງຂໍ້ມູນສ່ວນຕົວຂອງເຈົ້າໄປໃຫ້ບຸກຄົນພາຍນອກ ("ຕົວປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ"),
-                ລວມທັງຜູ້ໃຫ້ບໍລິການເຊີບເວີໃນຕ່າງປະເທດ, ຜູ້ໃຊ້ບໍລິການພາຍນອກ, ຄູ່ຮ່ວມທຸລະກິດ ຫຼື ອົງການຂອງລັດຖະບານ ແລະ ອື່ນໆ.
-              </p>
-              <p>
-                ລະບົບຈະຄອບຄຸມ ແລະ ຄອບຄຸມໂປເຂດເຊິ່ງຂໍ້ມູນສ່ວນຕົວ ເພື່ອຮັບປະກັນວ່າ ພວກເຮົາຕອບສະໜອງໄດ້
-                ຕາມມາດຕະຖານການປົກປ້ອງຂໍ້ມູນສ່ວນຕົວ ທີ່ກຳນົດໄວ້ຕາມກົດໝາຍຜ່ານສັນຍາ ຫຼື ຂໍ້ຕົກລົງການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.disclosure.title")}
+              </h3>
+              <p>{t("privacy.disclosure.body1")}</p>
+              <p className="mt-3">{t("privacy.disclosure.body2")}</p>
+              <p className="mt-3">{t("privacy.disclosure.body3")}</p>
             </section>
 
-            {/* Cross-border */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ການເປີດເຜີຍຂໍ້ມູນຂ້າມພົມແດນ</h3>
-              <p className="mb-3">
-                ໃນກໍລະນີທີ່ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານຖືກເປີດເຜີຍ ຫຼື ສົ່ງຕໍ່ໄປຍັງປະເທດປາຍທາງ ຫຼື ອົງການສາກົນທີ່ໄດ້
-                ຮັບຂໍ້ມູນສ່ວນຕົວ, ເຮົາເຈົ້າຈະໃຊ້ມາດຕະຖານການປົກປ້ອງຂໍ້ມູນສ່ວນຕົວ ບໍ່ຕ່ຳກວ່າທີ່ກົດໝາຍກຳນົດໄວ້,
-                ໂດຍຜ່ານສັນຍາ ຫຼື ຂໍ້ຕົກລົງການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ ເວັ້ນເສຍແຕ່:
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.crossBorder.title")}
+              </h3>
+              <p className="mb-3">{t("privacy.crossBorder.body")}</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ໄດ້ຮັບການຍິນຍອມເຫັນດີຈາກທ່ານ ໂດຍການແຈ້ງໃຫ້ທ່ານຮູ້ກ່ຽວກັບມາດຕະຖານການປົກປ້ອງຂໍ້ມູນສ່ວນບຸກຄົນທີ່ບໍ່ພຽງພໍຂອງປະເທດປາຍທາງ ຫຼື ອົງການຈັດຕັ້ງສາກົນທີ່ເກັບກຳຂໍ້ມູນສ່ວນບຸກຄົນ;</li>
-                <li>ປະຕິບັດຕາມກົດໝາຍ;</li>
-                <li>ມີຄວາມຈຳເປັນສຳລັບການປະຕິບັດສັນຍາ ທີ່ເຈົ້າເປັນພາຄີ ຫຼື ດຳເນີນການຕາມຄຳຮ້ອງຂໍຂອງທ່ານກ່ອນທີ່ຈະເຂົ້າໄປໃນສັນຍານັ້ນ;</li>
-                <li>ມີຄວາມຈຳເປັນສຳລັບການປະຕິບັດສັນຍາລະຫວ່າງ ທ່ານກັບບຸກຄົນອື່ນ ເພື່ອຜົນປະໂຫຍດຂອງທ່ານ;</li>
-                <li>ມີຄວາມຈຳເປັນສຳລັບຜົນປະໂຫຍດສາທາລະນະທີ່ສຳຄັນ;</li>
-                <li>ລະບົບຈະຄອບຄຸມ ແລະ ຊີ້ນຳການປະຕິບັດຂໍ້ມູນສ່ວນບຸກຄົນ ເພື່ອປະຕິບັດໜ້າທີ່ດັ່ງຕໍ່ໄປນີ້: ເກັບກຳ, ນຳໃຊ້ ແລະ ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ ຕາມຈຸດປະສົງໃນຄຳແນະນຳທີ່ໄດ້ຮັບຈາກລະບົບ.</li>
+                {crossBorderItems.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Retention */}
             <section>
-              <h3 className="font-bold text-lg text-gray-900 mb-3">ໄລຍະເວລາຂອງການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ</h3>
-              <p>
-                ລະບົບຈະເກັບຮັກສາຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ສຳລັບໄລຍະເວລາທີ່ຈຳເປັນໃນການເຂົ້ານຳໃຊ້ການບໍລິການ
-                ໃນບັນຊີຂອງທ່ານ ຫຼື ສຳລັບໄລຍະເວລາທີ່ຈຳເປັນທີ່ມີການກຳນົດໄວ້ໃນນະໂຍບາຍນີ້ ຫຼື ຕາມກົດໝາຍ
-                ທີ່ກຳນົດໄວ້.
-              </p>
-              <p className="mt-3">
-                ໃນກໍລະນີທີ່ທ່ານລົບບັນຊີຂອງທ່ານ ລະບົບຈະຮັກສາຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ສຳລັບໄລຍະເວລາທີ່ຈຳເປັນ
-                ເພື່ອບັນລຸຈຸດປະສົງທີ່ກຳນົດໄວ້ໃນນະໂຍບາຍນີ້ ຫຼື ຕາມກົດໝາຍທີ່ກຳນົດໄວ້.
-              </p>
+              <h3 className="font-bold text-lg text-gray-900 mb-3">
+                {t("privacy.retention.title")}
+              </h3>
+              <p>{t("privacy.retention.body1")}</p>
+              <p className="mt-3">{t("privacy.retention.body2")}</p>
             </section>
 
-            {/* User rights */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ສິດທິຂອງທ່ານໃນຂໍ້ມູນສ່ວນຕົວ</h2>
-              <p className="mb-4">ທ່ານສາມາດໃຊ້ສິດບາງຢ່າງທີ່ທ່ານມີກ່ຽວກັບຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ຕາມລາຍລະອຽດຂ້າງລຸ່ມນີ້:</p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.rights.title")}
+              </h2>
+              <p className="mb-4">{t("privacy.rights.intro")}</p>
 
               <ol className="list-decimal pl-6 space-y-5">
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການຖອນການຍິນຍອມ</strong>
-                  <p className="mt-1">
-                    ທ່ານມີສິດທີ່ຈະຖອນການຍິນຍອມເຫັນດີຂອງທ່ານ ຕໍ່ການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ
-                    ທີ່ທ່ານໄດ້ສະໜອງໃຫ້ລະບົບ. ເຖິງຢ່າງໃດກໍຕາມ, ການຖອນຕົວ ຫຼື ລົບອອກຈາກລະບົບດັ່ງກ່າວ
-                    ຈະບໍ່ສົ່ງຜົນກະທົບຕໍ່ການເກັບກຳ, ນຳໃຊ້ ແລະ ການເປີດເຜີຍຂໍ້ມູນສ່ວນຕົວຂອງທ່ານຢ່າງ
-                    ຖືກຕ້ອງຕາມກົດໝາຍ ໃນລະຫວ່າງໄລຍະເວລາທີ່ທ່ານໄດ້ໃຫ້ການຍິນຍອມ.
-                  </p>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.withdraw.title")}
+                  </strong>
+                  <p className="mt-1">{t("privacy.rights.withdraw.body")}</p>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການເຂົ້າເຖິງ ແລະ ຮ້ອງຂໍສຳເນົາຂໍ້ມູນສ່ວນຕົວ</strong>
-                  <p className="mt-1">
-                    ທ່ານມີສິດໃນການເຂົ້າເຖິງ ແລະ ຮ້ອງຂໍສຳເນົາຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ແມ່ນຢູ່ໃນຮູບແບບທີ່
-                    ສາມາດອ່ານໄດ້ ຫຼື ໃຊ້ໄດ້ທົ່ວໄປ ແລະ ຂໍ້ມູນສ່ວນບຸກຄົນສາມາດຖືກນຳໃຊ້ ຫຼື ເປີດເຜີຍ ໂດຍ
-                    ການອັດຕະໂນມັດ.
-                  </p>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.access.title")}
+                  </strong>
+                  <p className="mt-1">{t("privacy.rights.access.body")}</p>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການຮ້ອງຂໍການສົ່ງ ຫຼື ການໂອນຂໍ້ມູນສ່ວນບຸກຄົນ</strong>
-                  <p className="mt-1">
-                    ທ່ານມີສິດຮ້ອງຂໍໃຫ້ລະບົບສົ່ງ ຫຼື ໂອນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານໃນຮູບແບບທີ່ອ່ານໄດ້, ນຳໃຊ້ໄດ້
-                    ແລະ ຂໍ້ມູນສ່ວນຕົວສາມາດນຳໃຊ້ ຫຼື ເປີດເຜີຍໂດຍວິທີການອັດຕະໂນມັດໄປຫາຜູ້ຄອບຄຸມຂໍ້ມູນອື່ນ.
-                  </p>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.transfer.title")}
+                  </strong>
+                  <p className="mt-1">{t("privacy.rights.transfer.body")}</p>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການແກ້ໄຂຂໍ້ມູນສ່ວນຕົວ</strong>
-                  <p className="mt-1">
-                    ທ່ານມີສິດຮ້ອງຂໍໃຫ້ລະບົບແກ້ໄຂຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ເພື່ອໃຫ້ແມ່ນໃຈວ່າ ມັນຖືກຕ້ອງ, ປະຈຸບັນ,
-                    ຄົບຖ້ວນ ແລະ ບໍ່ເຂົ້າໃຈຜິດ.
-                  </p>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.correct.title")}
+                  </strong>
+                  <p className="mt-1">{t("privacy.rights.correct.body")}</p>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິຈະຄັດຄ້ານການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ</strong>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.object.title")}
+                  </strong>
                   <p className="mt-1 mb-2">
-                    ທ່ານມີສິດທີ່ຈະຄັດຄ້ານການເກັບກຳ, ນຳໃຊ້ ຫຼື ການເປີດເຜີຍຂໍ້ມູນສ່ວນຕົວຂອງທ່ານທີ່ລະບົບ
-                    ປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ເພື່ອຈຸດປະສົງຕໍ່ໄປນີ້:
+                    {t("privacy.rights.object.body")}
                   </p>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>ກ່ຽວກັບຜົນປະໂຫຍດຂອງສາທາລະນະ;</li>
-                    <li>ກ່ຽວກັບອຳນາດຂອງລັດ;</li>
-                    <li>ກ່ຽວກັບການຕະຫຼາດໂດຍກົງ;</li>
-                    <li>ກ່ຽວກັບການຄົ້ນຄວ້າວິທະຍາສາດ ແລະ ປະຫວັດ ຫຼື ສະຖິຕິ.</li>
+                    {objectItems.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
                   </ul>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການຮ້ອງຂໍ ການລົບຫຼືທຳລາຍຂໍ້ມູນສ່ວນບຸກຄົນ</strong>
-                  <p className="mt-1 mb-2">
-                    ທ່ານມີສິດທີ່ຈະຮ້ອງຂໍໃຫ້ລົບ, ການທຳລາຍ ແລະ ການປິດຕົວຂອງຂໍ້ມູນສ່ວນບຸກຄົນໃນກໍລະນີດັ່ງຕໍ່ໄປນີ້:
-                  </p>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.delete.title")}
+                  </strong>
+                  <p className="mt-1 mb-2">{t("privacy.rights.delete.body")}</p>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>ເມື່ອຂໍ້ມູນສ່ວນຕົວບໍ່ຈຳເປັນຕໍ່ຈຸດປະສົງທີ່ມັນຖືກປະມວນຜົນ;</li>
-                    <li>ເມື່ອເຫດການໃດໆກໍ່ຕາມ, ບໍ່ມີສິດອຳນາດທາງກົດໝາຍ ໃນການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ;</li>
-                    <li>ເມື່ອທ່ານໃຊ້ສິດທີ່ຈະຖອນການຍິນຍອມເຫັນດີຂອງທ່ານຕໍ່ການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງເຈົ້າ ແລະ ບໍລິສັດ ບໍ່ມີສິດອຳນາດທາງກົດໝາຍ ທີ່ຈະສືບຕໍ່ປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງເຈົ້າອີກຕໍ່ໄປ;</li>
-                    <li>ໃນເວລາທີ່ທ່ານຄັດຄ້ານການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ແລະ ບໍລິສັດຈະຕ້ອງປະຕິບັດຕາມຄຳຮ້ອງຂໍຂອງທ່ານ.</li>
+                    {deleteItems.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
                   </ul>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການຈຳກັດການນຳໃຊ້ຂໍ້ມູນສ່ວນຕົວ</strong>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.restrict.title")}
+                  </strong>
                   <p className="mt-1 mb-2">
-                    ທ່ານມີສິດຮ້ອງຂໍໃຫ້ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານຖືກຈຳກັດບໍ່ໃຫ້ໃຊ້ໃນກໍລະນີຕໍ່ໄປນີ້:
+                    {t("privacy.rights.restrict.body")}
                   </p>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>ໃນລະຫວ່າງທີ່ ກຳລັງກວດສອບ ແລະ ແກ້ໄຂສິດທິຂອງຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ເພື່ອຮັບປະກັນວ່າມັນຖືກຕ້ອງ, ຄົບຖ້ວນສົມບູນ ແລະ ບໍ່ເຂົ້າໃຈຜິດ;</li>
-                    <li>ເມື່ອຢູ່ໃນລະຫວ່າງ ການສິດທິຂອງທ່ານທີ່ຈະຄັດຄ້ານການເກັບກຳ, ນຳໃຊ້ ແລະ ການເປີດເຜີຍຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ ໃນໄລຍະເວລາທີ່ກຳລັງຖືກວດສອບ;</li>
-                    <li>ເມື່ອຂໍ້ມູນສ່ວນຕົວ ໝົດຄວາມຈຳເປັນຕ້ອງເກັບຮັກສາໄວ້ຕໍ່ຂອງການປະມວນຜົນ, ແຕ່ຍັງສາມາດຮ້ອງຂໍໃຫ້ເກັບຮັກສາມັນໄວ້ໄດ້ ເພື່ອຈຸດປະສົງຂອງການຮຽກຮ້ອງທາງກົດໝາຍ, ປະຕິບັດຕາມ ຫຼື ປະຕິບັດການຮຽກຮ້ອງທາງກົດໝາຍ ຫຼື ປົກປ້ອງການຮຽກຮ້ອງທາງກົດໝາຍ.</li>
+                    {restrictItems.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
                   </ul>
                 </li>
                 <li>
-                  <strong className="font-bold text-gray-900">ສິດທິໃນການຮ້ອງທຸກ</strong>
+                  <strong className="font-bold text-gray-900">
+                    {t("privacy.rights.complaint.title")}
+                  </strong>
                   <p className="mt-1 mb-2">
-                    ຖ້າທ່ານເຊື່ອວ່າ ຂໍ້ມູນສ່ວນຕົວຂອງທ່ານຖືກປະມວນຜົນໃນລັກສະນະທີ່ບໍ່ສອດຄ່ອງກັບຈຸດປະສົງ
-                    ທີ່ມັນຖືກເກັບກຳ ຫຼື ຖືກອະນຸຍາດໂດຍກົດໝາຍ, ທ່ານມີສິດທີ່ຈະຍື່ນຄຳຮ້ອງທຸກກັບບໍລິສັດກ່ຽວ
-                    ກັບການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ.
+                    {t("privacy.rights.complaint.body")}
                   </p>
-                  <p className="mb-2">ທ່ານສາມາດໃຊ້ສິດ ໃນການຮ້ອງຂໍໃຫ້ລະບົບດຳເນີນການຕາມຄຳຮ້ອງຂໍຂອງທ່ານ ຜ່ານບັນຊີຂອງທ່ານ ຫຼື ອີເມວຂອງລະບົບ ຕາມລາຍລະອຽດຂ້າງລຸ່ມນີ້:</p>
+                  <p className="mb-2">
+                    {t("privacy.rights.complaint.rowsLead")}
+                  </p>
                   <ul className="list-disc pl-6 space-y-1">
-                    <li>ສິດທິຂອງເຈົ້າຂອງຂໍ້ມູນສ່ວນຕົວ ຊ່ອງທາງການຕິດຕໍ່ ເວລາປະມວນຜົນ (ພາຍໃນມື້);</li>
-                    <li>ດຳເນີນການດ້ວຍຕົນເອງຢູ່ໃນເວັບໄຊ້ xaosao (ພາຍໃນ 7 ວັນ);</li>
-                    <li>ສິດທິໃນການຮ້ອງຂໍການເຂົ້າເຖິງ ແລະ ຮັບສຳເນົາຂໍ້ມູນສ່ວນຕົວ (ທັນທີ);</li>
-                    <li>ສິດໃນການຮ້ອງຂໍໃຫ້ສົ່ງ ຫຼື ການໂອນຂໍ້ມູນສ່ວນບຸກຄົນ (ພາຍໃນ 30 ວັນ);</li>
-                    <li>ສິດໃນການຮ້ອງຂໍການແກ້ໄຂຂໍ້ມູນສ່ວນຕົວ (ທັນທີ);</li>
-                    <li>ສິດທິໃນການຄັດຄ້ານການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວ (ພາຍໃນ 30 ວັນ);</li>
-                    <li>ສິດທີ່ຈະຮ້ອງຂໍໃຫ້ລົບ ຫຼື ທຳລາຍຂໍ້ມູນສ່ວນບຸກຄົນ (ພາຍໃນ 30 ວັນ);</li>
-                    <li>ສິດທີ່ໃນການລະງັບການນຳໃຊ້ຂໍ້ມູນສ່ວນຕົວ (ພາຍໃນ 30 ວັນ).</li>
+                    {COMPLAINT_ROWS.map((row) => (
+                      <li key={row}>
+                        {t(`privacy.rights.complaint.rows.${row}`)}
+                      </li>
+                    ))}
                   </ul>
                   <p className="mt-2 text-sm text-gray-500 italic">
-                    ໝາຍເຫດ: ເວລາປະມວນຜົນ ແມ່ນຕິດໄລ່ຈາກວັນທີທີ່ xaosao ໄດ້ຮັບເອກະສານຄົບຖ້ວນ.
+                    {t("privacy.rights.complaint.note")}
                   </p>
                   <p className="mt-3">
-                    ນອກຈາກນັ້ນ, ຖ້າທ່ານມີຄຳຖາມ ຫຼື ຄຳແນະນຳໃດໆ ກ່ຽວກັບການປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ,
-                    ທ່ານສາມາດຕິດຕໍ່ເຈົ້າໜ້າທີ່ປົກປ້ອງຂໍ້ມູນຂອງລະບົບ ຜ່ານຊ່ອງທາງການຕິດຕໍ່ທີ່ສະໜອງໃຫ້.
+                    {t("privacy.rights.complaint.support")}
                   </p>
                   <p className="mt-3">
-                    Xaosao ສະໜອງສິດທີ່ຈະປະຕິເສດການປະຕິບັດຕາມຄຳຮ້ອງຂໍຂອງທ່ານ ຖ້າຫາກວ່າ ຄຳຮ້ອງຂໍຂອງ
-                    ທ່ານບໍ່ສົມເຫດສົມຜົນ ຫຼື ບໍລິສັດມີສິດທາງກົດໝາຍ ທີ່ຈະສືບຕໍ່ປະມວນຜົນຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ. ໃນກໍລະນີທີ່ xaosao ບໍ່ສາມາດປະຕິບັດຕາມຄຳຮ້ອງຂໍຂອງທ່ານ ລະບົບຈະບັນທຶກຄຳຮ້ອງຂໍຂອງທີ່ຂໍ້ມູນ ພ້ອມກັບເຫດຜົນ ໃນທະບຽນການປະມວນຜົນຂໍ້ມູນສ່ວນບຸກຄົນ.
+                    {t("privacy.rights.complaint.refusal")}
                   </p>
-                  <p className="mt-3">
-                    ນອກຈາກນັ້ນ, ຖ້າທ່ານອາໃສຢູ່ໃນເຮີຣົບ (EEA), ນອກເໜືອຈາກສິດທິທີ່ໄດ້ກ່າວມາຂ້າງເທິງ
-                    ແມ່ນທ່ານຍັງມີສິດທີ່ຈະຍື່ນຄຳຮ້ອງທຸກ ກັບເຈົ້າໜ້າທີ່ປົກປ້ອງຂໍ້ມູນໃນທ້ອງຖິ່ນຂອງທ່ານໄດ້.
-                  </p>
+                  <p className="mt-3">{t("privacy.rights.complaint.eea")}</p>
                 </li>
               </ol>
             </section>
 
-            {/* Cookies */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ເຕັກໂນໂລຊີການຕິດຕາມສ່ວນບຸກຄົນ (Cookies)</h2>
-              <p>
-                ລະບົບໃຊ້ cookies ຫຼື ເຕັກໂນໂລຊີທີ່ຄ້າຍຄືກັນ ເພື່ອກຳນົດ ແລະ ຕິດຕາມຜູ້ໃຊ້ເວັບໄຊ້ ຫຼື
-                ການເຂົ້າເຖິງເວັບໄຊ້ຂອງ xaosao ເພື່ອປັບປຸງປະສົບການຂອງຜູ້ໃຊ້, ປັບປຸງການເຂົ້າເຖິງການໃຊ້ບໍລິການ
-                ຫຼື ໃຫ້ການໂຄສະນາທີ່ເໝາະສົມ. ຖ້າຫາກວ່າ ທ່ານບໍ່ຕ້ອງການທີ່ຈະໄດ້ຮັບການຕິດຕາມໂດຍ cookies,
-                ທ່ານສາມາດກຳນົດການຕັ້ງຄ່າ cookies ຂອງທ່ານໄດ້.
-              </p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.cookies.title")}
+              </h2>
+              <p>{t("privacy.cookies.body")}</p>
             </section>
 
-            {/* Security */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ການຮັກສາຄວາມປອດໄພຂອງຂໍ້ມູນ</h2>
-              <p>
-                xaosao ໄດ້ສ້າງຕັ້ງມາດຕະການຄວາມປອດໄພທີ່ເໝາະສົມ ເພື່ອປ້ອງກັນການສູນເສຍ, ການເຂົ້າເຖິງ,
-                ການນຳໃຊ້, ການປ່ຽນແປງ, ການແກ້ໄຂ, ຫຼື ເປີດເຜີຍຂໍ້ມູນສ່ວນບຸກຄົນ ໂດຍບໍ່ມີການອະນຸຍາດ ຫຼື ການ
-                ກະທຳທີ່ບໍ່ເໝາະສົມ. ມາດຕະການດັ່ງກ່າວ ຈະຖືກພິຈາລະນາຕາມຄວາມຈຳເປັນ ຫຼື ເມື່ອເຕັກໂນໂລຊີມີ
-                ການປ່ຽນແປງໄປ ເພື່ອຮັບປະກັນປະສິດທິພົນຂອງຂໍ້ມູນ ໃນການຮັກສາຄວາມປອດໄພທີ່ເໝາະສົມ. ມາດ
-                ຕະການນີ້ຈະຮັກສາຄວາມລັບ, ຄວາມຊື່ສັດ ແລະ ຂໍ້ມູນທີ່ມີຢູ່ ເພື່ອປ້ອງກັນການສູນເສຍ, ການເຂົ້າເຖິງ,
-                ການນຳໃຊ້, ການປ່ຽນແປງ, ການດັດແກ້, ຫຼື ການເປີດເຜີຍ.
-              </p>
-              <p className="mt-3">
-                ນອກຈາກນັ້ນ, ບໍລິສັດຈະສ້າງມາດຕະການຄວາມປອດໄພຂອງຂໍ້ມູນສ່ວນບຸກຄົນ, ຊຶ່ງລວມມີການປົກ
-                ປ້ອງດ້ານບໍລິຫານ, ການປົກປ້ອງດ້ານວິຊາການ ແລະ ການປົກປ້ອງທາງດ້ານຮ່າງກາຍ. ມາດຕະການ
-                ເຫຼົ່ານີ້ ແມ່ນປ້ອງກັນການເຂົ້າເຖິງຂໍ້ມູນສ່ວນບຸກຄົນທີ່ບໍ່ເໝາະສົມ (ການຄອບຄຸມການເຂົ້າເຖິງ), ໄດ້ຮັບ
-                spam, spyware ຫຼື ໄວຣັສ ທ່ານສາມາດລາຍງານເຫດການທີ່ອາດຈະສົ່ງຜົນກະທົບຕໍ່ຄວາມປອດໄພ
-                ຂອງ xaosao ໄດ້ທີ່ເບີໂທ ຫຼື WhatsApp.
-              </p>
-              <p className="mt-3 mb-2">Xaosao ໄດ້ສ້າງຕັ້ງລະບົບການຕິດຕາມ ເພື່ອລົບ ຫຼື ທຳລາຍຂໍ້ມູນສ່ວນບຸກຄົນ ເມື່ອມີເງື່ອນໄຂດັ່ງຕໍ່ໄປນີ້:</p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.security.title")}
+              </h2>
+              <p>{t("privacy.security.body1")}</p>
+              <p className="mt-3">{t("privacy.security.body2")}</p>
+              <p className="mt-3 mb-2">{t("privacy.security.body3")}</p>
               <ul className="list-disc pl-6 space-y-1">
-                <li>ເມື່ອເວລາເກັບກຳ, ນຳໃຊ້ ແລະ ການເປີດເຜີຍໝົດອາຍຸແລ້ວ.</li>
-                <li>ໃນເວລາທີ່ຂໍ້ມູນສ່ວນບຸກຄົນບໍ່ກ່ຽວຂ້ອງ ຫຼື ບໍ່ມີຄວາມຈຳເປັນທີ່ຈະເກັບໄວ້.</li>
-                <li>
-                  ໃນເມື່ອເຈົ້າຂອງຂໍ້ມູນຮ້ອງຂໍ ຫຼື ຖອນການຍິນຍອມ, ຍົກເວັ້ນໃນເວລາທີ່ຂໍ້ມູນສ່ວນບຸກຄົນຖືກ
-                  ລວບລວມໃນການນຳໃຊ້ ຫຼື ເປີດເຜີຍສຳລັບຈຸດປະສົງຂອງການປະຕິບັດສິດເສລິພາບໃນ
-                  ການສະແດງ, ການລວບລວມເອກະສານປະຫວັດ, ການເກັບມ້ຽນ ຫຼື ທີ່ກ່ຽວຂ້ອງກັບການຄົ້ນຄວ້າ ຫຼື
-                  ສະຖິຕິ, ການປະຕິບັດໜ້າທີ່ ເພື່ອຜົນປະໂຫຍດສາທາລະນະ, ປະຕິບັດຕາມກົດໝາຍເພື່ອບັນລຸຈຸດປະສົງສະເພາະ,
-                  ສ້າງຕັ້ງການຮຽກຮ້ອງທາງດ້ານກົດໝາຍ ແລະ ການປະຕິບັດຕາມ ຫຼື ການຮຽກຮ້ອງທາງດ້ານກົດໝາຍ.
-                </li>
+                {securityItems.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </section>
 
-            {/* Breach notification */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ລາຍງານການລະເມີດຂໍ້ມູນສ່ວນຕົວ</h2>
-              <p>
-                ໃນກໍລະນີ ທີ່ມີການລະເມີດຂໍ້ມູນສ່ວນຕົວຂອງທ່ານ, xaosao ຈະແຈ້ງໃຫ້ຫ້ອງການຂອງຄະນະກຳມະ
-                ການປົກປ້ອງຂໍ້ມູນສ່ວນບຸກຄົນ ໂດຍບໍ່ມີການຊັກຊ້າ, ພາຍໃນ 72 ຊົ່ວໂມງທີ່ຮັບຮູ້ເຖິງການລະເມີດໃຫ້ດີທີ່
-                ສຸດ. ໃນກໍລະນີທີ່ການລະເມີດມີຄວາມສ່ຽງສູງທີ່ຈະສົ່ງຜົນກະທົບຕໍ່ສິດທິເສລິພາບຂອງທ່ານ, ບໍລິສັດ
-                ຈະແຈ້ງໃຫ້ທ່ານຮູ້ກ່ຽວກັບການລະເມີດ ແລະ ສະໜອງມາດຕະການແກ້ໄຂ ໂດຍບໍ່ມີການຊັກຊ້າຜ່ານຊ່ອງ
-                ທາງຕ່າງໆເຊັ່ນ: ເວັບໄຊ້, ຂໍ້ຄວາມ, ອີເມວ, ໂທລະສັບ ແລະ ອື່ນໆ.
-              </p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.breach.title")}
+              </h2>
+              <p>{t("privacy.breach.body")}</p>
             </section>
 
-            {/* External sites */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ນະໂຍບາຍຂອງເວັບໄຊທີ່ເຊື່ອມຕໍ່ກັບພາກສ່ວນອື່ນໆ</h2>
-              <p>
-                ນະໂຍບາຍນີ້ ໃຊ້ກັບການໃຫ້ບໍລິການ ອາດຈະປະກອບມີການເຊື່ອມຕໍ່ກັບເວັບໄຊ້ອື່ນໆ ທີ່ບໍ່ໄດ້ເປັນເຈົ້າ
-                ຂອງ ຫຼື ຖືກຄອບຄຸມໂດຍ xaosao. ໃຫ້ເຂົ້າໃຈວ່າ ລະບົບ xaosao ບໍ່ຮັບຜິດຊອບຕໍ່ການປະຕິບັດຄວາມ
-                ເປັນສ່ວນຕົວຂອງເວັບໄຊ້ອື່ນ. ດັ່ງນັ້ນ, xaosao ແນະນຳໃຫ້ທ່ານຕິດຕໍ່ ຫຼື ສຶກສານະໂຍບາຍການປົກ
-                ປ້ອງຂໍ້ມູນສ່ວນບຸກຄົນ ຂອງພາກສ່ວນທີສາມໃຫ້ດີ ກ່ອນທີ່ຈະສະໜອງຂໍ້ມູນສ່ວນບຸກຄົນຂອງທ່ານ ໃຫ້
-                ພາກສ່ວນທີສາມທີ່ດຳເນີນການຂໍ້ມູນສ່ວນບຸກຄົນ.
-              </p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.externalSites.title")}
+              </h2>
+              <p>{t("privacy.externalSites.body")}</p>
             </section>
 
-            {/* Changes */}
             <section>
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ການປ່ຽນແປງໃນນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</h2>
-              <p>
-                Xaosao ອາດຈະປັບປຸງນະໂຍບາຍນີ້ໃນບາງຄັ້ງຄາວ. ທ່ານສາມາດທິບທວນຄືນຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ
-                ຂອງນະໂຍບາຍສະບັບປັບປຸງນີ້ຢູ່ໃນເວັບໄຊ້ຂອງ xaosao ຕາມລາຍລະອຽດຂ້າງລຸ່ມນີ້:
-              </p>
-              <p className="mt-3">
-                ນະໂຍບາຍນີ້ໄດ້ຮັບການແກ້ໄຂຄັ້ງສຸດທ້າຍ ແລະ ມີຜົນບັງຄັບໃຊ້ໃນວັນທີ 30 ມີນາ 2026.
-              </p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.changes.title")}
+              </h2>
+              <p>{t("privacy.changes.body1")}</p>
+              <p className="mt-3">{t("privacy.changes.body2")}</p>
             </section>
 
-            {/* Contact */}
             <section className="border-t border-gray-100 pt-8">
-              <h2 className="font-serif text-2xl text-gray-900 mb-3">ຕິດຕໍ່ Support</h2>
-              <p className="mb-3">ສາມາດຕິດຕໍ່ Support ໂດຍກົງໄດ້ທີ:</p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-3">
+                {t("privacy.contact.title")}
+              </h2>
+              <p className="mb-3">{t("privacy.contact.intro")}</p>
               <ul className="space-y-2">
                 <li>
-                  <span className="font-semibold text-gray-900">ອີເມວ:</span>{" "}
-                  <a className="text-rose-500 hover:text-rose-600" href="mailto:xaosao95@gmail.com">
+                  <span className="font-semibold text-gray-900">
+                    {t("privacy.contact.email")}:
+                  </span>{" "}
+                  <a
+                    className="text-rose-500 hover:text-rose-600"
+                    href="mailto:xaosao95@gmail.com"
+                  >
                     xaosao95@gmail.com
                   </a>
                 </li>
                 <li>
-                  <span className="font-semibold text-gray-900">ເບີໂທລະສັບ:</span>{" "}
-                  <a className="text-rose-500 hover:text-rose-600" href="tel:+8562091082600">
+                  <span className="font-semibold text-gray-900">
+                    {t("privacy.contact.phone")}:
+                  </span>{" "}
+                  <a
+                    className="text-rose-500 hover:text-rose-600"
+                    href="tel:+8562091082600"
+                  >
                     20 9108 2600
                   </a>
                 </li>
                 <li>
-                  <span className="font-semibold text-gray-900">WhatsApp:</span> 2091082600
+                  <span className="font-semibold text-gray-900">
+                    {t("privacy.contact.whatsapp")}:
+                  </span>{" "}
+                  2091082600
                 </li>
               </ul>
             </section>
 
-            {/* Cross-link */}
             <section className="text-center pt-6 border-t border-gray-100 text-sm text-gray-500">
               <p>
-                ສຳລັບເງື່ອນໄຂການໃຊ້ບໍລິການ, ກະລຸນາອ່ານ{" "}
+                {t("legal.crossLinkTerms")}{" "}
                 <a
                   href="/terms-conditions"
                   className="text-rose-500 hover:text-rose-600 font-semibold"
                 >
-                  ເງື່ອນໄຂການໃຫ້ບໍລິການ
+                  {t("legal.viewTerms")}
                 </a>
-                .
               </p>
             </section>
           </div>
