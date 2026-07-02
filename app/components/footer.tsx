@@ -7,9 +7,7 @@ import {
   Clock,
   Facebook,
   MessageCircle,
-  ArrowUp,
   Apple,
-  Download as DownloadIcon,
 } from "lucide-react";
 import { openWhatsApp } from "~/utils/functions/whatsapp";
 
@@ -27,12 +25,6 @@ const EMAIL = "xaosao95@gmail.com";
  */
 export function Footer() {
   const { t } = useTranslation();
-
-  const handleScrollTop = () => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
 
   return (
     <footer className="bg-white text-gray-700 pt-20 pb-10">
@@ -220,16 +212,8 @@ export function Footer() {
               </div>
             </div>
 
-            {/* Lang + back-to-top */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleScrollTop}
-                aria-label={t("footer.scrollTop", { defaultValue: "Scroll to top" })}
-                className="w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 transition-all hover:shadow-lg hover:scale-105 animate-bounce"
-              >
-                <ArrowUp className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Scroll-to-top now lives at the app root as a floating
+                button — see components/scroll-to-top.tsx. */}
           </div>
 
           {/* Copyright line */}

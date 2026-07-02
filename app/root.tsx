@@ -17,6 +17,7 @@ import { useLanguageInit } from "./hooks/use-language-init";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
+import { ScrollToTop } from "./components/scroll-to-top";
 
 // App version - increment this when deploying new versions to force cache refresh
 const APP_VERSION = "1.0.14";
@@ -344,6 +345,7 @@ export default function App() {
       <Outlet />
       <InstallPrompt />
       <DebugConsole />
+      <ScrollToTop />
     </>
   );
 }

@@ -320,3 +320,44 @@
   animation: bounce-slow 3.5s ease-in-out infinite;
   animation-delay: 1.5s;
 }
+
+/* ─── Scroll reveal ──────────────────────────────────────────────
+ *
+ * Paired with the <Reveal> component. Uses transitions (not keyframes)
+ * so the visible state persists cleanly and `transitionDelay` from the
+ * component can stagger children without extra CSS.
+ *
+ * Reduced-motion users bypass this via the <Reveal> effect: it flips
+ * `visible` to true immediately, giving them the resting appearance.
+ */
+.reveal-out {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  will-change: opacity, transform;
+  transition:
+    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Direction variants override the default translate. */
+.reveal-out.reveal-left  { transform: translate3d(-24px, 0, 0); }
+.reveal-out.reveal-right { transform: translate3d(24px, 0, 0); }
+.reveal-out.reveal-fade  { transform: none; }
+.reveal-in.reveal-left,
+.reveal-in.reveal-right,
+.reveal-in.reveal-fade { transform: translate3d(0, 0, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-out, .reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
