@@ -155,9 +155,14 @@ export async function action({ request }: Route.ActionArgs) {
 
     if (request.method === "POST") {
         try {
-            // Note: validate before the file upload happens — service will reject
-            // empty profile via validation rules in customerRegister.
-            await validateCustomerSignupInputs({ ...signUpData, profile: "placeholder" });
+            // Validate all non-profile fields before the (slow) BunnyCDN upload.
+            // The profile URL is filled in by customerRegister() after upload,
+            // so we pass a valid placeholder URL here purely to satisfy the
+            // Zod `.url()` check — the real CDN URL replaces it before save.
+            await validateCustomerSignupInputs({
+                ...signUpData,
+                profile: "https://placeholder.local/pending",
+            });
             const res = await customerRegister(signUpData, ip, accessKey, profileFile);
             console.log("RES::", res);
 
