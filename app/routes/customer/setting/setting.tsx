@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import type { Route } from "./+types/setting";
 import { useTranslation } from 'react-i18next';
-import { Form, redirect, useActionData, useNavigate, useNavigation, type LoaderFunction } from "react-router";
+import { Form, redirect, useActionData, useNavigate, useNavigation, useRouteLoaderData, type LoaderFunction } from "react-router";
 import { User, Lock, Bell, Globe, Flag, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check, Wallet, LogOut } from "lucide-react";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
 
@@ -18,18 +18,13 @@ import { capitalize } from "~/utils/functions/textFormat";
 import { requireUserSession, destroyUserSession } from "~/services/auths.server";
 import type { ICustomerCredentials, ICustomerResponse, ICustomerSettingCredentials } from "~/interfaces/customer";
 import { validateICustomerSettingInputs, validateReportUpInputs, validateUpdateProfileInputs } from "~/services/validation.server";
-import { changeCustomerPassword, createReport, deleteAccount, getCustomerProfile, updateCustomerSetting, updateProfile } from "~/services/profile.server";
-import { prisma } from "~/services/database.server";
+import { changeCustomerPassword, createReport, deleteAccount, updateCustomerSetting, updateProfile } from "~/services/profile.server";
 
 type NotificationType = "push" | "sms"; // "email" disabled for now
 
-interface LoaderReturn {
+interface CustomerLayoutData {
     customerData: ICustomerResponse;
-    walletBalance: number;
-}
-
-interface TransactionProps {
-    loaderData: LoaderReturn;
+    customerBalance: number;
 }
 
 // Helper function for error handling
@@ -66,20 +61,17 @@ const handleError = (error: any, actionType: string) => {
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
-    const customerId = await requireUserSession(request);
-    const customerData = await getCustomerProfile(customerId);
-
-    // Get wallet balance for delete account warning
-    const wallet = await prisma.wallet.findFirst({
-        where: { customerId },
-        select: { totalBalance: true },
-    }).catch(() => null);
-
-    return {
-        customerData,
-        walletBalance: wallet?.totalBalance || 0,
-    };
+    // customerData + walletBalance live in the customer-layout loader — this
+    // page reads them via useRouteLoaderData below. Keep the session guard
+    // so unauthenticated hits still redirect.
+    await requireUserSession(request);
+    return {};
 };
+
+export function shouldRevalidate(): boolean {
+    // Loader returns no data — nothing to revalidate.
+    return false;
+}
 
 export async function action({ request }: Route.ActionArgs) {
     const customerId = await requireUserSession(request);
@@ -240,12 +232,13 @@ const PasswordInput: React.FC<{
     );
 };
 
-export default function SettingPage({ loaderData }: TransactionProps) {
+export default function SettingPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const navigation = useNavigation();
-    // const [searchParams] = useSearchParams();
-    const { customerData, walletBalance } = loaderData;
+    const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+    const customerData = layoutData?.customerData as ICustomerResponse;
+    const walletBalance = layoutData?.customerBalance ?? 0;
     const actionData = useActionData<typeof action>();
     const isMobile = useIsMobile();
 

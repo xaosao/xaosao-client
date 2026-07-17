@@ -7,6 +7,7 @@ import {
   notifyModelFriendRequest,
   notifyCustomerFriendRequest,
 } from "./notification.server";
+import { cacheInvalidateContaining } from "./cache.server";
 
 interface ChatInputCredentials {
   phone_number: string;
@@ -45,6 +46,9 @@ export async function createCustomerInteraction(
         actionType
       );
       if (res.id) {
+        // Toggled off — the customer's next discover/matches load must
+        // not see the stale "already liked" state from the cache.
+        cacheInvalidateContaining(customerId);
         return {
           success: true,
           error: false,
@@ -62,6 +66,9 @@ export async function createCustomerInteraction(
     });
 
     if (res1.id) {
+      // New like/pass changed what this customer's list should show.
+      cacheInvalidateContaining(customerId);
+
       // Send notification when customer likes a model
       if (actionType === "LIKE") {
         try {
@@ -210,6 +217,9 @@ export async function customerAddFriend(
     });
 
     if (res.id) {
+      // Friendship state changed — customer's list-view badges must refresh.
+      cacheInvalidateContaining(adderId);
+
       // Send friend request notification to model
       try {
         const customerName = customer

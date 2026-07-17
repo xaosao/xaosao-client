@@ -17,7 +17,7 @@ import {
 import type { Route } from "./+types/discover";
 import { useTranslation } from "react-i18next";
 import React, { useState, useRef, useEffect } from "react";
-import { Form, useFetcher, useNavigate, useNavigation, useSearchParams, type LoaderFunction } from "react-router";
+import { Form, useFetcher, useNavigate, useNavigation, useRouteLoaderData, useSearchParams, type LoaderFunction } from "react-router";
 
 // swiper
 import "swiper/css";
@@ -61,19 +61,18 @@ interface NearbyPagination {
 }
 
 interface LoaderReturn {
-    latitude: number;
-    longitude: number;
     models: ImodelsResponse[];
-    hasActiveSubscription: boolean;
-    hasPendingSubscription: boolean;
     nearbyModels: INearbyModelResponse[];
     nearbyPagination: NearbyPagination;
     vipModels: INearbyModelResponse[];
     chattableModelIds: string[];
-    trialPackage: {
-        id: string;
-        price: number;
-    } | null;
+}
+
+interface CustomerLayoutData {
+    customerData: { latitude?: number | string | null; longitude?: number | string | null };
+    hasActiveSubscription: boolean;
+    hasPendingSubscription: boolean;
+    trialPackage: { id: string; price: number } | null;
     customerBalance: number;
 }
 
@@ -115,32 +114,34 @@ function generateSeed(customerId: string): number {
     return customerIdNum + timestamp;
 }
 
+export function shouldRevalidate({
+    currentUrl,
+    nextUrl,
+    actionResult,
+    defaultShouldRevalidate,
+}: {
+    currentUrl: URL;
+    nextUrl: URL;
+    actionResult?: any;
+    defaultShouldRevalidate: boolean;
+}): boolean {
+    // Skip revalidation for fire-and-forget / optimistic actions
+    const skipActions = new Set(["trackActivity", "addFriend", "like", "pass"]);
+    if (actionResult?.action && skipActions.has(actionResult.action)) return false;
+    // Same URL, no action — nothing to reload
+    if (
+        currentUrl.pathname === nextUrl.pathname &&
+        currentUrl.search === nextUrl.search &&
+        !actionResult
+    ) {
+        return false;
+    }
+    return defaultShouldRevalidate;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
-    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
-    const { getCustomerProfile } = await import("~/services/profile.server");
-    const { prisma } = await import("~/services/database.server");
-
-    // Get customer's current GPS location from database
-    const customer = await getCustomerProfile(customerId);
-    const latitude = customer?.latitude || 0;
-    const longitude = customer?.longitude || 0;
-
-    // Check if customer has active or pending subscription
-    const hasSubscription = await hasActiveSubscription(customerId);
-    const hasPending = await hasPendingSubscription(customerId);
-
-    // Get trial package and customer balance
-    const [trialPackage, wallet] = await Promise.all([
-        prisma.subscription_plan.findFirst({
-            where: { name: "24-Hour Trial", status: "active" },
-            select: { id: true, price: true },
-        }).catch(() => null),
-        prisma.wallet.findFirst({
-            where: { customerId },
-            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }).catch(() => null),
-    ]);
+    const { hasActiveSubscription } = await import("~/services/package.server");
 
     // Parse filter parameters from URL
     const url = new URL(request.url);
@@ -155,38 +156,33 @@ export const loader: LoaderFunction = async ({ request }) => {
         minRating: url.searchParams.get("rating") ? Number(url.searchParams.get("rating")) : undefined,
     };
 
-    // Get models for this customer with filters (online models)
-    const response = await getModelsForCustomer(customerId, filters);
-    const models: ImodelsResponse[] = response.map((model) => ({
+    // hasSubscription is needed to gate chattable — start it early so chattable can chain
+    const hasSubscriptionPromise = hasActiveSubscription(customerId).catch(() => false);
+    const chattablePromise: Promise<Set<string>> = hasSubscriptionPromise.then((has) =>
+        has ? getChattableModelIds(customerId) : new Set<string>()
+    );
+
+    // Run every remaining query in parallel — no more sequential awaits
+    const [modelsResponse, nearbyResult, vipModelsResult, chattableSet] = await Promise.all([
+        getModelsForCustomer(customerId, filters),
+        getNearbyModels(customerId as string, filters, 50, { page: 1, limit: 50 }),
+        getVipModels(customerId).catch((e) => {
+            console.error("[Discover] Failed to load VIP models:", e);
+            return [] as any[];
+        }),
+        chattablePromise,
+    ]);
+
+    const models: ImodelsResponse[] = modelsResponse.map((model) => ({
         ...model,
         gender: model.gender as Gender,
         available_status: model.available_status as IAvailableStatus,
-        bio: model.bio || "", // Ensure bio is always a string, not null
+        bio: model.bio || "",
     }));
 
-    // Get nearby models with pagination (initial page = 1, limit = 50)
-    const nearbyResult = await getNearbyModels(customerId as string, filters, 50, { page: 1, limit: 50 });
-
-    // Get VIP models (all genders)
-    let vipModelsResult: any[] = [];
-    try {
-        vipModelsResult = await getVipModels(customerId);
-    } catch (e) {
-        console.error("[Discover] Failed to load VIP models:", e);
-    }
-
-    // Get chattable model IDs for green chat button
-    const chattableSet = hasSubscription ? await getChattableModelIds(customerId) : new Set<string>();
     const chattableModelIds = Array.from(chattableSet);
-
-    // Generate seed based on customer ID and current hour
     const seed = generateSeed(customerId);
-
-    // Shuffle online models and limit to 50
     const shuffledModels = shuffleWithSeed(models, seed).slice(0, 50);
-
-    // Keep nearby models sorted by distance (nearest first, farthest last)
-    // Don't shuffle - preserve the distance-based ordering from getNearbyModels
 
     return {
         models: shuffledModels,
@@ -194,12 +190,6 @@ export const loader: LoaderFunction = async ({ request }) => {
         nearbyPagination: nearbyResult.pagination,
         vipModels: vipModelsResult as INearbyModelResponse[],
         chattableModelIds,
-        latitude,
-        longitude,
-        hasActiveSubscription: hasSubscription,
-        hasPendingSubscription: hasPending,
-        trialPackage,
-        customerBalance: (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0),
     };
 };
 
@@ -301,7 +291,14 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
     const navigate = useNavigate();
     const navigation = useNavigation()
     const [searchParams] = useSearchParams();
-    const { models, nearbyModels, nearbyPagination, vipModels, chattableModelIds, latitude, longitude, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance } = loaderData;
+    const { models, nearbyModels, nearbyPagination, vipModels, chattableModelIds } = loaderData;
+    const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+    const latitude = Number(layoutData?.customerData?.latitude) || 0;
+    const longitude = Number(layoutData?.customerData?.longitude) || 0;
+    const hasActiveSubscription = layoutData?.hasActiveSubscription ?? false;
+    const hasPendingSubscription = layoutData?.hasPendingSubscription ?? false;
+    const trialPackage = layoutData?.trialPackage ?? null;
+    const customerBalance = layoutData?.customerBalance ?? 0;
     const chattableSet = new Set(chattableModelIds || []);
 
     // Filter drawer state
@@ -1478,6 +1475,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                             <img
                                                                 src={model.Images[0].name}
                                                                 alt={model.firstName}
+                                                                loading="lazy"
+                                                                decoding="async"
                                                                 className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                             />
                                                         ) : model.profile ? (
@@ -1964,6 +1963,8 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                                 <img
                                                     src={model.Images[0].name}
                                                     alt={model.firstName}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                 />
                                             ) : model.profile ? (
@@ -2201,7 +2202,7 @@ export default function DiscoverPage({ loaderData }: DiscoverPageProps) {
                                             className="w-full h-[30vh]"
                                         >
                                             {model.Images[0]?.name ? (
-                                                <img src={model.Images[0].name} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                                <img src={model.Images[0].name} alt={model.firstName} loading="lazy" decoding="async" className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                             ) : model.profile ? (
                                                 <BlurImage isHidden={model.profileHiddenByAdmin} src={model.profile} alt={model.firstName} className="cursor-pointer w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                             ) : (

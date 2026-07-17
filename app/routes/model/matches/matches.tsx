@@ -14,6 +14,7 @@ import {
     useLoaderData,
     useNavigate,
     useNavigation,
+    useRouteLoaderData,
     useSearchParams,
 } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -36,7 +37,6 @@ import {
     getCustomersWhoLikedMe,
     getCustomersByModelInteraction,
     createModelInteraction,
-    getModelDashboardData,
 } from "~/services/model.server";
 import { modelAddFriend } from "~/services/interaction.server";
 import { capitalize } from "~/utils/functions/textFormat";
@@ -51,9 +51,15 @@ interface LoaderReturn {
     favouritePagination: PaginationProps;
     myPassCustomers: any[];
     passPagination: PaginationProps;
-    modelLatitude: number;
-    modelLongitude: number;
-    modelName: string;
+}
+
+interface ModelLayoutData {
+    modelData: {
+        firstName?: string;
+        lastName?: string;
+        latitude?: number | string | null;
+        longitude?: number | string | null;
+    };
 }
 
 type PaginationProps = {
@@ -78,16 +84,34 @@ const DEFAULT_PAGINATION: PaginationProps = {
     searchParams: new URLSearchParams(),
 }
 
+// Skip loader re-runs for fire-and-forget actions and same-URL revisits.
+export function shouldRevalidate({
+    currentUrl,
+    nextUrl,
+    actionResult,
+    defaultShouldRevalidate,
+}: {
+    currentUrl: URL;
+    nextUrl: URL;
+    actionResult?: any;
+    defaultShouldRevalidate: boolean;
+}): boolean {
+    const skipActions = new Set(["trackActivity", "addFriend", "like", "pass"]);
+    if (actionResult?.action && skipActions.has(actionResult.action)) return false;
+    if (
+        currentUrl.pathname === nextUrl.pathname &&
+        currentUrl.search === nextUrl.search &&
+        !actionResult
+    ) {
+        return false;
+    }
+    return defaultShouldRevalidate;
+}
+
 // Loader
 export async function loader({ request }: LoaderFunctionArgs) {
     const modelId = await requireModelSession(request);
     const url = new URL(request.url);
-
-    // Get model's current GPS location from database
-    const model = await getModelDashboardData(modelId);
-    const modelLatitude = model?.latitude || 0;
-    const modelLongitude = model?.longitude || 0;
-    const modelName = `${model?.firstName || ''} ${model?.lastName || ''}`.trim();
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -102,11 +126,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const passedPage = Number(url.searchParams.get("passedPage") || 1);
     const passedTake = 20;
 
-    // Filters
+    const maxDistance = url.searchParams.get("distance")
+        ? Number(url.searchParams.get("distance"))
+        : undefined;
+
+    // Only fetch model coords when a distance filter is active — otherwise
+    // getModelDashboardData is dead weight that duplicates the layout loader.
+    let modelLat: number | undefined;
+    let modelLng: number | undefined;
+    if (maxDistance) {
+        const { prisma } = await import("~/services/database.server");
+        const coords = await prisma.model.findUnique({
+            where: { id: modelId },
+            select: { latitude: true, longitude: true },
+        });
+        modelLat = coords?.latitude ? Number(coords.latitude) : undefined;
+        modelLng = coords?.longitude ? Number(coords.longitude) : undefined;
+    }
+
     const filters = {
-        maxDistance: url.searchParams.get("distance")
-            ? Number(url.searchParams.get("distance"))
-            : undefined,
+        maxDistance,
         ageRange:
             url.searchParams.get("ageMin") && url.searchParams.get("ageMax")
                 ? ([
@@ -121,9 +160,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         location: url.searchParams.get("location") || undefined,
         relationshipStatus:
             url.searchParams.get("relationshipStatus") || undefined,
-        // Use model's GPS coordinates from database for distance filtering
-        modelLat: modelLatitude || undefined,
-        modelLng: modelLongitude || undefined,
+        modelLat,
+        modelLng,
     };
 
     // Flags to determine partial loads
@@ -158,9 +196,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination: DEFAULT_PAGINATION,
-            modelLatitude,
-            modelLongitude,
-            modelName,
         };
     }
 
@@ -177,9 +212,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
             likemePagination,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination: DEFAULT_PAGINATION,
-            modelLatitude,
-            modelLongitude,
-            modelName,
         };
     }
 
@@ -198,9 +230,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination,
             passPagination: DEFAULT_PAGINATION,
-            modelLatitude,
-            modelLongitude,
-            modelName,
         };
     }
 
@@ -217,9 +246,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination,
-            modelLatitude,
-            modelLongitude,
-            modelName,
         };
     }
 
@@ -232,8 +258,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
         likemePagination: DEFAULT_PAGINATION,
         favouritePagination: DEFAULT_PAGINATION,
         passPagination: DEFAULT_PAGINATION,
-        modelLatitude,
-        modelLongitude,
     };
 }
 
@@ -406,10 +430,11 @@ export default function ModelMatchesPage() {
         likemePagination,
         favouritePagination,
         passPagination,
-        modelLatitude,
-        modelLongitude,
-        modelName,
     } = useLoaderData<LoaderReturn>();
+    const layoutData = useRouteLoaderData("model-layout") as ModelLayoutData | undefined;
+    const modelLatitude = Number(layoutData?.modelData?.latitude) || 0;
+    const modelLongitude = Number(layoutData?.modelData?.longitude) || 0;
+    const modelName = `${layoutData?.modelData?.firstName || ""} ${layoutData?.modelData?.lastName || ""}`.trim();
     const actionData = useActionData<typeof action>();
 
     const [tabValue, setTabValue] = React.useState<"foryou" | "likeme" | "favourite" | "passed">(

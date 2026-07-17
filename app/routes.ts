@@ -80,7 +80,7 @@ export default [
   route("model-auth/reset-password", "./routes/model-auth/reset-password.tsx"),
 
   // Model dashboard routes
-  route("model", "./routes/model/layout.tsx", [
+  route("model", "./routes/model/layout.tsx", { id: "model-layout" }, [
     index("./routes/model/posts/posts.tsx"),
     route("check-profile-images", "./routes/model/check-profile-images.ts"),
     route("matches", "./routes/model/matches/matches.tsx"),
@@ -149,7 +149,7 @@ export default [
     route("notifications", "./routes/model/notifications/notifications.tsx"),
   ]),
 
-  route("customer", "./routes/customer/layout.tsx", [
+  route("customer", "./routes/customer/layout.tsx", { id: "customer-layout" }, [
     index("./routes/customer/discover.tsx"),
     route("discover/search", "./routes/customer/discover.search.tsx"),
     route("discover/load-more", "./routes/customer/discover.load-more.tsx"),

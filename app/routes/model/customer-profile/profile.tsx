@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, useNavigate, Form, redirect, useNavigation } from 'react-router';
+import { useLoaderData, useNavigate, useRouteLoaderData, Form, redirect, useNavigation } from 'react-router';
 import { User, Calendar, MarsStroke, ToggleLeft, MapPin, Book, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, MessageSquareText, Forward, UserPlus, UserCheck, Loader, X } from 'lucide-react';
 
 // components
@@ -14,7 +14,6 @@ import { capitalize } from '~/utils/functions/textFormat';
 import { calculateAgeFromDOB, formatNumber } from '~/utils';
 import { getCustomerProfile } from '~/services/profile.server';
 import { requireModelSession, getModelTokenFromSession } from '~/services/model-auth.server';
-import { getModelDashboardData } from '~/services/model.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 import { openWhatsApp } from "~/utils/functions/whatsapp";
@@ -34,13 +33,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       throw new Response("Customer ID is required", { status: 400 });
    }
 
-   const [customer, customerPosts, modelData] = await Promise.all([
+   // modelName comes from model-layout — no need to refetch modelData here.
+   const [customer, customerPosts] = await Promise.all([
       getCustomerProfile(customerId, modelId),
       getUserProfilePosts(customerId, "customer"),
-      getModelDashboardData(modelId),
    ]);
-   const modelName = `${modelData?.firstName || ''} ${modelData?.lastName || ''}`.trim();
-   return { customer, modelId, customerPosts, modelName };
+   return { customer, modelId, customerPosts };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -119,11 +117,17 @@ interface CustomerData {
    modelAction?: "LIKE" | "PASS" | null;
 }
 
+interface ModelLayoutData {
+   modelData: { firstName?: string; lastName?: string | null };
+}
+
 export default function CustomerProfilePage() {
    const { t } = useTranslation();
    const navigate = useNavigate();
    const navigation = useNavigation();
-   const { customer, customerPosts, modelName } = useLoaderData<{ customer: CustomerData; customerPosts: any[]; modelName: string }>();
+   const { customer, customerPosts } = useLoaderData<{ customer: CustomerData; customerPosts: any[] }>();
+   const layoutData = useRouteLoaderData("model-layout") as ModelLayoutData | undefined;
+   const modelName = `${layoutData?.modelData?.firstName || ""} ${layoutData?.modelData?.lastName || ""}`.trim();
 
    const images = customer.Images || [];
    const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";

@@ -94,6 +94,8 @@ export default function ModelCard({
                                 <img
                                     src={img.name}
                                     alt={`${model.firstName} ${index}`}
+                                    loading={index === 0 ? "eager" : "lazy"}
+                                    decoding="async"
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                     onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                 />
@@ -106,6 +108,8 @@ export default function ModelCard({
                                     isHidden={model.profileHiddenByAdmin}
                                     src={model.profile}
                                     alt={model.firstName}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover"
                                     onClick={() => navigate(`/customer/user-profile/${model.id}`)}
                                 />

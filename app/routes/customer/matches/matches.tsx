@@ -13,6 +13,7 @@ import {
     useActionData,
     useNavigate,
     useNavigation,
+    useRouteLoaderData,
     useSearchParams,
     type LoaderFunction,
 } from "react-router";
@@ -55,16 +56,15 @@ interface LoaderReturn {
     favouritePagination: PaginationProps;
     myPassModels: IForYouModelResponse[];
     passPagination: PaginationProps;
-    customerLatitude: number;
-    customerLongitude: number;
+    chattableModelIds: string[];
+}
+
+interface CustomerLayoutData {
+    customerData: { latitude?: number | string | null; longitude?: number | string | null };
     hasActiveSubscription: boolean;
     hasPendingSubscription: boolean;
-    trialPackage: {
-        id: string;
-        price: number;
-    } | null;
+    trialPackage: { id: string; price: number } | null;
     customerBalance: number;
-    chattableModelIds: string[];
 }
 
 interface ForyouModelsProps {
@@ -130,38 +130,15 @@ export function shouldRevalidate({
 
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
-    const { getCustomerProfile } = await import("~/services/profile.server");
-    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
-    const { prisma } = await import("~/services/database.server");
+    const { hasActiveSubscription } = await import("~/services/package.server");
     const url = new URL(request.url);
 
-    // Get customer's current GPS location from database, subscription status, trial package, and wallet balance
-    const [customer, hasSubscription, hasPending, trialPackage, wallet] = await Promise.all([
-        getCustomerProfile(customerId),
-        hasActiveSubscription(customerId),
-        hasPendingSubscription(customerId),
-        prisma.subscription_plan.findFirst({
-            where: { name: "24-Hour Trial", status: "active" },
-            select: { id: true, price: true },
-        }),
-        prisma.wallet.findFirst({
-            where: { customerId },
-            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }).catch(() => null),
-    ]);
-    const customerLatitude = customer?.latitude || 0;
-    const customerLongitude = customer?.longitude || 0;
-
-    // Calculate available balance: totalBalance - totalSpend + totalRefunded
-    const customerAvailableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
-
-    // Kick off the chattable-IDs query WITHOUT awaiting — the tab-
-    // specific query (getForyouModels / getLikeMeModels / …) is
-    // independent, so run them in parallel below. Await both at the
-    // point of use.
-    const chattablePromise: Promise<Set<string>> = hasSubscription
-      ? getChattableModelIds(customerId)
-      : Promise.resolve(new Set<string>());
+    // Chattable query needs subscription state to gate itself, but every
+    // other query below is independent — keep hasSubscription behind a
+    // promise so the tab queries can start without waiting for it.
+    const chattablePromise: Promise<Set<string>> = hasActiveSubscription(customerId)
+        .catch(() => false)
+        .then((has) => (has ? getChattableModelIds(customerId) : new Set<string>()));
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -232,12 +209,6 @@ export const loader: LoaderFunction = async ({ request }) => {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination: DEFAULT_PAGINATION,
-            customerLatitude,
-            customerLongitude,
-            hasActiveSubscription: hasSubscription,
-            hasPendingSubscription: hasPending,
-            trialPackage,
-            customerBalance: customerAvailableBalance,
             chattableModelIds,
         } as LoaderReturn;
     }
@@ -259,12 +230,6 @@ export const loader: LoaderFunction = async ({ request }) => {
             likemePagination,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination: DEFAULT_PAGINATION,
-            customerLatitude,
-            customerLongitude,
-            hasActiveSubscription: hasSubscription,
-            hasPendingSubscription: hasPending,
-            trialPackage,
-            customerBalance: customerAvailableBalance,
             chattableModelIds,
         } as LoaderReturn;
     }
@@ -288,12 +253,6 @@ export const loader: LoaderFunction = async ({ request }) => {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination,
             passPagination: DEFAULT_PAGINATION,
-            customerLatitude,
-            customerLongitude,
-            hasActiveSubscription: hasSubscription,
-            hasPendingSubscription: hasPending,
-            trialPackage,
-            customerBalance: customerAvailableBalance,
             chattableModelIds,
         } as LoaderReturn;
     }
@@ -315,12 +274,6 @@ export const loader: LoaderFunction = async ({ request }) => {
             likemePagination: DEFAULT_PAGINATION,
             favouritePagination: DEFAULT_PAGINATION,
             passPagination,
-            customerLatitude,
-            customerLongitude,
-            hasActiveSubscription: hasSubscription,
-            hasPendingSubscription: hasPending,
-            trialPackage,
-            customerBalance: customerAvailableBalance,
             chattableModelIds,
         } as LoaderReturn;
     }
@@ -339,12 +292,6 @@ export const loader: LoaderFunction = async ({ request }) => {
         likemePagination: DEFAULT_PAGINATION,
         favouritePagination: DEFAULT_PAGINATION,
         passPagination: DEFAULT_PAGINATION,
-        customerLatitude,
-        customerLongitude,
-        hasActiveSubscription: hasSubscription,
-        hasPendingSubscription: hasPending,
-        trialPackage,
-        customerBalance: customerAvailableBalance,
         chattableModelIds,
     } as LoaderReturn;
 };
@@ -446,14 +393,15 @@ export default function MatchesPage({ loaderData }: ForyouModelsProps) {
         likemePagination,
         favouritePagination,
         passPagination,
-        customerLatitude,
-        customerLongitude,
-        hasActiveSubscription,
-        hasPendingSubscription,
-        trialPackage,
-        customerBalance,
         chattableModelIds,
     } = loaderData;
+    const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+    const customerLatitude = Number(layoutData?.customerData?.latitude) || 0;
+    const customerLongitude = Number(layoutData?.customerData?.longitude) || 0;
+    const hasActiveSubscription = layoutData?.hasActiveSubscription ?? false;
+    const hasPendingSubscription = layoutData?.hasPendingSubscription ?? false;
+    const trialPackage = layoutData?.trialPackage ?? null;
+    const customerBalance = layoutData?.customerBalance ?? 0;
     const chattableSet = new Set(chattableModelIds || []);
     const actionData = useActionData<typeof action>();
 

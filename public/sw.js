@@ -89,6 +89,12 @@ self.addEventListener('fetch', (event) => {
   // Skip API requests - always fetch from network
   if (url.pathname.startsWith('/api/')) return;
 
+  // Skip React Router loader data — these are per-user, per-navigation
+  // and must never be served from SW cache. Falling through to the
+  // default handler below was caching them into DYNAMIC_CACHE for no
+  // benefit and doubling the memory footprint per navigation.
+  if (url.pathname.endsWith('.data') || url.search.includes('_data=')) return;
+
   // Skip auth-related routes - always fetch from network (no caching)
   // This prevents issues with login/logout on iOS Safari
   const authPaths = ['/login', '/logout', '/register', '/model-auth', '/model-logout', '/forgot-password', '/reset-password', '/verify-otp'];

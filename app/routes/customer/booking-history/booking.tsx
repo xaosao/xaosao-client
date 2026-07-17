@@ -57,7 +57,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 interface LoaderReturn {
    bookInfos: IServiceBooking[];
-   hasActiveSubscription: boolean;
 }
 
 interface DiscoverPageProps {
@@ -66,14 +65,30 @@ interface DiscoverPageProps {
 
 export const loader: LoaderFunction = async ({ request }) => {
    const customerId = await requireUserSession(request)
-   const { hasActiveSubscription } = await import("~/services/package.server");
+   const bookInfos = await getAllMyServiceBookings(customerId);
+   return { bookInfos };
+}
 
-   const [bookInfos, hasSubscription] = await Promise.all([
-      getAllMyServiceBookings(customerId),
-      hasActiveSubscription(customerId),
-   ]);
-
-   return { bookInfos, hasActiveSubscription: hasSubscription };
+export function shouldRevalidate({
+   currentUrl,
+   nextUrl,
+   actionResult,
+   defaultShouldRevalidate,
+}: {
+   currentUrl: URL;
+   nextUrl: URL;
+   actionResult?: any;
+   defaultShouldRevalidate: boolean;
+}): boolean {
+   // The loader ignores search params — only refetch on true navigations
+   // or after an action that mutated bookings.
+   if (
+      currentUrl.pathname === nextUrl.pathname &&
+      !actionResult
+   ) {
+      return false;
+   }
+   return defaultShouldRevalidate;
 }
 
 export default function BookingsList({ loaderData }: DiscoverPageProps) {

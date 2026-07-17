@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader, Plus, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { type LoaderFunction, useFetcher, useSearchParams } from "react-router";
+import { type LoaderFunction, useFetcher, useRouteLoaderData, useSearchParams } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import MyPostCard from "~/components/posts/MyPostCard";
@@ -11,16 +11,41 @@ import { ProfileCheckModal } from "~/components/ProfileCheckModal";
 
 import type { PostItem, UserProfile } from "~/types/post";
 import { requireModelSession } from "~/services/model-auth.server";
-import { getPostsFeed, getMyPosts, getModelBasicProfile } from "~/services/post.server";
+import { getPostsFeed, getMyPosts } from "~/services/post.server";
 
 interface LoaderReturn {
   feed: { posts: PostItem[]; total: number; page: number; totalPages: number };
   myPosts: { posts: PostItem[]; total: number; page: number; totalPages: number };
-  modelProfile: UserProfile | null;
 }
 
 interface PageProps {
   loaderData: LoaderReturn;
+}
+
+interface ModelLayoutData {
+  modelData: { id?: string; firstName?: string; lastName?: string | null; profile?: string | null };
+}
+
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  actionResult,
+  defaultShouldRevalidate,
+}: {
+  currentUrl: URL;
+  nextUrl: URL;
+  actionResult?: any;
+  defaultShouldRevalidate: boolean;
+}): boolean {
+  // Tab toggle only touches the `tab` param, which the loader doesn't read.
+  if (
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.searchParams.get("service") === nextUrl.searchParams.get("service") &&
+    !actionResult
+  ) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -28,17 +53,25 @@ export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const serviceFilter = url.searchParams.get("service") || undefined;
 
-  const [feed, myPosts, modelProfile] = await Promise.all([
+  const [feed, myPosts] = await Promise.all([
     getPostsFeed("model", modelId, { serviceId: serviceFilter, page: 1, limit: 20 }),
     getMyPosts(modelId, "model", 1, 20),
-    getModelBasicProfile(modelId),
   ]);
 
-  return { feed, myPosts, modelProfile };
+  return { feed, myPosts };
 };
 
 export default function ModelPostsPage({ loaderData }: PageProps) {
-  const { feed, myPosts, modelProfile } = loaderData;
+  const { feed, myPosts } = loaderData;
+  const layoutData = useRouteLoaderData("model-layout") as ModelLayoutData | undefined;
+  const modelProfile: UserProfile | null = layoutData?.modelData
+    ? {
+      id: layoutData.modelData.id,
+      firstName: layoutData.modelData.firstName || "",
+      lastName: layoutData.modelData.lastName ?? null,
+      profile: layoutData.modelData.profile ?? null,
+    }
+    : null;
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") === "myPosts" ? "myPosts" : "feed") as "feed" | "myPosts";

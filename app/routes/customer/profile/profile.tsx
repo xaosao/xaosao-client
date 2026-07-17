@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, BadgeCheck, ChevronLeft, ChevronRight, Loader, Upload, UserRoundPen, X } from 'lucide-react';
-import { redirect, useActionData, useFetcher, useNavigate, useNavigation, useSearchParams, type ActionFunctionArgs, type LoaderFunction } from 'react-router';
+import { redirect, useActionData, useFetcher, useNavigate, useNavigation, useRouteLoaderData, useSearchParams, type ActionFunctionArgs, type LoaderFunction } from 'react-router';
 
 // components
 import { Badge } from '~/components/ui/badge';
@@ -15,26 +15,27 @@ import { requireUserSession } from '~/services/auths.server';
 import type { ICustomerResponse } from '~/interfaces/customer';
 import { capitalize, extractFilenameFromCDNSafe } from '~/utils/functions/textFormat';
 import { deleteFileFromBunny, uploadFileToBunnyServer } from '~/services/upload.server';
-import { createCustomerImage, getCustomerProfile, updateCustomerImage, deleteCustomerImage } from '~/services/profile.server';
+import { createCustomerImage, updateCustomerImage, deleteCustomerImage } from '~/services/profile.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
 
 interface LoaderReturn {
-    customerData: ICustomerResponse;
+    profilePosts: any;
 }
 
 interface TransactionProps {
     loaderData: LoaderReturn;
 }
 
+interface CustomerLayoutData {
+    customerData: ICustomerResponse;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request)
-    const [customerData, profilePosts] = await Promise.all([
-        getCustomerProfile(customerId),
-        getUserProfilePosts(customerId, "customer"),
-    ]);
-
-    return { customerData, profilePosts }
+    // customerData comes from customer-layout — no need to refetch here.
+    const profilePosts = await getUserProfilePosts(customerId, "customer");
+    return { profilePosts };
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -174,7 +175,9 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
     const [searchParams] = useSearchParams();
     const fetcher = useFetcher();
     const actionData = useActionData<typeof action>()
-    const { customerData, profilePosts } = loaderData as any;
+    const { profilePosts } = loaderData as any;
+    const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+    const customerData = layoutData?.customerData as ICustomerResponse;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedImageId, setSelectedImageId] = React.useState<string | null>(null);
     const [selectedImageName, setSelectedImageName] = React.useState<string | null>(null);

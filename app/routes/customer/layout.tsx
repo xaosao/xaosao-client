@@ -46,6 +46,46 @@ interface TransactionProps {
     loaderData: LoaderReturn;
 }
 
+// The layout loader fires 8 queries (profile, notifications, subscription
+// state, wallet, trial plan, awaiting slip). By default it re-runs on
+// EVERY child navigation, adding ~800 ms of DB work between every page
+// change. Skip it unless something material could have changed:
+//   - Explicit revalidation from useRevalidator (SSE notifications, etc.)
+//   - Coming from a page that mutates layout-visible state (wallet
+//     top-up, subscription checkout, notification settings, logout)
+//   - Any action within the customer tree (formMethod !== GET)
+export function shouldRevalidate({
+    currentUrl,
+    nextUrl,
+    formMethod,
+    actionResult,
+    defaultShouldRevalidate,
+}: {
+    currentUrl: URL;
+    nextUrl: URL;
+    formMethod?: string;
+    actionResult?: any;
+    defaultShouldRevalidate: boolean;
+}): boolean {
+    // Any non-GET form submission somewhere in the tree — assume state changed.
+    if (formMethod && formMethod !== "GET") return defaultShouldRevalidate;
+    if (actionResult) return defaultShouldRevalidate;
+
+    // Pages that DO mutate what the layout shows.
+    const mustRefreshFrom = [
+        "/customer/wallet-topup",
+        "/customer/wallets",
+        "/customer/packages",
+        "/customer/setting",
+        "/logout",
+    ];
+    if (mustRefreshFrom.some((p) => currentUrl.pathname.startsWith(p))) {
+        return defaultShouldRevalidate;
+    }
+
+    return false;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireVerifiedUserSession(request);
 

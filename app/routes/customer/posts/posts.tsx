@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Loader, Plus, Users } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { type LoaderFunction, useFetcher, useSearchParams } from "react-router";
+import { type LoaderFunction, useFetcher, useRouteLoaderData, useSearchParams } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import MyPostCard from "~/components/posts/MyPostCard";
@@ -10,23 +10,45 @@ import CreateCustomerPostModal from "~/components/posts/CreateCustomerPostModal"
 
 import type { PostItem, UserProfile, GiftItem } from "~/types/post";
 import { requireUserSession } from "~/services/auths.server";
-import { hasActiveSubscription } from "~/services/package.server";
-import { getPostsFeed, getMyPosts, getActiveServices, getCustomerBasicProfile } from "~/services/post.server";
+import { getPostsFeed, getMyPosts, getActiveServices } from "~/services/post.server";
 import { getActiveGifts } from "~/services/gift.server";
-import { getCustomerWalletSummary } from "~/services/wallet.server";
 
 interface LoaderReturn {
   feed: { posts: PostItem[]; total: number; page: number; totalPages: number };
   myPosts: { posts: PostItem[]; total: number; page: number; totalPages: number };
   services: { id: string; name: string }[];
-  hasSubscription: boolean;
-  customerProfile: UserProfile | null;
   gifts: GiftItem[];
-  walletBalance: number;
 }
 
 interface PageProps {
   loaderData: LoaderReturn;
+}
+
+interface CustomerLayoutData {
+  customerData: { id?: string; firstName: string; lastName?: string | null; profile?: string | null };
+  customerBalance: number;
+}
+
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  actionResult,
+  defaultShouldRevalidate,
+}: {
+  currentUrl: URL;
+  nextUrl: URL;
+  actionResult?: any;
+  defaultShouldRevalidate: boolean;
+}): boolean {
+  // Tab switch is a `tab` query-param change only — reuse cached loader data
+  if (
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.searchParams.get("service") === nextUrl.searchParams.get("service") &&
+    !actionResult
+  ) {
+    return false;
+  }
+  return defaultShouldRevalidate;
 }
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -34,25 +56,28 @@ export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const serviceFilter = url.searchParams.get("service") || undefined;
 
-  const [feed, myPosts, services, hasSubscription, customerProfile, gifts, walletSummary] = await Promise.all([
+  const [feed, myPosts, services, gifts] = await Promise.all([
     getPostsFeed("customer", customerId, { serviceId: serviceFilter, page: 1, limit: 20 }),
     getMyPosts(customerId, "customer", 1, 20),
     getActiveServices(),
-    hasActiveSubscription(customerId),
-    getCustomerBasicProfile(customerId),
     getActiveGifts(),
-    getCustomerWalletSummary(customerId).catch(() => null),
   ]);
 
-  const walletBalance = walletSummary
-    ? Math.max(0, (walletSummary.totalBalance || 0) - (walletSummary.totalSpent || 0) + (walletSummary.totalRefunded || 0))
-    : 0;
-
-  return { feed, myPosts, services, hasSubscription, customerProfile, gifts, walletBalance };
+  return { feed, myPosts, services, gifts };
 };
 
 export default function CustomerPostsPage({ loaderData }: PageProps) {
-  const { feed, myPosts, services, customerProfile, gifts, walletBalance } = loaderData;
+  const { feed, myPosts, services, gifts } = loaderData;
+  const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+  const customerProfile: UserProfile | null = layoutData?.customerData
+    ? {
+      id: layoutData.customerData.id,
+      firstName: layoutData.customerData.firstName,
+      lastName: layoutData.customerData.lastName ?? null,
+      profile: layoutData.customerData.profile ?? null,
+    }
+    : null;
+  const walletBalance = layoutData?.customerBalance ?? 0;
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") === "myPosts" ? "myPosts" : "feed") as "feed" | "myPosts";

@@ -4,6 +4,13 @@ import { differenceInYears } from "date-fns";
 import { createAuditLogs } from "./log.server";
 import { FieldValidationError } from "./base.server";
 import { notifyCustomerLikeReceived } from "./notification.server";
+import { withCache, cacheInvalidateContaining, stableStringify } from "./cache.server";
+
+// Cache TTL for discover/matches list queries. Short enough that fresh
+// signups appear quickly, long enough that back-navigation and rapid
+// tab-switching hit memory instead of Mongo. Every action that mutates
+// the customer's own view (like/pass/addFriend) also invalidates.
+const LIST_CACHE_TTL_MS = 30_000;
 
 const { compare, hash } = bcrypt;
 
@@ -44,6 +51,17 @@ interface DiscoverFilters {
 export async function getModelsForCustomer(
   customerId: string,
   filters: DiscoverFilters = {}
+) {
+  return withCache(
+    `modelsForCustomer:${customerId}:${stableStringify(filters)}`,
+    LIST_CACHE_TTL_MS,
+    () => _getModelsForCustomer(customerId, filters)
+  );
+}
+
+async function _getModelsForCustomer(
+  customerId: string,
+  filters: DiscoverFilters
 ) {
   try {
     const customer = await prisma.customer.findUnique({
@@ -94,6 +112,21 @@ export async function getModelsForCustomer(
           },
         },
       };
+    }
+
+    // Push age + distance-bbox into Mongo so the take:20 window actually
+    // contains 20 matches after filtering. The old code was fetching 20
+    // by rating, then JS-filtering by age, potentially returning near-empty.
+    const dobRange = ageRangeToDobRange(filters.ageRange);
+    if (dobRange) whereClause.dob = dobRange;
+    const bbox = boundingBoxFilter(
+      customer?.latitude,
+      customer?.longitude,
+      filters.maxDistance
+    );
+    if (bbox) {
+      whereClause.latitude = bbox.latRange;
+      whereClause.longitude = bbox.lngRange;
     }
 
     const models = await prisma.model.findMany({
@@ -168,18 +201,10 @@ export async function getModelsForCustomer(
       },
     });
 
-    // Filter by age and distance (need to be done in memory)
+    // Age + distance-bbox already enforced in Mongo. Precise distance
+    // haversine runs below (the bbox is a square, we want a circle).
     let filteredModels = models;
 
-    // Age filter
-    if (filters.ageRange) {
-      filteredModels = filteredModels.filter((model) => {
-        const age = differenceInYears(new Date(), new Date(model.dob));
-        return age >= filters.ageRange![0] && age <= filters.ageRange![1];
-      });
-    }
-
-    // Distance filter
     if (filters.maxDistance && customer?.latitude && customer?.longitude) {
       filteredModels = filteredModels.filter((model) => {
         if (!model.latitude || !model.longitude) return true;
@@ -250,6 +275,39 @@ function calculateDistance(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Turn an [minAge, maxAge] tuple into a { gte, lte } date range on `dob`
+// so the age filter runs in Mongo instead of after loading every row.
+// Someone `minAge` years old today was born at most `minAge` years ago,
+// someone `maxAge` years old was born at least `maxAge + 1` years ago.
+function ageRangeToDobRange(
+  ageRange?: [number, number]
+): { gte: Date; lte: Date } | null {
+  if (!ageRange) return null;
+  const [minAge, maxAge] = ageRange;
+  const now = new Date();
+  const maxDob = new Date(now.getFullYear() - minAge, now.getMonth(), now.getDate());
+  const minDob = new Date(now.getFullYear() - maxAge - 1, now.getMonth(), now.getDate() + 1);
+  return { gte: minDob, lte: maxDob };
+}
+
+// Build a rough lat/lng bounding-box filter for Mongo. A square bounds
+// the circle we actually want — the exact-distance haversine still runs
+// in JS on the ~10-100 rows the box lets through, instead of on every
+// active model in the DB.
+function boundingBoxFilter(
+  centerLat?: number | null,
+  centerLng?: number | null,
+  maxDistanceKm?: number
+): { latRange: { gte: number; lte: number }; lngRange: { gte: number; lte: number } } | null {
+  if (!maxDistanceKm || !centerLat || !centerLng) return null;
+  const latDelta = maxDistanceKm / 111; // ~111 km per degree of latitude
+  const lngDelta = maxDistanceKm / (111 * Math.cos((centerLat * Math.PI) / 180) || 1);
+  return {
+    latRange: { gte: centerLat - latDelta, lte: centerLat + latDelta },
+    lngRange: { gte: centerLng - lngDelta, lte: centerLng + lngDelta },
+  };
+}
+
 // Pagination options for nearby models
 interface NearbyModelsPaginationOptions {
   page?: number;
@@ -262,6 +320,19 @@ export async function getNearbyModels(
   filters: DiscoverFilters = {},
   maxDistanceKm: number = 50,
   pagination: NearbyModelsPaginationOptions = {}
+) {
+  return withCache(
+    `nearbyModels:${customerId}:${maxDistanceKm}:${stableStringify(filters)}:${stableStringify(pagination)}`,
+    LIST_CACHE_TTL_MS,
+    () => _getNearbyModels(customerId, filters, maxDistanceKm, pagination)
+  );
+}
+
+async function _getNearbyModels(
+  customerId: string,
+  filters: DiscoverFilters,
+  maxDistanceKm: number,
+  pagination: NearbyModelsPaginationOptions
 ) {
   const { page = 1, limit = 50 } = pagination;
   const customer = await prisma.customer.findUnique({
@@ -336,8 +407,24 @@ export async function getNearbyModels(
     };
   }
 
+  // Push age into Mongo — was previously "load all, filter in JS".
+  const dobRange = ageRangeToDobRange(filters.ageRange);
+  if (dobRange) whereClause.dob = dobRange;
+
+  // Rough bounding-box pre-filter for distance. Precise haversine still
+  // runs below on the narrow slice this returns. Uses the caller's
+  // effective max distance (URL filter overrides the function default).
+  const effectiveMaxDistance = filters.maxDistance || maxDistanceKm;
+  const bbox = boundingBoxFilter(customer.latitude, customer.longitude, effectiveMaxDistance);
+  if (bbox) {
+    whereClause.latitude = bbox.latRange;
+    whereClause.longitude = bbox.lngRange;
+  }
+
+  const NEARBY_HARD_CAP = 500;
   const models = await prisma.model.findMany({
     where: whereClause,
+    take: NEARBY_HARD_CAP,
     select: {
       id: true,
       firstName: true,
@@ -397,17 +484,8 @@ export async function getNearbyModels(
     },
   });
 
-  // Use custom maxDistance if provided in filters, otherwise use parameter
-  const effectiveMaxDistance = filters.maxDistance || maxDistanceKm;
-
-  // Filter by age if specified
-  let filteredModels = models;
-  if (filters.ageRange) {
-    filteredModels = filteredModels.filter((model) => {
-      const age = differenceInYears(new Date(), new Date(model.dob));
-      return age >= filters.ageRange![0] && age <= filters.ageRange![1];
-    });
-  }
+  // Age already enforced by Mongo above — no need to re-filter here.
+  const filteredModels = models;
 
   // Calculate distance and filter by maxDistance
   const allModelsWithDistance = filteredModels
@@ -460,11 +538,22 @@ export async function getNearbyModels(
 
 // Get all VIP models (no gender filter)
 export async function getVipModels(customerId: string) {
+  return withCache(
+    `vipModels:${customerId}`,
+    LIST_CACHE_TTL_MS,
+    () => _getVipModels(customerId)
+  );
+}
+
+async function _getVipModels(customerId: string) {
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },
     select: { latitude: true, longitude: true },
   });
 
+  // VIP tab is a rating-sorted carousel. 100 rows is far more than any
+  // customer will ever scroll — the old unbounded query was the discover
+  // page's second-worst offender after getNearbyModels.
   const models = await prisma.model.findMany({
     where: {
       status: "active",
@@ -472,6 +561,7 @@ export async function getVipModels(customerId: string) {
       isProfileHidden: { not: true },
       ...OPEN_SERVICE_CONDITION,
     },
+    take: 100,
     orderBy: [{ rating: "desc" }, { updatedAt: "desc" }],
     select: {
       id: true,
@@ -1108,6 +1198,17 @@ export async function getForyouModels(
   customerId: string,
   filters: ForYouFilters = {}
 ) {
+  return withCache(
+    `foryouModels:${customerId}:${stableStringify(filters)}`,
+    LIST_CACHE_TTL_MS,
+    () => _getForyouModels(customerId, filters)
+  );
+}
+
+async function _getForyouModels(
+  customerId: string,
+  filters: ForYouFilters
+) {
   try {
     const page = filters.page ?? 1;
     const perPage = filters.perPage ?? 20;
@@ -1119,7 +1220,20 @@ export async function getForyouModels(
       select: { latitude: true, longitude: true },
     });
 
-    // Fetch ALL models (without pagination first, for distance filtering)
+    // Push filters into the Mongo query so we don't materialise every
+    // active model in memory. Historic behaviour was "load everything,
+    // JS-filter" which scaled linearly with total model count.
+    const dobRange = ageRangeToDobRange(filters.ageRange);
+    const bbox = boundingBoxFilter(
+      customer?.latitude,
+      customer?.longitude,
+      filters.maxDistance
+    );
+
+    // Fetch a bounded window of models pre-filtered in Mongo. The final
+    // in-JS pass still runs a precise haversine — the bounding box is a
+    // rough sieve that eliminates the vast majority before we pull rows.
+    const HARD_CAP = 300;
     const allModels = await prisma.model.findMany({
       where: {
         status: "active",
@@ -1133,6 +1247,8 @@ export async function getForyouModels(
         ...(filters.relationshipStatus
           ? { available_status: filters.relationshipStatus }
           : {}),
+        ...(dobRange ? { dob: dobRange } : {}),
+        ...(bbox ? { latitude: bbox.latRange, longitude: bbox.lngRange } : {}),
         NOT: {
           customer_interactions: {
             some: {
@@ -1142,6 +1258,8 @@ export async function getForyouModels(
           },
         },
       },
+      take: HARD_CAP,
+      orderBy: [{ rating: "desc" }, { updatedAt: "desc" }],
       select: {
         id: true,
         firstName: true,
@@ -1183,37 +1301,22 @@ export async function getForyouModels(
       },
     });
 
-    // Local filtering (age, distance)
-    const filteredModels = allModels.filter((m) => {
-      let pass = true;
-
-      // Age filter
-      if (filters.ageRange) {
-        const age = differenceInYears(new Date(), new Date(m.dob));
-        if (age < filters.ageRange[0] || age > filters.ageRange[1])
-          pass = false;
-      }
-
-      // Distance filter - use customer's GPS coordinates from database
-      if (
-        filters.maxDistance &&
-        customer?.latitude &&
-        customer?.longitude &&
-        m.latitude &&
-        m.longitude
-      ) {
-        const distance = calculateDistance(
-          customer.latitude,
-          customer.longitude,
-          m.latitude,
-          m.longitude
-        );
-
-        if (distance > filters.maxDistance) pass = false;
-      }
-
-      return pass;
-    });
+    // Distance still needs a precise haversine pass — the Mongo bounding
+    // box is a rough square, not a circle. Age is already enforced by
+    // the DB, no need to re-check.
+    const filteredModels =
+      filters.maxDistance && customer?.latitude && customer?.longitude
+        ? allModels.filter((m) => {
+            if (!m.latitude || !m.longitude) return false;
+            const distance = calculateDistance(
+              customer.latitude!,
+              customer.longitude!,
+              m.latitude,
+              m.longitude
+            );
+            return distance <= filters.maxDistance!;
+          })
+        : allModels;
 
     // Add derived fields (isContact, customerAction)
     const enhancedModels = filteredModels.map((model) => ({

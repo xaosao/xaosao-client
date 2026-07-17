@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
-import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useSearchParams, type LoaderFunction } from 'react-router';
+import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useRouteLoaderData, useSearchParams, type LoaderFunction } from 'react-router';
 import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
 
 // components
@@ -42,42 +42,36 @@ import { BlurImage } from '~/components/ui/blur-image';
 
 interface LoaderReturn {
     model: ISinglemodelProfileResponse & { reviewData?: IReviewData }
-    hasActiveSubscription: boolean
-    hasPendingSubscription: boolean
-    trialPackage: {
-        id: string;
-        price: number;
-    } | null;
-    customerBalance: number;
     hasPendingDeposit: boolean;
+    modelPosts: any;
 }
 
 interface ProfilePageProps {
     loaderData: LoaderReturn
 }
 
+interface CustomerLayoutData {
+    hasActiveSubscription: boolean;
+    hasPendingSubscription: boolean;
+    trialPackage: { id: string; price: number } | null;
+    customerBalance: number;
+}
+
 export const loader: LoaderFunction = async ({ params, request }) => {
     const customerId = await requireUserSession(request)
     const modelId = params.userId as string
-    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
+    const { hasActiveSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
-    const model = await getModelProfile(modelId, customerId)
 
-    // Fetch review data, subscription status, trial package, wallet balance, and pending deposits
-    const [reviewsResult, canReviewResult, customerReview, hasSubscription, hasPending, trialPackage, wallet, pendingDeposit, modelPosts] = await Promise.all([
+    // Kick every query off in parallel. hasSubscription is only needed
+    // for the fire-and-forget tracking gate below — subscription status
+    // for the UI comes from customer-layout.
+    const [model, reviewsResult, canReviewResult, customerReview, hasSubscription, pendingDeposit, modelPosts] = await Promise.all([
+        getModelProfile(modelId, customerId),
         getModelReviews(modelId, 1, 10),
         canCustomerReviewModel(customerId, modelId),
         getCustomerReviewForModel(customerId, modelId),
-        hasActiveSubscription(customerId),
-        hasPendingSubscription(customerId),
-        prisma.subscription_plan.findFirst({
-            where: { name: "24-Hour Trial", status: "active" },
-            select: { id: true, price: true },
-        }),
-        prisma.wallet.findFirst({
-            where: { customerId },
-            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-        }).catch(() => null),
+        hasActiveSubscription(customerId).catch(() => false),
         prisma.transaction_history.findFirst({
             where: { customerId, identifier: "recharge", status: "pending", customerHidden: { not: true } },
             select: { id: true },
@@ -95,12 +89,6 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         customerReview: customerReview as any
     };
 
-    // Calculate available balance: totalBalance - totalSpend + totalRefunded
-    const totalBalance = wallet?.totalBalance || 0;
-    const totalSpend = wallet?.totalSpend || 0;
-    const totalRefunded = wallet?.totalRefunded || 0;
-    const availableBalance = totalBalance - totalSpend + totalRefunded;
-
     // Track VIEW_MODEL_PROFILE for active subscribers (fire-and-forget, non-blocking)
     if (hasSubscription) {
         const { trackSubscriberActivity } = await import("~/services/tracking.server");
@@ -114,10 +102,6 @@ export const loader: LoaderFunction = async ({ params, request }) => {
 
     return {
         model: { ...model, reviewData },
-        hasActiveSubscription: hasSubscription,
-        hasPendingSubscription: hasPending,
-        trialPackage,
-        customerBalance: availableBalance,
         hasPendingDeposit: !!pendingDeposit,
         modelPosts,
     }
@@ -232,7 +216,12 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const revalidator = useRevalidator()
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
-    const { model, hasActiveSubscription, hasPendingSubscription, trialPackage, customerBalance, hasPendingDeposit, modelPosts } = loaderData as any
+    const { model, hasPendingDeposit, modelPosts } = loaderData as any
+    const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
+    const hasActiveSubscription = layoutData?.hasActiveSubscription ?? false;
+    const hasPendingSubscription = layoutData?.hasPendingSubscription ?? false;
+    const trialPackage = layoutData?.trialPackage ?? null;
+    const customerBalance = layoutData?.customerBalance ?? 0;
 
     // Listen for real-time notifications - refresh balance instantly when admin approves recharge
     const handleNewNotification = React.useCallback((notification: Notification) => {
