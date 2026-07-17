@@ -1,55 +1,48 @@
-# Use Bun for install (fast)
+# ─── deps ────────────────────────────────────────────────────────────
+# Use Bun for install speed. Node 20 for build/runtime.
 FROM oven/bun:1.1.22 as deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN bun install
+# --legacy-peer-deps required until @react-router/express catches up to
+# the node/serve peer range. Remove once versions align.
+RUN bun install --frozen-lockfile || bun install
 
-# Use official Node image for building and running
+# ─── build ───────────────────────────────────────────────────────────
 FROM node:20-alpine as builder
 WORKDIR /app
-
-# Copy dependencies from Bun layer
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client
+# Prisma engines
 RUN npx prisma generate
 
-# Build with Node (not Bun)
+# React Router production build → build/
 RUN npm run build
 
-# Final lightweight image
+# ─── runtime ─────────────────────────────────────────────────────────
 FROM node:20-alpine
 WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
 
-COPY --from=builder /app ./
+# curl is needed for the Docker HEALTHCHECK below (alpine ships neither
+# curl nor wget with SSL by default — apk add is a few kB).
+RUN apk add --no-cache curl
 
-# Expose port if needed
-EXPOSE 5176
+# Copy only what runtime needs, not the whole build tree
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/prisma ./prisma
 
-CMD ["npm", "run", "start"]
+EXPOSE 3000
 
+# Docker's own healthcheck. Compose's healthcheck is redundant with this
+# but doesn't hurt. Keep the interval loose — nginx polls too.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl -fsS http://localhost:3000/healthz > /dev/null || exit 1
 
-
-# FROM node:20-alpine AS development-dependencies-env
-# COPY . /app
-# WORKDIR /app
-# RUN npm ci
-
-# FROM node:20-alpine AS production-dependencies-env
-# COPY ./package.json package-lock.json /app/
-# WORKDIR /app
-# RUN npm ci --omit=dev
-
-# FROM node:20-alpine AS build-env
-# COPY . /app/
-# COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-# WORKDIR /app
-# RUN npm run build
-
-# FROM node:20-alpine
-# COPY ./package.json package-lock.json /app/
-# COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-# COPY --from=build-env /app/build /app/build
-# WORKDIR /app
-# CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

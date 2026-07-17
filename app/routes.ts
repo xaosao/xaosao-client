@@ -3,6 +3,9 @@ import { index, route, type RouteConfig } from "@react-router/dev/routes";
 export default [
   index("routes/home.tsx"),
 
+  // Load-balancer / Docker healthcheck. Must stay cheap.
+  route("healthz", "./routes/healthz.ts"),
+
   // Public post share page (SEO/OG tags for social media)
   route("post/:id", "./routes/post-share.tsx"),
 

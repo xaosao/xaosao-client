@@ -1,7 +1,15 @@
-version: "3.8"
+# xaosao-client — production compose file
+#
+# Two replicas of the Node/RR server behind nginx. Cookie-based sticky
+# sessions pin each browser to one replica so the in-process query cache
+# (see app/services/cache.server.ts) actually hits.
+#
+# Scale up/down: `docker compose up -d --scale xaosao-client=3`
+# Do NOT set `container_name` on the replicated service — Docker will
+# refuse to start a second copy with the same name.
+
 services:
   xaosao-client:
-    container_name: xaosao-client
     build:
       context: .
     restart: always
@@ -11,11 +19,40 @@ services:
       - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+    # No ports exposed to host — all traffic through nginx below.
+    # Public /public assets are baked into the image (see Dockerfile);
+    # remove the volume mount that used to overwrite them at runtime.
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    stop_grace_period: 30s
+
+  xaosao-nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    depends_on:
+      xaosao-client:
+        condition: service_healthy
     ports:
-      - "5176:3000"
+      # Map host port 5176 (your existing public port) to nginx.
+      # Change to 80/443 when moving off the dev port.
+      - "5176:80"
     volumes:
-      # Only mount for dev — in prod you don’t want to overwrite built files
-      - ./public:/app/public
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - xaosao-share-network
+
 networks:
   xaosao-share-network:
     external: true
