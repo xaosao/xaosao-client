@@ -112,12 +112,9 @@ function useCacheClear() {
         }
       }
 
-      // Check for service worker updates on launch
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistration().then((registration) => {
-          if (registration) registration.update();
-        }).catch(() => {});
-      }
+      // NOTE: SW update-check happens once inside registerSW() (usePWA
+      // hook). Don't fire it again here — combined with `FORCE_UPDATE`
+      // it caused a per-mount cache-clear + reload loop.
     } catch (e) {
       console.error("[Cache] useCacheClear failed:", e);
     }
@@ -139,22 +136,16 @@ function usePWA() {
         userAgent: navigator.userAgent
       });
 
-      // First, check if there's an existing service worker and clear old caches
-      navigator.serviceWorker.getRegistration().then((existingReg) => {
-        if (existingReg && existingReg.active) {
-          // Send message to clear old caches and force update
-          existingReg.active.postMessage({ type: 'FORCE_UPDATE' });
-        }
-      });
-
-      // Register service worker with updateViaCache: 'none' to always check for updates
+      // Register the service worker. `updateViaCache: 'none'` still asks
+      // the browser to fetch sw.js fresh, but no manual FORCE_UPDATE /
+      // registration.update() spam per mount — that combo cleared all
+      // caches every render and triggered controllerchange → reload
+      // loops. Cache invalidation now runs only when APP_VERSION bumps
+      // (see useCacheClear).
       navigator.serviceWorker
         .register("/sw.js", { updateViaCache: 'none' })
         .then((registration) => {
           console.log("[PWA] Service Worker registered:", registration.scope);
-
-          // Check for updates
-          registration.update();
 
           // If there's a waiting worker, activate it
           if (registration.waiting) {
@@ -271,10 +262,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 
-        {/* Cache Control - Prevent Safari aggressive caching */}
-        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta httpEquiv="Pragma" content="no-cache" />
-        <meta httpEquiv="Expires" content="0" />
+        {/* Cache control is handled server-side + by hashed asset URLs; do
+            NOT set no-store meta tags here — they force every JS/CSS/image
+            to re-download on every navigation, causing 300+ requests per
+            page load. Removed 2026-04. */}
 
         {/* SEO */}
         <meta name="robots" content="index, follow" />

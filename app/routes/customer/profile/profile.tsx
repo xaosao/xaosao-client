@@ -48,16 +48,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (!imageId) {
         return { success: false, error: true, message: "Invalid credentials data!" };
     }
-    let image = ""
     if (request.method === "POST") {
         try {
-            if (newFile && newFile instanceof File && newFile.size > 0) {
-                const { resolveUserUploadPath } = await import("~/services/upload.server");
-                const folderPath = await resolveUserUploadPath("customer", customerId, "gallery");
-                const buffer = Buffer.from(await newFile.arrayBuffer());
-                const url = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type, folderPath, "gallery");
-                image = url;
+            // Require a file — otherwise we'd insert an empty-URL image row
+            // that instantly renders as "Lost". Historically the createImage
+            // call sat OUTSIDE this guard, so a POST with no file created a
+            // broken row.
+            if (!newFile || !(newFile instanceof File) || newFile.size === 0) {
+                return { success: false, error: true, message: "Please select an image to upload." };
             }
+
+            const { resolveUserUploadPath } = await import("~/services/upload.server");
+            const folderPath = await resolveUserUploadPath("customer", customerId, "gallery");
+            const buffer = Buffer.from(await newFile.arrayBuffer());
+            const image = await uploadFileToBunnyServer(buffer, newFile.name, newFile.type, folderPath, "gallery");
+
             const res = await createCustomerImage(customerId, image);
             if (res.id) {
                 return { success: true, action: "upload", message: "Upload your image successfully!" };

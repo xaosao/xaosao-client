@@ -94,18 +94,14 @@ self.addEventListener('fetch', (event) => {
   const authPaths = ['/login', '/logout', '/register', '/model-auth', '/model-logout', '/forgot-password', '/reset-password', '/verify-otp'];
   if (authPaths.some(path => url.pathname.startsWith(path))) return;
 
-  // For navigation requests (HTML pages) - ALWAYS go to network
-  // Don't cache navigation requests as they depend on auth state and can cause issues on iOS Safari
+  // For navigation requests (HTML pages) — go to network but let the
+  // browser use its own HTTP cache. We used to force `cache: 'no-store'`
+  // here, which made every route change re-download the whole document +
+  // referenced chunks (300+ req/page). The document response is dynamic
+  // and short-lived anyway; the browser cache handles it correctly.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, {
-        cache: 'no-store', // Force fresh fetch on iOS
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
+      fetch(request)
         .then((response) => {
           // Don't cache navigation responses - they are dynamic and auth-dependent
           return response;
@@ -132,35 +128,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets (JS, CSS) - ALWAYS fetch from network with no-cache on iOS, no caching
-  // This prevents iOS Safari caching issues where old JS/CSS causes UI breaks
-  if (url.pathname.match(/\.(js|css)$/)) {
-    event.respondWith(
-      fetch(request, isIOS ? {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      } : {})
-    );
-    return;
-  }
-
-  // For local images (/images/) - ALWAYS fetch from network with no-cache on iOS, no caching
-  // This prevents iOS Safari from serving stale images
-  if (url.pathname.startsWith('/images/')) {
-    event.respondWith(
-      fetch(request, isIOS ? {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      } : {})
-    );
-    return;
-  }
+  // JS / CSS chunks and local images: fall through to network but let
+  // the browser use its HTTP cache. Chunks have hashed filenames already
+  // (safe to cache forever); local images rarely change. The old
+  // `no-store` overrides forced re-download of the whole app bundle on
+  // every navigation.
+  //
+  // If iOS ever gets stuck on stale assets, bump APP_VERSION in root.tsx
+  // — the cache-clear path handles that already.
+  //
 
   // For external images and fonts - cache first (these don't cause hydration issues)
   if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/)) {

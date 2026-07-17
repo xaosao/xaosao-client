@@ -95,6 +95,39 @@ const DEFAULT_PAGINATION: PaginationProps = {
 }
 
 // Loader
+/**
+ * Skip loader revalidation for actions that don't change the visible
+ * model list. React Router re-runs every loader after every action by
+ * default; without this guard, each like/pass/track fires ~6 DB queries
+ * for nothing.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  actionResult,
+  defaultShouldRevalidate,
+}: {
+  currentUrl: URL;
+  nextUrl: URL;
+  actionResult?: { action?: string };
+  defaultShouldRevalidate: boolean;
+}): boolean {
+  // Fire-and-forget tracking / friend-add — don't refetch the list.
+  const skipActions = new Set(["trackActivity", "addFriend"]);
+  if (actionResult?.action && skipActions.has(actionResult.action)) {
+    return false;
+  }
+  // Same URL, no action — nothing to refetch (revisit from navigation).
+  if (
+    currentUrl.pathname === nextUrl.pathname &&
+    currentUrl.search === nextUrl.search &&
+    !actionResult
+  ) {
+    return false;
+  }
+  return defaultShouldRevalidate;
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireUserSession(request);
     const { getCustomerProfile } = await import("~/services/profile.server");
@@ -122,9 +155,13 @@ export const loader: LoaderFunction = async ({ request }) => {
     // Calculate available balance: totalBalance - totalSpend + totalRefunded
     const customerAvailableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
 
-    // Get chattable model IDs for green chat button
-    const chattableSet = hasSubscription ? await getChattableModelIds(customerId) : new Set<string>();
-    const chattableModelIds = Array.from(chattableSet);
+    // Kick off the chattable-IDs query WITHOUT awaiting — the tab-
+    // specific query (getForyouModels / getLikeMeModels / …) is
+    // independent, so run them in parallel below. Await both at the
+    // point of use.
+    const chattablePromise: Promise<Set<string>> = hasSubscription
+      ? getChattableModelIds(customerId)
+      : Promise.resolve(new Set<string>());
 
     // Pagination params
     const page = Number(url.searchParams.get("page") || 1);
@@ -180,14 +217,11 @@ export const loader: LoaderFunction = async ({ request }) => {
 
     // If requesting ForYou or no specific flag -> load for you
     if (forYouOnly || emptyParams) {
-        const { models: foryouModels, pagination } = await getForyouModels(
-            customerId,
-            {
-                ...filters,
-                page,
-                perPage: take,
-            }
-        );
+        const [{ models: foryouModels, pagination }, chattableSet] = await Promise.all([
+            getForyouModels(customerId, { ...filters, page, perPage: take }),
+            chattablePromise,
+        ]);
+        const chattableModelIds = Array.from(chattableSet);
 
         return {
             foryouModels,
@@ -209,8 +243,12 @@ export const loader: LoaderFunction = async ({ request }) => {
     }
 
     if (likeMeOnly) {
-        const { models: likeMeModels, pagination: likemePagination } =
-            await getLikeMeModels(customerId, likePage, likeTake);
+        const [{ models: likeMeModels, pagination: likemePagination }, chattableSet] =
+            await Promise.all([
+                getLikeMeModels(customerId, likePage, likeTake),
+                chattablePromise,
+            ]);
+        const chattableModelIds = Array.from(chattableSet);
 
         return {
             foryouModels: [],
@@ -232,10 +270,14 @@ export const loader: LoaderFunction = async ({ request }) => {
     }
 
     if (favouriteOnly) {
-        const {
-            models: myFavouriteModels,
-            pagination: favouritePagination,
-        } = await getModelsByInteraction(customerId, "LIKE", favPage, favouriteTake);
+        const [
+            { models: myFavouriteModels, pagination: favouritePagination },
+            chattableSet,
+        ] = await Promise.all([
+            getModelsByInteraction(customerId, "LIKE", favPage, favouriteTake),
+            chattablePromise,
+        ]);
+        const chattableModelIds = Array.from(chattableSet);
 
         return {
             foryouModels: [],
@@ -257,8 +299,12 @@ export const loader: LoaderFunction = async ({ request }) => {
     }
 
     if (passedOnly) {
-        const { models: myPassModels, pagination: passPagination } =
-            await getModelsByInteraction(customerId, "PASS", passedPage, passedTake);
+        const [{ models: myPassModels, pagination: passPagination }, chattableSet] =
+            await Promise.all([
+                getModelsByInteraction(customerId, "PASS", passedPage, passedTake),
+                chattablePromise,
+            ]);
+        const chattableModelIds = Array.from(chattableSet);
 
         return {
             foryouModels: [],
@@ -278,6 +324,11 @@ export const loader: LoaderFunction = async ({ request }) => {
             chattableModelIds,
         } as LoaderReturn;
     }
+
+    // Fallback branch — no tab flag matched. Still await the chattable
+    // promise so the array reaches the client even for edge query strings.
+    const chattableSet = await chattablePromise;
+    const chattableModelIds = Array.from(chattableSet);
 
     return {
         foryouModels: [],
