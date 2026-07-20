@@ -53,20 +53,37 @@ export default function CreateCustomerPostModal({
       const response = await fetch("/customer/posts/create", {
         method: "POST",
         body: formData,
+        credentials: "same-origin",
       });
 
+      // Successful create → action returns redirect("/customer/posts").
+      // fetch follows redirects by default, so response.redirected === true
+      // means the post was actually created and the server redirected us.
       if (response.redirected) {
         revalidator.revalidate();
         onSuccess?.();
         return;
       }
 
-      const result = await response.json();
-      if (result?.error) {
-        setError(t(result.message, { defaultValue: result.message }));
+      // Non-redirect responses come back as JSON with { error, message }.
+      // If the response isn't JSON (e.g. unauthenticated → HTML login page),
+      // response.json() throws and we surface a generic error via the catch.
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const result = await response.json();
+        if (result?.error) {
+          setError(t(result.message, { defaultValue: result.message }));
+        } else {
+          // Action returned JSON without error — assume success and refresh.
+          revalidator.revalidate();
+          onSuccess?.();
+        }
+      } else {
+        setError(t("posts.create.failed", { defaultValue: "Failed to create post. Please try again." }));
       }
-    } catch {
-      setError(t("posts.create.profanityBlocked", { defaultValue: "Failed to create post" }));
+    } catch (err) {
+      console.error("[CreatePost] Submit failed:", err);
+      setError(t("posts.create.failed", { defaultValue: "Failed to create post. Please try again." }));
     } finally {
       setIsSubmitting(false);
     }

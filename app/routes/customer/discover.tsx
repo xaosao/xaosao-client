@@ -125,17 +125,14 @@ export function shouldRevalidate({
     actionResult?: any;
     defaultShouldRevalidate: boolean;
 }): boolean {
-    // Skip revalidation for fire-and-forget / optimistic actions
+    // Skip revalidation for fire-and-forget / optimistic actions —
+    // the like/pass UI updates via optimistic state, no need to refetch.
     const skipActions = new Set(["trackActivity", "addFriend", "like", "pass"]);
     if (actionResult?.action && skipActions.has(actionResult.action)) return false;
-    // Same URL, no action — nothing to reload
-    if (
-        currentUrl.pathname === nextUrl.pathname &&
-        currentUrl.search === nextUrl.search &&
-        !actionResult
-    ) {
-        return false;
-    }
+
+    // Do NOT block same-URL revalidation — that's how useRevalidator()
+    // works, and things like the location prompt + push subscription
+    // legitimately need to refresh loader data in place.
     return defaultShouldRevalidate;
 }
 

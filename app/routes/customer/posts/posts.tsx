@@ -40,14 +40,20 @@ export function shouldRevalidate({
   actionResult?: any;
   defaultShouldRevalidate: boolean;
 }): boolean {
-  // Tab switch is a `tab` query-param change only — reuse cached loader data
-  if (
-    currentUrl.pathname === nextUrl.pathname &&
-    currentUrl.searchParams.get("service") === nextUrl.searchParams.get("service") &&
-    !actionResult
-  ) {
+  // Identical URLs = useRevalidator().revalidate() (e.g. after create-post
+  // fetch succeeds). MUST run — this is how the feed picks up new posts.
+  if (currentUrl.toString() === nextUrl.toString()) return defaultShouldRevalidate;
+
+  // Same route, only `tab` param changed → the loader doesn't read `tab`,
+  // reuse cached data.
+  const currentNoTab = new URL(currentUrl);
+  const nextNoTab = new URL(nextUrl);
+  currentNoTab.searchParams.delete("tab");
+  nextNoTab.searchParams.delete("tab");
+  if (currentNoTab.toString() === nextNoTab.toString() && !actionResult) {
     return false;
   }
+
   return defaultShouldRevalidate;
 }
 

@@ -107,20 +107,32 @@ export default function CreateModelPostModal({
       const response = await fetch("/model/posts/create", {
         method: "POST",
         body: formData,
+        credentials: "same-origin",
       });
 
+      // Successful create → action returns redirect → fetch follows it,
+      // so redirected === true means the post was actually created.
       if (response.redirected) {
         revalidator.revalidate();
         onSuccess?.();
         return;
       }
 
-      const result = await response.json();
-      if (result?.error) {
-        setError(t(result.message, { defaultValue: result.message }));
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const result = await response.json();
+        if (result?.error) {
+          setError(t(result.message, { defaultValue: result.message }));
+        } else {
+          revalidator.revalidate();
+          onSuccess?.();
+        }
+      } else {
+        setError(t("posts.create.failed", { defaultValue: "Failed to create post. Please try again." }));
       }
-    } catch {
-      setError(t("posts.create.profanityBlocked", { defaultValue: "Failed to create post" }));
+    } catch (err) {
+      console.error("[CreatePost] Submit failed:", err);
+      setError(t("posts.create.failed", { defaultValue: "Failed to create post. Please try again." }));
     } finally {
       setIsSubmitting(false);
     }

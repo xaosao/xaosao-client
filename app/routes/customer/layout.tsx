@@ -50,10 +50,12 @@ interface TransactionProps {
 // state, wallet, trial plan, awaiting slip). By default it re-runs on
 // EVERY child navigation, adding ~800 ms of DB work between every page
 // change. Skip it unless something material could have changed:
-//   - Explicit revalidation from useRevalidator (SSE notifications, etc.)
+//   - Explicit revalidation from useRevalidator (SSE notifications,
+//     create-post modal, etc.) — URLs identical, must let through
+//   - Any non-GET action in the tree (formMethod !== GET)
+//   - Any action that returned a result (like/pass/create/etc.)
 //   - Coming from a page that mutates layout-visible state (wallet
 //     top-up, subscription checkout, notification settings, logout)
-//   - Any action within the customer tree (formMethod !== GET)
 export function shouldRevalidate({
     currentUrl,
     nextUrl,
@@ -67,6 +69,11 @@ export function shouldRevalidate({
     actionResult?: any;
     defaultShouldRevalidate: boolean;
 }): boolean {
+    // Explicit useRevalidator().revalidate() — URLs are literally identical.
+    // Must let this through: children rely on it to refresh notification
+    // counts, wallet balance after actions, etc.
+    if (currentUrl.toString() === nextUrl.toString()) return defaultShouldRevalidate;
+
     // Any non-GET form submission somewhere in the tree — assume state changed.
     if (formMethod && formMethod !== "GET") return defaultShouldRevalidate;
     if (actionResult) return defaultShouldRevalidate;

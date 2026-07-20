@@ -102,8 +102,6 @@ const DEFAULT_PAGINATION: PaginationProps = {
  * for nothing.
  */
 export function shouldRevalidate({
-  currentUrl,
-  nextUrl,
   actionResult,
   defaultShouldRevalidate,
 }: {
@@ -117,14 +115,9 @@ export function shouldRevalidate({
   if (actionResult?.action && skipActions.has(actionResult.action)) {
     return false;
   }
-  // Same URL, no action — nothing to refetch (revisit from navigation).
-  if (
-    currentUrl.pathname === nextUrl.pathname &&
-    currentUrl.search === nextUrl.search &&
-    !actionResult
-  ) {
-    return false;
-  }
+  // Do NOT block same-URL revalidation — that's how useRevalidator() works.
+  // Any explicit revalidate() from a child (SSE notification, modal after
+  // create, etc.) must be allowed through.
   return defaultShouldRevalidate;
 }
 
