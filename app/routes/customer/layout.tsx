@@ -93,61 +93,75 @@ export function shouldRevalidate({
     return false;
 }
 
+// Extracted from the loader so `withCache` can wrap it. Runs the 8-way
+// parallel fetch that populates the customer top bar / notification bell /
+// awaiting-slip banner / subscription modal state.
+async function loadCustomerLayoutData(customerId: string) {
+    const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
+    const { prisma } = await import("~/services/database.server");
+    const { getAwaitingSlipIntent } = await import("~/services/wallet.server");
+
+    const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet, awaitingSlipIntent] = await Promise.all([
+        getCustomerProfile(customerId),
+        getCustomerUnreadCount(customerId).catch(() => 0),
+        getCustomerNotifications(customerId, { limit: 10 }).catch(() => []),
+        hasActiveSubscription(customerId).catch(() => false),
+        hasPendingSubscription(customerId).catch(() => false),
+        prisma.subscription_plan.findFirst({
+            where: { name: "24-Hour Trial", status: "active" },
+            select: { id: true, price: true },
+        }).catch(() => null),
+        prisma.wallet.findFirst({
+            where: { customerId },
+            select: { totalBalance: true, totalSpend: true, totalRefunded: true },
+        }).catch(() => null),
+        getAwaitingSlipIntent(customerId).catch(() => null),
+    ]);
+
+    const initialNotifications: Notification[] = (notifications || []).map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        data: n.data as Record<string, any>,
+        isRead: n.isRead,
+        createdAt: n.createdAt.toISOString(),
+    }));
+
+    const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
+    const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
+
+    return {
+        customerData,
+        unreadNotifications,
+        initialNotifications,
+        hasActiveSubscription: hasSubscription,
+        hasPendingSubscription: hasPending,
+        hasEnabledNotifications,
+        trialPackage,
+        customerBalance: availableBalance,
+        awaitingSlipIntent: awaitingSlipIntent
+            ? { id: awaitingSlipIntent.id, amount: awaitingSlipIntent.amount }
+            : null,
+    };
+}
+
 export const loader: LoaderFunction = async ({ request }) => {
     const customerId = await requireVerifiedUserSession(request);
 
     try {
-        const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
-        const { prisma } = await import("~/services/database.server");
+        const { withCache } = await import("~/services/cache.server");
 
-        const { getAwaitingSlipIntent } = await import("~/services/wallet.server");
-
-        const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet, awaitingSlipIntent] = await Promise.all([
-            getCustomerProfile(customerId),
-            getCustomerUnreadCount(customerId).catch(() => 0),
-            getCustomerNotifications(customerId, { limit: 10 }).catch(() => []),
-            hasActiveSubscription(customerId).catch(() => false),
-            hasPendingSubscription(customerId).catch(() => false),
-            prisma.subscription_plan.findFirst({
-                where: { name: "24-Hour Trial", status: "active" },
-                select: { id: true, price: true },
-            }).catch(() => null),
-            prisma.wallet.findFirst({
-                where: { customerId },
-                select: { totalBalance: true, totalSpend: true, totalRefunded: true },
-            }).catch(() => null),
-            getAwaitingSlipIntent(customerId).catch(() => null),
-        ]);
-
-        const initialNotifications: Notification[] = (notifications || []).map((n) => ({
-            id: n.id,
-            type: n.type,
-            title: n.title,
-            message: n.message,
-            data: n.data as Record<string, any>,
-            isRead: n.isRead,
-            createdAt: n.createdAt.toISOString(),
-        }));
-
-        // Check if customer has enabled notifications (either push or SMS)
-        const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
-
-        // Calculate available balance: totalBalance - totalSpend + totalRefunded
-        const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
-
-        return {
-            customerData,
-            unreadNotifications,
-            initialNotifications,
-            hasActiveSubscription: hasSubscription,
-            hasPendingSubscription: hasPending,
-            hasEnabledNotifications,
-            trialPackage,
-            customerBalance: availableBalance,
-            awaitingSlipIntent: awaitingSlipIntent
-                ? { id: awaitingSlipIntent.id, amount: awaitingSlipIntent.amount }
-                : null,
-        };
+        // Wrap the entire fan-out in the 30 s cache. Post-login and rapid
+        // page-hopping now hit memory instead of paying 8 parallel queries
+        // every time. Cache key includes customerId so existing
+        // `cacheInvalidateContaining(customerId)` calls in like/pass/etc
+        // ALSO invalidate this — no per-action wiring needed.
+        return await withCache(
+            `customerLayout:${customerId}`,
+            30_000,
+            () => loadCustomerLayoutData(customerId),
+        );
     } catch (error) {
         console.error("[CustomerLayout] Loader error:", error);
         // If the critical profile query fails, redirect to login rather than showing error page

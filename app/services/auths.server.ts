@@ -1231,6 +1231,12 @@ export async function verifyPhoneOTP(customerId: string, otp: string) {
       },
     });
 
+    // Invalidate the cached "unverified" state so the very next page
+    // load treats this customer as verified. Without this the user
+    // would be stuck on /verify-otp for up to 5 minutes after success.
+    const { cacheInvalidateContaining } = await import("./cache.server");
+    cacheInvalidateContaining(customerId);
+
     await createAuditLogs({
       ...auditBase,
       description: `Phone verified successfully for customer: ${customerId}`,
@@ -1257,15 +1263,23 @@ export async function verifyPhoneOTP(customerId: string, otp: string) {
  * Check if customer's phone is verified
  */
 export async function isCustomerPhoneVerified(customerId: string): Promise<boolean> {
-  try {
-    const customer = await prisma.customer.findFirst({
-      where: { id: customerId },
-      select: { isPhoneVerified: true },
-    });
-
-    return customer?.isPhoneVerified ?? false;
-  } catch (error) {
-    console.error("CHECK_PHONE_VERIFIED_ERROR", error);
-    return false;
-  }
+  // Called by requireVerifiedUserSession on EVERY customer page load.
+  // Verification is a one-way boolean — once true, it stays true — so
+  // a 5-minute cache is safe and eliminates the query from the hot path.
+  // The rare "false → true" transition (user just verified) invalidates
+  // this key inside the OTP-verify action, so users don't get stuck on
+  // /verify-otp for 5 min after successfully verifying.
+  const { withCache } = await import("./cache.server");
+  return withCache(`phoneVerified:${customerId}`, 5 * 60_000, async () => {
+    try {
+      const customer = await prisma.customer.findFirst({
+        where: { id: customerId },
+        select: { isPhoneVerified: true },
+      });
+      return customer?.isPhoneVerified ?? false;
+    } catch (error) {
+      console.error("CHECK_PHONE_VERIFIED_ERROR", error);
+      return false;
+    }
+  });
 }

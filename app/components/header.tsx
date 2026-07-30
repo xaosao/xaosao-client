@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Download } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { isAndroid, PLAY_STORE_URL } from "~/utils/platform";
 
 /**
  * Top navigation — editorial style.
@@ -58,6 +59,14 @@ export function Header() {
             <a
               href="#download"
               onClick={(e) => {
+                // Android → straight to Play Store install page.
+                // iOS / desktop → scroll to the download section (which
+                // shows both store badges + a fallback APK link).
+                if (isAndroid()) {
+                  e.preventDefault();
+                  window.location.href = PLAY_STORE_URL;
+                  return;
+                }
                 e.preventDefault();
                 const el = document.getElementById("download");
                 if (el) {

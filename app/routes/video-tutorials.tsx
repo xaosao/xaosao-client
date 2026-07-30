@@ -1,11 +1,26 @@
 import { Play, X } from "lucide-react";
-import { useNavigate } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 // components
 import { Header } from "~/components/header";
 import { Button } from "~/components/ui/button";
+import { goToCta } from "~/utils/platform";
+
+// Preconnect + SEO meta. Both matter for perceived load time:
+//   - preconnect warms the DNS+TLS handshake to BunnyCDN before the
+//     first thumbnail request fires — saves ~200ms on cold visits
+//   - meta tags let the browser render the tab title / OG preview
+//     instantly instead of showing "localhost:5176" until React hydrates
+export function meta() {
+  return [
+    { title: "Video Tutorials — XaoSao" },
+    { name: "description", content: "Watch quick video tutorials on how to use XaoSao — for customers and companions." },
+    { tagName: "link", rel: "preconnect", href: "https://xs-images.b-cdn.net" },
+    { tagName: "link", rel: "preconnect", href: "https://xaosao-local.b-cdn.net" },
+    { tagName: "link", rel: "dns-prefetch", href: "https://iframe.mediadelivery.net" },
+  ];
+}
 
 interface VideoItem {
    id: string;
@@ -87,9 +102,10 @@ const customerVideos: VideoItem[] = [
 interface VideoCardProps {
    video: VideoItem;
    onClick: () => void;
+   priority?: boolean;
 }
 
-function VideoCard({ video, onClick }: VideoCardProps) {
+function VideoCard({ video, onClick, priority = false }: VideoCardProps) {
    return (
       <div
          className="group cursor-pointer border border-gray-500 rounded-md hover:border-rose-500"
@@ -97,7 +113,17 @@ function VideoCard({ video, onClick }: VideoCardProps) {
       >
          <div className="relative aspect-video bg-gradient-to-br from-rose-500/20 via-gray-800 to-gray-900 rounded-t-md overflow-hidden mb-3 shadow-lg">
             {video.thumbnail && (
-               <img src={video.thumbnail} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+               <img
+                  src={video.thumbnail}
+                  alt=""
+                  // Hero thumbnails: eager + high priority so they paint
+                  // before the browser gets to the CTA/footer requests.
+                  // Below-fold cards stay lazy.
+                  loading={priority ? "eager" : "lazy"}
+                  fetchPriority={priority ? "high" : "auto"}
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-cover"
+               />
             )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                <div className="w-12 h-12 rounded-full bg-rose-500/90 flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform duration-300">
@@ -218,7 +244,6 @@ function VideoModal({ video, onClose }: VideoModalProps) {
 }
 
 export default function VideoTutorialsPage() {
-   const navigate = useNavigate();
    const { t } = useTranslation();
    const [activeTab, setActiveTab] = useState<"customer" | "model">("customer");
    const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
@@ -272,11 +297,15 @@ export default function VideoTutorialsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-               {videos.map((video) => (
+               {videos.map((video, i) => (
                   <VideoCard
                      key={video.id}
                      video={video}
                      onClick={() => setSelectedVideo(video)}
+                     // First 4 cards are almost always above the fold on
+                     // any viewport — mark them high priority so their
+                     // thumbnails start downloading immediately.
+                     priority={i < 4}
                   />
                ))}
             </div>
@@ -301,7 +330,10 @@ export default function VideoTutorialsPage() {
                   <Button
                      size="lg"
                      className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 font-medium shadow-xl hover:shadow-rose-500/25 transition-all duration-300"
-                     onClick={() => navigate(activeTab === "customer" ? "/register" : "/model-auth/register")}
+                     // Android → Play Store install; iOS/desktop → the
+                     // regular register page. Consistent with the rest of
+                     // the marketing CTAs post the app-download push.
+                     onClick={() => goToCta(activeTab === "customer" ? "/register" : "/model-auth/register")}
                   >
                      {activeTab === "customer" ? t("videoTutorials.registerCustomer") : t("videoTutorials.registerCompanion")}
                   </Button>

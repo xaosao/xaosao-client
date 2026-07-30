@@ -33,6 +33,7 @@ import { Reveal } from "~/components/reveal";
 import { getPublicServices } from "~/services/service.server";
 import { getPublicHotModels } from "~/services/model.server";
 import type { HotModel } from "~/types/model";
+import { goToCta } from "~/utils/platform";
 
 const getServiceIcon = (serviceName: string) => {
   const name = serviceName.toLowerCase();
@@ -207,7 +208,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 {t("home.heroCtaSecondary", { defaultValue: "Watch how it works" })}
               </button>
               <button
-                onClick={() => navigate("/model-auth/login")}
+                onClick={() => goToCta("/model-auth/login")}
                 className="group inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg shadow-rose-500/25 transition-all hover:shadow-xl hover:scale-[1.02]"
               >
                 {t("home.heroCtaPrimary", { defaultValue: "Get started" })}
@@ -851,11 +852,7 @@ function PricingCard({
       {/* CTA button — tone-colored */}
       <button
         className={`mt-4 w-full py-3 rounded-xl text-sm font-semibold transition-all ${toneClasses.button}`}
-        onClick={() => {
-          if (typeof window !== "undefined") {
-            window.location.href = "/model-auth/register";
-          }
-        }}
+        onClick={() => goToCta("/model-auth/register")}
       >
         Get started
       </button>

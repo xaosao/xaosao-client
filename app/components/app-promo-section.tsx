@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Search,
 } from "lucide-react";
+import { PLAY_STORE_URL } from "~/utils/platform";
 
 /**
  * App Promotion Section — editorial light variant.
@@ -113,7 +114,9 @@ export function AppPromoSection() {
             {/* Download buttons */}
             <div className="flex flex-wrap gap-3 pt-2">
               <a
-                href="#"
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Google Play"
                 className="group flex items-center gap-3 bg-gray-900 hover:bg-black text-white px-5 py-3.5 rounded-2xl shadow-sm transition-all hover:scale-[1.02] hover:shadow-lg"
               >
