@@ -2,7 +2,7 @@ import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useRouteLoaderData, useSearchParams, type LoaderFunction } from 'react-router';
-import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, MessageCircle, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
 
 // components
 import {
@@ -33,7 +33,6 @@ import { calculateAgeFromDOB, formatCurrency, formatNumber, formatDateRelative }
 import { getModelReviews, canCustomerReviewModel, getCustomerReviewForModel, createReview } from '~/services/review.server';
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { ChatAccessModal } from "~/components/ChatAccessModal";
-import { openWhatsApp } from "~/utils/functions/whatsapp";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getUserProfilePosts } from '~/services/post.server';
@@ -340,29 +339,27 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     };
 
     // Chat access modal state
-    const [chatModalState, setChatModalState] = React.useState<{ reason: string; whatsappNumber?: number } | null>(null);
-    const bookingCheckFetcher = useFetcher();
-    const pendingChatRef = React.useRef<number | null>(null);
+    const [chatModalState, setChatModalState] = React.useState<{ reason: string } | null>(null);
+    // In-app chat — the same conversation the mobile app opens. The route
+    // runs the identical access gate server-side and either redirects into
+    // the thread or returns { canChat: false, reason } for the modal below.
+    const startChatFetcher = useFetcher<{ canChat?: boolean; reason?: string }>();
 
-    // Handler for WhatsApp button click with chat access check
-    const handleWhatsAppClick = (whatsappNumber: number) => {
-        pendingChatRef.current = whatsappNumber;
-        bookingCheckFetcher.load(`/customer/check-booking?modelId=${model.id}`);
+    const handleStartChat = () => {
+        trackActivity("CLICK_CHAT");
+        startChatFetcher.submit(
+            { modelId: model.id },
+            { method: "post", action: "/customer/chat/start" }
+        );
     };
 
     React.useEffect(() => {
-        if (bookingCheckFetcher.state === "idle" && bookingCheckFetcher.data && pendingChatRef.current) {
-            const whatsappNumber = pendingChatRef.current;
-            pendingChatRef.current = null;
-            const data = bookingCheckFetcher.data as any;
-            if (data.canChat) {
-                trackActivity("CLICK_CHAT");
-                openWhatsApp(whatsappNumber);
-            } else {
-                setChatModalState({ reason: data.reason, whatsappNumber });
-            }
+        if (startChatFetcher.state !== "idle" || !startChatFetcher.data) return;
+        const data = startChatFetcher.data;
+        if (data.canChat === false) {
+            setChatModalState({ reason: data.reason || "gift_required" });
         }
-    }, [bookingCheckFetcher.state, bookingCheckFetcher.data]);
+    }, [startChatFetcher.state, startChatFetcher.data]);
 
     // Handler for book service button click with subscription and balance check
     const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number) => {
@@ -499,16 +496,16 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                             >
                                 <Heart />
                             </Button>
-                            {model?.whatsapp && (
-                                <Button
-                                    size="sm"
-                                    type="button"
-                                    className="cursor-pointer block sm:hidden border border-rose-500 text-rose-500 bg-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                    onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                >
-                                    <MessageSquareText className="w-5 h-5 text-rose-500 cursor-pointer" />
-                                </Button>
-                            )}
+                            <Button
+                                size="sm"
+                                type="button"
+                                disabled={startChatFetcher.state !== "idle"}
+                                className="cursor-pointer block sm:hidden bg-rose-500 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl hover:bg-rose-600 transition-all duration-200 rounded-md"
+                                onClick={handleStartChat}
+                                title={t('navigation.chat')}
+                            >
+                                <MessageCircle className="w-5 h-5 cursor-pointer" />
+                            </Button>
                             {optimisticState.isContact ? (
                                 <div className="block sm:hidden rounded-md py-1.5 px-2 bg-green-100 text-green-500 shadow-lg">
                                     <UserCheck className="w-5 h-5" />
@@ -567,16 +564,16 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                         ? t('profile.liked')
                                         : t('profile.like')}
                                 </Button>
-                                {model?.whatsapp && (
-                                    <Button
-                                        size="sm"
-                                        type="button"
-                                        className="cursor-pointer hidden bg-gray-700 sm:block text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                                        onClick={() => model.whatsapp && handleWhatsAppClick(model.whatsapp)}
-                                    >
-                                        {t('profile.message')}
-                                    </Button>
-                                )}
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    disabled={startChatFetcher.state !== "idle"}
+                                    className="cursor-pointer hidden sm:flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                    onClick={handleStartChat}
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    {t('navigation.chat')}
+                                </Button>
                                 {optimisticState.isContact ? (
                                     <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">
                                         <UserCheck className="w-4 h-4" />
@@ -1180,14 +1177,13 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                 <ChatAccessModal
                     isOpen={!!chatModalState}
                     onClose={() => setChatModalState(null)}
-                    whatsappNumber={chatModalState?.whatsappNumber}
                     modelId={model.id}
                     reason={chatModalState?.reason || ""}
                     onGiftSent={() => {
+                        // The gift unlocked access — go straight into the
+                        // conversation rather than handing off to WhatsApp.
                         setChatModalState(null);
-                        if (pendingChatRef.current) {
-                            bookingCheckFetcher.load(`/customer/check-booking?modelId=${model.id}`);
-                        }
+                        handleStartChat();
                     }}
                 />
 

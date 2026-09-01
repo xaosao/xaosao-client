@@ -1,33 +1,32 @@
-import type { LoaderFunction } from "react-router";
-import { requireUserSession } from "~/services/auths.server";
-import { getNearbyModels } from "~/services/model.server";
-import type { INearbyModelResponse } from "~/interfaces";
+/**
+ * Resource route: the next page of the customer's Discover grid.
+ *
+ * Shares `loadCustomerDiscover` with the page loader so page 1 and page N
+ * always come from the same query — otherwise the grid duplicates or skips
+ * rows as you scroll.
+ */
 
-export const loader: LoaderFunction = async ({ request }) => {
-    const customerId = await requireUserSession(request);
+import type { LoaderFunctionArgs } from "react-router";
+import { requireVerifiedUserSession } from "~/services/auths.server";
+import { parseTab } from "~/components/discover/DiscoverTabs";
+import { loadCustomerDiscover } from "~/services/discover.server";
 
-    // Parse pagination and filter parameters from URL
-    const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get("page") || "1", 10);
-    const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+export async function loader({ request }: LoaderFunctionArgs) {
+  const customerId = await requireVerifiedUserSession(request);
+  const url = new URL(request.url);
+  const tab = parseTab(url.searchParams.get("tab"));
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
 
-    // Parse filter parameters
-    const filters = {
-        search: url.searchParams.get("search") || undefined,
-        services: url.searchParams.getAll("services").filter(Boolean),
-        maxDistance: url.searchParams.get("distance") ? Number(url.searchParams.get("distance")) : undefined,
-        ageRange: url.searchParams.get("ageMin") && url.searchParams.get("ageMax")
-            ? [Number(url.searchParams.get("ageMin")), Number(url.searchParams.get("ageMax"))] as [number, number]
-            : undefined,
-        gender: url.searchParams.get("gender") || undefined,
-        minRating: url.searchParams.get("rating") ? Number(url.searchParams.get("rating")) : undefined,
-    };
+  const { prisma } = await import("~/services/database.server");
+  const me = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { latitude: true, longitude: true },
+  });
 
-    // Get nearby models with pagination
-    const result = await getNearbyModels(customerId, filters, 50, { page, limit });
-
-    return {
-        models: result.models as INearbyModelResponse[],
-        pagination: result.pagination,
-    };
-};
+  return loadCustomerDiscover(
+    customerId,
+    tab,
+    page,
+    !!(me?.latitude && me?.longitude)
+  );
+}

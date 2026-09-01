@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useNavigate, useNavigation, useSearchParams, redirect, useFetcher } from 'react-router';
+import { BackButton } from '~/components/ui/back-button';
 import { BadgeCheck, Settings, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, Pencil, Book, BriefcaseBusiness, Trash2, Upload, Loader, Info, Plus, UserRoundPen, MoreVertical, UserPen, SquareArrowOutUpRight, EyeOff, Eye, Share2, Copy, Check } from 'lucide-react';
 
 // components
@@ -680,7 +681,12 @@ export default function ModelProfilePage() {
         <div className="h-auto sm:h-screen flex items-center justify-center">
             <div className="w-11/12 sm:w-4/5 h-full">
                 <div className="px-2 sm:px-6 py-2 sm:py-8 space-y-2">
-                    <div className="flex sm:hidden items-start justify-end px-0 sm:px-4">
+                    {/* Back sits top-LEFT; the referral button keeps the right.
+                        `justify-between` handles both cases: on desktop the
+                        referral wrapper is display:none, so the lone back
+                        button still lands on the left. */}
+                    <div className="flex items-start justify-between gap-2 px-0 sm:px-4">
+                        <BackButton fallbackTo="/model" />
                         <div className="flex sm:hidden items-center gap-2">
                             <Button
                                 size="sm"

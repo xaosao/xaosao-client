@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useRevalidator } from "react-router";
 
 interface UseSubscriptionCheckProps {
   hasActiveSubscription: boolean;
@@ -70,6 +70,8 @@ export function useSubscriptionCheck({
     setShowSubscriptionModal(false);
   };
 
+  const revalidator = useRevalidator();
+
   const handleSubscribe = async (planId: string) => {
     try {
       const response = await fetch("/customer/subscribe-trial", {
@@ -98,8 +100,14 @@ export function useSubscriptionCheck({
         // Redirect to booking page
         window.location.href = `/customer/book-service/${modelId}/${serviceId}`;
       } else {
-        // Reload to get fresh data
-        window.location.reload();
+        // Close the modal and re-run the loaders in place.
+        //
+        // This used to be `window.location.reload()`, which was both jarring
+        // and — until the server-side cache was invalidated on subscribe —
+        // ineffective: the reloaded layout was served the cached
+        // `hasActiveSubscription: false` and the modal came straight back.
+        setShowSubscriptionModal(false);
+        revalidator.revalidate();
       }
 
       return result;

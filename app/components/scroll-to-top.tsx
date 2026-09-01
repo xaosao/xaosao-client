@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowUp } from "lucide-react";
 
@@ -15,14 +16,34 @@ import { ArrowUp } from "lucide-react";
  */
 export function ScrollToTop({ showAfter = 320 }: { showAfter?: number }) {
   const { t } = useTranslation();
+  const location = useLocation();
   const [visible, setVisible] = useState(false);
 
+  /*
+   * Never show this on a chat thread. Two reasons:
+   *   1. It's `fixed bottom-right`, so it lands on top of the composer's
+   *      send button.
+   *   2. The thread scrolls its own inner container, not the window — so the
+   *      button would scroll the wrong thing. It only appeared there at all
+   *      because iOS scrolls the DOCUMENT to reveal the focused input, which
+   *      pushed window.scrollY past the threshold.
+   */
+  const onChatThread = /^\/(customer|model)\/chat\/[^/]+/.test(
+    location.pathname
+  );
+
   useEffect(() => {
+    if (onChatThread) {
+      setVisible(false);
+      return;
+    }
     const onScroll = () => setVisible(window.scrollY > showAfter);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [showAfter]);
+  }, [showAfter, onChatThread]);
+
+  if (onChatThread) return null;
 
   const handleClick = () => {
     if (typeof window !== "undefined") {

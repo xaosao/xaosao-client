@@ -130,7 +130,7 @@ export default function CallSummary() {
                      {t('callService.viewHistory', { defaultValue: 'View Booking History' })}
                   </Button>
                </Link>
-               <Link to="/customer/matches">
+               <Link to="/customer">
                   <Button variant="outline" className="w-full">
                      {t('callService.browseModels', { defaultValue: 'Browse More Models' })}
                   </Button>

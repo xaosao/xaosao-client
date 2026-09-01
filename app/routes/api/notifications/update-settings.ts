@@ -2,6 +2,7 @@ import type { ActionFunction } from "react-router";
 import { prisma } from "~/services/database.server";
 import { getModelFromSession } from "~/services/model-auth.server";
 import { getUserFromSession } from "~/services/auths.server";
+import { updateNotificationSettings } from "~/services/xs-notification.server";
 
 export const action: ActionFunction = async ({ request }) => {
   if (request.method !== "POST") {
@@ -22,13 +23,20 @@ export const action: ActionFunction = async ({ request }) => {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      await prisma.model.update({
-        where: { id: modelId },
-        data: {
-          sendPushNoti,
-          sendSMSNoti,
-        },
-      });
+      // Write through xs_backend so the app and the web agree, falling back
+      // to a direct write if the backend is unreachable. Both paths land on
+      // the same `sendPushNoti` / `sendSMSNoti` columns.
+      const viaApi = await updateNotificationSettings(
+        { userId: modelId, userType: "model" },
+        { push_enabled: sendPushNoti, sms_enabled: sendSMSNoti }
+      );
+
+      if (!viaApi) {
+        await prisma.model.update({
+          where: { id: modelId },
+          data: { sendPushNoti, sendSMSNoti },
+        });
+      }
 
       return Response.json({ success: true });
     } else if (userType === "customer") {
@@ -37,13 +45,17 @@ export const action: ActionFunction = async ({ request }) => {
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      await prisma.customer.update({
-        where: { id: customerId },
-        data: {
-          sendPushNoti,
-          sendSMSNoti,
-        },
-      });
+      const viaApi = await updateNotificationSettings(
+        { userId: customerId, userType: "customer" },
+        { push_enabled: sendPushNoti, sms_enabled: sendSMSNoti }
+      );
+
+      if (!viaApi) {
+        await prisma.customer.update({
+          where: { id: customerId },
+          data: { sendPushNoti, sendSMSNoti },
+        });
+      }
 
       return Response.json({ success: true });
     } else {

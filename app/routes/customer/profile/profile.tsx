@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, BadgeCheck, ChevronLeft, ChevronRight, Loader, Upload, UserRoundPen, X } from 'lucide-react';
 import { redirect, useActionData, useFetcher, useNavigate, useNavigation, useRouteLoaderData, useSearchParams, type ActionFunctionArgs, type LoaderFunction } from 'react-router';
+import { BackButton } from '~/components/ui/back-button';
 
 // components
 import { Badge } from '~/components/ui/badge';
@@ -527,6 +528,11 @@ export default function ProfilePage({ loaderData }: TransactionProps) {
 
     return (
         <div className="h-auto sm:min-h-screen bg-white px-0 sm:px-6 py-6 sm:py-2">
+            {/* Profile isn't in the bottom bar, so this is the way back.
+                Falls back to Discover when opened directly. */}
+            <div className="flex items-start justify-start px-4 sm:px-0 pb-2">
+                <BackButton fallbackTo="/customer" />
+            </div>
             <div className="w-full flex flex-col sm:flex-row gap-0 sm:gap-2 bg-white h-auto sm:h-full">
                 <div className="w-full sm:w-5/12 p-0 sm:p-2 border-r space-y-2">
                     {/* <div className="flex items-start justify-between sm:justify-end px-4">

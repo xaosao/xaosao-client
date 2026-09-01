@@ -4,7 +4,7 @@ import { SidebarSeparator } from "~/components/ui/sidebar";
 import { Form, Link, Outlet, redirect, useLocation, useNavigate, useRevalidator, type LoaderFunction } from "react-router";
 import {
     User,
-    Heart,
+    MessageCircle,
     Search,
     Wallet,
     UserSearch,
@@ -19,17 +19,23 @@ import { requireVerifiedUserSession } from "~/services/auths.server";
 import { getCustomerProfile } from "~/services/profile.server";
 import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
-import { getCustomerUnreadCount, getCustomerNotifications } from "~/services/notification.server";
+import { loadNotificationFeed } from "~/services/xs-notification.server";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useSubscriptionSSE } from "~/hooks/useSubscriptionSSE";
 import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
+import { useChatBadge } from "~/hooks/useChatBadge";
+import { useBackendNotifications } from "~/hooks/useBackendNotifications";
+import { HeaderSearch } from "~/components/discover/HeaderSearch";
+import { useNavPending } from "~/hooks/useNavPending";
+import { Loader2 } from "lucide-react";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
     unreadNotifications: number;
+    unreadMessages: number;
     initialNotifications: Notification[];
     hasActiveSubscription: boolean;
     hasPendingSubscription: boolean;
@@ -100,11 +106,14 @@ async function loadCustomerLayoutData(customerId: string) {
     const { hasActiveSubscription, hasPendingSubscription } = await import("~/services/package.server");
     const { prisma } = await import("~/services/database.server");
     const { getAwaitingSlipIntent } = await import("~/services/wallet.server");
+    const { getChatUnreadCount } = await import("~/services/xs-chat.server");
 
-    const [customerData, unreadNotifications, notifications, hasSubscription, hasPending, trialPackage, wallet, awaitingSlipIntent] = await Promise.all([
+    const [customerData, notificationFeed, hasSubscription, hasPending, trialPackage, wallet, awaitingSlipIntent, unreadMessages] = await Promise.all([
         getCustomerProfile(customerId),
-        getCustomerUnreadCount(customerId).catch(() => 0),
-        getCustomerNotifications(customerId, { limit: 10 }).catch(() => []),
+        // Notifications now come from the xs_backend API so the web bell
+        // matches the app exactly; `loadNotificationFeed` falls back to the
+        // local Prisma read if the backend is unreachable.
+        loadNotificationFeed(customerId, "customer"),
         hasActiveSubscription(customerId).catch(() => false),
         hasPendingSubscription(customerId).catch(() => false),
         prisma.subscription_plan.findFirst({
@@ -116,17 +125,18 @@ async function loadCustomerLayoutData(customerId: string) {
             select: { totalBalance: true, totalSpend: true, totalRefunded: true },
         }).catch(() => null),
         getAwaitingSlipIntent(customerId).catch(() => null),
+        getChatUnreadCount({ userId: customerId, userType: "customer" }),
     ]);
 
-    const initialNotifications: Notification[] = (notifications || []).map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        data: n.data as Record<string, any>,
-        isRead: n.isRead,
-        createdAt: n.createdAt.toISOString(),
-    }));
+    // Same trap as the model layout: the profile lookup returns null when the
+    // session points at a customer that no longer exists, and the component
+    // reads `customerData.profile` directly. Fail as an invalid session here,
+    // BEFORE the value reaches the 30 s cache.
+    if (!customerData) {
+        throw new Error(`No customer record for session id ${customerId}`);
+    }
+
+    const { unreadNotifications, initialNotifications } = notificationFeed;
 
     const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
     const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
@@ -134,6 +144,7 @@ async function loadCustomerLayoutData(customerId: string) {
     return {
         customerData,
         unreadNotifications,
+        unreadMessages,
         initialNotifications,
         hasActiveSubscription: hasSubscription,
         hasPendingSubscription: hasPending,
@@ -163,6 +174,8 @@ export const loader: LoaderFunction = async ({ request }) => {
             () => loadCustomerLayoutData(customerId),
         );
     } catch (error) {
+        // `redirect()` throws a Response — control flow, not a failure.
+        if (error instanceof Response) throw error;
         console.error("[CustomerLayout] Loader error:", error);
         // If the critical profile query fails, redirect to login rather than showing error page
         const url = new URL(request.url);
@@ -175,8 +188,20 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { customerData, unreadNotifications, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance, awaitingSlipIntent } = loaderData;
+    const { customerData, unreadNotifications, unreadMessages, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance, awaitingSlipIntent } = loaderData;
     const { t, i18n } = useTranslation();
+
+    // Live unread-message count for the Chat nav badge. Seeded from the
+    // loader, kept current by the shared chat socket between revalidations.
+    const liveUnreadMessages = useChatBadge("customer", unreadMessages);
+
+    // Notifications created by xs_backend arrive over the chat socket. The
+    // website's own SSE stream can't carry them — it's fed by an in-process
+    // emitter that only this app's writes reach.
+    useBackendNotifications({ userType: "customer", playSound: true });
+
+    // Lets each nav item show a spinner while its own route is loading.
+    const isNavPending = useNavPending();
 
     // Awaiting-slip banner — shown once per intent, dismissed until next login
     const [showSlipBanner, setShowSlipBanner] = useState(false);
@@ -222,6 +247,10 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Only show modal on mount when on dashboard page
     const isDashboardPage = location.pathname === "/customer";
+
+    // Search is a Discover feature, so the header icon only appears there.
+    // (Discover is the index route; its tabs live in ?tab=, not the path.)
+    const isDiscoverPage = location.pathname === "/customer";
     console.log("[ModalSequence] State:", { isDashboardPage, hasEnabledNotifications, hasActiveSubscription, hasPendingSubscription });
 
     // === Modal sequencing: Location → Push Notification (Android) → Subscription ===
@@ -308,7 +337,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Handler for chat navigation with subscription check
     const handleChatNavigation = (e: React.MouseEvent, url: string) => {
-        if (url.includes("realtime-chat") || url.includes("chat")) {
+        if (url.includes("/chat")) {
             if (!hasActiveSubscription) {
                 e.preventDefault();
                 openSubscriptionModal();
@@ -317,24 +346,23 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     };
 
     const navigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/customer", icon: Search },
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch },
-        { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
-        // { title: t('navigation.chat'), url: "/customer/realtime-chat", icon: MessageCircle },
-        { title: t('navigation.datingHistory'), url: "/customer/dates-history", icon: HandHeart },
-        { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet },
-        { title: t('navigation.myProfile'), url: "/customer/profile", icon: User },
-        { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
-    ], [t, i18n.language]);
+        { title: t('navigation.discover'), url: "/customer", icon: Search, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch, badge: 0 },
+        { title: t('navigation.chat'), url: "/customer/chat", icon: MessageCircle, badge: liveUnreadMessages },
+        { title: t('navigation.datingHistory'), url: "/customer/dates-history", icon: HandHeart, badge: 0 },
+        { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet, badge: 0 },
+        { title: t('navigation.myProfile'), url: "/customer/profile", icon: User, badge: 0 },
+        { title: t('navigation.setting'), url: "/customer/setting", icon: Settings, badge: 0 },
+    ], [t, i18n.language, liveUnreadMessages]);
 
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.discover'), url: "/customer", icon: Search },
-        { title: t('navigation.match'), url: "/customer/matches", icon: Heart },
-        { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart },
-        // { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet },
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch },
-        { title: t('navigation.setting'), url: "/customer/setting", icon: Settings },
-    ], [t, i18n.language]);
+        { title: t('navigation.discover'), url: "/customer", icon: Search, badge: 0 },
+        { title: t('navigation.chat'), url: "/customer/chat", icon: MessageCircle, badge: liveUnreadMessages },
+        { title: t('navigation.dating'), url: "/customer/dates-history", icon: HandHeart, badge: 0 },
+        // { title: t('navigation.wallet'), url: "/customer/wallets", icon: Wallet, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/customer/posts", icon: UserSearch, badge: 0 },
+        { title: t('navigation.setting'), url: "/customer/setting", icon: Settings, badge: 0 },
+    ], [t, i18n.language, liveUnreadMessages]);
 
     const isActiveRoute = (url: string) => {
         if (url === "/customer" && location.pathname === "/customer") return true;
@@ -342,12 +370,12 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         return false;
     };
 
-    // 👇 Hide bottom nav if the current route includes "realtime-chat"
-    const hideMobileNav =
-        location.pathname.includes("realtime-chat") ||
-        location.pathname.includes("chat");
+    // 👇 Hide the bottom nav inside a single conversation (/customer/chat/:id)
+    //    so the composer sits at the bottom of the screen. The conversation
+    //    list itself (/customer/chat) keeps the nav.
+    const hideMobileNav = /^\/customer\/chat\/[^/]+/.test(location.pathname);
 
-    // 👇 Show mobile header only on main navigation routes (hide on realtime-chat and settings pages)
+    // 👇 Show mobile header only on main navigation routes (hide inside a conversation and on settings pages)
     const showMobileHeader = !hideMobileNav &&
         !location.pathname.startsWith("/customer/setting") &&
         mobileNavigationItems.some(item => {
@@ -388,19 +416,28 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                     <div className="space-y-2">
                         {navigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
+                            const pending = isNavPending(item.url);
                             return (
                                 <Link
                                     to={item.url}
                                     key={item.title}
                                     prefetch="intent"
                                     onClick={(e) => handleChatNavigation(e, item.url)}
-                                    className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
+                                    aria-busy={pending}
+                                    className={`flex items-center justify-start cursor-pointer space-x-3 p-2 rounded-md transition-all duration-150 active:scale-[0.97] active:bg-rose-100 ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
                                         : "hover:bg-rose-50 hover:text-rose-500"
-                                        }`}
+                                        } ${pending ? "bg-rose-50 text-rose-500" : ""}`}
                                 >
-                                    <item.icon className="w-4 h-4" />
-                                    <p suppressHydrationWarning>{item.title}</p>
+                                    {pending
+                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                        : <item.icon className="w-4 h-4" />}
+                                    <p className="flex-1" suppressHydrationWarning>{item.title}</p>
+                                    {!!item.badge && item.badge > 0 && (
+                                        <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[11px] font-medium">
+                                            {item.badge > 99 ? "99+" : item.badge}
+                                        </span>
+                                    )}
                                 </Link>
                             );
                         })}
@@ -418,9 +455,9 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
             </div>
 
-            <div className="w-full sm:w-4/5 flex flex-col min-h-screen pb-18 sm:pb-0">
+            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-18"}`}>
                 {showMobileHeader && (
-                    <div className="sm:hidden flex items-center justify-between px-4 py-3 border-b bg-white sticky top-0 z-30">
+                    <div className="sm:hidden flex items-center justify-between px-4 py-3 pt-safe border-b bg-white sticky top-0 z-30">
                         <Link to="/customer/profile"
                             prefetch="intent"
                             className="flex items-center gap-2 min-w-0"
@@ -440,6 +477,9 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                         </Link>
                         <div className="flex items-center justify-center gap-3">
                             <NotificationBell userType="customer" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
+                            {isDiscoverPage && (
+                                <HeaderSearch searchAction="/customer/discover/find" hrefFor={(id) => `/customer/user-profile/${id}`} />
+                            )}
                             <Form method="post" action="/logout">
                                 <button
                                     type="submit"
@@ -486,26 +526,42 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                 </div>
             )}
 
-            {/* ✅ Mobile Bottom Navigation (hidden on realtime-chat) */}
+            {/* ✅ Mobile Bottom Navigation (hidden inside a conversation) */}
             {!hideMobileNav && (
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-40">
                     <div className="flex items-center justify-around py-1">
                         {mobileNavigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
+                            const pending = isNavPending(item.url);
                             return (
                                 <Link
                                     to={item.url}
                                     key={item.title}
                                     prefetch="viewport"
                                     onClick={(e) => handleChatNavigation(e, item.url)}
-                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
+                                    aria-busy={pending}
+                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1 transition-transform duration-150 active:scale-90"
                                 >
-                                    <item.icon
-                                        className={`w-4 h-4 mb-1 ${isActive ? "text-rose-500" : "text-gray-600"
-                                            }`}
-                                    />
+                                    <span className="relative">
+                                        {pending ? (
+                                            <Loader2 className="w-4 h-4 mb-1 animate-spin text-rose-500" />
+                                        ) : (
+                                        <item.icon
+                                            // Lucide icons are SVG strokes, so "bold" means a
+                                            // thicker stroke — font-weight does nothing here.
+                                            strokeWidth={isActive ? 2.75 : 2}
+                                            className={`w-4 h-4 mb-1 ${isActive ? "text-rose-500" : "text-gray-600"
+                                                }`}
+                                        />
+                                        )}
+                                        {!!item.badge && item.badge > 0 && (
+                                            <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-medium">
+                                                {item.badge > 99 ? "99+" : item.badge}
+                                            </span>
+                                        )}
+                                    </span>
                                     <span
-                                        className={`text-xs truncate ${isActive ? "text-rose-500" : "text-gray-600"
+                                        className={`text-xs truncate ${isActive ? "text-rose-500 font-bold" : "text-gray-600"
                                             }`}
                                         suppressHydrationWarning
                                     >

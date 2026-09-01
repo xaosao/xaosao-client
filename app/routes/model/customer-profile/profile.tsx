@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, useNavigate, useRouteLoaderData, Form, redirect, useNavigation } from 'react-router';
+import { useLoaderData, useNavigate, useRouteLoaderData, Form, redirect, useNavigation, useFetcher } from 'react-router';
 import { User, Calendar, MarsStroke, ToggleLeft, MapPin, Book, BriefcaseBusiness, ChevronLeft, ChevronRight, Heart, MessageSquareText, Forward, UserPlus, UserCheck, Loader, X } from 'lucide-react';
 
 // components
@@ -16,7 +16,6 @@ import { getCustomerProfile } from '~/services/profile.server';
 import { requireModelSession, getModelTokenFromSession } from '~/services/model-auth.server';
 import { getUserProfilePosts } from '~/services/post.server';
 import ProfilePostsSection from '~/components/posts/ProfilePostsSection';
-import { openWhatsApp } from "~/utils/functions/whatsapp";
 
 export const meta: MetaFunction = () => {
    return [
@@ -122,6 +121,10 @@ interface ModelLayoutData {
 }
 
 export default function CustomerProfilePage() {
+   // Opens the in-app chat instead of handing off to WhatsApp. The route
+   // creates the conversation if it doesn't exist yet and redirects into the
+   // thread, so this is safe to fire more than once.
+   const startChatFetcher = useFetcher();
    const { t } = useTranslation();
    const navigate = useNavigate();
    const navigation = useNavigation();
@@ -220,22 +223,20 @@ export default function CustomerProfilePage() {
                         </Button>
                      </Form>
 
-                     {customer.whatsapp && (
-                        <Button
-                           size="sm"
-                           type="button"
-                           className="cursor-pointer bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                           onClick={() => {
-                              const message = t("modelChatCustomer.autoMessage", {
-                                 customerName: customer.firstName || "",
-                                 modelName: modelName || ""
-                              });
-                              openWhatsApp(customer.whatsapp, message);
-                           }}
-                        >
-                           <MessageSquareText className="w-3 h-3" />
-                        </Button>
-                     )}
+                     <Button
+                        size="sm"
+                        type="button"
+                        disabled={startChatFetcher.state !== "idle"}
+                        className="cursor-pointer bg-rose-500 hover:bg-rose-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                        onClick={() =>
+                           startChatFetcher.submit(
+                              { customerId: customer.id },
+                              { method: "post", action: "/model/chat/start" }
+                           )
+                        }
+                     >
+                        <MessageSquareText className="w-3 h-3" />
+                     </Button>
 
                      {customer.isContact ? (
                         <div className="flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md">
@@ -318,23 +319,21 @@ export default function CustomerProfilePage() {
                            </Button>
                         </Form>
 
-                        {customer.whatsapp && (
-                           <Button
-                              size="sm"
-                              type="button"
-                              className="cursor-pointer hidden sm:flex bg-gray-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
-                              onClick={() => {
-                              const message = t("modelChatCustomer.autoMessage", {
-                                 customerName: customer.firstName || "",
-                                 modelName: modelName || ""
-                              });
-                              openWhatsApp(customer.whatsapp, message);
-                           }}
-                           >
-                              <MessageSquareText className="w-4 h-4" />
-                              {t("modelCustomerProfile.message")}
-                           </Button>
-                        )}
+                        <Button
+                           size="sm"
+                           type="button"
+                           disabled={startChatFetcher.state !== "idle"}
+                           className="cursor-pointer hidden sm:flex bg-rose-500 hover:bg-rose-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                           onClick={() =>
+                              startChatFetcher.submit(
+                                 { customerId: customer.id },
+                                 { method: "post", action: "/model/chat/start" }
+                              )
+                           }
+                        >
+                           <MessageSquareText className="w-4 h-4" />
+                           {t("modelCustomerProfile.message")}
+                        </Button>
 
                         {customer.isContact ? (
                            <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">

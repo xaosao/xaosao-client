@@ -145,40 +145,6 @@
       "companion": "I'm a companion"
     },
     "modelTypes": {
-      "tag": "For companions"
-    },
-    "benefits": {
-      "badge": "Referral Program",
-      "title": "Earn Rewards by Referring Friends",
-      "subtitle": "Invite your friends to join XaoSao (as companions) and you will receive rewards such as:",
-      "popular": "MOST POPULAR",
-      "tier1": {
-        "label": "Per Referral",
-        "description": "Receive 50,000 KIP instantly for referring friends through your referral link to become companions. From today until 30/4/2026 only!",
-        "hint": "Instant reward"
-      },
-      "tier2": {
-        "label": "If you refer 20 friends",
-        "description": "Refer 20 friends to become companions successfully, and receive a special bonus of 1,000,000 KIP extra!",
-        "hint": "20 friends = Big bonus"
-      },
-      "tier3": {
-        "label": "Grand Prize",
-        "prize": "Luang Prabang Trip",
-        "description": "Companions who accumulate earnings from their own services totaling 50,000,000 KIP will receive a Luang Prabang travel package for 2 days 3 nights!",
-        "hint": "2 Days & 3 Nights"
-      },
-      "cta": "Start Referring Now...!",
-      "ctaHint": "Opportunity and income are in your own referrals."
-    },
-    "hotModels": {
-      "title": "Hot Companions",
-      "subtitle": "Discover our most popular companions",
-      "viewAll": "View All",
-      "viewProfile": "View Profile",
-      "loginPrompt": "Login to view full profile and connect"
-    },
-    "modelTypes": {
       "badge": "Companion Tiers",
       "title": "Grow Your Earnings",
       "subtitle": "Start as a Normal companion and unlock higher commissions by referring friends. The more you refer, the more you earn!",
@@ -214,6 +180,37 @@
       "commissionForever": "Commission forever when conditions are met",
       "cta": "Start Earning Now",
       "ctaHint": "Join as a companion and start your referral journey today"
+    },
+    "benefits": {
+      "badge": "Referral Program",
+      "title": "Earn Rewards by Referring Friends",
+      "subtitle": "Invite your friends to join XaoSao (as companions) and you will receive rewards such as:",
+      "popular": "MOST POPULAR",
+      "tier1": {
+        "label": "Per Referral",
+        "description": "Receive 50,000 KIP instantly for referring friends through your referral link to become companions. From today until 30/4/2026 only!",
+        "hint": "Instant reward"
+      },
+      "tier2": {
+        "label": "If you refer 20 friends",
+        "description": "Refer 20 friends to become companions successfully, and receive a special bonus of 1,000,000 KIP extra!",
+        "hint": "20 friends = Big bonus"
+      },
+      "tier3": {
+        "label": "Grand Prize",
+        "prize": "Luang Prabang Trip",
+        "description": "Companions who accumulate earnings from their own services totaling 50,000,000 KIP will receive a Luang Prabang travel package for 2 days 3 nights!",
+        "hint": "2 Days & 3 Nights"
+      },
+      "cta": "Start Referring Now...!",
+      "ctaHint": "Opportunity and income are in your own referrals."
+    },
+    "hotModels": {
+      "title": "Hot Companions",
+      "subtitle": "Discover our most popular companions",
+      "viewAll": "View All",
+      "viewProfile": "View Profile",
+      "loginPrompt": "Login to view full profile and connect"
     }
   },
   "videoTutorials": {
@@ -458,7 +455,7 @@
     "nearbyDescription": "Discover people in your area who share similar interests and values. These profiles are from users near your location.",
     "filterOptions": "Filter Options",
     "searchByName": "Search by Name",
-    "searchPlaceholder": "Enter name...",
+    "searchPlaceholder": "Name or WhatsApp number",
     "filterByServices": "Filter by Services",
     "services": {
       "massage": "Massage",
@@ -479,7 +476,15 @@
     "other": "Other",
     "resetFilters": "Reset",
     "applyFilters": "Apply",
-    "noMoreModels": "No more companions nearby"
+    "noMoreModels": "No more companions nearby",
+    "subtitle": "Find people near you",
+    "noLocation": "Turn on location to sort people by how near they are.",
+    "emptyTitle": "Nobody here yet",
+    "search": "Search",
+    "searchHint": "Search by name or WhatsApp number",
+    "searchTooShort": "Type at least 2 characters",
+    "searchNoResults": "No one found",
+    "endOfList": "That's everyone"
   },
   "matches": {
     "processing": "Processing....",
@@ -2729,7 +2734,31 @@
       "description": "You need to book a service with this model before you can chat",
       "bookNow": "Book Now",
       "cancel": "Close"
-    }
+    },
+    "searchPlaceholder": "Search conversations",
+    "empty": "No conversations yet",
+    "noResults": "No conversations found",
+    "noMessagesYet": "No messages yet",
+    "youPrefix": "You:",
+    "photo": "Photo",
+    "back": "Back",
+    "online": "Online",
+    "offline": "Offline",
+    "typing": "typing…",
+    "reconnecting": "Reconnecting…",
+    "loading": "Loading…",
+    "loadOlder": "Load earlier messages",
+    "sayHello": "Say hello to start the conversation",
+    "messagePlaceholder": "Type a message",
+    "send": "Send",
+    "sending": "Sending…",
+    "sendFailed": "Not sent",
+    "attachImage": "Attach image",
+    "removeImage": "Remove",
+    "imagesOnly": "Only images can be attached",
+    "imageTooLarge": "Image must be under 5 MB",
+    "youBlocked": "You blocked this conversation",
+    "blockedByPeer": "You can no longer message this user"
   },
   "deactivate": {
     "tag": "Deactivate account",
@@ -3209,5 +3238,12 @@
       "phone": "Phone",
       "whatsapp": "WhatsApp"
     }
+  },
+  "discoverTabs": {
+    "all": "All"
+  },
+  "common": {
+    "back": "Back",
+    "clear": "Clear"
   }
 }

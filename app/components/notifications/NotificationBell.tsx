@@ -3,7 +3,12 @@ import { useState, useEffect } from "react";
 import { Link, useFetcher } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "~/hooks/useNotifications";
-import { useNotificationStore, type Notification } from "~/stores/notification.store";
+import {
+  useNotificationStore,
+  localizeNotification,
+  type Notification,
+} from "~/stores/notification.store";
+import { notificationHref } from "~/utils/notification-link";
 import {
   Popover,
   PopoverContent,
@@ -39,7 +44,7 @@ export function NotificationBell({
   initialCount = 0,
   initialNotifications = []
 }: NotificationBellProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const fetcher = useFetcher();
@@ -69,8 +74,6 @@ export function NotificationBell({
   }, [initialNotifications, isInitialized, addNotifications]);
 
   const notificationsUrl = userType === "model" ? "/model/notifications" : "/customer/notifications";
-  const detailBaseUrl = userType === "model" ? "/model/dating/detail" : "/customer/book-service/detail";
-  const postDetailBaseUrl = userType === "model" ? "/model/posts" : "/customer/posts";
 
   // Calculate display count from store
   const unreadCount = getUnreadCount();
@@ -127,10 +130,17 @@ export function NotificationBell({
         <div className="max-h-[300px] overflow-y-auto">
           {recentNotifications.length > 0 ? (
             <div className="divide-y">
-              {recentNotifications.map((notification) => (
+              {recentNotifications.map((notification) => {
+                // Rows fetched from xs_backend carry Lao copy alongside the
+                // English — render whichever matches the UI language.
+                const { title, message } = localizeNotification(
+                  notification,
+                  i18n.language
+                );
+                return (
                 <Link
                   key={notification.id}
-                  to={notification.data?.bookingId ? `${detailBaseUrl}/${notification.data.bookingId}` : notification.data?.postId ? `${postDetailBaseUrl}/${notification.data.postId}` : notificationsUrl}
+                  to={notificationHref(notification, userType)}
                   className={`block p-3 hover:bg-gray-50 transition-colors ${notification.isRead ? "bg-gray-50/50" : "bg-white"
                     }`}
                   onClick={() => handleNotificationClick(notification)}
@@ -141,10 +151,10 @@ export function NotificationBell({
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${notification.isRead ? "text-gray-600" : "text-gray-900"
                         }`}>
-                        {notification.title}
+                        {title}
                       </p>
                       <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">
-                        {notification.message}
+                        {message}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-1">
                         {formatRelativeTime(notification.createdAt, t)}
@@ -152,7 +162,8 @@ export function NotificationBell({
                     </div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8">

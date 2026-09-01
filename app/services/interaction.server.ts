@@ -402,3 +402,94 @@ export async function deleteCustomerInteraction(
     });
   }
 }
+
+/**
+ * Set a customer's LIKE on a model to an explicit state.
+ *
+ * `createCustomerInteraction` is a TOGGLE — calling it with LIKE when a like
+ * already exists removes it. That's wrong for a heart button driven by
+ * optimistic UI: if the client's idea of the state disagrees with the server
+ * for even a moment (double tap, stale list, failed reload), a "like" silently
+ * becomes an "unlike". This setter is idempotent, so the result depends only
+ * on `liked`, never on what was there before.
+ *
+ * Liking also clears any PASS: the discover queries exclude passed models, so
+ * leaving a PASS behind would make a just-liked profile vanish from the grid.
+ */
+export async function setCustomerLike(
+  customerId: string,
+  modelId: string,
+  liked: boolean
+) {
+  try {
+    if (liked) {
+      // deleteMany + create rather than upsert: two rows can exist for the
+      // same pair (LIKE and PASS are separate rows by the unique key), and
+      // deleteMany never throws when there's nothing to remove.
+      await prisma.customer_interactions.deleteMany({
+        where: { customerId, modelId, action: "PASS" },
+      });
+      const existing = await prisma.customer_interactions.findFirst({
+        where: { customerId, modelId, action: "LIKE" },
+        select: { id: true },
+      });
+      if (!existing) {
+        await prisma.customer_interactions.create({
+          data: { customerId, modelId, action: "LIKE" },
+        });
+      }
+    } else {
+      await prisma.customer_interactions.deleteMany({
+        where: { customerId, modelId, action: "LIKE" },
+      });
+    }
+
+    // The discover/matches lists are cached per customer for 30 s; without
+    // this the reload after the action returns the pre-like state and the
+    // heart appears to snap back.
+    cacheInvalidateContaining(customerId);
+    return { success: true, liked };
+  } catch (error: any) {
+    console.error("SET_CUSTOMER_LIKE_FAILED:", error?.message ?? error);
+    return { success: false, liked: !liked };
+  }
+}
+
+/**
+ * Model-side equivalent: set a model's LIKE on a customer explicitly.
+ * `model_interactions` holds one row per pair with an `action` field, so this
+ * writes/clears that single row rather than juggling two.
+ */
+export async function setModelLike(
+  modelId: string,
+  customerId: string,
+  liked: boolean
+) {
+  try {
+    const existing = await prisma.model_interactions.findFirst({
+      where: { modelId, customerId },
+      select: { id: true, action: true },
+    });
+
+    if (liked) {
+      if (!existing) {
+        await prisma.model_interactions.create({
+          data: { modelId, customerId, action: "LIKE" },
+        });
+      } else if (existing.action !== "LIKE") {
+        await prisma.model_interactions.update({
+          where: { id: existing.id },
+          data: { action: "LIKE" },
+        });
+      }
+    } else if (existing?.action === "LIKE") {
+      await prisma.model_interactions.delete({ where: { id: existing.id } });
+    }
+
+    cacheInvalidateContaining(modelId);
+    return { success: true, liked };
+  } catch (error: any) {
+    console.error("SET_MODEL_LIKE_FAILED:", error?.message ?? error);
+    return { success: false, liked: !liked };
+  }
+}

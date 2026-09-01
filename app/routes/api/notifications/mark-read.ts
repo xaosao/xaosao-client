@@ -1,10 +1,15 @@
+/**
+ * Mark one notification as read.
+ *
+ * Goes through the xs_backend notification API so web and app share one
+ * source of truth for read state, with the website's own Prisma write as a
+ * fallback if the backend is unreachable (both touch the same collection).
+ */
+
 import type { ActionFunction } from "react-router";
 import { getUserFromSession } from "~/services/auths.server";
 import { getModelFromSession } from "~/services/model-auth.server";
-import {
-  markCustomerNotificationAsRead,
-  markModelNotificationAsRead,
-} from "~/services/notification.server";
+import { markNotificationsRead } from "~/services/xs-notification.server";
 
 export const action: ActionFunction = async ({ request }) => {
   if (request.method !== "POST") {
@@ -20,18 +25,30 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   try {
-    if (userType === "model") {
-      const modelId = await getModelFromSession(request);
-      if (!modelId) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const userId =
+      userType === "model"
+        ? await getModelFromSession(request)
+        : await getUserFromSession(request);
+
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const done = await markNotificationsRead({ userId, userType }, [
+      notificationId,
+    ]);
+
+    if (!done) {
+      const {
+        markCustomerNotificationAsRead,
+        markModelNotificationAsRead,
+      } = await import("~/services/notification.server");
+
+      if (userType === "model") {
+        await markModelNotificationAsRead(notificationId, userId);
+      } else {
+        await markCustomerNotificationAsRead(notificationId, userId);
       }
-      await markModelNotificationAsRead(notificationId, modelId);
-    } else {
-      const customerId = await getUserFromSession(request);
-      if (!customerId) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      await markCustomerNotificationAsRead(notificationId, customerId);
     }
 
     return Response.json({ success: true });

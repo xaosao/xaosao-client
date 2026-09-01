@@ -1,3 +1,15 @@
+/**
+ * @deprecated Superseded by `xs-chat.server.ts`.
+ *
+ * These helpers read the `conversation` / `messages` collections directly via
+ * Prisma. Chat now goes through the xs_backend API instead, which additionally
+ * enforces participant checks, the subscription gate, per-side soft deletes and
+ * the realtime socket fan-out — none of which these queries apply.
+ *
+ * Nothing imports this file any more. Kept only so any out-of-tree caller keeps
+ * compiling; new code must use `~/services/xs-chat.server`.
+ */
+
 import { prisma } from "./database.server";
 import { FieldValidationError } from "./base.server";
 import { ConversationStatus } from "~/interfaces/base";

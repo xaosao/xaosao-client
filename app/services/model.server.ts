@@ -5,6 +5,7 @@ import { createAuditLogs } from "./log.server";
 import { FieldValidationError } from "./base.server";
 import { notifyCustomerLikeReceived } from "./notification.server";
 import { withCache, cacheInvalidateContaining, stableStringify } from "./cache.server";
+import { visibleGendersFor } from "~/utils/gender";
 
 // Cache TTL for discover/matches list queries. Short enough that fresh
 // signups appear quickly, long enough that back-navigation and rapid
@@ -66,7 +67,7 @@ async function _getModelsForCustomer(
   try {
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
-      select: { latitude: true, longitude: true },
+      select: { latitude: true, longitude: true, gender: true },
     });
 
     // Build where clause with filters
@@ -91,8 +92,12 @@ async function _getModelsForCustomer(
     }
 
     // Gender filter
-    if (filters.gender) {
-      whereClause.gender = filters.gender;
+    // Gender comes from the viewer's account, not a UI filter — male sees
+    // female, female sees male, `other` is mutually visible. `filters.gender`
+    // is ignored: the manual female/male tabs were removed. See utils/gender.
+    const allowedGenders = visibleGendersFor(customer?.gender);
+    if (allowedGenders) {
+      whereClause.gender = { in: allowedGenders };
     }
 
     // Rating filter
@@ -383,9 +388,13 @@ async function _getNearbyModels(
     ];
   }
 
-  // Gender filter
-  if (filters.gender) {
-    whereClause.gender = filters.gender;
+  // Gender is decided by the viewer's own account, not by a UI filter:
+  // male sees female, female sees male, `other` sees everyone and is visible
+  // to everyone. See app/utils/gender.ts. `filters.gender` is deliberately
+  // ignored here — the manual female/male tabs were removed.
+  const allowedGenders = visibleGendersFor(customer.gender);
+  if (allowedGenders) {
+    whereClause.gender = { in: allowedGenders };
   }
 
   // Rating filter
@@ -2053,6 +2062,15 @@ export async function getForYouCustomers(
 
   const passedCustomerIds = passedCustomers.map((i) => i.customerId);
 
+  // The viewer's own gender drives who they see (male<->female, `other`
+  // mutually visible). Loaded here rather than trusting an option, so the
+  // rule can't be bypassed by a caller passing `gender`.
+  const viewer = await prisma.model.findUnique({
+    where: { id: modelId },
+    select: { gender: true },
+  });
+  const allowedGenders = visibleGendersFor(viewer?.gender);
+
   // Build the where clause - only exclude PASSED customers
   const whereClause: any = {
     status: "active",
@@ -2062,7 +2080,10 @@ export async function getForYouCustomers(
   };
 
   // Apply filters
-  if (gender) {
+  // Automatic rule wins over any caller-supplied `gender` — see utils/gender.
+  if (allowedGenders) {
+    whereClause.gender = { in: allowedGenders };
+  } else if (gender) {
     whereClause.gender = gender;
   }
 
@@ -2145,23 +2166,46 @@ export async function getForYouCustomers(
     });
   }
 
-  // Add derived fields (isContact, modelAction)
-  const enhancedCustomers = filteredCustomers.map((customer) => ({
-    ...customer,
-    isContact: customer.friend_contacts.length > 0,
-    modelAction:
-      customer.model_interactions.length > 0
-        ? customer.model_interactions[0].action
-        : null,
-  }));
+  // Add derived fields (isContact, modelAction, distance)
+  const enhancedCustomers = filteredCustomers.map((customer) => {
+    const distance =
+      modelLat != null &&
+      modelLng != null &&
+      customer.latitude != null &&
+      customer.longitude != null
+        ? Number(
+            calculateDistance(
+              Number(customer.latitude),
+              Number(customer.longitude),
+              modelLat,
+              modelLng
+            ).toFixed(2)
+          )
+        : null;
 
-  // Shuffle to show different customers each visit
-  for (let i = enhancedCustomers.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [enhancedCustomers[i], enhancedCustomers[j]] = [enhancedCustomers[j], enhancedCustomers[i]];
-  }
+    return {
+      ...customer,
+      distance,
+      isContact: customer.friend_contacts.length > 0,
+      modelAction:
+        customer.model_interactions.length > 0
+          ? customer.model_interactions[0].action
+          : null,
+    };
+  });
 
-  // Apply pagination AFTER filtering and shuffling
+  // Nearest first. This replaced a random shuffle: Discover is meant to
+  // surface who is physically close, and a shuffle also made pagination
+  // incoherent (a fresh order each request means rows repeat and go missing
+  // across pages). Profiles with no location sort last rather than vanishing.
+  enhancedCustomers.sort((a, b) => {
+    if (a.distance == null && b.distance == null) return 0;
+    if (a.distance == null) return 1;
+    if (b.distance == null) return -1;
+    return a.distance - b.distance;
+  });
+
+  // Apply pagination AFTER filtering and sorting
   const totalCount = enhancedCustomers.length;
   const paginatedCustomers = enhancedCustomers.slice(skip, skip + perPage);
   const totalPages = Math.ceil(totalCount / perPage);
@@ -2855,4 +2899,88 @@ export async function getChattableModelIds(customerId: string): Promise<Set<stri
   }
 
   return ids;
+}
+
+/**
+ * Model-side search: find customers by name or WhatsApp number.
+ *
+ * Mirror of `searchModels`, in the other direction. Two deliberate choices:
+ *
+ *  - The opposite-gender rule is NOT applied. Search is "find this specific
+ *    person I already know", usually by their number — filtering it by gender
+ *    would make a known contact unfindable. Browsing (Discover's tabs) stays
+ *    gender-filtered; search does not.
+ *  - `whatsapp` is matched but never returned. It's a searchable key, not
+ *    something to render in a result row.
+ */
+export async function searchCustomers(modelId: string, query: string) {
+  const model = await prisma.model.findUnique({
+    where: { id: modelId },
+    select: { latitude: true, longitude: true },
+  });
+
+  const orConditions: any[] = [
+    { firstName: { contains: query, mode: "insensitive" } },
+    { lastName: { contains: query, mode: "insensitive" } },
+  ];
+
+  // A numeric-looking query is also matched against the WhatsApp number.
+  // `whatsapp` is an Int column, so it has to be an exact numeric match —
+  // `contains` is not available on integers.
+  const numericQuery = query.replace(/\D/g, "");
+  if (numericQuery.length >= 2) {
+    const asNumber = Number.parseInt(numericQuery, 10);
+    if (Number.isSafeInteger(asNumber)) {
+      orConditions.push({ whatsapp: { equals: asNumber } });
+    }
+  }
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      status: "active",
+      OR: orConditions,
+    },
+    take: 20,
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      dob: true,
+      gender: true,
+      profile: true,
+      latitude: true,
+      longitude: true,
+      model_interactions: {
+        where: { modelId },
+        select: { action: true },
+      },
+    },
+  });
+
+  return customers.map((c) => {
+    const distance =
+      model?.latitude && model?.longitude && c.latitude && c.longitude
+        ? Number(
+            calculateDistance(
+              model.latitude,
+              model.longitude,
+              c.latitude,
+              c.longitude
+            ).toFixed(2)
+          )
+        : null;
+
+    return {
+      id: c.id,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      dob: c.dob,
+      gender: c.gender,
+      profile: c.profile,
+      distance,
+      modelAction:
+        c.model_interactions.length > 0 ? c.model_interactions[0].action : null,
+    };
+  });
 }

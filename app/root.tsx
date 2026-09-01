@@ -13,6 +13,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import "./i18n/config";
 import Toast from "./components/toast";
+import { RouteProgress } from "./components/ui/route-progress";
 import { useLanguageInit } from "./hooks/use-language-init";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import { DebugConsole } from "./components/debug/DebugConsole";
@@ -301,6 +302,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body suppressHydrationWarning>
+        <RouteProgress />
         {children}
         <Toast />
         <ScrollRestoration />

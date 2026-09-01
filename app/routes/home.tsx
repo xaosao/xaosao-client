@@ -1,7 +1,6 @@
-import { useNavigate } from "react-router";
+import { redirect, useNavigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useTranslation } from "react-i18next";
-import { useState, useEffect } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -73,7 +72,59 @@ export function meta({ }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ context }: Route.LoaderArgs) {
+/**
+ * Send an already-signed-in visitor straight to their own home instead of the
+ * marketing page — which is what launching the installed PWA does, since the
+ * manifest's `start_url` is "/".
+ *
+ * This runs SERVER-side deliberately. The previous attempt read
+ * `whoxa_customer_auth_token` from `document.cookie`, but that cookie is set
+ * `HttpOnly`, so the browser can never see it — the check silently never
+ * matched and PWA users always landed on the marketing page.
+ *
+ * The session cookie is the real source of truth: if it expired the browser
+ * stops sending it and this resolves to null. We also confirm the account
+ * still exists and is usable, otherwise a stale session would bounce
+ * "/" -> "/customer" -> login in a loop.
+ */
+async function resolveSignedInHome(request: Request): Promise<string | null> {
+  const { getUserFromSession } = await import("~/services/auths.server");
+  const { getModelFromSession } = await import("~/services/model-auth.server");
+  const { prisma } = await import("~/services/database.server");
+
+  try {
+    const [customerId, modelId] = await Promise.all([
+      getUserFromSession(request),
+      getModelFromSession(request),
+    ]);
+
+    if (customerId) {
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { status: true },
+      });
+      if (customer && customer.status !== "deleted") return "/customer";
+    }
+
+    if (modelId) {
+      const model = await prisma.model.findUnique({
+        where: { id: modelId },
+        select: { status: true },
+      });
+      if (model && model.status !== "deleted") return "/model";
+    }
+  } catch (error) {
+    // Never let this block the landing page — worst case they see it.
+    console.error("[home] signed-in check failed:", (error as Error)?.message);
+  }
+
+  return null;
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const signedInHome = await resolveSignedInHome(request);
+  if (signedInHome) throw redirect(signedInHome);
+
   const [services, hotModels] = await Promise.all([
     getPublicServices(),
     getPublicHotModels(20),
@@ -96,27 +147,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { services, hotModels } = loaderData;
-  const [hasCustomerToken, setHasCustomerToken] = useState(false);
-
-  useEffect(() => {
-    const customerToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("whoxa_customer_auth_token="));
-    const modelToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("whoxa_model_auth_token="));
-
-    if (customerToken) {
-      navigate("/customer", { replace: true });
-      return;
-    }
-    if (modelToken) {
-      navigate("/model", { replace: true });
-      return;
-    }
-
-    setHasCustomerToken(!!customerToken);
-  }, [navigate]);
 
   const getServiceName = (nameKey: string) => {
     const translatedName = t(`modelServices.serviceItems.${nameKey}.name`);

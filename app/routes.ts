@@ -27,6 +27,9 @@ export default [
     "./routes/api/notifications/update-settings.ts"
   ),
 
+  // Short-lived xs_backend JWT for the browser's chat socket handshake
+  route("api/chat/token", "./routes/api/chat/token.ts"),
+
   // API routes for Push notifications
   route("api/push/subscribe", "./routes/api/push/subscribe.ts"),
   route("api/push/unsubscribe", "./routes/api/push/unsubscribe.ts"),
@@ -86,7 +89,6 @@ export default [
   route("model", "./routes/model/layout.tsx", { id: "model-layout" }, [
     index("./routes/model/posts/posts.tsx"),
     route("check-profile-images", "./routes/model/check-profile-images.ts"),
-    route("matches", "./routes/model/matches/matches.tsx"),
     route("profile", "./routes/model/profile/profile.tsx"),
     route("profile/edit", "./routes/model/profile/edit.tsx"),
     route(
@@ -144,9 +146,20 @@ export default [
       route("delete-account", "./routes/model/settings/delete-account.tsx"),
     ]),
 
-    // your new chat route
-    route("realtime-chat", "./routes/model/chat/chat-wrapper.tsx"),
-    route("chat", "./routes/model/chat/single-chat-wrapper.tsx"),
+    // Discover — models browsing customers (nearest first, opposite gender)
+    route("discover", "./routes/model/discover/discover.tsx"),
+    route("discover/search", "./routes/model/discover/discover.search.tsx"),
+    route("discover/load-more", "./routes/model/discover/discover.load-more.tsx"),
+
+    // Chat — native UI backed by the xs_backend chat API (same as the app)
+    route("chat", "./routes/model/chat/conversations.tsx"),
+    route("chat/start", "./routes/model/chat/start.tsx"),
+    route("chat/:conversationId", "./routes/model/chat/thread.tsx"),
+    route(
+      "chat/:conversationId/messages",
+      "./routes/model/chat/thread.messages.tsx"
+    ),
+    route("chat/:conversationId/read", "./routes/model/chat/thread.read.tsx"),
 
     // Notifications
     route("notifications", "./routes/model/notifications/notifications.tsx"),
@@ -155,9 +168,8 @@ export default [
   route("customer", "./routes/customer/layout.tsx", { id: "customer-layout" }, [
     index("./routes/customer/discover.tsx"),
     route("discover/search", "./routes/customer/discover.search.tsx"),
+    route("discover/find", "./routes/customer/discover.search-results.tsx"),
     route("discover/load-more", "./routes/customer/discover.load-more.tsx"),
-    route("matches", "./routes/customer/matches/matches.tsx"),
-    route("matches/search", "./routes/customer/matches.search.tsx"),
 
     // Posts
     route("posts", "./routes/customer/posts/posts.tsx"),
@@ -172,9 +184,15 @@ export default [
 
     route("dates-history", "./routes/customer/booking-history/booking.tsx"),
 
-    // your new chat route
-    route("realtime-chat", "./routes/customer/chat/chat-wrapper.tsx"),
-    route("chat", "./routes/customer/chat/single-chat-wrapper.tsx"),
+    // Chat — native UI backed by the xs_backend chat API (same as the app)
+    route("chat", "./routes/customer/chat/conversations.tsx"),
+    route("chat/start", "./routes/customer/chat/start.tsx"),
+    route("chat/:conversationId", "./routes/customer/chat/thread.tsx"),
+    route(
+      "chat/:conversationId/messages",
+      "./routes/customer/chat/thread.messages.tsx"
+    ),
+    route("chat/:conversationId/read", "./routes/customer/chat/thread.read.tsx"),
 
     // profile
     route("profile", "./routes/customer/profile/profile.tsx"),

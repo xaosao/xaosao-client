@@ -1,4 +1,5 @@
 import { prisma } from "./database.server";
+import { cacheInvalidateContaining } from "./cache.server";
 import { createAuditLogs } from "./log.server";
 import { FieldValidationError } from "./base.server";
 
@@ -516,6 +517,13 @@ export async function createSubscriptionWithWallet(
     } else {
       console.log(`Subscription commission skipped: 24-hour trial package (${plan.name}) - system revenue only`);
     }
+
+    // The customer layout loader caches its whole fan-out for 30 s under a key
+    // containing the customer id, and `hasActiveSubscription` is part of it.
+    // Without this the UI keeps reading "not subscribed" for up to half a
+    // minute after paying — even across a full page reload — which looks
+    // exactly like the subscription silently failing.
+    cacheInvalidateContaining(customerId);
 
     return subscription;
   } catch (error: any) {

@@ -7,11 +7,10 @@ import {
     Gift,
     UserSearch,
     HandHeart,
-    Heart,
+    MessageCircle,
     LogOut,
     Settings,
     User,
-    User2Icon,
     Wallet,
     X,
     Copy,
@@ -31,6 +30,11 @@ import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
+import { useChatBadge } from "~/hooks/useChatBadge";
+import { useBackendNotifications } from "~/hooks/useBackendNotifications";
+import { HeaderSearch } from "~/components/discover/HeaderSearch";
+import { useNavPending } from "~/hooks/useNavPending";
+import { Loader2, Compass } from "lucide-react";
 
 // services
 import { BlurImage } from "~/components/ui/blur-image";
@@ -39,7 +43,8 @@ import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
 import { ensureReferralCode } from "~/services/referral.server";
 import { requireModelSession } from "~/services/model-auth.server";
-import { getModelUnreadCount, getModelNotifications } from "~/services/notification.server";
+import { loadNotificationFeed } from "~/services/xs-notification.server";
+import { getChatUnreadCount } from "~/services/xs-chat.server";
 import { getModelPendingBookingCount } from "~/services/booking.server";
 
 interface ModelData {
@@ -57,6 +62,7 @@ interface ModelData {
 interface LoaderReturn {
     modelData: ModelData;
     unreadNotifications: number;
+    unreadMessages: number;
     initialNotifications: Notification[];
     pendingBookingCount: number;
     hasServices: boolean;
@@ -73,23 +79,28 @@ export const loader: LoaderFunction = async ({ request }) => {
     const modelId = await requireModelSession(request);
 
     try {
-        const [modelData, unreadNotifications, notifications, pendingBookingCount, referralCode] = await Promise.all([
+        const [modelData, notificationFeed, pendingBookingCount, referralCode, unreadMessages] = await Promise.all([
             getModelDashboardData(modelId),
-            getModelUnreadCount(modelId).catch(() => 0),
-            getModelNotifications(modelId, { limit: 10 }).catch(() => []),
+            // Notifications come from the xs_backend API so the web bell shows
+            // exactly what the app shows; falls back to Prisma on outage.
+            loadNotificationFeed(modelId, "model"),
             getModelPendingBookingCount(modelId).catch(() => 0),
             ensureReferralCode(modelId).catch(() => ""),
+            getChatUnreadCount({ userId: modelId, userType: "model" }),
         ]);
 
-        const initialNotifications: Notification[] = (notifications || []).map((n) => ({
-            id: n.id,
-            type: n.type,
-            title: n.title,
-            message: n.message,
-            data: n.data as Record<string, any>,
-            isRead: n.isRead,
-            createdAt: n.createdAt.toISOString(),
-        }));
+        // `getModelDashboardData` is a findUnique — it returns null when the
+        // session points at a model that no longer exists (deleted account,
+        // stale cookie, wrong environment). The component below reads
+        // `modelData.profileHiddenByAdmin` directly, so a null here surfaces
+        // as "Cannot read properties of null" in the error boundary. Treat it
+        // as an invalid session instead.
+        if (!modelData) {
+            console.warn(`[ModelLayout] No model record for session id ${modelId} — clearing session`);
+            throw redirect("/model-auth/login");
+        }
+
+        const { unreadNotifications, initialNotifications } = notificationFeed;
 
         // Check if model has at least one active service
         const hasServices = (modelData?.ModelService?.length ?? 0) > 0;
@@ -102,8 +113,11 @@ export const loader: LoaderFunction = async ({ request }) => {
         const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:5176/";
         const referralLink = referralCode ? `${baseUrl}model-auth/register?ref=${referralCode}` : "";
 
-        return { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink };
+        return { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink };
     } catch (error) {
+        // `redirect()` throws a Response — that's control flow, not a failure.
+        // Re-throw it untouched so it isn't logged as an error and re-wrapped.
+        if (error instanceof Response) throw error;
         console.error("[ModelLayout] Loader error:", error);
         throw redirect("/model-auth/login");
     }
@@ -113,12 +127,27 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink } = loaderData;
+    const { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink } = loaderData;
     const profileHiddenFetcher = useFetcher();
     const { t, i18n } = useTranslation();
 
+    // Live unread-message count for the Chat nav badge. Seeded from the
+    // loader, kept current by the shared chat socket between revalidations.
+    const liveUnreadMessages = useChatBadge("model", unreadMessages);
+
+    // Notifications created by xs_backend arrive over the chat socket. The
+    // website's own SSE stream can't carry them — it's fed by an in-process
+    // emitter that only this app's writes reach.
+    useBackendNotifications({ userType: "model", playSound: true });
+
+    // Lets each nav item show a spinner while its own route is loading.
+    const isNavPending = useNavPending();
+
     // Only show location prompt on main model page
     const isModelMainPage = location.pathname === "/model";
+
+    // Search is a Discover feature, so the header icon only appears there.
+    const isDiscoverPage = location.pathname.startsWith("/model/discover");
 
     // Location prompt modal state
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
@@ -198,22 +227,25 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     });
 
     const navigationItems = useMemo(() => [
+        { title: t('navigation.discover'), url: "/model/discover", icon: Compass, badge: 0 },
         { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: UserSearch, badge: 0 },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
-        // { title: t('navigation.chat'), url: "/model/realtime-chat", icon: MessageCircle, badge: 0 },
+        { title: t('navigation.chat'), url: "/model/chat", icon: MessageCircle, badge: liveUnreadMessages },
         { title: t('navigation.datingHistory'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
         { title: t('navigation.wallet'), url: "/model/settings?tab=wallet", icon: Wallet, badge: 0 },
         { title: t('navigation.myProfile'), url: "/model/profile", icon: User, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
-    ], [t, i18n.language, pendingBookingCount]);
+    ], [t, i18n.language, pendingBookingCount, liveUnreadMessages]);
 
+    // Bottom bar order: Discover, Chat, Appointment, Post, Setting.
+    // Profile is intentionally absent — it's reached from the avatar in the
+    // mobile header instead, which frees a slot for Discover.
     const mobileNavigationItems = useMemo(() => [
-        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: UserSearch, badge: 0 },
-        { title: t('navigation.match'), url: "/model/matches", icon: Heart, badge: 0 },
+        { title: t('navigation.discover'), url: "/model/discover", icon: Compass, badge: 0 },
+        { title: t('navigation.chat'), url: "/model/chat", icon: MessageCircle, badge: liveUnreadMessages },
         { title: t('navigation.dating'), url: "/model/dating", icon: HandHeart, badge: pendingBookingCount },
-        { title: t('navigation.profile'), url: "/model/profile", icon: User2Icon, badge: 0 },
+        { title: t('navigation.posts', { defaultValue: 'Posts' }), url: "/model", icon: UserSearch, badge: 0 },
         { title: t('navigation.setting'), url: "/model/settings", icon: Settings, badge: 0 },
-    ], [t, i18n.language, pendingBookingCount]);
+    ], [t, i18n.language, pendingBookingCount, liveUnreadMessages]);
 
     const isActiveRoute = (url: string) => {
         // Handle wallet with query param
@@ -228,18 +260,18 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
         if (url === "/model") {
             return location.pathname === "/model" || location.pathname.startsWith("/model/posts");
         }
-        // Handle matches
-        if (url === "/model/matches") {
-            return location.pathname.startsWith("/model/matches");
+        // Handle chat
+        if (url === "/model/chat") {
+            return location.pathname.startsWith("/model/chat");
         }
         if (location.pathname.startsWith(url)) return true;
         return false;
     };
 
-    // 👇 Hide bottom nav if the current route includes "realtime-chat"
-    const hideMobileNav =
-        location.pathname.includes("realtime-chat") ||
-        location.pathname.includes("chat");
+    // 👇 Hide the bottom nav inside a single conversation (/model/chat/:id) so
+    //    the composer sits at the bottom of the screen. The conversation list
+    //    itself (/model/chat) keeps the nav.
+    const hideMobileNav = /^\/model\/chat\/[^/]+/.test(location.pathname);
 
     // 👇 Show mobile header only on main navigation routes (hide on chat, profile, and settings pages)
     const showMobileHeader = !hideMobileNav &&
@@ -260,7 +292,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                             <div className="relative">
                                 <div className="w-14 h-14 border-[2px] border-rose-500 rounded-full flex items-center justify-center hover:border-rose-600">
                                     <BlurImage
-                                        isHidden={modelData.profileHiddenByAdmin}
+                                        isHidden={modelData?.profileHiddenByAdmin}
                                         src={modelData.profile}
                                         alt="Profile"
                                         className="w-full h-full rounded-full object-cover cursor-pointer"
@@ -283,18 +315,22 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     <div className="space-y-2">
                         {navigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
+                            const pending = isNavPending(item.url);
                             return (
                                 <Link
                                     to={item.url}
                                     key={item.title}
                                     prefetch="intent"
-                                    className={`flex items-center justify-between cursor-pointer space-x-3 p-2 rounded-md transition-colors ${isActive
+                                    aria-busy={pending}
+                                    className={`flex items-center justify-between cursor-pointer space-x-3 p-2 rounded-md transition-all duration-150 active:scale-[0.97] active:bg-rose-100 ${isActive
                                         ? "bg-rose-100 text-rose-500 border border-rose-300"
                                         : "hover:bg-rose-50 hover:text-rose-500"
-                                        }`}
+                                        } ${pending ? "bg-rose-50 text-rose-500" : ""}`}
                                 >
                                     <div className="flex gap-2 items-center justify-center">
-                                        <item.icon className="w-4 h-4" />
+                                        {pending
+                                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                                            : <item.icon className="w-4 h-4" />}
                                         <p suppressHydrationWarning>{item.title}</p>
                                     </div>
                                     {item.badge > 0 && (
@@ -318,16 +354,16 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 </div>
             </div>
 
-            <div className="w-full sm:w-4/5 flex flex-col min-h-screen pb-18 sm:pb-0">
+            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-18"}`}>
                 {showMobileHeader && (
-                    <div className="sm:hidden flex items-center justify-between px-4 py-2 border-b bg-white sticky top-0 z-30">
+                    <div className="sm:hidden flex items-center justify-between px-4 py-2 pt-safe border-b bg-white sticky top-0 z-30">
                         <Link to="/model/profile"
                             prefetch="intent"
                             className="flex items-center gap-2 min-w-0"
                         >
                             <div className="relative flex-shrink-0">
                                 <BlurImage
-                                    isHidden={modelData.profileHiddenByAdmin}
+                                    isHidden={modelData?.profileHiddenByAdmin}
                                     src={modelData.profile}
                                     alt="Profile"
                                     className="w-10 h-10 min-w-10 min-h-10 rounded-full object-cover border border-rose-300 aspect-square"
@@ -341,6 +377,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                         </Link>
                         <div className="flex items-center justify-center gap-4">
                             <NotificationBell userType="model" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
+                            {isDiscoverPage && (
+                                <HeaderSearch searchAction="/model/discover/search" hrefFor={(id) => `/model/customer-profile/${id}`} />
+                            )}
                             {/* <Settings size={18} className="text-gray-500" onClick={() => navigate("/model/settings")} /> */}
                         </div>
                     </div>
@@ -350,24 +389,33 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 </main>
             </div>
 
-            {/* ✅ Mobile Bottom Navigation (hidden on realtime-chat) */}
+            {/* ✅ Mobile Bottom Navigation (hidden inside a conversation) */}
             {!hideMobileNav && (
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-40">
                     <div className="flex items-center justify-around py-1">
                         {mobileNavigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
+                            const pending = isNavPending(item.url);
                             return (
                                 <Link
                                     to={item.url}
                                     key={item.title}
                                     prefetch="viewport"
-                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1"
+                                    aria-busy={pending}
+                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1 transition-transform duration-150 active:scale-90"
                                 >
                                     <div className="relative mb-1">
+                                        {pending ? (
+                                            <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                                        ) : (
                                         <item.icon
+                                            // Lucide icons are SVG strokes, so "bold" means a
+                                            // thicker stroke — font-weight does nothing here.
+                                            strokeWidth={isActive ? 2.75 : 2}
                                             className={`w-4 h-4 ${isActive ? "text-rose-500" : "text-gray-600"
                                                 }`}
                                         />
+                                        )}
                                         {item.badge > 0 && (
                                             <span className="absolute -top-1.5 -right-4 min-w-[14px] h-3.5 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-medium rounded-full">
                                                 {item.badge > 99 ? "99+" : item.badge}
@@ -375,7 +423,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                         )}
                                     </div>
                                     <span
-                                        className={`text-xs truncate ${isActive ? "text-rose-500" : "text-gray-600"
+                                        className={`text-xs truncate ${isActive ? "text-rose-500 font-bold" : "text-gray-600"
                                             }`}
                                         suppressHydrationWarning
                                     >

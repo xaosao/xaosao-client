@@ -473,7 +473,7 @@ export async function pushNewMessage(
     data: {
       type: "new_message",
       conversationId,
-      url: recipientType === "customer" ? "/customer/realtime-chat" : "/model/realtime-chat",
+      url: recipientType === "customer" ? "/customer/chat" : "/model/chat",
     },
   };
 
@@ -501,7 +501,7 @@ export async function pushNewMatch(
     data: {
       type: "match_new",
       customerId,
-      url: "/model/matches",
+      url: "/model",
     },
   });
 
@@ -513,7 +513,7 @@ export async function pushNewMatch(
     data: {
       type: "match_new",
       modelId,
-      url: "/customer/matches",
+      url: "/customer",
     },
   });
 }

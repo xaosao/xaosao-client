@@ -157,6 +157,29 @@
   padding-left: env(safe-area-inset-left);
 }
 
+/*
+ * Per-edge safe-area helpers.
+ *
+ * The viewport meta uses `viewport-fit=cover` and the manifest is
+ * `display: standalone`, so in an installed PWA the page runs UNDER the
+ * status bar / Dynamic Island and the home indicator. Any full-bleed screen
+ * (the chat thread) has to pad itself or its header ends up behind the clock.
+ *
+ * `h-safe-area-inset-bottom` was already referenced by the PWA prompts but
+ * never actually defined — it was silently a no-op until now.
+ */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.h-safe-area-inset-bottom {
+  height: env(safe-area-inset-bottom);
+}
+
 @layer utilities {
   .bg-dark-navy {
     background-color: #1a1b3a;

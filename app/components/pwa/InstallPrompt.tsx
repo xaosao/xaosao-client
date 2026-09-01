@@ -14,12 +14,6 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
-// Check if device is Android
-function isAndroid(): boolean {
-  if (typeof window === "undefined") return false;
-  return /Android/.test(navigator.userAgent);
-}
-
 // Check if app is already installed (standalone mode)
 function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
@@ -42,6 +36,9 @@ const STORAGE_KEY = "pwa-install-prompt-dismissed";
 export function InstallPrompt() {
   const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
+  // Stays null now that the prompt is iOS-only (Safari never fires
+  // `beforeinstallprompt`). The branches guarded on it below are therefore
+  // inert; kept so Android support is a one-line change if it's wanted back.
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
@@ -56,27 +53,16 @@ export function InstallPrompt() {
     // Check if user dismissed in this session
     try { if (sessionStorage.getItem(STORAGE_KEY)) return; } catch { return; }
 
-    // Set iOS flag
-    setIsIOSDevice(isIOS());
-
-    // For Android/Chrome - listen for beforeinstallprompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPrompt(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    // Show immediately for both iOS and Android
+    // iOS ONLY.
+    //
+    // Safari has no install API and no install affordance a user would find on
+    // their own — "Share → Add to Home Screen" has to be explained, which is
+    // what this modal does. Chrome on Android already surfaces its own install
+    // banner and menu entry, so showing a second, custom one there is just an
+    // extra thing to dismiss on a first visit.
+    if (!isIOS()) return;
+    setIsIOSDevice(true);
     setShowPrompt(true);
-
-    return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
-      );
-    };
   }, []);
 
   const handleInstall = async () => {

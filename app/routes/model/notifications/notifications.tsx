@@ -27,13 +27,17 @@ import { Button } from "~/components/ui/button";
 
 // service
 import {
-  getModelNotifications,
-  getModelUnreadCount,
-  markAllModelNotificationsAsRead,
-} from "~/services/notification.server";
+  fetchNotifications,
+  markAllNotificationsRead,
+} from "~/services/xs-notification.server";
 import { useNotifications } from "~/hooks/useNotifications";
 import { requireModelSession } from "~/services/model-auth.server";
-import { useNotificationStore, type Notification } from "~/stores/notification.store";
+import {
+  useNotificationStore,
+  localizeNotification,
+  type Notification,
+} from "~/stores/notification.store";
+import { notificationHref } from "~/utils/notification-link";
 
 interface LoaderReturn {
   notifications: Notification[];
@@ -47,8 +51,29 @@ interface PageProps {
 export const loader: LoaderFunction = async ({ request }) => {
   const modelId = await requireModelSession(request);
 
-  const notifications = await getModelNotifications(modelId);
-  const unreadCount = await getModelUnreadCount(modelId);
+  // Read through the xs_backend notification API so the web list matches the
+  // mobile app's — same ordering, same unread count, and the Lao copy the
+  // backend resolves from its translation table.
+  const feed = await fetchNotifications(
+    { userId: modelId, userType: "model" },
+    { limit: 50 }
+  );
+
+  if (feed) {
+    return {
+      notifications: feed.notifications,
+      unreadCount: feed.unreadCount,
+    };
+  }
+
+  // Backend unreachable — fall back to the local read of the same collection.
+  const { getModelNotifications, getModelUnreadCount } = await import(
+    "~/services/notification.server"
+  );
+  const [notifications, unreadCount] = await Promise.all([
+    getModelNotifications(modelId).catch(() => []),
+    getModelUnreadCount(modelId).catch(() => 0),
+  ]);
 
   return {
     notifications: notifications.map((n) => ({
@@ -70,7 +95,16 @@ export async function action({ request }: { request: Request }) {
   const intent = formData.get("intent");
 
   if (intent === "markAllRead") {
-    await markAllModelNotificationsAsRead(modelId);
+    const done = await markAllNotificationsRead({
+      userId: modelId,
+      userType: "model",
+    });
+    if (!done) {
+      const { markAllModelNotificationsAsRead } = await import(
+        "~/services/notification.server"
+      );
+      await markAllModelNotificationsAsRead(modelId);
+    }
   }
 
   return { success: true };
@@ -152,7 +186,7 @@ function formatRelativeTime(dateString: string, t: (key: string, options?: any) 
 }
 
 export default function ModelNotifications({ loaderData }: PageProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const fetcher = useFetcher();
   const { notifications: serverNotifications } = loaderData;
@@ -200,11 +234,9 @@ export default function ModelNotifications({ loaderData }: PageProps) {
       }
     );
 
-    if (notification.data?.bookingId) {
-      navigate(`/model/dating/detail/${notification.data.bookingId}`);
-    } else if (notification.data?.postId) {
-      navigate(`/model/posts/${notification.data.postId}`);
-    }
+    // One router for every notification type, shared with the bell and
+    // matching the app's behaviour — see utils/notification-link.
+    navigate(notificationHref(notification, "model"));
   };
 
   const handleMarkAllAsRead = () => {
@@ -293,7 +325,7 @@ export default function ModelNotifications({ loaderData }: PageProps) {
                     text-sm sm:text-base font-medium truncate
                     ${notification.isRead ? "text-gray-500" : "text-gray-900"}
                   `}>
-                      {notification.title}
+                      {localizeNotification(notification, i18n.language).title}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-gray-400">
                       {formatRelativeTime(notification.createdAt, t)}
@@ -303,7 +335,7 @@ export default function ModelNotifications({ loaderData }: PageProps) {
                     text-xs sm:text-sm mt-0.5 line-clamp-2
                     ${notification.isRead ? "text-gray-400" : "text-gray-600"}
                   `}>
-                    {notification.message}
+                    {localizeNotification(notification, i18n.language).message}
                   </p>
                 </div>
 

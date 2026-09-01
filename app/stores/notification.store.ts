@@ -5,9 +5,34 @@ export interface Notification {
   type: string;
   title: string;
   message: string;
+  /**
+   * Lao copy resolved by xs_backend from its notification-text table. Present
+   * on rows fetched through the notification API (the same text the mobile app
+   * renders); absent on rows pushed over the website's SSE stream. Use
+   * `localizeNotification()` rather than reading these directly.
+   */
+  laTitle?: string;
+  laMessage?: string;
   data?: Record<string, any>;
   isRead?: boolean;
   createdAt: string;
+}
+
+/**
+ * Pick the right language for a notification. The backend only ships English
+ * + Lao, so any other UI language falls back to English.
+ */
+export function localizeNotification(
+  notification: Notification,
+  language: string
+): { title: string; message: string } {
+  if (language?.startsWith("lo")) {
+    return {
+      title: notification.laTitle || notification.title,
+      message: notification.laMessage || notification.message,
+    };
+  }
+  return { title: notification.title, message: notification.message };
 }
 
 interface NotificationState {
