@@ -367,7 +367,10 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
         if (startChatFetcher.state !== "idle" || !startChatFetcher.data) return;
         const data = startChatFetcher.data;
         if (data.canChat === false) {
-            setChatModalState({ reason: data.reason || "gift_required" });
+            // Subscription is now the only gate, so a refusal can only mean
+            // "not subscribed" — defaulting to the gift flow would show a
+            // modal asking for a gift that no longer unlocks anything.
+            setChatModalState({ reason: data.reason || "subscribe" });
         }
     }, [startChatFetcher.state, startChatFetcher.data]);
 

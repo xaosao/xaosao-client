@@ -1,14 +1,12 @@
 /**
  * Resource route: open (or create) a chat with a model.
  *
- * The website's own access rules run first — active booking, subscription
- * tier, free daily slot, or a direct gift. Only if they pass do we ask
- * xs_backend for the conversation, which applies its own subscription check as
- * a backstop.
+ * Access is decided by one rule: an active subscription grants unlimited chat.
+ * xs_backend applies the same check server-side as a backstop.
  *
  * On success: redirect to the thread.
- * On refusal: return `{ canChat: false, reason }` so the caller can open
- * <ChatAccessModal> with the right copy (subscribe / gift_required / …).
+ * On refusal: return `{ canChat: false, reason: "subscribe" }` so the caller
+ * can open <ChatAccessModal> prompting them to subscribe.
  */
 
 import type { ActionFunctionArgs } from "react-router";

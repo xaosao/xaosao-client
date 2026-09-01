@@ -2838,62 +2838,30 @@ export async function getChattableModelIds(customerId: string): Promise<Set<stri
   const ids = new Set<string>();
 
   try {
-    // Check for unlimited subscription (1week, 1month, 3months — durationDays > 1)
-    // 24h package (durationDays === 1) is NOT unlimited.
+    // An active subscription — of ANY plan length — means unlimited chat.
+    //
+    // This previously distinguished the 24-hour package from longer plans and
+    // layered on bookings, a two-per-day free allowance and gift unlocks. All
+    // of that is gone; see services/chat-access.server.ts for the same rule on
+    // the action side. Keeping the two in step matters: this set decides which
+    // cards offer a chat button, and `checkChatAccess` decides whether the tap
+    // succeeds. If they disagree, the button is there but the tap is refused.
     const subscription = await prisma.subscription.findFirst({
       where: {
         customerId,
         status: "active",
         endDate: { gte: new Date() },
       },
-      select: { plan: { select: { durationDays: true } } },
+      select: { id: true },
     });
 
-    const isUnlimited = subscription && (subscription.plan?.durationDays ?? 1) > 1;
+    if (!subscription) return ids;
 
-    if (isUnlimited) {
-      // Unlimited subscribers can chat with any active model — return all model IDs
-      const allModels = await prisma.model.findMany({
-        where: { status: "active" },
-        select: { id: true },
-      });
-      allModels.forEach((m) => ids.add(m.id));
-      return ids;
-    }
-
-    // Models with active bookings
-    const bookings = await prisma.service_booking.findMany({
-      where: { customerId, status: { in: ["pending", "confirmed"] } },
-      select: { modelId: true },
+    const allModels = await prisma.model.findMany({
+      where: { status: "active" },
+      select: { id: true },
     });
-    bookings.forEach((b) => b.modelId && ids.add(b.modelId));
-
-    // Models with daily chat access today (Laos timezone)
-    try {
-      const now = new Date();
-      const laosDate = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-      const todayStr = laosDate.toISOString().slice(0, 10);
-
-      const dailyAccess = await prisma.daily_chat_access.findMany({
-        where: { customerId, date: todayStr },
-        select: { modelId: true },
-      });
-      dailyAccess.forEach((d) => ids.add(d.modelId));
-    } catch {
-      // table may not exist yet
-    }
-
-    // Models who received direct gifts from this customer
-    try {
-      const directGifts = await prisma.direct_gift.findMany({
-        where: { customerId },
-        select: { modelId: true },
-        distinct: ["modelId"],
-      });
-      directGifts.forEach((g) => ids.add(g.modelId));
-    } catch {
-      // table may not exist yet
-    }
+    allModels.forEach((m) => ids.add(m.id));
   } catch (e) {
     console.error("[getChattableModelIds] Error:", e);
   }
