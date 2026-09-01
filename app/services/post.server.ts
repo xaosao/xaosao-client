@@ -107,6 +107,24 @@ export async function getPostsFeed(
     { expiresAt: { gt: new Date() } },
   ];
 
+  // Only surface posts whose AUTHOR is still viewable.
+  //
+  // The post's own `status` says nothing about the account behind it, so the
+  // feed was showing posts from deleted, suspended and unapproved accounts.
+  // Tapping the author then hit a profile page that (correctly) refuses to
+  // render them, so the tap dead-ended on a "not found" screen. It also meant
+  // deleted accounts' content kept circulating.
+  //
+  // These conditions mirror `getModelProfile` exactly, so "post is in the
+  // feed" and "profile opens" can't disagree again.
+  if (oppositeType === "model") {
+    andConditions.push({
+      model: { is: { status: "active", isProfileHidden: { not: true } } },
+    });
+  } else {
+    andConditions.push({ customer: { is: { status: "active" } } });
+  }
+
   if (serviceId) {
     andConditions.push({ serviceId });
   }
