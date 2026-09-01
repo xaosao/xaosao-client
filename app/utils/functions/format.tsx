@@ -1,4 +1,10 @@
 export const formatNumber = (num: any) => {
+    // Guard null/undefined: this helper is used across profile, post and
+    // wallet screens, and a single missing count used to throw
+    // `undefined.toString()` and take the entire page down via the error
+    // boundary. A missing number reads as "0".
+    if (num === null || num === undefined || num === "") return "0";
+    if (typeof num === "number" && Number.isNaN(num)) return "0";
     if (num >= 1000000) {
         return (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {

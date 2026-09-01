@@ -78,6 +78,16 @@ export const loader: LoaderFunction = async ({ params, request }) => {
         getUserProfilePosts(modelId, "model"),
     ]);
 
+    // `getModelProfile` returns null when the id isn't a visible model —
+    // deleted, inactive, or a customer id. The return below spreads it, and
+    // `{...null}` is `{}`: a truthy object with every field undefined, which
+    // rendered as `formatNumber(undefined)` -> `undefined.toString()` and
+    // took the page down with an opaque error. Post authors are not always
+    // active models, so this is reachable from the feed.
+    if (!model) {
+        throw new Response("Model not found", { status: 404 });
+    }
+
     const reviewData: IReviewData = {
         reviews: reviewsResult.reviews,
         totalCount: reviewsResult.totalCount,
