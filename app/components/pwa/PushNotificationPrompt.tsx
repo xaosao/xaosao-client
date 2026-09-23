@@ -22,8 +22,39 @@ interface PushNotificationPromptProps {
   onDismiss?: () => void;
 }
 
-// Only remember dismissal for current session (until page refresh)
+// Remember dismissal for the rest of the browser session.
+//
+// Backed by sessionStorage as well as this in-memory map so a reload or a
+// remount doesn't bring the dialog straight back. Closing it has to mean
+// closed — push can still be turned on any time from the settings page.
 const sessionDismissed: Record<string, boolean> = {};
+
+function dismissKey(userType: string): string {
+  return `pushPromptDismissed:${userType}`;
+}
+
+export function isPushPromptDismissed(userType: string): boolean {
+  return wasDismissed(userType);
+}
+
+function wasDismissed(userType: string): boolean {
+  if (sessionDismissed[userType]) return true;
+  try {
+    return sessionStorage.getItem(dismissKey(userType)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissed(userType: string): void {
+  sessionDismissed[userType] = true;
+  try {
+    sessionStorage.setItem(dismissKey(userType), "true");
+  } catch {
+    // Private mode or blocked storage — the in-memory flag still holds
+    // for this page load.
+  }
+}
 
 // Check if app is running as PWA
 function isStandalone(): boolean {
@@ -88,17 +119,23 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      // Ask anywhere the browser can actually subscribe.
+      // iOS only.
       //
-      // This was previously Android-only, which excluded the single
-      // audience web push exists for here: iPhone users. They have no FCM,
-      // so an installed PWA is their only route to a banner. Android app
-      // users already receive FCM through the Flutter app.
-      //
-      // iOS only exposes the push APIs to an app opened from the home
-      // screen, and only on 16.4+, so an iPhone in plain Safari is skipped
-      // rather than shown a prompt that cannot work.
-      if (isIOS() && (!isStandalone() || !isIOSVersionSupported())) {
+      // iPhones have no Firebase Cloud Messaging, so an installed PWA is
+      // their only route to a notification banner — this dialog is the one
+      // audience it exists for. Android and desktop already receive push
+      // through the app's Firebase channel, so showing it there would be
+      // noise at best and a second, duplicate notification at worst.
+      if (!isIOS()) {
+        console.log("[PushPrompt] Not iOS, skipping");
+        onDismiss?.();
+        return;
+      }
+
+      // Even on iOS the push APIs exist only for an app opened from the
+      // home screen, and only on 16.4+. Asking anywhere else would offer
+      // something the browser cannot deliver.
+      if (!isStandalone() || !isIOSVersionSupported()) {
         console.log("[PushPrompt] iOS without installed PWA or too old, skipping", {
           standalone: isStandalone(),
           versionOk: isIOSVersionSupported(),
@@ -129,7 +166,7 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
         return;
       }
 
-      if (sessionDismissed[userType]) {
+      if (wasDismissed(userType)) {
         console.log("[PushPrompt] Not showing: Dismissed in current session");
         onDismiss?.();
         return;
@@ -172,7 +209,7 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
   };
 
   const handleDismiss = () => {
-    sessionDismissed[userType] = true;
+    rememberDismissed(userType);
     setShowPrompt(false);
     onDismiss?.();
   };
@@ -181,7 +218,10 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
   if (!isSupported) return null;
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
+    <div
+      data-push-prompt="true"
+      className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300"
+    >
       <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
         <div className="relative p-4 border-b">
           <button

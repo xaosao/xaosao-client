@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
+import { isPushPromptDismissed } from "~/components/pwa/PushNotificationPrompt";
 
 /**
  * Subscribe this browser to push with no custom UI of its own.
@@ -47,6 +48,12 @@ export function PushAutoEnable({
     if (attempted.current) return;
     if (!isSupported || isSubscribed || permission === "denied") return;
 
+    // "Not Now" on the prompt means not now. Without this the native
+    // permission dialog would appear on the user's very next tap, which is
+    // a worse version of the thing they just declined. Settings still has
+    // an always-available toggle, and the choice lasts one session.
+    if (isPushPromptDismissed(userType)) return;
+
     // iOS exposes the push APIs only to an app opened from the home screen.
     // In plain Safari, asking would fail, so stay quiet and let the settings
     // page explain how to install.
@@ -63,20 +70,28 @@ export function PushAutoEnable({
     }
 
     // Permission not decided yet. Hook the first interaction.
-    const onGesture = () => {
+    //
+    // Taps that land inside the push prompt are ignored and the listener
+    // stays armed: that dialog has its own Enable and Not Now buttons, and
+    // hijacking the tap here opened the native permission dialog before the
+    // button's click could fire, which made the prompt impossible to close.
+    const onGesture = (event: Event) => {
+      const target = event.target as Element | null;
+      if (target?.closest?.("[data-push-prompt]")) return;
+
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
       attempted.current = true;
       void subscribe();
     };
-    window.addEventListener("pointerdown", onGesture, { once: true });
-    window.addEventListener("keydown", onGesture, { once: true });
+    window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("keydown", onGesture);
 
     return () => {
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
     };
-  }, [isSupported, isSubscribed, permission, isInitializing, subscribe]);
+  }, [isSupported, isSubscribed, permission, isInitializing, subscribe, userType]);
 
   return null;
 }
