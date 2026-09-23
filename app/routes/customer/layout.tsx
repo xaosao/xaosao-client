@@ -339,14 +339,14 @@ export default function Dashboard({ loaderData }: TransactionProps) {
         },
     });
 
-    // Handler for chat navigation with subscription check
-    const handleChatNavigation = (e: React.MouseEvent, url: string) => {
-        if (url.includes("/chat")) {
-            if (!hasActiveSubscription) {
-                e.preventDefault();
-                openSubscriptionModal();
-            }
-        }
+    // Chat is browsable without a package. Opening the conversation list
+    // and reading history is free; only SENDING a message requires an
+    // active subscription, and that check lives in the thread itself.
+    // Blocking the whole menu here meant an expired customer couldn't even
+    // see who had messaged them.
+    const handleChatNavigation = (_e: React.MouseEvent, _url: string) => {
+        // Intentionally empty — kept so the nav items keep a stable handler
+        // signature and the gate stays in one obvious place if it returns.
     };
 
     const navigationItems = useMemo(() => [

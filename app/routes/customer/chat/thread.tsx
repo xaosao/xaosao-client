@@ -17,6 +17,8 @@ import {
   XsApiError,
 } from "~/services/xs-chat.server";
 import { ChatThread } from "~/components/chat/ChatThread";
+import { hasActiveSubscription } from "~/services/package.server";
+import { useNavigate } from "react-router";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const customerId = await requireVerifiedUserSession(request);
@@ -24,9 +26,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const viewer = { userId: customerId, userType: "customer" as const };
 
   try {
-    const [conversation, history] = await Promise.all([
+    const [conversation, history, subscribed] = await Promise.all([
       getConversation(viewer, conversationId),
       getMessages(viewer, conversationId, { limit: 40 }),
+      hasActiveSubscription(customerId),
     ]);
 
     return {
@@ -34,6 +37,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       messages: history.messages,
       hasMore: history.hasMore,
       myUserId: customerId,
+      // Reading a thread is free. Replying is what the package buys, so
+      // the composer is swapped for a subscribe prompt when this is false.
+      canSend: Boolean(subscribed),
     };
   } catch (error) {
     // 403/404 means it isn't ours (or no longer exists) — back to the list
@@ -97,11 +103,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function CustomerChatThread() {
-  const { conversation, messages, hasMore, myUserId } =
+  const { conversation, messages, hasMore, myUserId, canSend } =
     useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
   return (
     <ChatThread
+      sendLocked={!canSend}
+      onLockedSend={() => navigate("/customer/packages")}
       conversation={conversation}
       initialMessages={messages}
       hasMore={hasMore}

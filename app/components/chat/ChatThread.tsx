@@ -41,6 +41,15 @@ interface ChatThreadProps {
   basePath: string;
   /** Link to the peer's profile page, when the app has one. */
   peerProfileHref?: string;
+  /**
+   * Set when the viewer may read the conversation but not reply — a
+   * customer whose package has lapsed. The composer is replaced by a
+   * prompt to subscribe rather than letting them type a message that the
+   * backend would only reject.
+   */
+  sendLocked?: boolean;
+  /** Called instead of sending while `sendLocked` is true. */
+  onLockedSend?: () => void;
 }
 
 /** A message plus the client-only state an optimistic row needs. */
@@ -103,6 +112,8 @@ export function ChatThread({
   myUserId,
   basePath,
   peerProfileHref,
+  sendLocked = false,
+  onLockedSend,
 }: ChatThreadProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -331,10 +342,17 @@ export function ChatThread({
   const canSend =
     (draft.trim().length > 0 || !!attachment) &&
     sendFetcher.state === "idle" &&
-    !conversation.isBlocked;
+    !conversation.isBlocked &&
+    !sendLocked;
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Reading is open to everyone; replying is what needs a package. Hand
+    // off to the caller so it can offer one instead of failing the send.
+    if (sendLocked) {
+      onLockedSend?.();
+      return;
+    }
     if (!canSend) return;
 
     const content = draft.trim();
@@ -636,7 +654,20 @@ export function ChatThread({
           </div>
         )}
 
-        {conversation.isBlocked ? (
+        {sendLocked && !conversation.isBlocked ? (
+          // Reading stays open; replying is what the package buys. Shown
+          // in place of the composer so nobody types a message only to
+          // have the backend reject it.
+          <button
+            type="button"
+            onClick={() => onLockedSend?.()}
+            className="w-full rounded-xl bg-rose-500 px-4 py-3 text-sm font-medium text-white hover:bg-rose-600"
+          >
+            {t("chat.subscribeToReply", {
+              defaultValue: "Subscribe to send a message",
+            })}
+          </button>
+        ) : conversation.isBlocked ? (
           <p className="text-center text-sm text-gray-500 py-2">
             {conversation.blockedByMe
               ? t("chat.youBlocked", {
