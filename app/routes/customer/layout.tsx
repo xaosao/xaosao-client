@@ -21,6 +21,7 @@ import type { ICustomerResponse } from "~/interfaces/customer";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { loadNotificationFeed } from "~/services/xs-notification.server";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
+import { PushAutoEnable } from "~/components/pwa/PushAutoEnable";
 import { SubscriptionModal } from "~/components/subscription/SubscriptionModal";
 import { useSubscriptionCheck } from "~/hooks/useSubscriptionCheck";
 import { useSubscriptionSSE } from "~/hooks/useSubscriptionSSE";
@@ -584,7 +585,15 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                 onRequestLocation={handleLocationRequest}
             />
 
-            {/* Step 2: Push Notification Permission Prompt (Android only, after location step) */}
+            {/* Primary push path: asks on the user's first interaction, the
+                way pupatao does it. Not tied to the modal sequence, the
+                route, or the stored preference — all of which previously
+                combined to make the subscribe call unreachable. */}
+            {!pushOptOut && <PushAutoEnable userType="customer" />}
+
+            {/* Step 2: Push Notification Permission Prompt (after location step).
+                Kept as a visible explainer for anyone who dismissed the
+                browser dialog; it self-dismisses once subscribed. */}
             <PushNotificationPrompt
                 userType="customer"
                 pushOptOut={pushOptOut}

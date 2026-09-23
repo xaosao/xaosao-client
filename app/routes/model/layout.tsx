@@ -28,6 +28,7 @@ import { Button } from "~/components/ui/button";
 import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
+import { PushAutoEnable } from "~/components/pwa/PushAutoEnable";
 import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 import { useChatBadge } from "~/hooks/useChatBadge";
@@ -439,7 +440,14 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 </div>
             )}
 
-            {/* Push Notification Permission Prompt */}
+            {/* Primary push path: asks on the user's first interaction, the
+                way pupatao does it. Independent of the prompt below, which
+                was previously the only route to subscribing and was
+                unreachable in practice. */}
+            {!pushOptOut && <PushAutoEnable userType="model" />}
+
+            {/* Push Notification Permission Prompt — kept as a visible
+                explainer; it self-dismisses once subscribed. */}
             <PushNotificationPrompt userType="model" pushOptOut={pushOptOut} />
 
             {/* Service Setup Required Modal */}

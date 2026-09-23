@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Form, redirect, useActionData, useNavigate, useNavigation, useRouteLoaderData, type LoaderFunction } from "react-router";
 import { User, Lock, Bell, Globe, Flag, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Loader, AlertCircle, Boxes, X, Check, Wallet, LogOut } from "lucide-react";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
+import { PushNotificationBanner } from "~/components/pwa/PushNotificationPrompt";
 
 // components
 import { Label } from "~/components/ui/label";
@@ -294,7 +295,12 @@ export default function SettingPage() {
     const handleNotificationChange = useCallback((type: NotificationType) => {
         // For push notifications, show dialog if trying to enable and not subscribed
         if (type === "push") {
-            if (!notifications.push && !isPushSubscribed) {
+            // Keyed off the REAL browser subscription, not the stored
+            // preference. `sendPushNoti` defaults to true on every account,
+            // so the old `!notifications.push` check was false for almost
+            // everyone — and this dialog is the only code that calls
+            // subscribe(), so the browser could never subscribe at all.
+            if (!isPushSubscribed) {
                 // Trying to enable push - show the dialog first
                 setShowPushDialog(true);
                 setPushSuccess(false);
@@ -308,7 +314,7 @@ export default function SettingPage() {
             ...prev,
             [type]: !prev[type],
         }));
-    }, [notifications.push, isPushSubscribed, unsubscribePush]);
+    }, [isPushSubscribed, unsubscribePush]);
 
     const handleEnablePush = useCallback(async () => {
         const success = await subscribePush();
@@ -686,6 +692,13 @@ export default function SettingPage() {
                                     value={enabled ? "true" : "false"}
                                 />
                             ))}
+
+                            {/* Per-device push state. The toggles below store a
+                                preference that gates every channel including the
+                                mobile app; this says whether THIS browser is
+                                actually subscribed, which is the thing that has to
+                                be true for an installed PWA to get a banner. */}
+                            <PushNotificationBanner userType="customer" />
 
                             <div className="space-y-4">
                                 {Object.entries(notifications).map(([type, enabled]) => (

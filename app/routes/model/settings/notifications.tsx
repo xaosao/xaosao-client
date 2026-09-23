@@ -10,6 +10,7 @@ import { Switch } from "~/components/ui/switch";
 
 // hooks:
 import { usePushNotifications } from "~/hooks/usePushNotifications";
+import { PushNotificationBanner } from "~/components/pwa/PushNotificationPrompt";
 
 // service:
 import { getModelOwnProfile, updateModelSetting } from "~/services/model-profile.server";
@@ -88,7 +89,12 @@ export default function ModelNotificationSettings() {
   const handleNotificationChange = useCallback((type: NotificationType) => {
     // For push notifications, show dialog if trying to enable and not subscribed
     if (type === "push") {
-      if (!notifications.push && !isPushSubscribed) {
+      // Keyed off the REAL browser subscription, not the stored
+      // preference. `sendPushNoti` defaults to true on every account,
+      // so the old `!notifications.push` check was false for almost
+      // everyone — and this dialog is the only code that calls
+      // subscribe(), so the browser could never subscribe at all.
+      if (!isPushSubscribed) {
         // Trying to enable push - show the dialog first
         setShowPushDialog(true);
         setPushSuccess(false);
@@ -102,7 +108,7 @@ export default function ModelNotificationSettings() {
       ...prev,
       [type]: !prev[type],
     }));
-  }, [notifications.push, isPushSubscribed, unsubscribePush]);
+  }, [isPushSubscribed, unsubscribePush]);
 
   const handleEnablePush = useCallback(async () => {
     const success = await subscribePush();
@@ -160,6 +166,12 @@ export default function ModelNotificationSettings() {
         <input type="hidden" name="notifications_sms" value={notifications.sms ? "true" : "false"} />
         <input type="hidden" name="notifications_email" value={model.sendMailNoti ? "true" : "false"} />
         <input type="hidden" name="notifications_whatsapp" value={notifications.whatsapp ? "true" : "false"} />
+
+        {/* Per-device push state. The toggles below store a preference that
+            gates every channel including the mobile app; this says whether
+            THIS browser is actually subscribed, which is what has to be true
+            for an installed PWA to get a banner. */}
+        <PushNotificationBanner userType="model" />
 
         <div className="bg-gray-50 rounded-xl p-4 space-y-4">
           {/* Push Notifications */}

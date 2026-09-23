@@ -294,7 +294,12 @@ export default function SettingPage({ loaderData }: TransactionProps) {
    const handleNotificationChange = (type: NotificationType) => {
       // For push notifications, show dialog if trying to enable and not subscribed
       if (type === "push") {
-         if (!notifications.push && !isPushSubscribed) {
+         // Keyed off the REAL browser subscription, not the stored
+      // preference. `sendPushNoti` defaults to true on every account,
+      // so the old `!notifications.push` check was false for almost
+      // everyone — and this dialog is the only code that calls
+      // subscribe(), so the browser could never subscribe at all.
+      if (!isPushSubscribed) {
             // Trying to enable push - show the dialog first
             setShowPushDialog(true);
             setPushSuccess(false);
