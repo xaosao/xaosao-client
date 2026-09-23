@@ -39,7 +39,7 @@ interface LoaderReturn {
     initialNotifications: Notification[];
     hasActiveSubscription: boolean;
     hasPendingSubscription: boolean;
-    hasEnabledNotifications: boolean;
+    pushOptOut: boolean;
     trialPackage: {
         id: string;
         price: number;
@@ -138,7 +138,10 @@ async function loadCustomerLayoutData(customerId: string) {
 
     const { unreadNotifications, initialNotifications } = notificationFeed;
 
-    const hasEnabledNotifications = customerData?.sendPushNoti || customerData?.sendSMSNoti || false;
+    // Only an explicit push opt-out suppresses the prompt. SMS is a
+        // separate channel and must not gate push, and the default-true
+        // push preference means "allowed", not "already subscribed".
+        const pushOptOut = customerData?.sendPushNoti === false;
     const availableBalance = (wallet?.totalBalance || 0) - (wallet?.totalSpend || 0) + (wallet?.totalRefunded || 0);
 
     return {
@@ -148,7 +151,7 @@ async function loadCustomerLayoutData(customerId: string) {
         initialNotifications,
         hasActiveSubscription: hasSubscription,
         hasPendingSubscription: hasPending,
-        hasEnabledNotifications,
+        pushOptOut,
         trialPackage,
         customerBalance: availableBalance,
         awaitingSlipIntent: awaitingSlipIntent
@@ -188,7 +191,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { customerData, unreadNotifications, unreadMessages, initialNotifications, hasActiveSubscription, hasPendingSubscription, hasEnabledNotifications, trialPackage, customerBalance, awaitingSlipIntent } = loaderData;
+    const { customerData, unreadNotifications, unreadMessages, initialNotifications, hasActiveSubscription, hasPendingSubscription, pushOptOut, trialPackage, customerBalance, awaitingSlipIntent } = loaderData;
     const { t, i18n } = useTranslation();
 
     // Live unread-message count for the Chat nav badge. Seeded from the
@@ -251,7 +254,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     // Search is a Discover feature, so the header icon only appears there.
     // (Discover is the index route; its tabs live in ?tab=, not the path.)
     const isDiscoverPage = location.pathname === "/customer";
-    console.log("[ModalSequence] State:", { isDashboardPage, hasEnabledNotifications, hasActiveSubscription, hasPendingSubscription });
+    console.log("[ModalSequence] State:", { isDashboardPage, pushOptOut, hasActiveSubscription, hasPendingSubscription });
 
     // === Modal sequencing: Location → Push Notification (Android) → Subscription ===
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
@@ -584,7 +587,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
             {/* Step 2: Push Notification Permission Prompt (Android only, after location step) */}
             <PushNotificationPrompt
                 userType="customer"
-                hasEnabledNotifications={hasEnabledNotifications}
+                pushOptOut={pushOptOut}
                 enabled={locationStepDone}
                 onDismiss={handlePushDismissed}
             />

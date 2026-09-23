@@ -66,7 +66,7 @@ interface LoaderReturn {
     initialNotifications: Notification[];
     pendingBookingCount: number;
     hasServices: boolean;
-    hasEnabledNotifications: boolean;
+    pushOptOut: boolean;
     isProfileHidden: boolean;
     referralLink: string;
 }
@@ -106,14 +106,17 @@ export const loader: LoaderFunction = async ({ request }) => {
         const hasServices = (modelData?.ModelService?.length ?? 0) > 0;
 
         // Check if model has enabled notifications (either push or SMS)
-        const hasEnabledNotifications = modelData?.sendPushNoti || modelData?.sendSMSNoti || false;
+        // Only an explicit push opt-out suppresses the prompt. SMS is a
+        // separate channel and must not gate push, and the default-true
+        // push preference means "allowed", not "already subscribed".
+        const pushOptOut = modelData?.sendPushNoti === false;
 
         const isProfileHidden = modelData?.isProfileHidden === true;
 
         const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:5176/";
         const referralLink = referralCode ? `${baseUrl}model-auth/register?ref=${referralCode}` : "";
 
-        return { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink };
+        return { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden, referralLink };
     } catch (error) {
         // `redirect()` throws a Response — that's control flow, not a failure.
         // Re-throw it untouched so it isn't logged as an error and re-wrapped.
@@ -127,7 +130,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, hasEnabledNotifications, isProfileHidden, referralLink } = loaderData;
+    const { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden, referralLink } = loaderData;
     const profileHiddenFetcher = useFetcher();
     const { t, i18n } = useTranslation();
 
@@ -437,7 +440,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
             )}
 
             {/* Push Notification Permission Prompt */}
-            <PushNotificationPrompt userType="model" hasEnabledNotifications={hasEnabledNotifications} />
+            <PushNotificationPrompt userType="model" pushOptOut={pushOptOut} />
 
             {/* Service Setup Required Modal */}
             <Dialog open={!hasServices && !location.pathname.startsWith("/model/settings")} modal={true}>

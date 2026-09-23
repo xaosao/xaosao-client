@@ -6,7 +6,18 @@ import { usePushNotifications } from "~/hooks/usePushNotifications";
 
 interface PushNotificationPromptProps {
   userType: "model" | "customer";
-  hasEnabledNotifications?: boolean;
+  /**
+   * True only when the user has explicitly turned push OFF in their
+   * settings. Anything else means we may ask.
+   *
+   * This used to be `hasEnabledNotifications`, fed by
+   * `sendPushNoti || sendSMSNoti`. Both of those default to true on every
+   * new account, so the prompt treated essentially every user as already
+   * handled and returned early — which is why no browser ever subscribed.
+   * A stored preference says the user ALLOWS push; it does not mean this
+   * browser has a subscription. Those are different things.
+   */
+  pushOptOut?: boolean;
   enabled?: boolean;
   onDismiss?: () => void;
 }
@@ -55,17 +66,7 @@ function isIOSVersionSupported(): boolean {
   }
 }
 
-// Check if device is Android
-function isAndroid(): boolean {
-  try {
-    if (typeof window === "undefined") return false;
-    return /Android/.test(navigator.userAgent);
-  } catch {
-    return false;
-  }
-}
-
-export function PushNotificationPrompt({ userType, hasEnabledNotifications, enabled = true, onDismiss }: PushNotificationPromptProps) {
+export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, onDismiss }: PushNotificationPromptProps) {
   const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -87,9 +88,21 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications, enab
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      // Android only - skip iOS devices entirely
-      if (!isAndroid()) {
-        console.log("[PushPrompt] Not Android, skipping");
+      // Ask anywhere the browser can actually subscribe.
+      //
+      // This was previously Android-only, which excluded the single
+      // audience web push exists for here: iPhone users. They have no FCM,
+      // so an installed PWA is their only route to a banner. Android app
+      // users already receive FCM through the Flutter app.
+      //
+      // iOS only exposes the push APIs to an app opened from the home
+      // screen, and only on 16.4+, so an iPhone in plain Safari is skipped
+      // rather than shown a prompt that cannot work.
+      if (isIOS() && (!isStandalone() || !isIOSVersionSupported())) {
+        console.log("[PushPrompt] iOS without installed PWA or too old, skipping", {
+          standalone: isStandalone(),
+          versionOk: isIOSVersionSupported(),
+        });
         onDismiss?.();
         return;
       }
@@ -100,9 +113,11 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications, enab
         return;
       }
 
-      // Don't show if notifications are already enabled
-      if (hasEnabledNotifications) {
-        console.log("[PushPrompt] Not showing: Notifications already enabled");
+      // Only an explicit push opt-out silences the prompt. Whether this
+      // browser is already subscribed is answered by `isSubscribed` below,
+      // which reflects the real PushManager state rather than a preference.
+      if (pushOptOut) {
+        console.log("[PushPrompt] Not showing: user turned push off");
         onDismiss?.();
         return;
       }
@@ -133,7 +148,7 @@ export function PushNotificationPrompt({ userType, hasEnabledNotifications, enab
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [enabled, isSupported, isSubscribed, permission, userType, isInitializing, hasEnabledNotifications, onDismiss]);
+  }, [enabled, isSupported, isSubscribed, permission, userType, isInitializing, pushOptOut, onDismiss]);
 
   const handleEnable = async () => {
     const success = await subscribe();
