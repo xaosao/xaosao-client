@@ -463,11 +463,18 @@ export async function modelLogin({
   // console.log("Existing::::", existingModel);
 
   // Allow login for: verified (approved but hidden), active (visible)
-  // Disallow: pending (awaiting approval), inactive, suspended, deleted
+  // Disallow: pending (awaiting approval), revision_required (admin asked
+  // for changes — they use the tokenised link instead), inactive,
+  // suspended, deleted
   const allowedStatuses = ["verified", "active"];
   if (!allowedStatuses.includes(existingModel.status)) {
+    // Point them at the link we already sent rather than the generic
+    // "contact support", which reads as a dead end to someone who just
+    // received an SMS telling them to fix something.
     const error = new Error(
-      "modelAuth.serverMessages.loginAccountUnavailable"
+      existingModel.status === "revision_required"
+        ? "modelAuth.serverMessages.loginRevisionRequired"
+        : "modelAuth.serverMessages.loginAccountUnavailable"
     ) as Error & {
       status?: number;
     };
@@ -507,6 +514,20 @@ export async function modelLogin({
     status: "success",
     onSuccess: existingModel,
   });
+
+  // Stamp the login on the model itself. The admin list sorts by this, and
+  // deriving it from the audit log on every page load meant the sort could
+  // only ever be applied after paging — so a model who logged in today
+  // could sit on page 4. Best-effort: a failed write must not block a
+  // successful login.
+  prisma.model
+    .update({
+      where: { id: existingModel.id },
+      data: { lastLoginAt: new Date() },
+    })
+    .catch((err) =>
+      console.error("[modelLogin] failed to stamp lastLoginAt:", err)
+    );
 
   const modelData: ModelLogin = {
     phone_number: String(whatsapp),

@@ -13,6 +13,15 @@ import { visibleGendersFor } from "~/utils/gender";
 // the customer's own view (like/pass/addFriend) also invalidates.
 const LIST_CACHE_TTL_MS = 30_000;
 
+/**
+ * Upper bound on the discover roster handed to the customer feed.
+ *
+ * `getModelsForCustomer` returns one list that the caller pages through in
+ * memory, so this number is the furthest a customer can scroll. Large
+ * enough that nobody is unreachable, small enough to stay one cheap query.
+ */
+const DISCOVER_MAX_RESULTS = 200;
+
 const { compare, hash } = bcrypt;
 
 // Base condition: only show models who have at least one open service
@@ -136,12 +145,21 @@ async function _getModelsForCustomer(
 
     const models = await prisma.model.findMany({
       where: whereClause,
-      take: 20,
+      // The caller slices pages out of this list, so the cap is the total
+      // number of models a customer can ever reach by scrolling. It used to
+      // be 20, which both froze the roster and made every page past the
+      // first empty.
+      take: DISCOVER_MAX_RESULTS,
       orderBy: [
-        // Prioritize models with higher ratings
+        // Most recently active first, then newest signups. Rating used to
+        // lead here, but almost every model is rated 0, so the tiebreak
+        // (`updatedAt`) decided the whole order — and `updatedAt` only
+        // moves when a row is edited. The result was the same handful of
+        // models every visit, with no relation to who was actually around.
+        { lastLoginAt: "desc" },
+        { createdAt: "desc" },
+        // Kept last so a strong rating still breaks a genuine tie.
         { rating: "desc" },
-        // Then by most recent activity
-        { updatedAt: "desc" },
       ],
       select: {
         id: true,

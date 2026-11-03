@@ -75,6 +75,10 @@ export default [
   route("model-terms-conditions", "./routes/model-terms-condition.tsx"),
 
   // Model authentication routes
+  // Public, token-gated: an unapproved model fixing their profile after an
+  // admin asked for changes. No session exists for them, so the token in
+  // the URL is the credential — see services/model-revision.server.ts.
+  route("model-revision/:token", "./routes/model-revision.$token.tsx"),
   route("model-auth/login", "./routes/model-auth/login.tsx"),
   route("model-auth/register", "./routes/model-auth/register.tsx"),
   route(

@@ -19,6 +19,10 @@ enum InteractionAction {
 
 enum ModelStatus {
   pending   // Awaiting admin approval - can login, hidden from customers
+  // Admin asked for changes. Recoverable, unlike `inactive` (reject):
+  // the model fixes their profile through a tokenised link and resubmits,
+  // which puts them back to `pending`. Cannot login, hidden from customers.
+  revision_required
   verified  // Approved but hidden - can login, hidden from customers
   active    // Active and visible - can login, shown to customers
   inactive  // Temporarily disabled - cannot login, hidden from customers
@@ -268,6 +272,8 @@ model model {
   mutedNotificationTypes String[] @default([])
   // Firebase Cloud Messaging token (synced from xs_backend) — used for push delivery.
   fcmToken            String?
+  // Last successful login. Mirrors xaosao-admin; written here on login.
+  lastLoginAt         DateTime?
   defaultLanguage     String    @default("en") // 11
   defaultTheme        String    @default("light") // 12
   isProfileHidden          Boolean   @default(false) // Self-service profile visibility toggle
@@ -352,6 +358,26 @@ model model {
   @@index([referredById])
   @@index([status, gender])
   @@index([status, lastOnlineAt])
+
+  // ── Revision request ────────────────────────────────────────────────
+  // Set when an admin asks a new model to fix something rather than
+  // rejecting them outright. Reject is final (the number stays taken, so
+  // they cannot sign up again); a revision request is recoverable — the
+  // model opens the tokenised link, corrects their profile and resubmits,
+  // which puts them back to `pending` for a second look.
+  revisionReason         String?
+  /// Not `@unique`: MongoDB treats every missing value as the same
+  /// null, so a unique index is rejected while most models have no
+  /// token. The value is 32 random bytes, so uniqueness is a given —
+  /// the index here is purely so the lookup by token is fast.
+  revisionToken          String?
+  revisionTokenExpiresAt DateTime?
+  revisionRequestedAt    DateTime?
+  /// Admin who asked for the changes. Stored as a plain id — no relation,
+  /// to keep this out of the already-crowded user back-reference list.
+  revisionRequestedById  String?   @db.ObjectId
+
+  @@index([revisionToken])
 }
 
 // subscription

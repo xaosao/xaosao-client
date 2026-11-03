@@ -1567,6 +1567,7 @@
     "serverMessages": {
       "loginInvalidCredentials": "Could not log you in, please check the provided credentials.",
       "loginAccountUnavailable": "Could not log you in, Your account is unavailable now!",
+      "loginRevisionRequired": "Your account needs changes before approval. Please use the link we sent you by SMS to update your profile.",
       "loginAccountNotActive": "Could not log you in, Your account is not available now.",
       "loginFailed": "Failed to login model",
       "missingCreationData": "Missing creation data!",
