@@ -19,6 +19,9 @@ import {
 import { ProfileGrid } from "~/components/discover/ProfileGrid";
 import { useOptimisticLikes } from "~/hooks/useOptimisticLikes";
 import { useInfiniteScroll } from "~/hooks/useInfiniteScroll";
+import { useState } from "react";
+import { AssistantSheet } from "~/components/assistant/AssistantSheet";
+import { MessageCircle } from "lucide-react";
 import { useDiscoverPages } from "~/hooks/useDiscoverPages";
 import { loadCustomerDiscover } from "~/services/discover.server";
 import { HeaderSearch } from "~/components/discover/HeaderSearch";
@@ -99,8 +102,21 @@ export default function CustomerDiscover() {
     }),
   };
 
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-full bg-white">
+      {/* Opens the assistant over this page: the customer describes who
+          they want in plain language instead of working the filters. */}
+      {assistantOpen && <AssistantSheet onClose={() => setAssistantOpen(false)} />}
+      <button
+        type="button"
+        onClick={() => setAssistantOpen(true)}
+        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-rose-600 sm:bottom-8"
+      >
+        <MessageCircle className="h-4 w-4" />
+        {t("assistant.title")}
+      </button>
       {/* Desktop puts the search field in the header itself, top-right.
           On mobile there is no room, so the icon next to the notification
           bell in the layout header opens it as a dropdown instead. */}

@@ -15,6 +15,7 @@ import type { MetaFunction } from "react-router";
 import { Separator } from "~/components/ui/separator";
 import { useNavigate, useLocation, Outlet, Form } from "react-router";
 import { useTranslation } from "react-i18next";
+import { CheckinCard } from "~/components/reward/CheckinCard";
 
 export const meta: MetaFunction = () => {
   return [
@@ -86,6 +87,14 @@ export default function ModelSettings() {
           </div>
           <Separator />
         </>
+      )}
+
+      {/* Daily check-in. Renders nothing until an admin configures the
+          week, so an unconfigured platform shows no empty promise. */}
+      {!isChildRouteActive && (
+        <div className="px-0 pt-4 sm:px-8">
+          <CheckinCard />
+        </div>
       )}
 
       {/* Mobile: Show menu list only when on settings index, otherwise show child content */}

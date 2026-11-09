@@ -78,6 +78,12 @@ export default [
   // Public, token-gated: an unapproved model fixing their profile after an
   // admin asked for changes. No session exists for them, so the token in
   // the URL is the credential — see services/model-revision.server.ts.
+  // Resource route: the model layout's reward popup reads state from
+  // here and posts its claim back to it.
+  route("model/reward", "./routes/model/reward.tsx"),
+  // Resource route: the daily check-in card reads state and posts claims
+  // here, so taking a check-in never reloads the page it sits on.
+  route("model/checkin", "./routes/model/checkin.tsx"),
   route("model-revision/:token", "./routes/model-revision.$token.tsx"),
   route("model-auth/login", "./routes/model-auth/login.tsx"),
   route("model-auth/register", "./routes/model-auth/register.tsx"),
@@ -270,6 +276,8 @@ export default [
     route("wallet-topup", "./routes/customer/wallet/wallet.topup.tsx"),
 
     // Packages:
+    // Resource route behind the "Find someone for me" sheet on discover.
+    route("assistant", "./routes/customer/assistant.tsx"),
     route("packages", "./routes/customer/packages/package.tsx"),
     route("payment/:id", "./routes/customer/packages/payment.tsx"),
     route("subscription-history", "./routes/customer/packages/history.tsx"),

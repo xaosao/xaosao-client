@@ -225,6 +225,8 @@ model customer {
   @@index([resetToken])
   @@index([referredByModelId])
   @@index([createdAt])
+
+  assistantConversations assistant_conversation[]
 }
 
 model model {
@@ -378,6 +380,9 @@ model model {
   revisionRequestedById  String?   @db.ObjectId
 
   @@index([revisionToken])
+
+  rewardClaims reward_claim[]
+  checkinClaims checkin_claim[]
 }
 
 // subscription
@@ -1408,4 +1413,158 @@ model system_config {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+/// A daily reward slot configured by an admin.
+///
+/// Encourages models to open the app at a set time: the reward appears at
+/// `startTime`, stays claimable for `durationMinutes`, and is gone after
+/// that. Several slots can run per day (e.g. 12:00 and 19:00).
+model reward_slot {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  /// CDN URL of the image shown in the model's claim dialog.
+  image           String
+  /// Kip credited to the model's wallet on claim. Real, withdrawable money.
+  amount          Float
+  /// Local (Lao) clock time the slot opens, as "HH:mm".
+  startTime       String
+  /// How long it stays claimable once open.
+  durationMinutes Int      @default(30)
+  /// Maximum claims per day. Null means unlimited. Once reached, later
+  /// models are told the day's rewards are finished.
+  dailyCap        Int?
+  status          String   @default("active") // "active" | "inactive"
+
+  createdById String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  claims reward_claim[]
+
+  @@index([status])
+}
+
+/// One row per model per slot per day, written only when a reward is
+/// actually claimed. A missing row means missed — nothing is owed.
+///
+/// The compound unique key is the double-claim guard: a second attempt
+/// loses the race at the database rather than paying twice.
+model reward_claim {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  slotId  String @db.ObjectId
+  modelId String @db.ObjectId
+  /// Lao calendar day as "YYYY-MM-DD" — the thing "once per day" is
+  /// measured in, independent of server timezone drift.
+  day     String
+  /// Copied from the slot at claim time, so later edits to the slot don't
+  /// rewrite history.
+  amount  Float
+
+  transactionId String?  @db.ObjectId
+  claimedAt     DateTime @default(now())
+
+  slot  reward_slot @relation(fields: [slotId], references: [id])
+  model model       @relation(fields: [modelId], references: [id])
+
+  @@unique([slotId, modelId, day])
+  @@index([slotId, day])
+  @@index([modelId, claimedAt])
+}
+
+/// A customer's conversation with the AI assistant.
+///
+/// The assistant used to be stateless — the sheet held the history on
+/// screen and nothing was written down. Admins need to see what people
+/// are asking for, and need somewhere to put a hand-picked suggestion,
+/// so the conversation is now kept.
+model assistant_conversation {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  lastMessageAt   DateTime @default(now())
+  lastMessageText String?
+  messageCount    Int      @default(0)
+  /// True once an admin has replied, so the list can show which
+  /// conversations a human has already touched.
+  hasAdminReply   Boolean  @default(false)
+  /// Admin suggestions the customer has not opened yet. Drives the badge.
+  unreadByCustomer Int     @default(0)
+
+  customer   customer @relation(fields: [customerId], references: [id])
+  customerId String   @db.ObjectId
+
+  messages  assistant_message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([lastMessageAt])
+}
+
+/// One turn. `role` is "user", "assistant" (the AI) or "admin" (a human
+/// stepping in with a hand-picked suggestion).
+model assistant_message {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  role String
+  text String
+
+  /// Model cards attached to this turn, stored as sent so the admin sees
+  /// exactly what the customer saw even if a profile changes later.
+  matches Json?
+
+  /// The admin who sent it, when role is "admin".
+  sentById String? @db.ObjectId
+
+  conversation   assistant_conversation @relation(fields: [conversationId], references: [id])
+  conversationId String                 @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+/// How much a daily check-in pays on one weekday.
+///
+/// Seven rows, one per weekday (1 = Monday … 7 = Sunday). Separate from
+/// `reward_slot`: a slot is a timed window a model has to catch, while a
+/// check-in is open all day and rewards coming back at all. Claiming
+/// happens in xs_backend, which owns the wallet; this is only the
+/// configuration and the record of what was paid.
+model checkin_day {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  /// 1 = Monday … 7 = Sunday, ISO weekday numbering.
+  weekday  Int    @unique
+  /// Kip credited on check-in. Real, withdrawable money.
+  amount   Float
+  /// Maximum check-ins on this weekday across all models. Null means
+  /// unlimited; once reached, later models are told the day is finished.
+  dailyCap Int?
+  status   String @default("active") // "active" | "inactive"
+
+  updatedById String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// One row per model per day, written only when a check-in is taken.
+/// No row means the model did not check in — nothing accrues, nothing is
+/// owed, and the missing day is what breaks their streak.
+model checkin_claim {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  modelId String @db.ObjectId
+  /// Lao calendar day as "YYYY-MM-DD".
+  day     String
+  weekday Int
+  /// Copied at claim time, so later edits don't rewrite history.
+  amount  Float
+  /// Consecutive days including this one, as counted when it was taken.
+  streak  Int    @default(1)
+
+  transactionId String?  @db.ObjectId
+  claimedAt     DateTime @default(now())
+
+  model model @relation(fields: [modelId], references: [id])
+
+  @@unique([modelId, day])
+  @@index([day])
+  @@index([modelId, claimedAt])
 }

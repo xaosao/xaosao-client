@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import type { Route } from "./+types/wallet.topup";
 import { Form, redirect, useActionData, useFetcher, useLoaderData, useNavigate, useNavigation, useSubmit, type LoaderFunction } from "react-router";
-import { AlertCircle, AlertTriangle, Check, CheckCircle, Clock, Copy, Download, ImageIcon, Loader, QrCode, Upload, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, CheckCircle, Clock, Copy, Download, ImageIcon, Loader, QrCode, Upload, X, Wallet } from "lucide-react";
 
 // components
 import Modal from "~/components/ui/model";
@@ -17,7 +17,11 @@ import { compressImage } from "~/utils/imageCompression";
 const MAX_FILE_SIZE_MB = 50;
 const COMPRESSED_MAX_SIZE_MB = 3;
 
-export const loader: LoaderFunction = async ({ request }) => {
+// Deliberately not annotated `LoaderFunction`: that erases the return
+// type, so `useLoaderData<typeof loader>()` came back as `undefined` and
+// every field read off it was an error. Letting TypeScript infer gives
+// the component the real shape.
+export const loader = async ({ request }: Route.LoaderArgs) => {
     const customerId = await requireUserSession(request);
     const url = new URL(request.url);
     const suggestedAmount = url.searchParams.get("amount");
@@ -34,16 +38,50 @@ export const loader: LoaderFunction = async ({ request }) => {
         }
     }
 
-    // Fetch payment QR code URL from DB (falls back to static image if not set)
+    // Payment methods, as configured by an admin in xaosao-admin.
+    // Bank defaults to on so an unconfigured install still shows the QR
+    // rather than an empty screen.
     let paymentQrUrl = "/images/qr-code.jpeg";
+    let bankEnabled = true;
+    let cryptoEnabled = false;
+    let cryptoAddress = "";
+    let cryptoNetwork = "BEP20";
+    let usdRate = 21500;
     try {
         const { prisma } = await import("~/services/database.server");
-        const qrConfig = await prisma.system_config.findUnique({
-            where: { key: "payment_qr_code" },
-            select: { value: true },
+        const rows = await prisma.system_config.findMany({
+            where: {
+                key: {
+                    in: [
+                        "payment_qr_code",
+                        "payment_bank_enabled",
+                        "payment_crypto_enabled",
+                        "payment_crypto_address",
+                        "payment_crypto_network",
+                    ],
+                },
+            },
+            select: { key: true, value: true },
         });
-        if (qrConfig?.value) paymentQrUrl = qrConfig.value;
+        const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+        if (cfg.payment_qr_code) paymentQrUrl = cfg.payment_qr_code;
+        bankEnabled = cfg.payment_bank_enabled !== "false";
+        cryptoEnabled = cfg.payment_crypto_enabled === "true";
+        cryptoAddress = cfg.payment_crypto_address ?? "";
+        cryptoNetwork = cfg.payment_crypto_network || "BEP20";
+        const rate = Number(cfg.payment_usd_rate);
+        if (rate > 0) usdRate = rate;
     } catch {}
+
+    // Customers in Laos keep the flow they already know: kip, bank QR, no
+    // method chooser. Everyone else picks a method first and can pay in
+    // crypto, priced in dollars. An unknown country counts as Laos — see
+    // geo.server for why.
+    const { isHomeCountry } = await import("~/services/geo.server");
+    const atHome = await isHomeCountry(request);
+
+    // The chooser only earns its step when there is a genuine choice.
+    const showMethodChooser = !atHome && bankEnabled && cryptoEnabled;
 
     return {
         suggestedAmount: suggestedAmount ? parseInt(suggestedAmount, 10) : null,
@@ -51,6 +89,13 @@ export const loader: LoaderFunction = async ({ request }) => {
         intentId: intentId || null,
         resumeStep: resumeStep ? Number(resumeStep) : null,
         paymentQrUrl,
+        bankEnabled,
+        cryptoEnabled,
+        cryptoAddress,
+        cryptoNetwork,
+        usdRate,
+        atHome,
+        showMethodChooser,
     };
 };
 
@@ -118,7 +163,24 @@ export async function action({ request }: Route.ActionArgs) {
             transactionData.amount = numericAmount;
             transactionData.paymentSlip = paymentSlipUrls;
             await validateTopUpInputs(transactionData as ITransactionCredentials);
-            const res = await topUpWallet(paymentSlipUrls, Number(amount), customerId, intentId || undefined);
+            // Crypto top-ups arrive priced in dollars; `amount` is already
+            // the kip equivalent. Pass what was really paid so the admin
+            // approving it sees the dollar figure and the rate used.
+            const paidCurrency = formData.get("paidCurrency") as string | null;
+            const paidAmount = Number(formData.get("paidAmount"));
+            const paidRate = Number(formData.get("usdRate"));
+            const paidIn =
+                paidCurrency && paidAmount > 0 && paidRate > 0
+                    ? { currency: paidCurrency, amount: paidAmount, rate: paidRate }
+                    : null;
+
+            const res = await topUpWallet(
+                paymentSlipUrls,
+                Number(amount),
+                customerId,
+                intentId || undefined,
+                paidIn
+            );
 
             if (res.id) {
                 if (planId) {
@@ -163,13 +225,42 @@ export default function WalletTopUpPage() {
     const loaderData = useLoaderData<typeof loader>();
     const intentFetcher = useFetcher<{ success: boolean; intentId?: string }>();
 
-    const { suggestedAmount, planId, intentId: loaderIntentId, resumeStep, paymentQrUrl } = loaderData;
-    const MIN_AMOUNT = suggestedAmount || 10000;
+    const {
+        suggestedAmount, planId, intentId: loaderIntentId, resumeStep, paymentQrUrl,
+        bankEnabled, cryptoEnabled, cryptoAddress, cryptoNetwork,
+        usdRate, atHome, showMethodChooser,
+    } = loaderData;
+
+    const [paymentMethod, setPaymentMethod] = React.useState<string>(
+        loaderData.bankEnabled ? "qr" : "crypto"
+    );
+
+    // Foreign customers pick a method before anything else; customers in
+    // Laos never see this and go straight into the kip flow.
+    const [methodPicked, setMethodPicked] = React.useState<boolean>(
+        !loaderData.showMethodChooser
+    );
+
+    // Crypto is priced in dollars. The kip figure is what actually gets
+    // stored and credited — the conversion uses the admin's rate, and an
+    // admin confirms the exact kip when approving, so a rate that drifted
+    // between order and payment is caught there rather than here.
+    const payingInUsd = paymentMethod === "crypto";
+    const toKip = React.useCallback(
+        (usd: number) => Math.round(usd * usdRate),
+        [usdRate]
+    );
+    // Amounts are entered in whatever currency the chosen method uses:
+    // kip for the bank, dollars for crypto. `amount` always holds the
+    // figure in the DISPLAYED currency; `amountInKip` below is what gets
+    // submitted.
+    const MIN_AMOUNT = payingInUsd
+        ? 5
+        : suggestedAmount || 10000;
 
     const [step, setStep] = React.useState<number>(resumeStep || 1);
     const [dragOver, setDragOver] = React.useState<boolean>(false);
     const [amount, setAmount] = React.useState<number>(suggestedAmount || 0);
-    const [paymentMethod, setPaymentMethod] = React.useState<string>("qr");
     const [copiedAccount, setCopiedAccount] = React.useState<boolean>(false);
     const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
     const [previewSlips, setPreviewSlips] = React.useState<string[]>([]);
@@ -204,19 +295,40 @@ export default function WalletTopUpPage() {
 
     const isSubmitting = navigation.state !== "idle" && navigation.formMethod === "POST";
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
+    const quickAmounts = payingInUsd
+        ? [5, 10, 20, 50, 100]
+        : [50000, 100000, 200000, 500000, 1000000];
+
+    /** Kip equivalent of what the customer typed, for storage. */
+    const amountInKip = payingInUsd ? toKip(amount) : amount;
+
 
     const bankAccount = "1234567890123456";
     const bankName = "ທະນະຄານການຄ້າມະຫາຊົນ";
     const accountName = "XAOSAO XAOSAO";
 
+    // Only the methods an admin switched on. If they turn the bank off and
+    // crypto on, the QR option disappears entirely rather than sitting
+    // there pointing at a QR nobody is watching.
     const paymentMethods = [
-        {
-            id: "qr",
-            name: t('wallet.topup.qrCode'),
-            icon: QrCode,
-            description: t('wallet.topup.qrCodeDescription'),
-        },
+        ...(bankEnabled
+            ? [{
+                id: "qr",
+                name: t('wallet.topup.qrCode'),
+                icon: QrCode,
+                description: t('wallet.topup.qrCodeDescription'),
+            }]
+            : []),
+        ...(cryptoEnabled
+            ? [{
+                id: "crypto",
+                name: t('wallet.topup.crypto', { defaultValue: 'Cryptocurrency' }),
+                icon: Wallet,
+                description: t('wallet.topup.cryptoDescription', {
+                    defaultValue: `Send to our ${cryptoNetwork} wallet`,
+                }),
+            }]
+            : []),
     ];
 
     function closeHandler() {
@@ -260,7 +372,9 @@ export default function WalletTopUpPage() {
             // Create the intent record and move to step 2
             const fd = new FormData();
             fd.append("_action", "create_intent");
-            fd.append("amount", String(amount));
+            // Always kip: the wallet, the transaction and the admin's
+            // approval screen all work in kip. Dollars are display only.
+            fd.append("amount", String(amountInKip));
             intentFetcher.submit(fd, { method: "post" });
             setStep(2);
         } else if (pendingAction === 'goback') {
@@ -387,7 +501,15 @@ export default function WalletTopUpPage() {
 
     const handleManualSubmit = () => {
         const formData = new FormData();
-        formData.append("amount", String(amount ?? 0));
+        formData.append("amount", String(amountInKip ?? 0));
+        // Carried so the admin approving this can see what the customer
+        // actually paid, and at what rate, rather than reverse-engineering
+        // it from a kip figure.
+        if (payingInUsd) {
+            formData.append("paidCurrency", "USD");
+            formData.append("paidAmount", String(amount ?? 0));
+            formData.append("usdRate", String(usdRate));
+        }
         if (planId) formData.append("planId", planId);
         if (returnUrl) formData.append("return_url", returnUrl);
         if (intentId) formData.append("intentId", intentId);
@@ -411,7 +533,11 @@ export default function WalletTopUpPage() {
                     <div className="p-0 sm:p-6 space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                {t('wallet.topup.amount')} <span className="text-rose-500">*</span>
+                                {t('wallet.topup.amount')}{" "}
+                                <span className="font-semibold text-gray-900">
+                                    ({payingInUsd ? "USD" : "LAK"})
+                                </span>{" "}
+                                <span className="text-rose-500">*</span>
                             </label>
                             <div className="relative">
                                 <input
@@ -429,13 +555,30 @@ export default function WalletTopUpPage() {
                             </div>
                             {amount > 0 && amount < MIN_AMOUNT && (
                                 <p className="text-xs text-red-500 mt-1">
-                                    {t('wallet.topup.minimumAmount', { defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`, amount: MIN_AMOUNT.toLocaleString() })}
+                                    {payingInUsd
+                                        ? t('wallet.topup.minimumAmountUsd', {
+                                            defaultValue: `Minimum amount is $${MIN_AMOUNT}`,
+                                            amount: MIN_AMOUNT,
+                                        })
+                                        : t('wallet.topup.minimumAmount', { defaultValue: `Minimum amount is ${MIN_AMOUNT.toLocaleString()} Kip`, amount: MIN_AMOUNT.toLocaleString() })}
+                                </p>
+                            )}
+                            {/* The kip figure is what actually lands in the
+                                wallet, so show it rather than leaving the
+                                customer to guess at the conversion. */}
+                            {payingInUsd && amount >= MIN_AMOUNT && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {t('wallet.topup.usdApprox', {
+                                        defaultValue: `≈ ${amountInKip.toLocaleString()} ₭ at ${usdRate.toLocaleString()} ₭ per $1`,
+                                        kip: amountInKip.toLocaleString(),
+                                        rate: usdRate.toLocaleString(),
+                                    })}
                                 </p>
                             )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
-                                {t('wallet.topup.quickAmount')} (Kip)
+                                {t('wallet.topup.quickAmount')} {payingInUsd ? "(USD)" : "(Kip)"}
                             </label>
                             <div className="grid grid-cols-5 gap-1 sm:gap-2">
                                 {quickAmounts.map((quickAmount) => (
@@ -445,7 +588,7 @@ export default function WalletTopUpPage() {
                                         onClick={() => setAmount(quickAmount)}
                                         className={`cursor-pointer py-2 px-1 sm:px-3 border rounded-lg text-xs font-medium transition-colors ${amount === quickAmount ? "border-rose-500 bg-rose-500 text-white" : "border-gray-200 hover:border-rose-500 hover:text-rose-500"}`}
                                     >
-                                        {formatCurrency1(quickAmount)}
+                                        {payingInUsd ? `$${quickAmount}` : formatCurrency1(quickAmount)}
                                     </button>
                                 ))}
                             </div>
@@ -489,6 +632,52 @@ export default function WalletTopUpPage() {
                                     <span className="text-sm">{t('wallet.topup.downloadQRCode')}</span>
                                 </button>
                                 <p className="text-sm text-gray-500 mt-2">
+                                    {t('wallet.topup.scanQRInstruction')}
+                                </p>
+                            </div>
+                        )}
+
+                        {paymentMethod === "crypto" && (
+                            <div className="bg-white border border-dashed border-gray-200 rounded-xl p-5 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-gray-900">
+                                        {t('wallet.topup.crypto', { defaultValue: 'Cryptocurrency' })}
+                                    </h4>
+                                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                        {cryptoNetwork}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-gray-500">
+                                        {t('wallet.topup.cryptoAddressLabel', { defaultValue: 'Wallet address' })}
+                                    </p>
+                                    <p className="mt-1 break-all rounded-lg bg-gray-50 p-3 font-mono text-xs text-gray-900">
+                                        {cryptoAddress}
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigator.clipboard?.writeText(cryptoAddress).catch(() => {});
+                                    }}
+                                    className="inline-flex items-center space-x-2 rounded-lg bg-rose-500 px-4 py-2 text-white transition-colors hover:bg-rose-600"
+                                >
+                                    <span className="text-sm">
+                                        {t('wallet.topup.copyAddress', { defaultValue: 'Copy address' })}
+                                    </span>
+                                </button>
+
+                                {/* The network warning is the important part: the
+                                    same 0x address exists on several chains, and
+                                    sending over the wrong one loses the money. */}
+                                <p className="text-xs text-amber-700">
+                                    {t('wallet.topup.cryptoNetworkWarning', {
+                                        defaultValue: `Send only over the ${cryptoNetwork} network. Funds sent on another network cannot be recovered.`,
+                                    })}
+                                </p>
+                                <p className="text-sm text-gray-500">
                                     {t('wallet.topup.scanQRInstruction')}
                                 </p>
                             </div>
@@ -677,6 +866,82 @@ export default function WalletTopUpPage() {
                 return null;
         }
     };
+
+    // Method first, for customers outside Laos. Shown instead of the step
+    // flow rather than as a step zero, so the progress dots and the
+    // back/next wiring below stay exactly as they were.
+    if (!methodPicked) {
+        return (
+            <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-2 sm:px-4 sm:p-0 border">
+                <div className="px-6 pt-4">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        {t('wallet.topup.choosePaymentMethod', { defaultValue: 'How would you like to pay?' })}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                        {t('wallet.topup.choosePaymentMethodHint', {
+                            defaultValue: 'Pick a method to continue. Crypto is priced in US dollars.',
+                        })}
+                    </p>
+                </div>
+
+                <div className="px-6 py-6 space-y-3">
+                    {bankEnabled && (
+                        <button
+                            type="button"
+                            onClick={() => { setPaymentMethod("qr"); setMethodPicked(true); }}
+                            className="w-full rounded-xl border border-gray-200 p-4 text-left transition-colors hover:border-rose-400 hover:bg-rose-50"
+                        >
+                            <div className="flex items-center space-x-3">
+                                <QrCode className="h-6 w-6 text-rose-500" />
+                                <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        {t('wallet.topup.qrCode')}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {t('wallet.topup.qrCodeDescription')}
+                                    </div>
+                                    <div className="mt-1 text-xs font-medium text-gray-700">₭ LAK</div>
+                                </div>
+                            </div>
+                        </button>
+                    )}
+
+                    {cryptoEnabled && (
+                        <button
+                            type="button"
+                            onClick={() => { setPaymentMethod("crypto"); setMethodPicked(true); }}
+                            className="w-full rounded-xl border border-gray-200 p-4 text-left transition-colors hover:border-rose-400 hover:bg-rose-50"
+                        >
+                            <div className="flex items-center space-x-3">
+                                <Wallet className="h-6 w-6 text-rose-500" />
+                                <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        {t('wallet.topup.crypto', { defaultValue: 'Cryptocurrency' })}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {t('wallet.topup.cryptoDescription', {
+                                            defaultValue: `Send to our ${cryptoNetwork} wallet`,
+                                        })}
+                                    </div>
+                                    <div className="mt-1 text-xs font-medium text-gray-700">$ USD</div>
+                                </div>
+                            </div>
+                        </button>
+                    )}
+                </div>
+
+                <div className="px-6 pb-6">
+                    <button
+                        type="button"
+                        onClick={closeHandler}
+                        className="text-sm text-gray-500 underline"
+                    >
+                        {t('common.cancel', { defaultValue: 'Cancel' })}
+                    </button>
+                </div>
+            </Modal>
+        );
+    }
 
     return (
         <Modal onClose={closeHandler} className="w-full h-screen sm:h-auto sm:w-2/4 space-y-2 py-8 px-2 sm:px-4 sm:p-0 border">

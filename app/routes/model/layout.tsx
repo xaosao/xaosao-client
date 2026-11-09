@@ -29,6 +29,7 @@ import { SidebarSeparator } from "~/components/ui/sidebar";
 import { NotificationBell } from "~/components/notifications/NotificationBell";
 import { PushNotificationPrompt } from "~/components/pwa/PushNotificationPrompt";
 import { PushAutoEnable } from "~/components/pwa/PushAutoEnable";
+import { RewardPopup } from "~/components/reward/RewardPopup";
 import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 import { useChatBadge } from "~/hooks/useChatBadge";
@@ -445,6 +446,10 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 was previously the only route to subscribing and was
                 unreachable in practice. */}
             {!pushOptOut && <PushAutoEnable userType="model" />}
+
+            {/* Daily reward. Renders nothing unless a slot is open for
+                this model right now. */}
+            <RewardPopup />
 
             {/* Push Notification Permission Prompt — kept as a visible
                 explainer; it self-dismisses once subscribed. */}

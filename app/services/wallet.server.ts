@@ -80,7 +80,17 @@ export async function topUpWallet(
   paymentSlip: string[],
   amount: number,
   userId: string,
-  intentId?: string
+  intentId?: string,
+  /**
+   * What the customer actually paid, when it wasn't kip.
+   *
+   * Crypto top-ups are priced in dollars, but the wallet and every
+   * downstream figure are kip. Recording the dollar amount and the rate
+   * used means the admin approving it can see what was really sent and
+   * correct the kip if the rate has moved — the approval screen already
+   * lets them adjust the amount.
+   */
+  paidIn?: { currency: string; amount: number; rate: number } | null
 ) {
   if (!amount || amount <= 0) throw new Error("Invalid top-up amount!");
   if (amount < 10000) {
@@ -138,10 +148,20 @@ export async function topUpWallet(
       });
     }
 
+    // Surfaced to the admin on the approval screen, which shows the
+    // transaction reason.
+    const paidNote = paidIn
+      ? `Paid ${paidIn.amount.toLocaleString()} ${paidIn.currency} at ${paidIn.rate.toLocaleString()} LAK per 1 ${paidIn.currency}`
+      : null;
+
     const createTopUpTransaction = intentId
       ? await prisma.transaction_history.update({
           where: { id: intentId },
-          data: { paymentSlip, status: "pending" },
+          data: {
+            paymentSlip,
+            status: "pending",
+            ...(paidNote ? { reason: paidNote } : {}),
+          },
         })
       : await prisma.transaction_history.create({
           data: {
@@ -152,6 +172,7 @@ export async function topUpWallet(
             comission: 0,
             fee: 0,
             customerId: userId,
+            ...(paidNote ? { reason: paidNote } : {}),
           },
         });
 
@@ -264,6 +285,14 @@ const BOOKING_TRANSACTION_IDENTIFIERS = [
   "booking_refund",
 ];
 
+/**
+ * Money the platform paid out by itself: timed reward slots and the
+ * daily check-in. The recipient must not be able to rewrite the record
+ * of what they were given, so these are read-only to a model even though
+ * they are not booking rows.
+ */
+const PLATFORM_PAID_IDENTIFIERS = ["reward_earning", "checkin_earning"];
+
 // delete transaction by id
 export async function deleteTransaction(
   transactionId: string,
@@ -319,6 +348,15 @@ export async function deleteTransaction(
         error: true,
         message:
           "Booking transactions cannot be deleted. Please contact admin for assistance.",
+      });
+    }
+
+    if (PLATFORM_PAID_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Reward and check-in transactions cannot be deleted. Please contact admin for assistance.",
       });
     }
 
@@ -398,6 +436,15 @@ export async function updateTransaction(
         error: true,
         message:
           "Booking transactions cannot be edited. Please contact admin for assistance.",
+      });
+    }
+
+    if (PLATFORM_PAID_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Reward and check-in transactions cannot be edited. Please contact admin for assistance.",
       });
     }
 
@@ -676,6 +723,15 @@ export async function deleteModelTransaction(
       });
     }
 
+    if (PLATFORM_PAID_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Reward and check-in transactions cannot be deleted. Please contact admin for assistance.",
+      });
+    }
+
     const hiddenTransaction = await prisma.transaction_history.update({
       where: { id: transactionId },
       data: {
@@ -752,6 +808,15 @@ export async function updateModelTransaction(
         error: true,
         message:
           "Booking transactions cannot be edited. Please contact admin for assistance.",
+      });
+    }
+
+    if (PLATFORM_PAID_IDENTIFIERS.includes(transaction.identifier)) {
+      throw new FieldValidationError({
+        success: false,
+        error: true,
+        message:
+          "Reward and check-in transactions cannot be edited. Please contact admin for assistance.",
       });
     }
 
