@@ -227,6 +227,7 @@ model customer {
   @@index([createdAt])
 
   assistantConversations assistant_conversation[]
+  callSessions call_session[]
 }
 
 model model {
@@ -383,6 +384,7 @@ model model {
 
   rewardClaims reward_claim[]
   checkinClaims checkin_claim[]
+  callSessions call_session[]
 }
 
 // subscription
@@ -751,6 +753,7 @@ model model_service {
   Session                session[]
   service_booking        service_booking[]
   model_service_variant  model_service_variant[]
+  callSessions call_session[]
 }
 
 // Stores custom massage types (variants) for services like massage
@@ -1567,4 +1570,71 @@ model checkin_claim {
   @@unique([modelId, day])
   @@index([day])
   @@index([modelId, claimedAt])
+}
+
+/// One per-minute call between a customer and a model.
+///
+/// Written by xs_backend, which owns the meter and the money; the
+/// website and admin only read it. Kept out of `service_booking` on
+/// purpose: a call has no schedule, location or overlap rules, and
+/// mixing them makes every booking list and report learn to skip calls.
+model call_session {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  customerId     String @db.ObjectId
+  modelId        String @db.ObjectId
+  modelServiceId String @db.ObjectId
+
+  /// "audio" | "video"
+  callType       String @default("audio")
+  /// Kip per minute, copied when the call started.
+  ratePerMinute  Float
+  /// Platform commission percentage, also copied at the start.
+  commissionRate Float  @default(0)
+
+  /// "ringing" | "connecting" | "active" | "ended"
+  status    String  @default("ringing")
+  /// Why it finished: hangup_customer, hangup_model, declined, missed,
+  /// cancelled, no_funds, max_duration, network, admin, failed.
+  endReason String?
+
+  /// LiveKit room, unique per call.
+  roomName   String
+  /// What was held from the customer's wallet up front.
+  holdAmount Float
+  maxMinutes Int
+
+  holdTransactionId    String? @db.ObjectId
+  earningTransactionId String? @db.ObjectId
+  refundTransactionId  String? @db.ObjectId
+
+  ringingAt      DateTime  @default(now())
+  /// When the second participant joined — the meter's zero.
+  connectedAt    DateTime?
+  /// When someone dropped and the reconnect grace started.
+  disconnectedAt DateTime?
+  endedAt        DateTime?
+
+  billedSeconds  Int   @default(0)
+  billedMinutes  Int   @default(0)
+  billedAmount   Float @default(0)
+  modelEarning   Float @default(0)
+  platformFee    Float @default(0)
+  refundedAmount Float @default(0)
+
+  /// Set once settlement has run; the claim on it is what stops a call
+  /// being settled twice.
+  settledAt         DateTime?
+  presentIdentities String[]
+
+  customer     customer      @relation(fields: [customerId], references: [id])
+  model        model         @relation(fields: [modelId], references: [id])
+  modelService model_service @relation(fields: [modelServiceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([status])
+  @@index([roomName])
 }

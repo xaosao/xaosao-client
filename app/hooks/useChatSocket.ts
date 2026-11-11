@@ -81,6 +81,30 @@ type Handlers = {
     };
     userType: "customer" | "model";
   }) => void;
+  /**
+   * A customer is calling this model. Rides the chat socket for the same
+   * reason notifications do: it is already open and already joined to the
+   * user's personal room. A push carries the same payload for a model who
+   * is not currently connected.
+   */
+  onIncomingCall?: (payload: {
+    session_id: string;
+    room_name: string;
+    call_type: "audio" | "video";
+    caller_name: string;
+    caller_id: string;
+    rate_per_minute: number;
+    expires_in: number;
+  }) => void;
+  /** A call this user is part of has ended, with its final figures. */
+  onCallEnded?: (payload: {
+    session_id: string;
+    reason: string;
+    billed_minutes: number;
+    billed_amount: number;
+    model_earning: number;
+    refunded: number;
+  }) => void;
 };
 
 interface UseChatSocketOptions extends Handlers {
@@ -198,6 +222,8 @@ async function openConnection(
   socket.on("messages_read", (p: any) => fanout(conn, "onMessagesRead", p));
   socket.on("message_deleted", (p: any) => fanout(conn, "onMessageDeleted", p));
   socket.on("notification:new", (p: any) => fanout(conn, "onNotification", p));
+  socket.on("incoming_call", (p: any) => fanout(conn, "onIncomingCall", p));
+  socket.on("call_ended", (p: any) => fanout(conn, "onCallEnded", p));
 
   return conn;
 }

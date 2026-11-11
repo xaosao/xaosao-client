@@ -9,6 +9,9 @@ export default [
   // Public post share page (SEO/OG tags for social media)
   route("post/:id", "./routes/post-share.tsx"),
 
+  // Everything the call screens talk to, behind one resource route.
+  route("api/call/session", "./routes/api/call/session.ts"),
+
   // API routes for SSE notifications
   route(
     "api/notifications/model-sse",
@@ -43,15 +46,6 @@ export default [
   route("api/location/update", "./routes/api/location/update.ts"),
 
   // API routes for Call service
-  route("api/call/initiate", "./routes/api/call/initiate.ts"),
-  route("api/call/accept", "./routes/api/call/accept.ts"),
-  route("api/call/decline", "./routes/api/call/decline.ts"),
-  route("api/call/start", "./routes/api/call/start.ts"),
-  route("api/call/end", "./routes/api/call/end.ts"),
-  route("api/call/missed", "./routes/api/call/missed.ts"),
-  route("api/call/heartbeat", "./routes/api/call/heartbeat.ts"),
-  route("api/call/booking", "./routes/api/call/booking.ts"),
-  route("api/call/register-peer", "./routes/api/call/register-peer.ts"),
 
   // public marketing pages
   route("deactivate", "./routes/deactivate.tsx"),
@@ -222,6 +216,12 @@ export default [
       "./routes/customer/model-profile/profile.share.tsx"
     ),
 
+    // calling: the confirmation before a per-minute call starts
+    route(
+      "call-model/:modelId",
+      "./routes/customer/model-profile/profile.call.tsx"
+    ),
+
     // booking
     route(
       "book-service/:modelId/:serviceId",
@@ -289,13 +289,12 @@ export default [
     route("notifications", "./routes/customer/notifications/notifications.tsx"),
 
     // Call service routes
-    route("call/start/:bookingId", "./routes/customer/call/call.waiting.tsx"),
-    route("call/active/:bookingId", "./routes/customer/call/call.active.tsx"),
-    route("call/summary/:bookingId", "./routes/customer/call/call.summary.tsx"),
+    route("call/active/:sessionId", "./routes/customer/call/call.active.tsx"),
+    route("call/summary/:sessionId", "./routes/customer/call/call.summary.tsx"),
   ]),
 
   // Model call routes (outside nested routes for simplicity)
-  route("model/call/join/:bookingId", "./routes/model/call/call.incoming.tsx"),
-  route("model/call/active/:bookingId", "./routes/model/call/call.active.tsx"),
-  route("model/call/summary/:bookingId", "./routes/model/call/call.summary.tsx"),
+  route("model/call/incoming/:sessionId", "./routes/model/call/call.incoming.tsx"),
+  route("model/call/active/:sessionId", "./routes/model/call/call.active.tsx"),
+  route("model/call/summary/:sessionId", "./routes/model/call/call.summary.tsx"),
 ] satisfies RouteConfig;

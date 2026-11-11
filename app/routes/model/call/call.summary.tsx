@@ -1,171 +1,93 @@
-"use client"
+/**
+ * What the call earned, after it has settled.
+ *
+ * The model sees their net: the platform's commission is already out of
+ * the figure that reached their wallet, so showing the gross would be
+ * misleading.
+ */
 
-import { useTranslation } from 'react-i18next';
-import { Phone, Video, Clock, Wallet, CheckCircle, User, TrendingUp } from "lucide-react"
-import { useLoaderData, Link, type LoaderFunctionArgs } from "react-router"
+import { Link, useLoaderData, type LoaderFunctionArgs } from "react-router";
+import { useTranslation } from "react-i18next";
+import { PhoneOff, Clock, Wallet } from "lucide-react";
 
-// components:
-import { Button } from "~/components/ui/button"
-
-// utils:
 import { requireModelSession } from "~/services/model-auth.server";
-import { getCallBooking } from "~/services/call-booking.server";
-import { formatCurrency } from "~/utils"
-import { formatDuration } from "~/hooks/usePeerCall"
+import { prisma } from "~/services/database.server";
 
-export async function loader({ params, request }: LoaderFunctionArgs) {
-   const modelId = await requireModelSession(request);
-   const booking = await getCallBooking(params.bookingId!);
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  const modelId = await requireModelSession(request);
+  const sessionId = params.sessionId as string;
 
-   if (!booking) {
-      throw new Response("Booking not found", { status: 404 });
-   }
+  const session = await prisma.call_session.findUnique({
+    where: { id: sessionId },
+    include: {
+      customer: { select: { firstName: true, lastName: true } },
+    },
+  });
 
-   if (booking.modelId !== modelId) {
-      throw new Response("Unauthorized", { status: 403 });
-   }
+  if (!session || session.modelId !== modelId) {
+    throw new Response("Not found", { status: 404 });
+  }
 
-   return { booking };
+  return { session };
 }
 
 export default function ModelCallSummary() {
-   const { t } = useTranslation();
-   const { booking } = useLoaderData<typeof loader>();
+  const { session } = useLoaderData<typeof loader>();
+  const { t } = useTranslation();
 
-   // Calculate call duration in seconds
-   const startTime = booking.callStartedAt ? new Date(booking.callStartedAt).getTime() : 0;
-   const endTime = booking.callEndedAt ? new Date(booking.callEndedAt).getTime() : Date.now();
-   const durationSeconds = startTime ? Math.floor((endTime - startTime) / 1000) : 0;
+  const name =
+    `${session.customer?.firstName ?? ""} ${session.customer?.lastName ?? ""}`.trim() ||
+    t("call.someone", { defaultValue: "Someone" });
 
-   // Calculate earnings
-   const commissionRate = booking.modelService?.service?.commission || 0;
-   const grossAmount = booking.price;
-   const commissionAmount = Math.floor((grossAmount * commissionRate) / 100);
-   const netEarnings = grossAmount - commissionAmount;
+  return (
+    <div className="mx-auto max-w-md px-4 py-10">
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+          <PhoneOff className="h-6 w-6 text-gray-400" />
+        </div>
 
-   return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-         <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-6 space-y-6">
-            {/* Success Icon */}
-            <div className="text-center">
-               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-green-500" />
-               </div>
-               <h2 className="text-xl font-bold text-gray-900">
-                  {t('callService.callCompleted', { defaultValue: 'Call Completed' })}
-               </h2>
+        <h1 className="text-lg font-bold text-gray-900">
+          {t("call.ended", { defaultValue: "Call ended" })}
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">{name}</p>
+
+        {session.connectedAt ? (
+          <dl className="mt-5 space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="flex items-center gap-2 text-gray-500">
+                <Clock className="h-4 w-4" />
+                {t("call.duration", { defaultValue: "Duration" })}
+              </dt>
+              <dd className="text-gray-700">
+                {session.billedMinutes}{" "}
+                {t("call.minutes", { defaultValue: "min" })}
+              </dd>
             </div>
-
-            {/* Customer Info */}
-            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-               {booking.customer?.profile ? (
-                  <img
-                     src={booking.customer.profile}
-                     alt={booking.customer.firstName}
-                     className="w-14 h-14 rounded-full object-cover"
-                  />
-               ) : (
-                  <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center">
-                     <User className="w-7 h-7 text-gray-400" />
-                  </div>
-               )}
-               <div>
-                  <p className="font-semibold text-gray-900">
-                     {booking.customer?.firstName} {booking.customer?.lastName}
-                  </p>
-                  <div className="flex items-center gap-1 text-gray-500 text-sm">
-                     {booking.callType === 'video' ? (
-                        <Video className="w-4 h-4" />
-                     ) : (
-                        <Phone className="w-4 h-4" />
-                     )}
-                     <span>
-                        {booking.callType === 'video'
-                           ? t('callService.videoCall', { defaultValue: 'Video Call' })
-                           : t('callService.audioCall', { defaultValue: 'Audio Call' })}
-                     </span>
-                  </div>
-               </div>
+            <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2">
+              <dt className="flex items-center gap-2 text-emerald-700">
+                <Wallet className="h-4 w-4" />
+                {t("call.youEarned", { defaultValue: "You earned" })}
+              </dt>
+              <dd className="font-bold text-emerald-700">
+                {session.modelEarning.toLocaleString()} ₭
+              </dd>
             </div>
+          </dl>
+        ) : (
+          <p className="mt-4 rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-600">
+            {t("call.notConnectedModel", {
+              defaultValue: "The call did not connect.",
+            })}
+          </p>
+        )}
 
-            {/* Call Details */}
-            <div className="space-y-3">
-               <div className="flex items-center justify-between py-3 border-b">
-                  <div className="flex items-center gap-2 text-gray-600">
-                     <Clock className="w-5 h-5" />
-                     <span>{t('callService.duration', { defaultValue: 'Duration' })}</span>
-                  </div>
-                  <span className="font-semibold text-gray-900 font-mono">
-                     {formatDuration(durationSeconds)}
-                  </span>
-               </div>
-
-               <div className="flex items-center justify-between py-3 border-b">
-                  <div className="flex items-center gap-2 text-gray-600">
-                     <span className="text-sm">{t('callService.ratePerMinute', { defaultValue: 'Rate' })}</span>
-                  </div>
-                  <span className="text-gray-700">
-                     {formatCurrency(booking.minuteRate || 0)}/min
-                  </span>
-               </div>
-
-               <div className="flex items-center justify-between py-3 border-b">
-                  <div className="flex items-center gap-2 text-gray-600">
-                     <span>{t('callService.minutesCharged', { defaultValue: 'Minutes' })}</span>
-                  </div>
-                  <span className="text-gray-900">
-                     {booking.minutes || 1} min
-                  </span>
-               </div>
-
-               <div className="flex items-center justify-between py-3 border-b">
-                  <div className="flex items-center gap-2 text-gray-600">
-                     <span>{t('callService.grossAmount', { defaultValue: 'Gross Amount' })}</span>
-                  </div>
-                  <span className="text-gray-900">
-                     {formatCurrency(grossAmount)}
-                  </span>
-               </div>
-
-               <div className="flex items-center justify-between py-3 border-b">
-                  <div className="flex items-center gap-2 text-gray-600">
-                     <span>{t('callService.platformFee', { defaultValue: 'Platform Fee' })} ({commissionRate}%)</span>
-                  </div>
-                  <span className="text-red-600">
-                     -{formatCurrency(commissionAmount)}
-                  </span>
-               </div>
-
-               <div className="flex items-center justify-between py-3 bg-green-50 rounded-lg px-3">
-                  <div className="flex items-center gap-2 text-green-700 font-semibold">
-                     <TrendingUp className="w-5 h-5" />
-                     <span>{t('callService.yourEarnings', { defaultValue: 'Your Earnings' })}</span>
-                  </div>
-                  <span className="font-bold text-lg text-green-600">
-                     +{formatCurrency(netEarnings)}
-                  </span>
-               </div>
-            </div>
-
-            {/* Info */}
-            <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-               {t('callService.earningsAdded', { defaultValue: 'Earnings have been added to your wallet.' })}
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-3 pt-4">
-               <Link to="/model/settings/wallet">
-                  <Button className="w-full bg-rose-500 hover:bg-rose-600 text-white">
-                     {t('callService.viewWallet', { defaultValue: 'View Wallet' })}
-                  </Button>
-               </Link>
-               <Link to="/model/dating">
-                  <Button variant="outline" className="w-full">
-                     {t('callService.viewBookings', { defaultValue: 'View Bookings' })}
-                  </Button>
-               </Link>
-            </div>
-         </div>
+        <Link
+          to="/model"
+          className="mt-6 block w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
+        >
+          {t("common.done", { defaultValue: "Done" })}
+        </Link>
       </div>
-   )
+    </div>
+  );
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import type { Route } from './+types/profile';
 import { useTranslation } from 'react-i18next';
 import { Form, redirect, useFetcher, useNavigate, useNavigation, useRevalidator, useRouteLoaderData, useSearchParams, type LoaderFunction } from 'react-router';
-import { BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, MessageCircle, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Phone, BadgeCheck, UserPlus, UserCheck, Forward, User, Calendar, MarsStroke, ToggleLeft, MapPin, Star, ChevronLeft, ChevronRight, X, MessageSquareText, MessageCircle, Loader, Book, BriefcaseBusiness, Heart, MessageSquare, Eye, EyeOff, Send, Wallet, CreditCard, AlertTriangle, RefreshCcw } from 'lucide-react';
 
 // components
 import {
@@ -586,6 +586,21 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                 >
                                     <MessageCircle className="w-4 h-4" />
                                     {t('navigation.chat')}
+                                </Button>
+                                {/* Calling: the screen behind this decides
+                                    whether it is possible and what it costs,
+                                    so it is always offered. */}
+                                <Button
+                                    size="sm"
+                                    type="button"
+                                    className="cursor-pointer hidden sm:flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md"
+                                    onClick={() => {
+                                        trackActivity("CLICK_CALL");
+                                        navigate(`/customer/call-model/${model.id}`);
+                                    }}
+                                >
+                                    <Phone className="w-4 h-4" />
+                                    {t('call.call', { defaultValue: 'Call' })}
                                 </Button>
                                 {optimisticState.isContact ? (
                                     <div className="hidden sm:flex items-center justify-center bg-green-100 text-green-500 px-4 py-2 font-medium text-sm shadow-lg rounded-md gap-2">

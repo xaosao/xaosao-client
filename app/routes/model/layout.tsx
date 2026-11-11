@@ -34,6 +34,7 @@ import { useAutoLocation } from "~/hooks/useAutoLocation";
 import { LocationPromptModal } from "~/components/location/LocationPromptModal";
 import { useChatBadge } from "~/hooks/useChatBadge";
 import { useBackendNotifications } from "~/hooks/useBackendNotifications";
+import { useIncomingCall } from "~/hooks/useIncomingCall";
 import { HeaderSearch } from "~/components/discover/HeaderSearch";
 import { useNavPending } from "~/hooks/useNavPending";
 import { Loader2, Compass } from "lucide-react";
@@ -144,6 +145,11 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     // website's own SSE stream can't carry them — it's fed by an in-process
     // emitter that only this app's writes reach.
     useBackendNotifications({ userType: "model", playSound: true });
+
+    // A customer calling takes the model straight to the ringing screen,
+    // wherever they are in the app. The push notification carries the
+    // same payload for a model who is not currently on the site.
+    useIncomingCall(true);
 
     // Lets each nav item show a spinner while its own route is loading.
     const isNavPending = useNavPending();
