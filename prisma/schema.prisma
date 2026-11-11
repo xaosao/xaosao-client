@@ -1426,8 +1426,9 @@ model system_config {
 model reward_slot {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String
-  /// CDN URL of the image shown in the model's claim dialog.
-  image           String
+  /// CDN URL of the image shown in the model's claim dialog. Optional:
+  /// a slot without one falls back to a gift icon in the app.
+  image           String?
   /// Kip credited to the model's wallet on claim. Real, withdrawable money.
   amount          Float
   /// Local (Lao) clock time the slot opens, as "HH:mm".

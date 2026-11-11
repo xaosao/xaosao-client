@@ -12,7 +12,7 @@ import { unwrapEnvelope, xsRequest, XsApiError } from "./xs-api.server";
 export interface AvailableReward {
   slotId: string;
   name: string;
-  image: string;
+  image: string | null;
   amount: number;
   /** Display string from the API, "dd-MM-yyyy HH:mm:ss" Vientiane time. */
   expiresAt: string;
