@@ -263,6 +263,9 @@ export function CallStage({
   const lowOnFunds =
     viewer === "customer" && (remaining ?? Infinity) <= 60 && state?.status === "active";
 
+  /** Video on screen changes the whole layout, not just one element. */
+  const onVideo = media.remoteVideo;
+
   return (
     // A call takes the whole screen. The customer route is nested inside
     // the app shell, so on a desktop the sidebar sat beside the call and
@@ -270,23 +273,33 @@ export function CallStage({
     // out of that column and over the navigation, which is also what
     // stops someone wandering off mid-call by accident.
     <div className="fixed inset-0 z-[60] flex flex-col bg-gray-900 text-white">
-      {/* The other person */}
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
-        {/* The other person's audio always plays; their video appears
-            only when they actually send it, so a voice call can become a
-            video call without re-attaching anything. */}
-        <audio ref={media.remoteAudioRef} autoPlay />
-        <video
-          ref={media.remoteVideoRef}
-          autoPlay
-          playsInline
-          className={
-            media.remoteVideo
-              ? "max-h-[50vh] w-full rounded-2xl bg-black object-cover"
-              : "hidden"
-          }
-        />
-        {media.remoteVideo ? null : (
+      {/* The other person's audio always plays. Their video, when they
+          send it, fills the screen behind everything else — a call is
+          about seeing them, so the picture gets the room and the
+          numbers float on top of it. */}
+      <audio ref={media.remoteAudioRef} autoPlay />
+      <video
+        ref={media.remoteVideoRef}
+        autoPlay
+        playsInline
+        className={
+          onVideo
+            ? "absolute inset-0 h-full w-full bg-black object-cover"
+            : "hidden"
+        }
+      />
+
+      {/* Name, timer and money. Over video they sit at the top on a
+          gradient dark enough to stay readable against a bright scene;
+          on a voice call they take the middle of an empty screen. */}
+      <div
+        className={
+          onVideo
+            ? "pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-1 bg-gradient-to-b from-black/70 via-black/40 to-transparent px-6 pb-10 pt-[max(1rem,env(safe-area-inset-top))] text-center"
+            : "flex flex-1 flex-col items-center justify-center gap-4 px-6"
+        }
+      >
+        {!onVideo && (
           <>
             {peerPhoto ? (
               <img
@@ -303,46 +316,70 @@ export function CallStage({
         )}
 
         <div className="text-center">
-          <p className="text-xl font-semibold">{peerName}</p>
-          <p className="mt-1 text-sm text-white/60">
+          <p className={onVideo ? "text-lg font-semibold drop-shadow" : "text-xl font-semibold"}>
+            {peerName}
+          </p>
+          <p className={onVideo ? "text-sm text-white/80 drop-shadow" : "mt-1 text-sm text-white/60"}>
             {ringing
               ? t("call.ringing", { defaultValue: "Ringing…" })
               : formatDuration(elapsed)}
           </p>
         </div>
 
-        {/* What it is costing, or earning */}
+        {/* What it is costing, or earning. On video this is one quiet
+            line rather than a panel, so it never covers a face. */}
         {state?.status === "active" && (
-          <div className="rounded-xl bg-white/5 px-4 py-2 text-center">
-            <p className="text-[11px] uppercase tracking-wide text-white/40">
+          onVideo ? (
+            <p className="text-xs text-white/75 drop-shadow">
               {viewer === "customer"
                 ? t("call.costSoFar", { defaultValue: "Cost so far" })
                 : t("call.earningSoFar", { defaultValue: "Earning so far" })}
+              {": "}
+              <span className="font-semibold text-white">
+                {Number(money ?? 0).toLocaleString()} ₭
+              </span>
+              {viewer === "customer" && typeof remaining === "number" && (
+                <>
+                  {" · "}
+                  {t("call.timeLeft", {
+                    defaultValue: "{{time}} left",
+                    time: formatDuration(remaining),
+                  })}
+                </>
+              )}
             </p>
-            <p className="text-lg font-bold">
-              {Number(money ?? 0).toLocaleString()} ₭
-            </p>
-            <p className="text-[11px] text-white/40">
-              {state.rate_per_minute.toLocaleString()} ₭ /{" "}
-              {t("call.minute", { defaultValue: "min" })}
-            </p>
-
-            {/* How much talking is left in the wallet. The server holds
-                the money up front and ends the call itself when it runs
-                out, so this is a countdown to a real event, not a hint. */}
-            {viewer === "customer" && typeof remaining === "number" && (
-              <p className="mt-1 text-[11px] text-white/50">
-                {t("call.timeLeft", {
-                  defaultValue: "{{time}} left",
-                  time: formatDuration(remaining),
-                })}
+          ) : (
+            <div className="rounded-xl bg-white/5 px-4 py-2 text-center">
+              <p className="text-[11px] uppercase tracking-wide text-white/40">
+                {viewer === "customer"
+                  ? t("call.costSoFar", { defaultValue: "Cost so far" })
+                  : t("call.earningSoFar", { defaultValue: "Earning so far" })}
               </p>
-            )}
-          </div>
+              <p className="text-lg font-bold">
+                {Number(money ?? 0).toLocaleString()} ₭
+              </p>
+              <p className="text-[11px] text-white/40">
+                {state.rate_per_minute.toLocaleString()} ₭ /{" "}
+                {t("call.minute", { defaultValue: "min" })}
+              </p>
+
+              {/* How much talking is left in the wallet. The server holds
+                  the money up front and ends the call itself when it runs
+                  out, so this is a countdown to a real event, not a hint. */}
+              {viewer === "customer" && typeof remaining === "number" && (
+                <p className="mt-1 text-[11px] text-white/50">
+                  {t("call.timeLeft", {
+                    defaultValue: "{{time}} left",
+                    time: formatDuration(remaining),
+                  })}
+                </p>
+              )}
+            </div>
+          )
         )}
 
         {lowOnFunds && (
-          <p className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200">
+          <p className="pointer-events-auto rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200">
             {t("call.lowBalance", {
               defaultValue: "Less than a minute of balance left",
             })}
@@ -350,37 +387,47 @@ export function CallStage({
         )}
 
         {media.error && (
-          <p className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs text-red-200">
+          <p className="pointer-events-auto rounded-lg bg-red-500/20 px-3 py-1.5 text-xs text-red-200">
             {mediaErrorText(media.error, t)}
           </p>
         )}
 
-        <p className="flex items-center gap-1 text-[11px] text-white/30">
-          {media.state === "connected" ? (
-            <Wifi className="h-3 w-3" />
-          ) : (
-            <WifiOff className="h-3 w-3" />
-          )}
-          {media.state === "reconnecting"
-            ? t("call.reconnecting", { defaultValue: "Reconnecting…" })
-            : media.state}
-        </p>
+        {/* The connection line is noise over a live picture. */}
+        {!onVideo && (
+          <p className="flex items-center gap-1 text-[11px] text-white/30">
+            {media.state === "connected" ? (
+              <Wifi className="h-3 w-3" />
+            ) : (
+              <WifiOff className="h-3 w-3" />
+            )}
+            {media.state === "reconnecting"
+              ? t("call.reconnecting", { defaultValue: "Reconnecting…" })
+              : media.state}
+          </p>
+        )}
       </div>
 
-      {/* Our own camera, shown whenever it is on — including after
-          switching a voice call to video. */}
+      {/* Our own camera, as a small picture-in-picture above the
+          controls, wherever they are. */}
       {media.cameraEnabled && (
         <video
           ref={media.localVideoRef}
           autoPlay
           playsInline
           muted
-          className="absolute bottom-28 right-4 h-32 w-24 rounded-xl bg-black object-cover ring-2 ring-white/20"
+          className="absolute right-4 z-10 h-36 w-28 rounded-xl bg-black object-cover shadow-lg ring-2 ring-white/20"
+          style={{ bottom: "calc(7rem + env(safe-area-inset-bottom))" }}
         />
       )}
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-5 border-t border-white/10 px-6 py-6">
+      <div
+        className={
+          onVideo
+            ? "absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-5 bg-gradient-to-t from-black/70 to-transparent px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-10"
+            : "flex items-center justify-center gap-5 border-t border-white/10 px-6 py-6"
+        }
+      >
         <button
           onClick={media.toggleMic}
           aria-label="Microphone"

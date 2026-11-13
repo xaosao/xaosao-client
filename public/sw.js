@@ -1,4 +1,10 @@
-const CACHE_NAME = 'xaosao-v14';
+// Bump this on every change to this file.
+//
+// The browser keeps the old worker and its caches until the name
+// changes, so an edit here reaches nobody without it — and a shell
+// cached against a previous build can serve chunks the new build no
+// longer has, which renders as a blank white page.
+const CACHE_NAME = 'xaosao-v15';
 const STATIC_CACHE = 'xaosao-static-v14';
 const DYNAMIC_CACHE = 'xaosao-dynamic-v14';
 
