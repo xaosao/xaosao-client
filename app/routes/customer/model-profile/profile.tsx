@@ -439,6 +439,10 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                 return t("modelServices.billingTypes.perHour");
             case "per_session":
                 return t("modelServices.billingTypes.perSession");
+            // A call is charged by the minute. Without this it fell
+            // through to the default and told customers "per day".
+            case "per_minute":
+                return t("modelServices.billingTypes.perMinute");
             case "per_day":
             default:
                 return t("modelServices.billingTypes.perDay");
@@ -721,6 +725,16 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                                 <span className="text-gray-500">{t("modelServices.rate")}</span>
                                                                 <span className="font-semibold text-rose-600">
                                                                     {formatCurrency(Number(service.customRate || service.service.baseRate))}/{t("modelServices.day")}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Per Minute - the call service */}
+                                                        {billingType === "per_minute" && (
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span className="text-gray-500">{t("modelServices.minuteRate")}</span>
+                                                                <span className="font-semibold text-rose-600">
+                                                                    {formatCurrency(Number(service.customMinuteRate || service.service.minuteRate || 0))}/{t("modelServices.minute")}
                                                                 </span>
                                                             </div>
                                                         )}

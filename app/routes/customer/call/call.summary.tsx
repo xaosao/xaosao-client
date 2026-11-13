@@ -85,8 +85,10 @@ export default function CustomerCallSummary() {
             for. */}
         {neverConnected ? (
           <div className="mt-6 space-y-2">
+            {/* Discover is the customer INDEX route, so it is at
+                /customer. /customer/discover does not exist. */}
             <Link
-              to="/customer/discover"
+              to="/customer"
               className="block w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
             >
               {t("call.findSomeoneElse", {
