@@ -20,13 +20,22 @@ import {
  * call ends or what it costs — the screen asks the server that.
  */
 export interface LiveKitCall {
-  /** Attach to an <audio>/<video> element for the other person. */
-  remoteRef: React.RefObject<HTMLMediaElement | null>;
+  /**
+   * The other person's audio and video go to SEPARATE elements.
+   *
+   * They used to share one: attaching a video track to the element that
+   * already held the audio replaced it, so when a voice call switched to
+   * video the far side saw nothing. One sink per kind avoids that.
+   */
+  remoteAudioRef: React.RefObject<HTMLAudioElement | null>;
+  remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
   /** The local camera preview, for video calls. */
   localVideoRef: React.RefObject<HTMLVideoElement | null>;
   state: "idle" | "connecting" | "connected" | "reconnecting" | "closed";
   /** True once the other person's audio or video is actually flowing. */
   remoteJoined: boolean;
+  /** True while the other side is actually publishing video. */
+  remoteVideo: boolean;
   micEnabled: boolean;
   cameraEnabled: boolean;
   error: string | null;
@@ -45,7 +54,8 @@ export function useLiveKitCall(options: {
   const { serverUrl, token, video } = options;
 
   const roomRef = useRef<Room | null>(null);
-  const remoteRef = useRef<HTMLMediaElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const leavingRef = useRef(false);
   const onDisconnectedRef = useRef(options.onDisconnected);
@@ -53,6 +63,7 @@ export function useLiveKitCall(options: {
 
   const [state, setState] = useState<LiveKitCall["state"]>("idle");
   const [remoteJoined, setRemoteJoined] = useState(false);
+  const [remoteVideo, setRemoteVideo] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,9 +79,15 @@ export function useLiveKitCall(options: {
     roomRef.current = room;
 
     const attach = (track: RemoteTrack) => {
-      if (track.kind === Track.Kind.Audio || track.kind === Track.Kind.Video) {
-        if (remoteRef.current) track.attach(remoteRef.current as any);
+      if (track.kind === Track.Kind.Audio) {
+        if (remoteAudioRef.current) track.attach(remoteAudioRef.current);
         setRemoteJoined(true);
+      } else if (track.kind === Track.Kind.Video) {
+        if (remoteVideoRef.current) track.attach(remoteVideoRef.current);
+        setRemoteJoined(true);
+        // A call that started as voice can gain video later, so this is
+        // watched rather than assumed from the call type.
+        setRemoteVideo(true);
       }
     };
 
@@ -80,10 +97,14 @@ export function useLiveKitCall(options: {
         RoomEvent.TrackUnsubscribed,
         (track: RemoteTrack, _pub: RemoteTrackPublication) => {
           track.detach();
+          if (track.kind === Track.Kind.Video) setRemoteVideo(false);
         },
       )
       .on(RoomEvent.ParticipantDisconnected, () => {
-        if (room.remoteParticipants.size === 0) setRemoteJoined(false);
+        if (room.remoteParticipants.size === 0) {
+          setRemoteJoined(false);
+          setRemoteVideo(false);
+        }
       })
       .on(RoomEvent.ConnectionStateChanged, (connectionState) => {
         if (cancelled) return;
@@ -190,19 +211,28 @@ export function useLiveKitCall(options: {
     setMicEnabled(next);
   }, []);
 
+  /**
+   * Turn our own camera on or off, mid-call.
+   *
+   * The attach does NOT happen here. The preview element only exists
+   * once `cameraEnabled` is true, so attaching in this callback ran
+   * against a ref that was still null and the preview stayed black —
+   * and because the room and the React state then disagreed, the next
+   * press computed the wrong `next` and the camera could not be turned
+   * off again. The effect below attaches once the element is really on
+   * the page, and the state is only set after the room agrees.
+   */
   const toggleCamera = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
     const next = !room.localParticipant.isCameraEnabled;
-    void room.localParticipant.setCameraEnabled(next).then(() => {
-      const camera = room.localParticipant.getTrackPublication(
-        Track.Source.Camera,
-      );
-      if (camera?.track && localVideoRef.current) {
-        camera.track.attach(localVideoRef.current);
-      }
-    });
-    setCameraEnabled(next);
+    void room.localParticipant
+      .setCameraEnabled(next)
+      .then(() => setCameraEnabled(room.localParticipant.isCameraEnabled))
+      .catch((err) => {
+        console.error("[call] could not switch the camera", err);
+        setCameraEnabled(room.localParticipant.isCameraEnabled);
+      });
   }, []);
 
   const leave = useCallback(async () => {
@@ -211,11 +241,32 @@ export function useLiveKitCall(options: {
     setState("closed");
   }, []);
 
+  /**
+   * Keep the local preview wired to whatever the camera is publishing.
+   *
+   * Runs after render, so the element is on the page by the time we
+   * attach, and re-runs whenever the camera is switched.
+   */
+  useEffect(() => {
+    const room = roomRef.current;
+    if (!room) return;
+    const camera = room.localParticipant.getTrackPublication(Track.Source.Camera);
+    const track = camera?.track;
+    if (cameraEnabled && track && localVideoRef.current) {
+      track.attach(localVideoRef.current);
+      return () => {
+        track.detach();
+      };
+    }
+  }, [cameraEnabled, state]);
+
   return {
-    remoteRef,
+    remoteAudioRef,
+    remoteVideoRef,
     localVideoRef,
     state,
     remoteJoined,
+    remoteVideo,
     micEnabled,
     cameraEnabled,
     error,

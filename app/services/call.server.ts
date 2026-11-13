@@ -51,6 +51,11 @@ export interface CallState {
   reason: string | null;
   call_type: "audio" | "video";
   rate_per_minute: number;
+  /** Platform share, so the model's screen can show her own earning. */
+  commission_rate: number;
+  /** The ceiling the hold bought; the live cost never exceeds it. */
+  hold_amount: number;
+  max_minutes: number;
   elapsed_seconds: number;
   remaining_seconds: number;
   spent_so_far: number;

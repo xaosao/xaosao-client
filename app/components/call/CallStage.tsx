@@ -174,12 +174,94 @@ export function CallStage({
   }, [action.data]);
 
   const ringing = !media.remoteJoined && state?.status !== "active";
-  const elapsed = state?.elapsed_seconds ?? 0;
-  const money = viewer === "customer" ? state?.spent_so_far ?? 0 : null;
+
+  /**
+   * A clock that ticks every second between server polls.
+   *
+   * The server's meter is still the only thing that decides money, but
+   * it is asked every three seconds, so the timer used to jump 00:00 →
+   * 00:03 → 00:06. Here the last server reading is the anchor and the
+   * seconds in between are counted locally, which makes the display
+   * move once a second without inventing any billing.
+   */
+  const [tick, setTick] = useState(0);
+  const anchor = useRef<{ at: number; elapsed: number } | null>(null);
+  /** The last figure actually shown, so the clock never goes backwards. */
+  const shown = useRef({ session: "", seconds: 0 });
+
+  // Re-anchor on the status too, not only on the number. While the call
+  // was still ringing the server kept reporting 0, so the anchor was
+  // never refreshed; the moment it went active the local clock counted
+  // from the ringing time and showed a figure far ahead of the server,
+  // which then snapped back on the next poll.
+  useEffect(() => {
+    if (typeof state?.elapsed_seconds !== "number") return;
+    // Re-anchor from whichever is further along: the server's reading or
+    // what the screen already shows. Anchoring blindly on the server
+    // made the clock sit still for a second or two at the start of a
+    // call, because the poll is behind and the display may not go back.
+    anchor.current = {
+      at: Date.now(),
+      elapsed: Math.max(state.elapsed_seconds, shown.current.seconds),
+    };
+  }, [state?.elapsed_seconds, state?.status]);
+
+  useEffect(() => {
+    if (state?.status !== "active") return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [state?.status]);
+
+  // A clock must never run backwards. The local count can briefly sit
+  // ahead of the server — the poll is three seconds behind, and the
+  // meter starts somewhere in between — so the correction is applied by
+  // holding the figure until the server catches up, not by jumping back
+  // and confusing whoever is watching their money.
+  const computed =
+    state?.status === "active" && anchor.current
+      ? anchor.current.elapsed +
+        Math.max(0, Math.floor((Date.now() - anchor.current.at) / 1000))
+      : state?.elapsed_seconds ?? 0;
+
+  if (shown.current.session !== call.session_id) {
+    shown.current = { session: call.session_id, seconds: 0 };
+  }
+  if (computed > shown.current.seconds) shown.current.seconds = computed;
+  const elapsed = shown.current.seconds;
+
+  const rate = state?.rate_per_minute ?? 0;
+
+  /**
+   * What the call has cost at this second, under the server's own rule:
+   * whole minutes, rounded up, with the first ten seconds free. Between
+   * polls this steps on the minute instead of waiting up to three
+   * seconds, and every poll re-anchors it to the server's figure.
+   */
+  const chargedNow =
+    elapsed <= 10 ? 0 : Math.min(Math.max(1, Math.ceil(elapsed / 60)) * rate, state?.hold_amount ?? Infinity);
+
+  const serverMoney = viewer === "customer" ? state?.spent_so_far ?? 0 : state?.billed_amount ?? 0;
+  const grossNow = state?.status === "active" ? Math.max(chargedNow, serverMoney) : serverMoney;
+
+  // The customer watches what they pay; the model watches what she keeps,
+  // which is the same minutes less the platform's share.
+  const commission = state?.commission_rate ?? 0;
+  const money =
+    viewer === "customer"
+      ? grossNow
+      : grossNow - Math.round((grossNow * commission) / 100);
+
+  const remaining =
+    typeof state?.remaining_seconds === "number" && anchor.current && state.status === "active"
+      ? Math.max(
+          0,
+          state.remaining_seconds -
+            Math.max(0, Math.floor((Date.now() - anchor.current.at) / 1000)),
+        )
+      : state?.remaining_seconds;
+
   const lowOnFunds =
-    viewer === "customer" &&
-    (state?.remaining_seconds ?? Infinity) <= 60 &&
-    state?.status === "active";
+    viewer === "customer" && (remaining ?? Infinity) <= 60 && state?.status === "active";
 
   return (
     // A call takes the whole screen. The customer route is nested inside
@@ -190,16 +272,22 @@ export function CallStage({
     <div className="fixed inset-0 z-[60] flex flex-col bg-gray-900 text-white">
       {/* The other person */}
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
-        {call.call_type === "video" ? (
-          <video
-            ref={media.remoteRef as React.RefObject<HTMLVideoElement>}
-            autoPlay
-            playsInline
-            className="max-h-[50vh] w-full rounded-2xl bg-black object-cover"
-          />
-        ) : (
+        {/* The other person's audio always plays; their video appears
+            only when they actually send it, so a voice call can become a
+            video call without re-attaching anything. */}
+        <audio ref={media.remoteAudioRef} autoPlay />
+        <video
+          ref={media.remoteVideoRef}
+          autoPlay
+          playsInline
+          className={
+            media.remoteVideo
+              ? "max-h-[50vh] w-full rounded-2xl bg-black object-cover"
+              : "hidden"
+          }
+        />
+        {media.remoteVideo ? null : (
           <>
-            <audio ref={media.remoteRef as React.RefObject<HTMLAudioElement>} autoPlay />
             {peerPhoto ? (
               <img
                 src={peerPhoto}
@@ -232,7 +320,7 @@ export function CallStage({
                 : t("call.earningSoFar", { defaultValue: "Earning so far" })}
             </p>
             <p className="text-lg font-bold">
-              {(money ?? state.billed_amount ?? 0).toLocaleString()} ₭
+              {Number(money ?? 0).toLocaleString()} ₭
             </p>
             <p className="text-[11px] text-white/40">
               {state.rate_per_minute.toLocaleString()} ₭ /{" "}
@@ -242,11 +330,11 @@ export function CallStage({
             {/* How much talking is left in the wallet. The server holds
                 the money up front and ends the call itself when it runs
                 out, so this is a countdown to a real event, not a hint. */}
-            {viewer === "customer" && typeof state.remaining_seconds === "number" && (
+            {viewer === "customer" && typeof remaining === "number" && (
               <p className="mt-1 text-[11px] text-white/50">
                 {t("call.timeLeft", {
                   defaultValue: "{{time}} left",
-                  time: formatDuration(state.remaining_seconds),
+                  time: formatDuration(remaining),
                 })}
               </p>
             )}
@@ -279,8 +367,9 @@ export function CallStage({
         </p>
       </div>
 
-      {/* The local camera, small, for video calls */}
-      {call.call_type === "video" && (
+      {/* Our own camera, shown whenever it is on — including after
+          switching a voice call to video. */}
+      {media.cameraEnabled && (
         <video
           ref={media.localVideoRef}
           autoPlay
@@ -302,7 +391,9 @@ export function CallStage({
           {media.micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </button>
 
-        {call.call_type === "video" && (
+        {/* Always offered: a voice call can become a video call and go
+            back again, the way the phone apps do. */}
+        {(
           <button
             onClick={media.toggleCamera}
             aria-label="Camera"

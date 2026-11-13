@@ -215,23 +215,60 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  // Build notification options
-  const options = {
-    body: data.body || 'New notification from XaoSao',
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: data.badge || '/icons/icon-72x72.png',
-    image: data.image,
-    tag: data.tag || `notification-${Date.now()}`,
-    renotify: true, // Vibrate even if same tag
-    requireInteraction: false, // Auto-dismiss on mobile
-    vibrate: [200, 100, 200],
-    data: {
-      url: data.data?.url || '/',
-      type: data.data?.type,
-      ...data.data,
-    },
-    actions: data.actions || [],
-  };
+  // An incoming call is not a notification you glance at later.
+  //
+  // It has to behave like a phone ringing: stay on screen until someone
+  // acts, buzz in a ring pattern rather than a single blip, and offer
+  // Answer and Decline without opening the app first. A browser cannot
+  // show a full-screen CallKit UI, but this is as close as the platform
+  // allows, and it is what makes a call reach a model whose app is
+  // closed.
+  const payload = data.data || {};
+  const isCall =
+    payload.kind === 'incoming_call' ||
+    payload.type === 'incoming_call' ||
+    data.type === 'incoming_call';
+  const sessionId = payload.session_id || payload.sessionId;
+
+  const options = isCall
+    ? {
+        body: data.body || 'Incoming call',
+        icon: data.icon || '/icons/icon-192x192.png',
+        badge: data.badge || '/icons/icon-72x72.png',
+        // One notification per call: a retry replaces it rather than
+        // stacking a second ring on top.
+        tag: sessionId ? `call-${sessionId}` : `call-${Date.now()}`,
+        renotify: true,
+        requireInteraction: true,
+        // A ring, not a blip.
+        vibrate: [400, 200, 400, 200, 400, 200, 400],
+        silent: false,
+        data: {
+          ...payload,
+          type: 'incoming_call',
+          url: sessionId ? `/model/call/incoming/${sessionId}` : '/model',
+        },
+        actions: [
+          { action: 'answer', title: 'ຮັບສາຍ' },
+          { action: 'decline', title: 'ປະຕິເສດ' },
+        ],
+      }
+    : {
+        body: data.body || 'New notification from XaoSao',
+        icon: data.icon || '/icons/icon-192x192.png',
+        badge: data.badge || '/icons/icon-72x72.png',
+        image: data.image,
+        tag: data.tag || `notification-${Date.now()}`,
+        renotify: true, // Vibrate even if same tag
+        requireInteraction: false, // Auto-dismiss on mobile
+        vibrate: [200, 100, 200],
+        data: {
+          url: payload.url || '/',
+          type: payload.type,
+          ...payload,
+        },
+        actions: data.actions || [],
+      };
 
   // Show notification
   event.waitUntil(
@@ -248,6 +285,23 @@ self.addEventListener('notificationclick', (event) => {
 
   const notificationData = event.notification.data || {};
   let targetUrl = notificationData.url || '/';
+
+  // An incoming call: decline without opening anything, or answer by
+  // going straight to the call screen.
+  if (notificationData.type === 'incoming_call') {
+    const sessionId = notificationData.session_id || notificationData.sessionId;
+    if (event.action === 'decline' && sessionId) {
+      const body = new FormData();
+      body.set('intent', 'decline');
+      body.set('sessionId', sessionId);
+      event.waitUntil(
+        fetch('/api/call/session', { method: 'POST', body, credentials: 'include' })
+          .catch((err) => console.error('[SW] decline failed:', err)),
+      );
+      return;
+    }
+    targetUrl = sessionId ? `/model/call/incoming/${sessionId}` : '/model';
+  }
 
   // Handle action buttons
   if (event.action === 'view' || event.action === 'confirm') {
