@@ -226,6 +226,33 @@ export function usePushNotifications({
 
         const subscription = await registration.pushManager.getSubscription();
         debugLog("[Push] Current subscription:", !!subscription);
+
+        // The browser having a subscription is not the same as the
+        // SERVER having it.
+        //
+        // Nothing here ever asked the server, so a device whose row had
+        // been purged — or whose save failed after the browser had
+        // already subscribed — showed "notifications enabled on this
+        // device" forever while the server had nowhere to send to. For
+        // an ordinary banner that is a missed banner; for an incoming
+        // call it is a phone that never rings.
+        //
+        // Re-sending is cheap and the endpoint is the key, so the server
+        // upserts rather than duplicating. Doing it on every start keeps
+        // the two in step without anyone noticing.
+        if (subscription) {
+          void fetch("/api/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subscription: subscription.toJSON(),
+              userAgent: navigator.userAgent,
+            }),
+          })
+            .then((r) => debugLog("[Push] Re-synced subscription with the server:", r.ok))
+            .catch((err) => debugLog("[Push] Re-sync failed:", err));
+        }
+
         return subscription !== null;
       };
 
