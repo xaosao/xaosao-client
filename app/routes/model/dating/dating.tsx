@@ -514,7 +514,7 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
 
          <button
             onClick={() => openWhatsApp("8562091082600")}
-            className="flex gap-2 cursor-pointer fixed bottom-16 right-4 sm:bottom-6 sm:right-4 z-50 p-2 sm:p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
+            className="flex gap-2 cursor-pointer fixed above-tabbar right-4 sm:bottom-6 sm:right-4 z-50 p-2 sm:p-3 rounded-lg bg-rose-500 text-white shadow-lg hover:bg-rose-600 transition"
          >
             <Headset size={16} className="animate-pulse" />
             <span className="text-sm">{t("modelDating.support")}</span>

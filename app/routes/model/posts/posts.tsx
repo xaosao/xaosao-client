@@ -267,7 +267,7 @@ export default function ModelPostsPage({ loaderData }: PageProps) {
       </div>
 
       <button
-        className="fixed bottom-20 right-4 z-30 sm:hidden w-auto h-auto py-2 px-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed above-tabbar right-4 z-30 sm:hidden w-auto h-auto py-2 px-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
         onClick={() => setShowCreateModal(true)}
       >
         <Plus className="h-4 w-4" />&nbsp;{t("posts.post", { defaultValue: "Post" })}

@@ -182,7 +182,12 @@ export function CallStage({
     state?.status === "active";
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
+    // A call takes the whole screen. The customer route is nested inside
+    // the app shell, so on a desktop the sidebar sat beside the call and
+    // the stage was squeezed into what was left. Fixed inset-0 lifts it
+    // out of that column and over the navigation, which is also what
+    // stops someone wandering off mid-call by accident.
+    <div className="fixed inset-0 z-[60] flex flex-col bg-gray-900 text-white">
       {/* The other person */}
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
         {call.call_type === "video" ? (
@@ -233,6 +238,18 @@ export function CallStage({
               {state.rate_per_minute.toLocaleString()} ₭ /{" "}
               {t("call.minute", { defaultValue: "min" })}
             </p>
+
+            {/* How much talking is left in the wallet. The server holds
+                the money up front and ends the call itself when it runs
+                out, so this is a countdown to a real event, not a hint. */}
+            {viewer === "customer" && typeof state.remaining_seconds === "number" && (
+              <p className="mt-1 text-[11px] text-white/50">
+                {t("call.timeLeft", {
+                  defaultValue: "{{time}} left",
+                  time: formatDuration(state.remaining_seconds),
+                })}
+              </p>
+            )}
           </div>
         )}
 

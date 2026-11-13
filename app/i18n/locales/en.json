@@ -3361,6 +3361,11 @@
     "mediaDenied": "Microphone access is needed for a call. Allow it in your browser settings and try again.",
     "mediaBusy": "Your microphone is in use by another app. Close it and try again.",
     "mediaInsecure": "Calls need a secure (https) connection. Open the site over https and try again.",
-    "mediaConnect": "Could not connect the call. Please try again."
+    "mediaConnect": "Could not connect the call. Please try again.",
+    "timeLeft": "{{time}} left",
+    "ringing": "Ringing…",
+    "costSoFar": "Cost so far",
+    "earningSoFar": "Earning so far",
+    "lowBalance": "Less than a minute of balance left"
   }
 }
