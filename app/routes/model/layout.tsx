@@ -4,7 +4,6 @@ import { Form, Link, Outlet, redirect, useFetcher, useLocation, useNavigate, use
 import {
     Briefcase,
     EyeOff,
-    Gift,
     UserSearch,
     HandHeart,
     MessageCircle,
@@ -12,9 +11,6 @@ import {
     Settings,
     User,
     Wallet,
-    X,
-    Copy,
-    Check,
 } from "lucide-react";
 import {
     Dialog,
@@ -44,7 +40,6 @@ import { BlurImage } from "~/components/ui/blur-image";
 import { capitalize } from "~/utils/functions/textFormat";
 import { useNotifications, type Notification } from "~/hooks/useNotifications";
 import { getModelDashboardData } from "~/services/model.server";
-import { ensureReferralCode } from "~/services/referral.server";
 import { requireModelSession } from "~/services/model-auth.server";
 import { loadNotificationFeed } from "~/services/xs-notification.server";
 import { getChatUnreadCount } from "~/services/xs-chat.server";
@@ -72,7 +67,6 @@ interface LoaderReturn {
     hasServices: boolean;
     pushOptOut: boolean;
     isProfileHidden: boolean;
-    referralLink: string;
 }
 
 interface LayoutProps {
@@ -83,13 +77,12 @@ export const loader: LoaderFunction = async ({ request }) => {
     const modelId = await requireModelSession(request);
 
     try {
-        const [modelData, notificationFeed, pendingBookingCount, referralCode, unreadMessages] = await Promise.all([
+        const [modelData, notificationFeed, pendingBookingCount, unreadMessages] = await Promise.all([
             getModelDashboardData(modelId),
             // Notifications come from the xs_backend API so the web bell shows
             // exactly what the app shows; falls back to Prisma on outage.
             loadNotificationFeed(modelId, "model"),
             getModelPendingBookingCount(modelId).catch(() => 0),
-            ensureReferralCode(modelId).catch(() => ""),
             getChatUnreadCount({ userId: modelId, userType: "model" }),
         ]);
 
@@ -117,10 +110,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 
         const isProfileHidden = modelData?.isProfileHidden === true;
 
-        const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:5176/";
-        const referralLink = referralCode ? `${baseUrl}model-auth/register?ref=${referralCode}` : "";
-
-        return { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden, referralLink };
+        return { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden };
     } catch (error) {
         // `redirect()` throws a Response — that's control flow, not a failure.
         // Re-throw it untouched so it isn't logged as an error and re-wrapped.
@@ -134,7 +124,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const revalidator = useRevalidator();
-    const { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden, referralLink } = loaderData;
+    const { modelData, unreadNotifications, unreadMessages, initialNotifications, pendingBookingCount, hasServices, pushOptOut, isProfileHidden } = loaderData;
     const profileHiddenFetcher = useFetcher();
     const { t, i18n } = useTranslation();
 
@@ -163,14 +153,6 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
     // Location prompt modal state
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
-
-    // Referral promotion popup - show every time after login
-    const [showPromoPopup, setShowPromoPopup] = useState(true);
-    const [promoCopied, setPromoCopied] = useState(false);
-
-    const dismissPromo = useCallback(() => {
-        setShowPromoPopup(false);
-    }, []);
 
     // Auto-location tracking - updates server silently when location is available
     const { requestLocation, hasLocation, permissionState } = useAutoLocation({
@@ -214,12 +196,21 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
     // Handle new notifications - refresh layout when booking/post-related, redirect for calls
     const handleNewNotification = useCallback((notification: Notification) => {
-        // Handle incoming call - redirect to incoming call page
+        // Handle incoming call - redirect to the incoming call screen.
+        //
+        // This used to read `bookingId` and send the model to
+        // /model/call/join/:bookingId. Neither exists: a call is its own
+        // session now, not a booking, and that route was never
+        // registered — so the notification either did nothing (the field
+        // is undefined) or landed the model on a 404 while the phone
+        // rang. The ring payload carries `session_id`; the socket path in
+        // useIncomingCall already uses it, and this is the same screen.
         if (notification.type === "incoming_call") {
             debugLog("[ModelLayout] Incoming call notification received!", notification);
-            const bookingId = notification.data?.bookingId;
-            if (bookingId) {
-                navigate(`/model/call/join/${bookingId}`);
+            const sessionId =
+                notification.data?.session_id ?? notification.data?.sessionId;
+            if (sessionId) {
+                navigate(`/model/call/incoming/${sessionId}`);
             }
             return;
         }
@@ -531,81 +522,6 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                     </div>
                 </DialogPortal>
             </Dialog>
-
-            {/* Referral Promotion Popup */}
-            {showPromoPopup && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                    <div className="relative w-full max-w-sm bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl shadow-2xl overflow-hidden">
-                        <button
-                            type="button"
-                            onClick={dismissPromo}
-                            className="absolute top-3 right-3 p-1 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-10"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-
-                        <div className="p-6 text-center text-white space-y-4">
-                            <div className="mx-auto w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
-                                <Gift className="w-7 h-7 text-white" />
-                            </div>
-
-                            <div>
-                                <h2 className="text-lg font-bold">{t('referralPromo.title', { defaultValue: 'ໂປຣໂມຊັ່ນແນະນຳໝູ່ເພື່ອນ!' })}</h2>
-                                <p className="text-sm text-white/90 mt-2">
-                                    {t('referralPromo.description', {
-                                        defaultValue: 'ແນະນຳໝູ່ເພື່ອນມາລົງທະບຽນ ແລະ ຮັບ 10,000 ກີບ ຕໍ່ການແນະນຳ 1 ຄົນທີ່ຖືກອະນຸມັດ!'
-                                    })}
-                                </p>
-                            </div>
-
-                            {/* Referral Link */}
-                            {referralLink && (
-                                <div className="bg-white/15 rounded-xl p-3">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={referralLink}
-                                            className="flex-1 text-xs bg-transparent text-white truncate outline-none"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(referralLink).catch(() => {});
-                                                setPromoCopied(true);
-                                                setTimeout(() => setPromoCopied(false), 2000);
-                                            }}
-                                            className="p-1.5 hover:bg-white/20 rounded-md transition-colors"
-                                        >
-                                            {promoCopied ? <Check className="w-4 h-4 text-green-300" /> : <Copy className="w-4 h-4 text-white" />}
-                                        </button>
-                                    </div>
-                                    {promoCopied && (
-                                        <p className="text-xs text-green-300 mt-1">{t('referralPromo.copied', { defaultValue: 'ຄັດລອກລິ້ງແລ້ວ!' })}</p>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="flex flex-col gap-2 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => { dismissPromo(); navigate("/model/referral"); }}
-                                    className="w-full py-2.5 bg-white text-rose-600 font-bold rounded-lg hover:bg-white/90 transition-colors"
-                                >
-                                    {t('referralPromo.referNow', { defaultValue: 'ເບິ່ງລາຍລະອຽດ' })}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={dismissPromo}
-                                    className="text-sm text-white/70 hover:text-white transition-colors"
-                                >
-                                    {t('referralPromo.later', { defaultValue: 'ພາຍຫຼັງ' })}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Location Permission Prompt Modal */}
             <LocationPromptModal

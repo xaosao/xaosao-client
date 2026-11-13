@@ -16,6 +16,18 @@ import { useLiveKitCall } from "~/hooks/useLiveKitCall";
 import type { CallState, CallToken } from "~/services/call.server";
 
 /**
+ * How long a call survives this screen unmounting before it is hung up.
+ *
+ * Long enough that a remount (React re-creating the route element after a
+ * revalidation) is not mistaken for the customer leaving, short enough
+ * that a customer who really left is not locked out of calling again.
+ */
+const REMOUNT_GRACE_MS = 1500;
+
+/** Pending hang-ups by call id, so a remount can cancel its own. */
+const leavingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
  * The in-call screen, shared by both sides.
  *
  * The two differ only in what the number on screen means — the customer
@@ -92,6 +104,67 @@ export function CallStage({
     form.set("sessionId", call.session_id);
     action.submit(form, { method: "post", action: "/api/call/session" });
   }
+
+  /**
+   * Leaving this screen ends the call.
+   *
+   * Without this, a customer who pressed back, closed the tab, or gave up
+   * because the connection failed left the call ringing on the server.
+   * It holds their money and blocks the next attempt — the second tap
+   * answers "You are already on a call" — until the 45-second sweep
+   * catches it. The money was always safe, but the person was locked out
+   * of their own wallet for no reason.
+   *
+   * The delay is not politeness: this component remounts during normal
+   * operation (a revalidation after the call is placed is enough), and a
+   * hang-up fired straight from the cleanup killed calls that were still
+   * being set up. So the cleanup only *schedules* the hang-up, and a
+   * remount for the same call cancels it. A real departure has nothing
+   * left to cancel it, so it goes through.
+   */
+  useEffect(() => {
+    const sessionId = call.session_id;
+    const pending = leavingTimers.get(sessionId);
+    if (pending !== undefined) {
+      clearTimeout(pending);
+      leavingTimers.delete(sessionId);
+    }
+
+    const body = () => {
+      const form = new FormData();
+      form.set("intent", "hangup");
+      form.set("sessionId", sessionId);
+      return form;
+    };
+
+    // The page itself going away cannot wait for a timer, and a normal
+    // request would be cancelled with it, so that case beacons at once.
+    const onPageHide = () => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+      try {
+        navigator.sendBeacon("/api/call/session", body());
+      } catch {
+        // Without sendBeacon the 45-second sweep still catches it.
+      }
+    };
+    window.addEventListener("pagehide", onPageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      if (endedRef.current) return;
+      const timer = setTimeout(() => {
+        leavingTimers.delete(sessionId);
+        void fetch("/api/call/session", {
+          method: "POST",
+          body: body(),
+          keepalive: true,
+        }).catch(() => {});
+      }, REMOUNT_GRACE_MS);
+      leavingTimers.set(sessionId, timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call.session_id]);
 
   useEffect(() => {
     if (action.data && (action.data as any).ok !== false) {
@@ -173,7 +246,7 @@ export function CallStage({
 
         {media.error && (
           <p className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs text-red-200">
-            {media.error}
+            {mediaErrorText(media.error, t)}
           </p>
         )}
 
@@ -245,4 +318,43 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * Why the microphone or the room would not start, in words that say what
+ * to do about it.
+ *
+ * The hook reports a code rather than a sentence so this stays
+ * translatable; an unknown code falls through to the generic line.
+ */
+function mediaErrorText(
+  code: string,
+  t: (key: string, options: Record<string, unknown>) => string,
+): string {
+  switch (code) {
+    case "noDevice":
+      return t("call.mediaNoDevice", {
+        defaultValue:
+          "No microphone found on this device. Connect one, or call from your phone.",
+      });
+    case "denied":
+      return t("call.mediaDenied", {
+        defaultValue:
+          "Microphone access is needed for a call. Allow it in your browser settings and try again.",
+      });
+    case "deviceBusy":
+      return t("call.mediaBusy", {
+        defaultValue:
+          "Your microphone is in use by another app. Close it and try again.",
+      });
+    case "insecure":
+      return t("call.mediaInsecure", {
+        defaultValue:
+          "Calls need a secure (https) connection. Open the site over https and try again.",
+      });
+    default:
+      return t("call.mediaConnect", {
+        defaultValue: "Could not connect the call. Please try again.",
+      });
+  }
 }

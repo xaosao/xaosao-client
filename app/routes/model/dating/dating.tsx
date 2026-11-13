@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, Outlet, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Video, Banknote, RefreshCcw } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Trash2, Check, X, Info, Shield, Wallet, ChevronDown, ChevronUp, Phone, MessageCircleMore, Banknote, RefreshCcw } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -372,17 +372,17 @@ export default function ModelDatingPage({ loaderData }: DatingPageProps) {
                                        </>
                                     )}
 
-                                    {booking.status === "confirmed" && (
-                                       <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => navigate(`/model/call/join/${booking.id}`)}
-                                          className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
-                                       >
-                                          <Video className="h-3 w-3" />
-                                          {t("modelDating.actions.joinCall")}
-                                       </Button>
-                                    )}
+                                    {/* "Join call" is gone. It pointed at
+                                        /model/call/join/:bookingId, a route
+                                        that was never registered, so tapping
+                                        it showed the 404 page — and it
+                                        appeared on EVERY confirmed booking,
+                                        massages included. Calls are no longer
+                                        booked: the customer places one and the
+                                        model's phone rings, handled by
+                                        useIncomingCall and the notification
+                                        above. There is nothing to join from
+                                        here. */}
 
                                     {["cancelled", "completed"].includes(booking.status) && (
                                        <Button

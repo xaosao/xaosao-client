@@ -79,12 +79,35 @@ export default function CustomerCallSummary() {
           </dl>
         )}
 
-        <Link
-          to="/customer"
-          className="mt-6 block w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
-        >
-          {t("common.done", { defaultValue: "Done" })}
-        </Link>
+        {/* Nobody picked up, and nothing was charged — the useful next
+            step is another model, not a dead end on "Done". A connected
+            call ends on Done, because the customer got what they came
+            for. */}
+        {neverConnected ? (
+          <div className="mt-6 space-y-2">
+            <Link
+              to="/customer/discover"
+              className="block w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
+            >
+              {t("call.findSomeoneElse", {
+                defaultValue: "Find someone else",
+              })}
+            </Link>
+            <Link
+              to="/customer"
+              className="block w-full rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              {t("common.done", { defaultValue: "Done" })}
+            </Link>
+          </div>
+        ) : (
+          <Link
+            to="/customer"
+            className="mt-6 block w-full rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white hover:bg-rose-600"
+          >
+            {t("common.done", { defaultValue: "Done" })}
+          </Link>
+        )}
       </div>
     </div>
   );

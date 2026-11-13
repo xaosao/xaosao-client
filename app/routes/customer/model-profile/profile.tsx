@@ -375,7 +375,17 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     }, [startChatFetcher.state, startChatFetcher.data]);
 
     // Handler for book service button click with subscription and balance check
-    const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number) => {
+    const handleBookClick = (modelId: string, serviceId: string, serviceName: string, servicePrice: number, billingType?: string) => {
+        // A call is not booked. Per-minute services ring the model now, so
+        // they skip the booking screen (and its subscription gate — calling
+        // is paid for from the wallet, by the minute). The call screen
+        // itself checks whether the model takes calls and whether the
+        // wallet covers two minutes, so it is safe to go straight there.
+        if (billingType === "per_minute") {
+            trackActivity("CLICK_CALL");
+            navigate(`/customer/call-model/${modelId}`);
+            return;
+        }
         if (!hasActiveSubscription) {
             // Store booking intent in sessionStorage for post-subscription redirect
             try { sessionStorage.setItem("booking_intent", JSON.stringify({ modelId, serviceId })); } catch {}
@@ -508,6 +518,25 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                 className={`cursor-pointer block sm:hidden text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl transition-all duration-200 rounded-md ${optimisticState.customerAction === "LIKE" ? "bg-rose-500 hover:bg-rose-600" : "border border-rose-500 bg-white text-rose-500 hover:bg-rose-500 hover:text-white"}`}
                             >
                                 <Heart />
+                            </Button>
+                            {/* Calling, on a phone. This row had no call
+                                button at all, so the only way to a call on
+                                mobile was the service list's Book button —
+                                which made a booking the model had to accept,
+                                instead of ringing her. The screen behind this
+                                decides whether a call is possible and what it
+                                costs, so it is always offered. */}
+                            <Button
+                                size="sm"
+                                type="button"
+                                className="cursor-pointer block sm:hidden bg-emerald-500 text-white px-4 font-medium text-sm shadow-lg hover:shadow-xl hover:bg-emerald-600 transition-all duration-200 rounded-md"
+                                onClick={() => {
+                                    trackActivity("CLICK_CALL");
+                                    navigate(`/customer/call-model/${model.id}`);
+                                }}
+                                title={t('call.call', { defaultValue: 'Call' })}
+                            >
+                                <Phone className="w-5 h-5 cursor-pointer" />
                             </Button>
                             <Button
                                 size="sm"
@@ -754,10 +783,12 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
                                                                     servicePrice = Math.min(oneTime || Infinity, oneNight || Infinity);
                                                                     if (!isFinite(servicePrice)) servicePrice = 0;
                                                                 }
-                                                                handleBookClick(model.id, service.id, serviceName, servicePrice);
+                                                                handleBookClick(model.id, service.id, serviceName, servicePrice, billingType);
                                                             }}
                                                         >
-                                                            {t('profile.bookNow')}
+                                                            {billingType === "per_minute"
+                                                                ? t('call.call', { defaultValue: 'Call' })
+                                                                : t('profile.bookNow')}
                                                         </Button>
                                                     </CardFooter>
                                                 </Card>

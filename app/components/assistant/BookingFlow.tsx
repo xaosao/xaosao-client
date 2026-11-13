@@ -112,9 +112,20 @@ export function BookingFlow({
   }
 
   function chooseService(picked: BookableService) {
+    // A call is not booked — it rings the model now. Picking the
+    // per-minute service used to walk the customer through a date and a
+    // duration and then create a booking she had to accept, which left
+    // the meter, the hold and the LiveKit room out of it entirely. Send
+    // them to the call screen instead; it checks the rate and the wallet.
+    if (picked.billingType === "per_minute") {
+      navigate(`/customer/call-model/${match.id}`);
+      onCancel();
+      return;
+    }
+
     setService(picked);
     setVariant(null);
-    setUnits(picked.billingType === "per_minute" ? 30 : 1);
+    setUnits(1);
     // Massage is sold per variant, so that choice comes before the rest.
     setStep(picked.variants.length > 0 ? "variant" : "when");
   }

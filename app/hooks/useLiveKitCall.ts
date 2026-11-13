@@ -139,11 +139,38 @@ export function useLiveKitCall(options: {
       } catch (err) {
         if (cancelled) return;
         setState("closed");
-        setError(
-          (err as Error)?.message?.includes("Permission")
-            ? "Microphone access is needed for a call."
-            : "Could not connect the call.",
-        );
+
+        // The underlying error used to be swallowed into one sentence,
+        // "Could not connect the call.", which says nothing a person can
+        // act on and nothing a developer can debug. Keep it in the
+        // console and name the cases that have a real remedy.
+        console.error("[call] could not start media", err);
+
+        const e = err as { name?: string; message?: string };
+        const name = e?.name ?? "";
+        const message = e?.message ?? "";
+        const says = (needle: string) =>
+          name.includes(needle) || message.includes(needle);
+
+        if (says("NotFound") || says("DevicesNotFound")) {
+          // No capture device at all — common on a desktop without a
+          // headset. Nothing about the call is wrong.
+          setError("noDevice");
+        } else if (says("NotAllowed") || says("Permission") || says("Denied")) {
+          setError("denied");
+        } else if (says("NotReadable") || says("TrackStart") || says("AbortError")) {
+          // Another app holds the microphone.
+          setError("deviceBusy");
+        } else if (
+          typeof window !== "undefined" &&
+          !window.isSecureContext
+        ) {
+          // getUserMedia only exists on https or localhost. Opening the
+          // dev server over a LAN address is the usual way to land here.
+          setError("insecure");
+        } else {
+          setError("connect");
+        }
       }
     })();
 

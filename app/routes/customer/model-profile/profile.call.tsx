@@ -88,7 +88,46 @@ export default function CallModel() {
   }
 
   const busy = start.state !== "idle";
-  const error = (start.data as any)?.ok === false ? (start.data as any).error : null;
+  const rawError = (start.data as any)?.ok === false ? (start.data as any).error : null;
+
+  /**
+   * The server answers in English. Show it in the customer's language.
+   *
+   * These are the only refusals `POST /calls` produces, and each one has
+   * something the customer can actually do about it, so they are worth
+   * wording properly rather than passing the raw sentence through — a
+   * bare "You are already on a call" in an otherwise Lao screen reads
+   * like a crash.
+   */
+  const error = (() => {
+    if (!rawError) return null;
+    const m = String(rawError);
+    if (m.includes("already on a call")) {
+      return t("call.errorAlreadyOnCall", {
+        defaultValue:
+          "Your last call is still open. It ends on its own in under a minute — then try again.",
+      });
+    }
+    if (m.includes("on another call")) {
+      return t("call.errorPeerBusy", { defaultValue: "This person is on another call." });
+    }
+    if (m.includes("does not take calls")) {
+      return t("call.notAvailable", { defaultValue: "This person does not take calls right now." });
+    }
+    if (m.includes("not available")) {
+      return t("call.errorPeerUnavailable", { defaultValue: "This person is not available." });
+    }
+    if (m.includes("Calling is not available")) {
+      return t("call.errorServiceDown", { defaultValue: "Calling is unavailable right now. Please try later." });
+    }
+    if (m.includes("You need at least")) {
+      return t("call.needTwoMinutes", {
+        defaultValue: "You need at least {{amount}} ₭ to start a call",
+        amount: (perMinute * 2).toLocaleString(),
+      });
+    }
+    return m;
+  })();
 
   return (
     <Modal onClose={() => navigate(-1)} className="w-full max-w-sm">

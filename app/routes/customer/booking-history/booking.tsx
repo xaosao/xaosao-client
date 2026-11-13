@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useNavigation, useRevalidator, type LoaderFunction } from "react-router"
-import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, SquarePen, X, Trash2, Video } from "lucide-react"
+import { Calendar, MapPin, DollarSign, Clock, Coins, Shirt, UserRoundCheck, Headset, Loader, Search, Info, Shield, Wallet, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Phone, MessageCircleMore, SquarePen, X, Trash2 } from "lucide-react"
 
 // components:
 import { Badge } from "~/components/ui/badge"
@@ -395,17 +395,19 @@ export default function BookingsList({ loaderData }: DiscoverPageProps) {
                               <div className="pt-3 border-t flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                  {isCallService(booking) ? (
                                     <>
-                                       {booking.status === "confirmed" && (
-                                          <Button
-                                             variant="outline"
-                                             size="sm"
-                                             onClick={() => navigate(`/customer/call/start/${booking.id}`)}
-                                             className="text-xs h-8 text-emerald-600 border-emerald-600 hover:bg-emerald-50"
-                                          >
-                                             <Video className="h-2 w-2" />
-                                             {t('booking.startCall')}
-                                          </Button>
-                                       )}
+                                       {/* "Start call" is gone. It pointed at
+                                           /customer/call/start/:bookingId, a
+                                           route that was never registered, so
+                                           it showed the 404 page.
+
+                                           It is not replaced with a real call
+                                           button on purpose: creating this
+                                           booking already took the money
+                                           (totalSpend went up), so placing a
+                                           metered call from here would charge
+                                           twice. Calls are no longer booked —
+                                           cancel this one to get the money
+                                           back, then call from the profile. */}
                                        {booking.status === "pending" && (
                                           <Button
                                              variant="outline"

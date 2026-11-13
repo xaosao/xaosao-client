@@ -906,9 +906,31 @@ export async function createServiceBooking(
     // Get the service name for overlap check logic
     const modelService = await prisma.model_service.findUnique({
       where: { id: modelServiceId },
-      include: { service: { select: { name: true } } },
+      include: { service: { select: { name: true, billingType: true } } },
     });
     const serviceName = modelService?.service?.name;
+
+    // A per-minute service is a call, and a call is not booked.
+    //
+    // It rings the model there and then: the money is held up front, the
+    // meter runs off LiveKit's own join events, and an unanswered call
+    // refunds itself. A booking has none of that — it would sit waiting
+    // for the model to accept, and nothing would ever be metered.
+    //
+    // xs_backend refuses these too ("per_minute bookings are no longer
+    // supported"), but this app writes bookings straight to Mongo through
+    // Prisma and never asks it, so the rule has to exist here as well or
+    // the two disagree. They did, which is how call bookings kept being
+    // created. Callers should send the customer to
+    // /customer/call-model/:modelId instead.
+    if (modelService?.service?.billingType === "per_minute") {
+      return {
+        success: false,
+        error: true,
+        message:
+          "Calls are not booked — place the call directly from the model's profile.",
+      };
+    }
 
     // Check for overlapping bookings before proceeding
     // Rules:
