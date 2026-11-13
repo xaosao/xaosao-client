@@ -49,6 +49,7 @@ import { requireModelSession } from "~/services/model-auth.server";
 import { loadNotificationFeed } from "~/services/xs-notification.server";
 import { getChatUnreadCount } from "~/services/xs-chat.server";
 import { getModelPendingBookingCount } from "~/services/booking.server";
+import { log as debugLog } from "~/utils/logger";
 
 interface ModelData {
     id: string;
@@ -215,7 +216,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
     const handleNewNotification = useCallback((notification: Notification) => {
         // Handle incoming call - redirect to incoming call page
         if (notification.type === "incoming_call") {
-            console.log("[ModelLayout] Incoming call notification received!", notification);
+            debugLog("[ModelLayout] Incoming call notification received!", notification);
             const bookingId = notification.data?.bookingId;
             if (bookingId) {
                 navigate(`/model/call/join/${bookingId}`);
@@ -225,7 +226,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
         // Handle booking/post notifications - refresh data
         if (revalidateNotificationTypes.includes(notification.type)) {
-            console.log("[ModelLayout] Revalidating for notification:", notification.type);
+            debugLog("[ModelLayout] Revalidating for notification:", notification.type);
             revalidator.revalidate();
         }
     }, [revalidator, navigate]);
@@ -365,9 +366,9 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                 </div>
             </div>
 
-            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-18"}`}>
+            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-tabbar sm:pb-0"}`}>
                 {showMobileHeader && (
-                    <div className="sm:hidden flex items-center justify-between px-4 py-2 pt-safe border-b bg-white sticky top-0 z-30">
+                    <div className="sm:hidden flex items-center justify-between gap-2 px-4 pb-2.5 pt-safe border-b border-gray-100 bg-white/95 backdrop-blur-xl sticky top-0 z-40">
                         <Link to="/model/profile"
                             prefetch="intent"
                             className="flex items-center gap-2 min-w-0"
@@ -402,8 +403,8 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
 
             {/* ✅ Mobile Bottom Navigation (hidden inside a conversation) */}
             {!hideMobileNav && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-40">
-                    <div className="flex items-center justify-around py-1">
+                <nav className="app-tabbar fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200/80 bg-white/95 backdrop-blur-xl sm:hidden">
+                    <div className="flex h-[var(--app-tabbar-row-h)] items-stretch justify-around">
                         {mobileNavigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
                             const pending = isNavPending(item.url);
@@ -413,28 +414,32 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                                     key={item.title}
                                     prefetch="viewport"
                                     aria-busy={pending}
-                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1 transition-transform duration-150 active:scale-90"
+                                    aria-current={isActive ? "page" : undefined}
+                                    className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] transition-transform duration-150 active:scale-90"
                                 >
-                                    <div className="relative mb-1">
+                                    <div
+                                        className={`relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200 ${isActive ? "bg-rose-50" : "bg-transparent"
+                                            }`}
+                                    >
                                         {pending ? (
-                                            <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                                            <Loader2 className="h-[22px] w-[22px] animate-spin text-rose-500" />
                                         ) : (
-                                        <item.icon
-                                            // Lucide icons are SVG strokes, so "bold" means a
-                                            // thicker stroke — font-weight does nothing here.
-                                            strokeWidth={isActive ? 2.75 : 2}
-                                            className={`w-4 h-4 ${isActive ? "text-rose-500" : "text-gray-600"
-                                                }`}
-                                        />
+                                            <item.icon
+                                                // Lucide icons are SVG strokes, so "bold" means a
+                                                // thicker stroke — font-weight does nothing here.
+                                                strokeWidth={isActive ? 2.4 : 1.9}
+                                                className={`h-[22px] w-[22px] transition-colors duration-200 ${isActive ? "text-rose-500" : "text-gray-500"
+                                                    }`}
+                                            />
                                         )}
                                         {item.badge > 0 && (
-                                            <span className="absolute -top-1.5 -right-4 min-w-[14px] h-3.5 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-medium rounded-full">
+                                            <span className="absolute right-1.5 top-0 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white ring-2 ring-white">
                                                 {item.badge > 99 ? "99+" : item.badge}
                                             </span>
                                         )}
                                     </div>
                                     <span
-                                        className={`text-xs truncate ${isActive ? "text-rose-500 font-bold" : "text-gray-600"
+                                        className={`max-w-full truncate text-xs leading-none transition-colors duration-200 ${isActive ? "font-semibold text-rose-500" : "text-gray-500"
                                             }`}
                                         suppressHydrationWarning
                                     >
@@ -444,7 +449,7 @@ export default function ModelLayout({ loaderData }: LayoutProps) {
                             );
                         })}
                     </div>
-                </div>
+                </nav>
             )}
 
             {/* Primary push path: asks on the user's first interaction, the

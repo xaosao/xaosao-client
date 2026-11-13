@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Bell, BellOff, Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { usePushNotifications } from "~/hooks/usePushNotifications";
+import { log as debugLog } from "~/utils/logger";
 
 interface PushNotificationPromptProps {
   userType: "model" | "customer";
@@ -127,7 +128,7 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
       // through the app's Firebase channel, so showing it there would be
       // noise at best and a second, duplicate notification at worst.
       if (!isIOS()) {
-        console.log("[PushPrompt] Not iOS, skipping");
+        debugLog("[PushPrompt] Not iOS, skipping");
         onDismiss?.();
         return;
       }
@@ -136,7 +137,7 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
       // home screen, and only on 16.4+. Asking anywhere else would offer
       // something the browser cannot deliver.
       if (!isStandalone() || !isIOSVersionSupported()) {
-        console.log("[PushPrompt] iOS without installed PWA or too old, skipping", {
+        debugLog("[PushPrompt] iOS without installed PWA or too old, skipping", {
           standalone: isStandalone(),
           versionOk: isIOSVersionSupported(),
         });
@@ -146,7 +147,7 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
 
       // Wait for hook to finish initializing
       if (isInitializing) {
-        console.log("[PushPrompt] Still initializing, waiting...");
+        debugLog("[PushPrompt] Still initializing, waiting...");
         return;
       }
 
@@ -154,25 +155,25 @@ export function PushNotificationPrompt({ userType, pushOptOut, enabled = true, o
       // browser is already subscribed is answered by `isSubscribed` below,
       // which reflects the real PushManager state rather than a preference.
       if (pushOptOut) {
-        console.log("[PushPrompt] Not showing: user turned push off");
+        debugLog("[PushPrompt] Not showing: user turned push off");
         onDismiss?.();
         return;
       }
 
       // Check if push is supported and not already subscribed
       if (!isSupported || isSubscribed || permission === "denied") {
-        console.log("[PushPrompt] Not showing: conditions not met", { isSupported, isSubscribed, permission });
+        debugLog("[PushPrompt] Not showing: conditions not met", { isSupported, isSubscribed, permission });
         onDismiss?.();
         return;
       }
 
       if (wasDismissed(userType)) {
-        console.log("[PushPrompt] Not showing: Dismissed in current session");
+        debugLog("[PushPrompt] Not showing: Dismissed in current session");
         onDismiss?.();
         return;
       }
 
-      console.log("[PushPrompt] Will show prompt in 1 second...");
+      debugLog("[PushPrompt] Will show prompt in 1 second...");
       timer = setTimeout(() => {
         setShowPrompt(true);
       }, 1000);

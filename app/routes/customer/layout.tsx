@@ -32,6 +32,7 @@ import { useBackendNotifications } from "~/hooks/useBackendNotifications";
 import { HeaderSearch } from "~/components/discover/HeaderSearch";
 import { useNavPending } from "~/hooks/useNavPending";
 import { Loader2 } from "lucide-react";
+import { log as debugLog } from "~/utils/logger";
 
 interface LoaderReturn {
     customerData: ICustomerResponse;
@@ -237,7 +238,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     // Handle new notifications - refresh child routes when post/booking-related
     const handleNewNotification = useCallback((notification: Notification) => {
         if (revalidateNotificationTypes.includes(notification.type)) {
-            console.log("[CustomerLayout] Revalidating for notification:", notification.type);
+            debugLog("[CustomerLayout] Revalidating for notification:", notification.type);
             revalidator.revalidate();
         }
     }, [revalidator]);
@@ -255,7 +256,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     // Search is a Discover feature, so the header icon only appears there.
     // (Discover is the index route; its tabs live in ?tab=, not the path.)
     const isDiscoverPage = location.pathname === "/customer";
-    console.log("[ModalSequence] State:", { isDashboardPage, pushOptOut, hasActiveSubscription, hasPendingSubscription });
+    debugLog("[ModalSequence] State:", { isDashboardPage, pushOptOut, hasActiveSubscription, hasPendingSubscription });
 
     // === Modal sequencing: Location → Push Notification (Android) → Subscription ===
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
@@ -282,10 +283,10 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Detect when location step is done (permission already granted/denied, no prompt needed)
     useEffect(() => {
-        console.log("[ModalSequence] Location check:", { isDashboardPage, showLocationPrompt, permissionState, locationStepDone });
+        debugLog("[ModalSequence] Location check:", { isDashboardPage, showLocationPrompt, permissionState, locationStepDone });
         if (!isDashboardPage || showLocationPrompt) return;
         if (permissionState === "granted" || permissionState === "denied") {
-            console.log("[ModalSequence] Location permission already", permissionState, "→ skipping prompt, advancing in 500ms");
+            debugLog("[ModalSequence] Location permission already", permissionState, "→ skipping prompt, advancing in 500ms");
             const timer = setTimeout(() => {
                 if (!showLocationPrompt) {
                     setLocationStepDone(true);
@@ -312,7 +313,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
     // Push notification dismissed → advance to subscription step
     const handlePushDismissed = useCallback(() => {
-        console.log("[ModalSequence] Push step done → advancing to subscription");
+        debugLog("[ModalSequence] Push step done → advancing to subscription");
         setPushStepDone(true);
     }, []);
 
@@ -335,7 +336,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
     useSubscriptionSSE({
         hasPendingSubscription,
         onActivated: (data) => {
-            console.log("Subscription activated via SSE:", data);
+            debugLog("Subscription activated via SSE:", data);
         },
     });
 
@@ -459,9 +460,9 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
             </div>
 
-            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-18"}`}>
+            <div className={`w-full sm:w-4/5 flex flex-col min-h-screen sm:pb-0 ${hideMobileNav ? "" : "pb-tabbar sm:pb-0"}`}>
                 {showMobileHeader && (
-                    <div className="sm:hidden flex items-center justify-between px-4 py-3 pt-safe border-b bg-white sticky top-0 z-30">
+                    <div className="sm:hidden flex items-center justify-between gap-2 px-4 pb-2.5 pt-safe border-b border-gray-100 bg-white/95 backdrop-blur-xl sticky top-0 z-40">
                         <Link to="/customer/profile"
                             prefetch="intent"
                             className="flex items-center gap-2 min-w-0"
@@ -474,12 +475,12 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                 />
                                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
                             </div>
-                            <div className="flex items-start justify-center flex-col min-w-0">
-                                <span className="text-sm font-medium uppercase truncate max-w-full">{customerData.firstName} {customerData.lastName}</span>
+                            <div className="flex items-start justify-center flex-col min-w-0 leading-tight">
+                                <span className="text-[15px] font-semibold uppercase truncate max-w-full">{customerData.firstName} {customerData.lastName}</span>
                                 {/* <span className="text-xs text-gray-500 truncate max-w-full">{customerData.bio}</span> */}
                             </div>
                         </Link>
-                        <div className="flex items-center justify-center gap-3">
+                        <div className="flex shrink-0 items-center justify-center gap-1">
                             <NotificationBell userType="customer" initialCount={unreadNotifications} initialNotifications={initialNotifications} />
                             {isDiscoverPage && (
                                 <HeaderSearch searchAction="/customer/discover/find" hrefFor={(id) => `/customer/user-profile/${id}`} />
@@ -487,10 +488,10 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                             <Form method="post" action="/logout">
                                 <button
                                     type="submit"
-                                    className="bg-rose-50 flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer text-xs font-medium"
+                                    aria-label={t('settings.common.logout')}
+                                    className="flex h-11 w-11 items-center justify-center rounded-full text-rose-500 transition-transform duration-150 active:scale-90 active:bg-rose-50 cursor-pointer"
                                 >
-                                    {/* <span suppressHydrationWarning>{t('settings.common.logout')}</span> */}
-                                    <LogOut className="w-4 h-4" />
+                                    <LogOut className="w-[18px] h-[18px]" />
                                 </button>
                             </Form>
                         </div>
@@ -503,7 +504,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
             {/* ── Awaiting-slip floating banner (mobile only, above bottom nav) ── */}
             {showSlipBanner && awaitingSlipIntent && !hideMobileNav && (
-                <div className="fixed bottom-[58px] left-2 right-2 z-40 sm:hidden">
+                <div className="fixed above-tabbar left-2 right-2 z-40 sm:hidden">
                     <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-300 rounded-xl shadow-lg">
                         <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
@@ -532,8 +533,11 @@ export default function Dashboard({ loaderData }: TransactionProps) {
 
             {/* ✅ Mobile Bottom Navigation (hidden inside a conversation) */}
             {!hideMobileNav && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-40">
-                    <div className="flex items-center justify-around py-1">
+                <nav
+                    aria-label={t('navigation.discover')}
+                    className="app-tabbar fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200/80 bg-white/95 backdrop-blur-xl sm:hidden"
+                >
+                    <div className="flex h-[var(--app-tabbar-row-h)] items-stretch justify-around">
                         {mobileNavigationItems.map((item) => {
                             const isActive = isActiveRoute(item.url);
                             const pending = isNavPending(item.url);
@@ -544,28 +548,35 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                                     prefetch="viewport"
                                     onClick={(e) => handleChatNavigation(e, item.url)}
                                     aria-busy={pending}
-                                    className="flex flex-col items-center justify-center p-2 min-w-0 flex-1 transition-transform duration-150 active:scale-90"
+                                    aria-current={isActive ? "page" : undefined}
+                                    className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] transition-transform duration-150 active:scale-90"
                                 >
-                                    <span className="relative">
+                                    {/* The icon sits in a pill that tints when the tab is
+                                        the one you are on — the same cue a native tab bar
+                                        gives, and big enough to be a comfortable target. */}
+                                    <span
+                                        className={`relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200 ${isActive ? "bg-rose-50" : "bg-transparent"
+                                            }`}
+                                    >
                                         {pending ? (
-                                            <Loader2 className="w-4 h-4 mb-1 animate-spin text-rose-500" />
+                                            <Loader2 className="h-[22px] w-[22px] animate-spin text-rose-500" />
                                         ) : (
-                                        <item.icon
-                                            // Lucide icons are SVG strokes, so "bold" means a
-                                            // thicker stroke — font-weight does nothing here.
-                                            strokeWidth={isActive ? 2.75 : 2}
-                                            className={`w-4 h-4 mb-1 ${isActive ? "text-rose-500" : "text-gray-600"
-                                                }`}
-                                        />
+                                            <item.icon
+                                                // Lucide icons are SVG strokes, so "bold" means a
+                                                // thicker stroke — font-weight does nothing here.
+                                                strokeWidth={isActive ? 2.4 : 1.9}
+                                                className={`h-[22px] w-[22px] transition-colors duration-200 ${isActive ? "text-rose-500" : "text-gray-500"
+                                                    }`}
+                                            />
                                         )}
                                         {!!item.badge && item.badge > 0 && (
-                                            <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-medium">
+                                            <span className="absolute right-1.5 top-0 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-semibold leading-[18px] text-white ring-2 ring-white">
                                                 {item.badge > 99 ? "99+" : item.badge}
                                             </span>
                                         )}
                                     </span>
                                     <span
-                                        className={`text-xs truncate ${isActive ? "text-rose-500 font-bold" : "text-gray-600"
+                                        className={`max-w-full truncate text-xs leading-none transition-colors duration-200 ${isActive ? "font-semibold text-rose-500" : "text-gray-500"
                                             }`}
                                         suppressHydrationWarning
                                     >
@@ -575,7 +586,7 @@ export default function Dashboard({ loaderData }: TransactionProps) {
                             );
                         })}
                     </div>
-                </div>
+                </nav>
             )}
 
             {/* Step 1: Location Permission Prompt Modal */}

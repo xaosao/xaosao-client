@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { log as debugLog } from "~/utils/logger";
 
 interface UsePushNotificationsOptions {
   userType: "model" | "customer";
@@ -84,7 +85,7 @@ function checkPushSupport(): boolean {
     // iOS Safari PWA might not expose serviceWorker/PushManager on navigator/window directly
     // but they become available when actually used
     if (isIOSPWA()) {
-      console.log("[Push] iOS PWA detected, returning optimistic support");
+      debugLog("[Push] iOS PWA detected, returning optimistic support");
       return true;
     }
 
@@ -126,7 +127,7 @@ export function usePushNotifications({
   const [state, setState] = useState<PushNotificationState>(() => {
     try {
       const storedSubscription = getStoredSubscriptionStatus(userType);
-      console.log("[Push] Initial state from localStorage:", { userType, storedSubscription });
+      debugLog("[Push] Initial state from localStorage:", { userType, storedSubscription });
       return {
         isSupported: checkPushSupport(),
         permission: getInitialPermission(),
@@ -188,12 +189,12 @@ export function usePushNotifications({
 
   // Check current subscription status with timeout
   const checkSubscription = useCallback(async (): Promise<boolean> => {
-    console.log("[Push] Checking subscription status...");
+    debugLog("[Push] Checking subscription status...");
     try {
       // Quick timeout for the whole check
       const timeoutPromise = new Promise<boolean>((resolve) => {
         setTimeout(() => {
-          console.log("[Push] Subscription check timed out");
+          debugLog("[Push] Subscription check timed out");
           resolve(false);
         }, 2000);
       });
@@ -201,17 +202,17 @@ export function usePushNotifications({
       const checkPromise = async (): Promise<boolean> => {
         // For iOS PWA, service worker might not be in navigator initially
         if (!("serviceWorker" in navigator)) {
-          console.log("[Push] Service worker not in navigator");
+          debugLog("[Push] Service worker not in navigator");
           // For iOS PWA, return stored value from localStorage
           return false;
         }
 
         // Check if service worker is registered first
         const registrations = await navigator.serviceWorker.getRegistrations();
-        console.log("[Push] Service worker registrations:", registrations.length);
+        debugLog("[Push] Service worker registrations:", registrations.length);
 
         if (registrations.length === 0) {
-          console.log("[Push] No service worker registered yet");
+          debugLog("[Push] No service worker registered yet");
           return false;
         }
 
@@ -219,12 +220,12 @@ export function usePushNotifications({
 
         // For iOS PWA, pushManager might not be available on registration
         if (!registration.pushManager) {
-          console.log("[Push] PushManager not available on registration");
+          debugLog("[Push] PushManager not available on registration");
           return false;
         }
 
         const subscription = await registration.pushManager.getSubscription();
-        console.log("[Push] Current subscription:", !!subscription);
+        debugLog("[Push] Current subscription:", !!subscription);
         return subscription !== null;
       };
 
@@ -248,7 +249,7 @@ export function usePushNotifications({
     const initialize = async () => {
       const iosPWA = isIOSPWA();
       const isSupported = checkSupport();
-      console.log("[Push] Support check:", {
+      debugLog("[Push] Support check:", {
         isSupported,
         iosPWA,
         serviceWorker: "serviceWorker" in navigator,
@@ -283,12 +284,12 @@ export function usePushNotifications({
       let isSubscribed = storedSubscription; // Start with localStorage value
       try {
         const actualSubscription = await checkSubscription();
-        console.log("[Push] PushManager subscription check:", actualSubscription);
+        debugLog("[Push] PushManager subscription check:", actualSubscription);
 
         // If PushManager says not subscribed but localStorage says subscribed,
         // trust PushManager (user may have cleared browser data)
         if (!actualSubscription && storedSubscription) {
-          console.log("[Push] localStorage says subscribed but PushManager says no - clearing localStorage");
+          debugLog("[Push] localStorage says subscribed but PushManager says no - clearing localStorage");
           setStoredSubscriptionStatus(userType, false);
           isSubscribed = false;
         } else if (actualSubscription) {
@@ -297,11 +298,11 @@ export function usePushNotifications({
           setStoredSubscriptionStatus(userType, true);
         }
       } catch (error) {
-        console.log("[Push] Subscription check failed, using localStorage value:", error);
+        debugLog("[Push] Subscription check failed, using localStorage value:", error);
         // Keep localStorage value on error
       }
 
-      console.log("[Push] Initial state:", { permission, isSubscribed, storedSubscription, userType });
+      debugLog("[Push] Initial state:", { permission, isSubscribed, storedSubscription, userType });
 
       // Update global status
       subscriptionStatus.set(userType, isSubscribed);
@@ -332,7 +333,7 @@ export function usePushNotifications({
   const requestPermission = useCallback(async (): Promise<boolean> => {
     // Don't fail immediately - try anyway for iOS PWA support
     if (!state.isSupported) {
-      console.log("[Push] isSupported is false, but will try requesting permission anyway");
+      debugLog("[Push] isSupported is false, but will try requesting permission anyway");
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -357,13 +358,13 @@ export function usePushNotifications({
 
   // Subscribe to push notifications
   const subscribe = useCallback(async (): Promise<boolean> => {
-    console.log("[Push] Starting subscription process...");
+    debugLog("[Push] Starting subscription process...");
 
     // Don't fail immediately if isSupported is false - try anyway
     // This is important for iOS PWA where the initial check might fail
     // but push is actually supported
     if (!state.isSupported) {
-      console.log("[Push] isSupported is false, but will try anyway (iOS PWA support)");
+      debugLog("[Push] isSupported is false, but will try anyway (iOS PWA support)");
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -396,7 +397,7 @@ export function usePushNotifications({
         }
       }
 
-      console.log("[Push] Environment check:", {
+      debugLog("[Push] Environment check:", {
         isIOS,
         iosVersion,
         isAndroid,
@@ -417,7 +418,7 @@ export function usePushNotifications({
         if (iosMajor > 0 && (iosMajor < 16 || (iosMajor === 16 && iosMinor < 4))) {
           throw new Error(`Your iOS version (${iosVersion}) doesn't support push notifications. Please update to iOS 16.4 or later.`);
         }
-        console.log("[Push] iOS version check passed:", iosVersion);
+        debugLog("[Push] iOS version check passed:", iosVersion);
       }
 
       // Check if service worker is available (required for push)
@@ -434,36 +435,36 @@ export function usePushNotifications({
       if ("Notification" in window) {
         // Standard browser/PWA with Notification API
         permission = Notification.permission;
-        console.log("[Push] Current permission:", permission);
+        debugLog("[Push] Current permission:", permission);
 
         if (permission === "default") {
-          console.log("[Push] Requesting permission...");
+          debugLog("[Push] Requesting permission...");
           permission = await Notification.requestPermission();
-          console.log("[Push] Permission result:", permission);
+          debugLog("[Push] Permission result:", permission);
           setState((prev) => ({ ...prev, permission }));
         }
       } else {
         // Fallback: try using permissions API (for some PWA contexts)
-        console.log("[Push] Notification API not available, trying permissions API...");
+        debugLog("[Push] Notification API not available, trying permissions API...");
         try {
           const permResult = await navigator.permissions.query({ name: "notifications" as PermissionName });
           permission = permResult.state === "granted" ? "granted" :
                        permResult.state === "denied" ? "denied" : "default";
-          console.log("[Push] Permission from permissions API:", permission);
+          debugLog("[Push] Permission from permissions API:", permission);
 
           // If default, we'll try to subscribe anyway and let PushManager handle permission
           if (permission === "default") {
-            console.log("[Push] Permission is default, will try subscribing directly...");
+            debugLog("[Push] Permission is default, will try subscribing directly...");
             permission = "granted"; // Optimistically proceed - PushManager will prompt
           }
         } catch (permError) {
-          console.log("[Push] Permissions API failed, will try subscribing directly:", permError);
+          debugLog("[Push] Permissions API failed, will try subscribing directly:", permError);
           permission = "granted"; // Optimistically proceed
         }
       }
 
       if (permission === "denied") {
-        console.log("[Push] Permission denied");
+        debugLog("[Push] Permission denied");
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -473,10 +474,10 @@ export function usePushNotifications({
       }
 
       // Get VAPID key
-      console.log("[Push] Getting VAPID key...");
+      debugLog("[Push] Getting VAPID key...");
       const vapidKey = await getVapidKey();
       if (!vapidKey) {
-        console.log("[Push] Failed to get VAPID key");
+        debugLog("[Push] Failed to get VAPID key");
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -484,27 +485,27 @@ export function usePushNotifications({
         }));
         return false;
       }
-      console.log("[Push] Got VAPID key:", vapidKey.substring(0, 20) + "...");
+      debugLog("[Push] Got VAPID key:", vapidKey.substring(0, 20) + "...");
 
       // Get service worker registration
-      console.log("[Push] Getting service worker...");
+      debugLog("[Push] Getting service worker...");
       let registration: ServiceWorkerRegistration;
 
       // Step 1: Check if serviceWorker API exists
       const swInNavigator = "serviceWorker" in navigator;
-      console.log("[Push] Step 1 - serviceWorker in navigator:", swInNavigator);
+      debugLog("[Push] Step 1 - serviceWorker in navigator:", swInNavigator);
 
       if (!swInNavigator) {
         if (iosPWA) {
           // Wait and retry for iOS PWA
-          console.log("[Push] iOS PWA: serviceWorker not found, waiting 2 seconds...");
+          debugLog("[Push] iOS PWA: serviceWorker not found, waiting 2 seconds...");
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           if (!("serviceWorker" in navigator)) {
             console.error("[Push] iOS PWA: serviceWorker still not available after waiting");
             throw new Error("Service worker not available. Make sure you opened the app from your home screen (not Safari). Try: Settings > Safari > Clear History and Website Data, then re-add the app.");
           }
-          console.log("[Push] iOS PWA: serviceWorker now available after waiting");
+          debugLog("[Push] iOS PWA: serviceWorker now available after waiting");
         } else {
           throw new Error("Push notifications are not supported on this device.");
         }
@@ -512,25 +513,25 @@ export function usePushNotifications({
 
       try {
         // Step 2: Check for existing registrations
-        console.log("[Push] Step 2 - Getting existing registrations...");
+        debugLog("[Push] Step 2 - Getting existing registrations...");
         const existingRegs = await navigator.serviceWorker.getRegistrations();
-        console.log("[Push] Existing service worker registrations:", existingRegs.length);
+        debugLog("[Push] Existing service worker registrations:", existingRegs.length);
 
         // Step 3: Register if needed
         if (existingRegs.length === 0) {
-          console.log("[Push] Step 3 - No SW registered, registering /sw.js...");
+          debugLog("[Push] Step 3 - No SW registered, registering /sw.js...");
           try {
             registration = await navigator.serviceWorker.register("/sw.js");
-            console.log("[Push] Service worker registered, scope:", registration.scope);
-            console.log("[Push] SW state - installing:", !!registration.installing, "waiting:", !!registration.waiting, "active:", !!registration.active);
+            debugLog("[Push] Service worker registered, scope:", registration.scope);
+            debugLog("[Push] SW state - installing:", !!registration.installing, "waiting:", !!registration.waiting, "active:", !!registration.active);
 
             // Wait for the service worker to be active
             if (registration.installing) {
-              console.log("[Push] Waiting for service worker to install and activate...");
+              debugLog("[Push] Waiting for service worker to install and activate...");
               await new Promise<void>((resolve, reject) => {
                 const sw = registration.installing!;
                 const checkState = () => {
-                  console.log("[Push] SW state changed to:", sw.state);
+                  debugLog("[Push] SW state changed to:", sw.state);
                   if (sw.state === "activated") {
                     resolve();
                   } else if (sw.state === "redundant") {
@@ -545,26 +546,26 @@ export function usePushNotifications({
                 // Timeout after 15 seconds
                 setTimeout(() => reject(new Error("Service worker installation timeout (15s)")), 15000);
               });
-              console.log("[Push] Service worker activated successfully");
+              debugLog("[Push] Service worker activated successfully");
             }
           } catch (regError: any) {
             console.error("[Push] Failed to register service worker:", regError);
             throw new Error(`Failed to register service worker: ${regError.message || regError}`);
           }
         } else {
-          console.log("[Push] Step 3 - Using existing registration");
+          debugLog("[Push] Step 3 - Using existing registration");
         }
 
         // Step 4: Wait for service worker to be ready
-        console.log("[Push] Step 4 - Waiting for service worker to be ready...");
+        debugLog("[Push] Step 4 - Waiting for service worker to be ready...");
         const readyPromise = navigator.serviceWorker.ready;
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Service worker ready timeout (10s)")), 10000)
         );
 
         registration = await Promise.race([readyPromise, timeoutPromise]);
-        console.log("[Push] Service worker ready, scope:", registration.scope);
-        console.log("[Push] Registration state:", {
+        debugLog("[Push] Service worker ready, scope:", registration.scope);
+        debugLog("[Push] Registration state:", {
           active: !!registration.active,
           activeState: registration.active?.state,
           installing: !!registration.installing,
@@ -575,7 +576,7 @@ export function usePushNotifications({
 
         // Step 4b: For iOS PWA, ensure service worker is actively controlling the page
         if (iosPWA && registration.active && registration.active.state !== "activated") {
-          console.log("[Push] iOS PWA: Waiting for service worker to fully activate...");
+          debugLog("[Push] iOS PWA: Waiting for service worker to fully activate...");
           await new Promise<void>((resolve, reject) => {
             const sw = registration.active!;
             const timeout = setTimeout(() => reject(new Error("SW activation timeout")), 10000);
@@ -587,7 +588,7 @@ export function usePushNotifications({
             }
 
             sw.addEventListener("statechange", () => {
-              console.log("[Push] SW state changed to:", sw.state);
+              debugLog("[Push] SW state changed to:", sw.state);
               if (sw.state === "activated") {
                 clearTimeout(timeout);
                 resolve();
@@ -598,19 +599,19 @@ export function usePushNotifications({
 
         // Step 4c: Ensure the page is controlled by the service worker (important for iOS)
         if (iosPWA && !navigator.serviceWorker.controller) {
-          console.log("[Push] iOS PWA: Page not controlled by SW, calling clients.claim()...");
+          debugLog("[Push] iOS PWA: Page not controlled by SW, calling clients.claim()...");
           // The SW should call clients.claim() on activate, but we wait a bit
           await new Promise(resolve => setTimeout(resolve, 500));
 
           if (!navigator.serviceWorker.controller) {
-            console.log("[Push] iOS PWA: Still no controller, will try to refresh SW...");
+            debugLog("[Push] iOS PWA: Still no controller, will try to refresh SW...");
             // Try to force the service worker to take control
             if (registration.active) {
               registration.active.postMessage({ type: 'SKIP_WAITING' });
               await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
-          console.log("[Push] iOS PWA: Controller status:", !!navigator.serviceWorker.controller);
+          debugLog("[Push] iOS PWA: Controller status:", !!navigator.serviceWorker.controller);
         }
 
       } catch (swError: any) {
@@ -628,7 +629,7 @@ export function usePushNotifications({
       }
 
       // Step 5: Check if pushManager is available on the registration
-      console.log("[Push] Step 5 - Checking pushManager availability...");
+      debugLog("[Push] Step 5 - Checking pushManager availability...");
 
       // For iOS PWA, pushManager might not be immediately available
       // Try with retries
@@ -637,47 +638,47 @@ export function usePushNotifications({
 
       // iOS 18.4+ supports Declarative Web Push - try accessing PushManager differently
       if (!pushManagerAvailable && iosPWA) {
-        console.log("[Push] iOS PWA: pushManager not available on registration, trying alternative approaches...");
+        debugLog("[Push] iOS PWA: pushManager not available on registration, trying alternative approaches...");
 
         // Approach 1: Try accessing through prototype
         try {
           const proto = Object.getPrototypeOf(registration);
-          console.log("[Push] Registration prototype:", proto?.constructor?.name);
-          console.log("[Push] Registration prototype keys:", proto ? Object.getOwnPropertyNames(proto) : []);
+          debugLog("[Push] Registration prototype:", proto?.constructor?.name);
+          debugLog("[Push] Registration prototype keys:", proto ? Object.getOwnPropertyNames(proto) : []);
 
           // Check if pushManager is defined on prototype
           if (proto && 'pushManager' in proto) {
-            console.log("[Push] pushManager found in prototype!");
+            debugLog("[Push] pushManager found in prototype!");
             pushManager = registration.pushManager;
             pushManagerAvailable = !!pushManager;
           }
         } catch (protoError) {
-          console.log("[Push] Prototype check failed:", protoError);
+          debugLog("[Push] Prototype check failed:", protoError);
         }
 
         // Approach 2: Try requesting notification permission first (might unlock PushManager)
         if (!pushManagerAvailable && "Notification" in window) {
-          console.log("[Push] Trying to request Notification permission to unlock PushManager...");
+          debugLog("[Push] Trying to request Notification permission to unlock PushManager...");
           try {
             const notifPerm = await Notification.requestPermission();
-            console.log("[Push] Notification permission after request:", notifPerm);
+            debugLog("[Push] Notification permission after request:", notifPerm);
 
             // Re-check pushManager after permission request
             registration = await navigator.serviceWorker.ready;
             pushManagerAvailable = !!registration.pushManager;
             pushManager = registration.pushManager || null;
-            console.log("[Push] pushManager after notification permission:", pushManagerAvailable);
+            debugLog("[Push] pushManager after notification permission:", pushManagerAvailable);
           } catch (notifError) {
-            console.log("[Push] Notification permission request failed:", notifError);
+            debugLog("[Push] Notification permission request failed:", notifError);
           }
         }
 
         // Approach 3: Retry with increasing delays
         if (!pushManagerAvailable) {
-          console.log("[Push] iOS PWA: Retrying with delays...");
+          debugLog("[Push] iOS PWA: Retrying with delays...");
 
           for (let attempt = 1; attempt <= 5; attempt++) {
-            console.log(`[Push] iOS PWA: Retry attempt ${attempt}/5...`);
+            debugLog(`[Push] iOS PWA: Retry attempt ${attempt}/5...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 
             // Re-fetch the registration
@@ -688,14 +689,14 @@ export function usePushNotifications({
 
               // Also check window.PushManager
               const windowPushManager = (window as any).PushManager;
-              console.log(`[Push] iOS PWA: Attempt ${attempt}:`, {
+              debugLog(`[Push] iOS PWA: Attempt ${attempt}:`, {
                 registrationPushManager: pushManagerAvailable,
                 windowPushManager: !!windowPushManager,
                 notificationAPI: "Notification" in window,
               });
 
               if (pushManagerAvailable) {
-                console.log("[Push] iOS PWA: pushManager became available on retry!");
+                debugLog("[Push] iOS PWA: pushManager became available on retry!");
                 break;
               }
             } catch (retryError) {
@@ -706,13 +707,13 @@ export function usePushNotifications({
 
         // Approach 4: Try force re-registering the service worker
         if (!pushManagerAvailable) {
-          console.log("[Push] iOS PWA: Trying to re-register service worker...");
+          debugLog("[Push] iOS PWA: Trying to re-register service worker...");
           try {
             // Unregister existing service workers
             const existingRegs = await navigator.serviceWorker.getRegistrations();
             for (const reg of existingRegs) {
               await reg.unregister();
-              console.log("[Push] Unregistered SW with scope:", reg.scope);
+              debugLog("[Push] Unregistered SW with scope:", reg.scope);
             }
 
             // Wait a moment
@@ -720,7 +721,7 @@ export function usePushNotifications({
 
             // Re-register
             const newReg = await navigator.serviceWorker.register("/sw.js");
-            console.log("[Push] Re-registered SW, scope:", newReg.scope);
+            debugLog("[Push] Re-registered SW, scope:", newReg.scope);
 
             // Wait for activation
             if (newReg.installing) {
@@ -740,7 +741,7 @@ export function usePushNotifications({
             registration = await navigator.serviceWorker.ready;
             pushManagerAvailable = !!registration.pushManager;
             pushManager = registration.pushManager || null;
-            console.log("[Push] pushManager after SW re-register:", pushManagerAvailable);
+            debugLog("[Push] pushManager after SW re-register:", pushManagerAvailable);
           } catch (reregError) {
             console.error("[Push] SW re-register failed:", reregError);
           }
@@ -748,7 +749,7 @@ export function usePushNotifications({
 
         // Approach 5: Try directly accessing Notification constructor (might bypass check)
         if (!pushManagerAvailable) {
-          console.log("[Push] iOS PWA: Trying direct Notification constructor access...");
+          debugLog("[Push] iOS PWA: Trying direct Notification constructor access...");
           try {
             // Some browsers expose Notification differently
             const NotificationCtor = (window as any).Notification ||
@@ -756,30 +757,30 @@ export function usePushNotifications({
                                      (globalThis as any).Notification;
 
             if (NotificationCtor) {
-              console.log("[Push] Found Notification constructor via alternative access");
+              debugLog("[Push] Found Notification constructor via alternative access");
               const perm = await NotificationCtor.requestPermission();
-              console.log("[Push] Permission from direct access:", perm);
+              debugLog("[Push] Permission from direct access:", perm);
 
               // Re-check registration after permission
               await new Promise(resolve => setTimeout(resolve, 500));
               registration = await navigator.serviceWorker.ready;
               pushManagerAvailable = !!registration.pushManager;
               pushManager = registration.pushManager || null;
-              console.log("[Push] pushManager after direct Notification:", pushManagerAvailable);
+              debugLog("[Push] pushManager after direct Notification:", pushManagerAvailable);
             }
           } catch (directError) {
-            console.log("[Push] Direct Notification access failed:", directError);
+            debugLog("[Push] Direct Notification access failed:", directError);
           }
         }
 
         // Approach 6: Try accessing PushManager through ServiceWorkerRegistration prototype
         if (!pushManagerAvailable) {
-          console.log("[Push] iOS PWA: Checking ServiceWorkerRegistration.prototype...");
+          debugLog("[Push] iOS PWA: Checking ServiceWorkerRegistration.prototype...");
           try {
             const SWReg = (window as any).ServiceWorkerRegistration;
             if (SWReg && SWReg.prototype) {
               const protoDesc = Object.getOwnPropertyDescriptor(SWReg.prototype, 'pushManager');
-              console.log("[Push] pushManager descriptor on SWRegistration.prototype:", {
+              debugLog("[Push] pushManager descriptor on SWRegistration.prototype:", {
                 exists: !!protoDesc,
                 hasGetter: protoDesc?.get ? true : false,
               });
@@ -787,7 +788,7 @@ export function usePushNotifications({
               if (protoDesc && protoDesc.get) {
                 // Try using the getter directly
                 const pm = protoDesc.get.call(registration);
-                console.log("[Push] pushManager from prototype getter:", !!pm);
+                debugLog("[Push] pushManager from prototype getter:", !!pm);
                 if (pm) {
                   pushManager = pm;
                   pushManagerAvailable = true;
@@ -795,37 +796,37 @@ export function usePushNotifications({
               }
             }
           } catch (protoDescError) {
-            console.log("[Push] Prototype descriptor check failed:", protoDescError);
+            debugLog("[Push] Prototype descriptor check failed:", protoDescError);
           }
         }
 
         // Approach 7: Wait longer and try one more time (iOS sometimes needs more time)
         if (!pushManagerAvailable) {
-          console.log("[Push] iOS PWA: Final attempt - waiting 5 seconds...");
+          debugLog("[Push] iOS PWA: Final attempt - waiting 5 seconds...");
           await new Promise(resolve => setTimeout(resolve, 5000));
 
           try {
             // Check if APIs appeared
             const nowHasPushManager = "PushManager" in window;
             const nowHasNotification = "Notification" in window;
-            console.log("[Push] After 5s wait - PushManager:", nowHasPushManager, "Notification:", nowHasNotification);
+            debugLog("[Push] After 5s wait - PushManager:", nowHasPushManager, "Notification:", nowHasNotification);
 
             if (nowHasPushManager || nowHasNotification) {
               registration = await navigator.serviceWorker.ready;
               pushManagerAvailable = !!registration.pushManager;
               pushManager = registration.pushManager || null;
-              console.log("[Push] pushManager after long wait:", pushManagerAvailable);
+              debugLog("[Push] pushManager after long wait:", pushManagerAvailable);
             }
           } catch (finalError) {
-            console.log("[Push] Final attempt failed:", finalError);
+            debugLog("[Push] Final attempt failed:", finalError);
           }
         }
       }
 
       if (!pushManagerAvailable) {
         console.error("[Push] pushManager not available on registration");
-        console.log("[Push] Registration object keys:", Object.keys(registration));
-        console.log("[Push] Registration details:", {
+        debugLog("[Push] Registration object keys:", Object.keys(registration));
+        debugLog("[Push] Registration details:", {
           scope: registration.scope,
           active: !!registration.active,
           activeState: registration.active?.state,
@@ -836,7 +837,7 @@ export function usePushNotifications({
 
         // Extra diagnostics for iOS
         if (iosPWA) {
-          console.log("[Push] iOS PWA Diagnostics:", {
+          debugLog("[Push] iOS PWA Diagnostics:", {
             windowPushManager: "PushManager" in window,
             windowNotification: "Notification" in window,
             navigatorPermissions: "permissions" in navigator,
@@ -871,21 +872,21 @@ export function usePushNotifications({
         }
         throw new Error("Push notifications are not supported in this browser");
       }
-      console.log("[Push] pushManager is available!");
+      debugLog("[Push] pushManager is available!");
 
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
-      console.log("[Push] Existing subscription:", !!subscription);
+      debugLog("[Push] Existing subscription:", !!subscription);
 
       // Create new subscription if none exists
       if (!subscription) {
-        console.log("[Push] Creating new subscription...");
+        debugLog("[Push] Creating new subscription...");
         try {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidKey),
           });
-          console.log("[Push] Subscription created:", subscription.endpoint.substring(0, 50) + "...");
+          debugLog("[Push] Subscription created:", subscription.endpoint.substring(0, 50) + "...");
         } catch (subscribeError: any) {
           console.error("[Push] Subscribe failed:", subscribeError);
           if (subscribeError.name === "NotAllowedError") {
@@ -896,7 +897,7 @@ export function usePushNotifications({
       }
 
       // Send subscription to server
-      console.log("[Push] Saving to server...");
+      debugLog("[Push] Saving to server...");
       const response = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: {
@@ -914,7 +915,7 @@ export function usePushNotifications({
         throw new Error(errorData.error || "Failed to save subscription");
       }
 
-      console.log("[Push] Saved to server successfully!");
+      debugLog("[Push] Saved to server successfully!");
 
       // Update state and localStorage
       subscriptionStatus.set(userType, true);
@@ -926,7 +927,7 @@ export function usePushNotifications({
         error: null,
       }));
 
-      console.log("[Push] Successfully subscribed for", userType);
+      debugLog("[Push] Successfully subscribed for", userType);
       return true;
     } catch (error) {
       console.error("[Push] Subscription failed:", error);
@@ -973,7 +974,7 @@ export function usePushNotifications({
         error: null,
       }));
 
-      console.log("[Push] Successfully unsubscribed");
+      debugLog("[Push] Successfully unsubscribed");
       return true;
     } catch (error) {
       console.error("[Push] Unsubscribe failed:", error);
@@ -1020,7 +1021,7 @@ export function usePushNotifications({
         error: null,
       }));
 
-      console.log("[Push] Successfully removed all subscriptions");
+      debugLog("[Push] Successfully removed all subscriptions");
       return true;
     } catch (error) {
       console.error("[Push] Unsubscribe all failed:", error);

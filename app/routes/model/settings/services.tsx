@@ -26,6 +26,12 @@ import {
 import { requireModelSession } from "~/services/model-auth.server";
 import { formatMoney } from "~/utils/functions/moneyFormat";
 import type { BillingType } from "~/interfaces/service";
+import {
+  MIN_PRICE,
+  isRateValid,
+  priceBoundsFor,
+  rateError,
+} from "~/utils/service-pricing";
 
 export const meta: MetaFunction = () => {
   return [
@@ -186,8 +192,10 @@ export default function ServicesSettings() {
   // Service location state (for massage service)
   const [serviceLocation, setServiceLocation] = useState<string>("");
 
-  // Minimum price validation (5 digits = 10,000 Kip)
-  const MIN_PRICE = 10000;
+  // Price limits live in ~/utils/service-pricing, because the sign-up
+  // flow and the server enforce the same ones. Per-minute call rates have
+  // their own range there: the 10,000 session floor rejected the 3,000/min
+  // a call is actually worth.
 
   const [applyModal, setApplyModal] = useState<Service | null>(null);
   const [editModal, setEditModal] = useState<Service | null>(null);
@@ -258,11 +266,11 @@ export default function ServicesSettings() {
     return rate - commissionAmount;
   };
 
-  // Helper to check if price meets minimum requirement
-  const isPriceValid = (priceStr: string): boolean => {
-    const price = parseFloat(parseFormattedNumber(priceStr));
-    return !isNaN(price) && price >= MIN_PRICE;
-  };
+  // Helper to check a price against the limits for its billing type.
+  // Session prices keep the 10,000 floor; a per-minute call rate has its
+  // own, lower range with a ceiling.
+  const isPriceValid = (priceStr: string, billingType?: string): boolean =>
+    isRateValid(billingType, priceStr);
 
   // Helper to check if all prices are valid for the current service
   const areAllPricesValid = (service: Service | null): boolean => {
@@ -270,20 +278,42 @@ export default function ServicesSettings() {
 
     switch (service.billingType) {
       case "per_day":
-        return isPriceValid(customRate);
+        return isPriceValid(customRate, service.billingType);
       case "per_hour":
         if (service.name.toLowerCase() === "massage") {
           // Check all massage variants have valid prices
           return massageVariants.every(v => v.name.trim() !== "" && v.pricePerHour >= MIN_PRICE);
         }
-        return isPriceValid(customHourlyRate);
+        return isPriceValid(customHourlyRate, service.billingType);
       case "per_session":
-        return isPriceValid(customOneTimePrice) && isPriceValid(customOneNightPrice);
+        return (
+          isPriceValid(customOneTimePrice, service.billingType) &&
+          isPriceValid(customOneNightPrice, service.billingType)
+        );
       case "per_minute":
-        return isPriceValid(customMinuteRate);
+        return isPriceValid(customMinuteRate, service.billingType);
       default:
         return false;
     }
+  };
+
+  /**
+   * The message under a rate input, naming the limits that actually apply.
+   *
+   * Hardcoding "Minimum price is 10,000 Kip" under a per-minute field was
+   * what made this confusing: it stated a rule the call service does not
+   * follow.
+   */
+  const renderRateError = (billingType: string, value: string) => {
+    const err = rateError(billingType, value);
+    if (!err) return null;
+    return t(err.key, {
+      ...err.values,
+      defaultValue:
+        billingType === "per_minute"
+          ? `Rate must be between ${err.values.min} and ${err.values.max} Kip per minute`
+          : `Minimum price is ${err.values.min} Kip`,
+    });
   };
 
   // Helper function to get translated service name
@@ -631,7 +661,7 @@ export default function ServicesSettings() {
                       </div>
                       {customRate && !isPriceValid(customRate) && (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       )}
                     </div>
@@ -720,7 +750,7 @@ export default function ServicesSettings() {
                                 </div>
                                 {variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE && (
                                   <p className="text-xs text-red-500">
-                                    {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                                    {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                                   </p>
                                 )}
                               </div>
@@ -783,7 +813,7 @@ export default function ServicesSettings() {
                           </div>
                           {customHourlyRate && !isPriceValid(customHourlyRate) ? (
                             <p className="text-xs text-red-500">
-                              {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                              {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                             </p>
                           ) : (
                             <p className="text-xs text-gray-500">
@@ -846,7 +876,7 @@ export default function ServicesSettings() {
                       </div>
                       {customOneTimePrice && !isPriceValid(customOneTimePrice) ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
@@ -874,7 +904,7 @@ export default function ServicesSettings() {
                       </div>
                       {customOneNightPrice && !isPriceValid(customOneNightPrice) ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
@@ -953,17 +983,21 @@ export default function ServicesSettings() {
                           value={customMinuteRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomMinuteRate)}
                           required
-                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate) ? 'border-red-500' : ''}`}
+                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate, "per_minute") ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
                         />
                       </div>
-                      {customMinuteRate && !isPriceValid(customMinuteRate) ? (
+                      {customMinuteRate && !isPriceValid(customMinuteRate, "per_minute") ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {renderRateError("per_minute", customMinuteRate)}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
-                          {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                          {t("modelServices.minuteRateHint", {
+                            min: priceBoundsFor("per_minute").min.toLocaleString("en-US"),
+                            max: priceBoundsFor("per_minute").max?.toLocaleString("en-US"),
+                            defaultValue: "Set your rate for voice/video calls, from {{min}} to {{max}} Kip per minute.",
+                          })}
                         </p>
                       )}
                     </div>
@@ -1066,7 +1100,7 @@ export default function ServicesSettings() {
                       </div>
                       {customRate && !isPriceValid(customRate) ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
@@ -1159,7 +1193,7 @@ export default function ServicesSettings() {
                                 </div>
                                 {variant.pricePerHour > 0 && variant.pricePerHour < MIN_PRICE && (
                                   <p className="text-xs text-red-500">
-                                    {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                                    {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                                   </p>
                                 )}
                               </div>
@@ -1221,7 +1255,7 @@ export default function ServicesSettings() {
                           </div>
                           {customHourlyRate && !isPriceValid(customHourlyRate) ? (
                             <p className="text-xs text-red-500">
-                              {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                              {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                             </p>
                           ) : (
                             <p className="text-xs text-gray-500">
@@ -1284,7 +1318,7 @@ export default function ServicesSettings() {
                       </div>
                       {customOneTimePrice && !isPriceValid(customOneTimePrice) ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
@@ -1312,7 +1346,7 @@ export default function ServicesSettings() {
                       </div>
                       {customOneNightPrice && !isPriceValid(customOneNightPrice) ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {t("modelServices.minimumPrice", { min: MIN_PRICE.toLocaleString("en-US"), defaultValue: "Minimum price is 10,000 Kip" })}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
@@ -1391,17 +1425,21 @@ export default function ServicesSettings() {
                           value={customMinuteRate}
                           onChange={(e) => handlePriceChange(e.target.value, setCustomMinuteRate)}
                           required
-                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate) ? 'border-red-500' : ''}`}
+                          className={`pl-10 ${customMinuteRate && !isPriceValid(customMinuteRate, "per_minute") ? 'border-red-500' : ''}`}
                           placeholder={t("modelServices.enterMinuteRate", { defaultValue: "Enter rate per minute..." })}
                         />
                       </div>
-                      {customMinuteRate && !isPriceValid(customMinuteRate) ? (
+                      {customMinuteRate && !isPriceValid(customMinuteRate, "per_minute") ? (
                         <p className="text-xs text-red-500">
-                          {t("modelServices.minimumPrice", { defaultValue: "Minimum price is 10,000 Kip" })}
+                          {renderRateError("per_minute", customMinuteRate)}
                         </p>
                       ) : (
                         <p className="text-xs text-gray-500">
-                          {t("modelServices.minuteRateHint", { defaultValue: "Set your rate for voice/video calls. Customers will be charged per minute." })}
+                          {t("modelServices.minuteRateHint", {
+                            min: priceBoundsFor("per_minute").min.toLocaleString("en-US"),
+                            max: priceBoundsFor("per_minute").max?.toLocaleString("en-US"),
+                            defaultValue: "Set your rate for voice/video calls, from {{min}} to {{max}} Kip per minute.",
+                          })}
                         </p>
                       )}
                     </div>

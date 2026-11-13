@@ -32,6 +32,24 @@ export function ScrollToTop({ showAfter = 320 }: { showAfter?: number }) {
     location.pathname
   );
 
+  /*
+   * Inside the app shell there is a bottom tab bar, and this button was
+   * landing on top of it — covering the last tab, Settings. On those
+   * screens it rides above the bar instead (`above-tabbar` measures from
+   * the same variable the bar's own height comes from, home-indicator
+   * inset included). On the marketing pages, where there is no bar, it
+   * stays in the corner where it belongs.
+   */
+  const insideAppShell =
+    /^\/(customer|model)(\/|$)/.test(location.pathname) && !onChatThread;
+
+  /*
+   * Discover already parks the "ask an admin" button in this corner, so
+   * there the scroll button takes the rung above it. Everywhere else it
+   * sits directly above the tab bar.
+   */
+  const sharesCornerWithAssistant = /^\/customer\/?$/.test(location.pathname);
+
   useEffect(() => {
     if (onChatThread) {
       setVisible(false);
@@ -58,10 +76,14 @@ export function ScrollToTop({ showAfter = 320 }: { showAfter?: number }) {
       aria-label={t("footer.scrollTop", { defaultValue: "Scroll to top" })}
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
-      className={`fixed bottom-6 right-6 z-40 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/25 transition-all duration-300 hover:scale-105 ${
+      className={`fixed right-4 sm:right-6 z-40 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/25 transition-all duration-300 hover:scale-105 active:scale-90 ${
+        insideAppShell
+          ? `${sharesCornerWithAssistant ? "above-tabbar-2" : "above-tabbar"} sm:bottom-6`
+          : "bottom-6"
+      } ${
         visible
-          ? "opacity-100 translate-y-0 pointer-events-auto"
-          : "opacity-0 translate-y-4 pointer-events-none"
+          ? "opacity-100 scale-100 pointer-events-auto"
+          : "opacity-0 scale-75 pointer-events-none"
       }`}
     >
       <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" />

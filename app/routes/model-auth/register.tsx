@@ -6,6 +6,7 @@ import { Form, Link, useActionData, useNavigation, useNavigate, useLoaderData } 
 
 // services:
 import { compressImage } from "~/utils/imageCompression";
+import { isRateValid, priceBoundsFor } from "~/utils/service-pricing";
 import { findReferrerByCode } from "~/services/referral.server";
 import { uploadFileToBunnyServer } from "~/services/upload.server";
 import type { IModelSignupCredentials } from "~/services/model-auth.server";
@@ -186,8 +187,11 @@ export async function action({ request }: ActionFunctionArgs) {
     return { error: "ກະລຸນາເລືອກຢ່າງໜ້ອຍ 1 ບໍລິການ" };
   }
 
-  // Validate each service has required pricing (min 10,000 Kip)
-  const MIN_PRICE = 10000;
+  // Validate each service's pricing against the limits for its billing
+  // type. A per-minute call rate has its own, lower range — the 10,000
+  // session floor made the call service impossible to sign up for.
+  const MIN_PRICE = priceBoundsFor("per_day").min;
+  const minuteBounds = priceBoundsFor("per_minute");
   for (const svc of selectedServices) {
     if (!svc.serviceId) return { error: "ຂໍ້ມູນບໍລິການບໍ່ຖືກຕ້ອງ" };
     const hasMassageVariants = Array.isArray(svc.massageVariants) && svc.massageVariants.length > 0;
@@ -195,10 +199,20 @@ export async function action({ request }: ActionFunctionArgs) {
       (svc.customRate && svc.customRate >= MIN_PRICE) ||
       (svc.customHourlyRate && svc.customHourlyRate >= MIN_PRICE) ||
       (svc.customOneTimePrice && svc.customOneTimePrice >= MIN_PRICE && svc.customOneNightPrice && svc.customOneNightPrice >= MIN_PRICE) ||
-      (svc.customMinuteRate && svc.customMinuteRate >= MIN_PRICE) ||
+      (svc.customMinuteRate && isRateValid("per_minute", svc.customMinuteRate)) ||
       (hasMassageVariants && svc.massageVariants!.every((v) => v.name && v.pricePerHour >= MIN_PRICE));
     if (!validPrice) {
-      return { error: "ລາຄາບໍລິການຕ້ອງຢ່າງໜ້ອຍ 10,000 ກີບ" };
+      // Name the per-minute range when that is the rule being broken,
+      // rather than quoting a 10,000 minimum that does not apply to it.
+      const brokeMinuteRule =
+        svc.customMinuteRate !== undefined &&
+        svc.customMinuteRate !== null &&
+        !isRateValid("per_minute", svc.customMinuteRate);
+      return {
+        error: brokeMinuteRule
+          ? `ລາຄາຕໍ່ນາທີຕ້ອງຢູ່ລະຫວ່າງ ${minuteBounds.min.toLocaleString("en-US")} ຫາ ${minuteBounds.max!.toLocaleString("en-US")} ກີບ`
+          : "ລາຄາບໍລິການຕ້ອງຢ່າງໜ້ອຍ 10,000 ກີບ",
+      };
     }
   }
 
@@ -408,7 +422,9 @@ export default function ModelRegister() {
   const [stepError, setStepError] = useState<string>("");
 
   // Selected services state - keyed by serviceId
-  const MIN_PRICE = 10000;
+  // Session floor; per-minute call rates use their own range via
+  // isRateValid("per_minute", …).
+  const MIN_PRICE = priceBoundsFor("per_day").min;
   const [selectedServices, setSelectedServices] = useState<Record<string, SelectedService>>(() => {
     const init: Record<string, SelectedService> = {};
     if (saved?.services) {
@@ -535,7 +551,8 @@ export default function ModelRegister() {
       case "per_session":
         return (svc.customOneTimePrice || 0) >= MIN_PRICE && (svc.customOneNightPrice || 0) >= MIN_PRICE;
       case "per_minute":
-        return (svc.customMinuteRate || 0) >= MIN_PRICE;
+        // Own range: a call is priced per minute, not per session.
+        return isRateValid("per_minute", svc.customMinuteRate || 0);
       default:
         return false;
     }
@@ -1140,9 +1157,23 @@ export default function ModelRegister() {
                                   inputMode="numeric"
                                   value={formatNumberWithCommas(selected.customMinuteRate || "")}
                                   onChange={(e) => updateServiceField(svc.id, "customMinuteRate", parseNum(e.target.value))}
-                                  placeholder="10,000"
-                                  className="text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                  placeholder="3,000"
+                                  className={`text-sm w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                                    selected.customMinuteRate && !isRateValid("per_minute", selected.customMinuteRate)
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  }`}
                                 />
+                                <p
+                                  className={`text-xs mt-1 ${
+                                    selected.customMinuteRate && !isRateValid("per_minute", selected.customMinuteRate)
+                                      ? "text-red-500"
+                                      : "text-gray-500"
+                                  }`}
+                                >
+                                  {priceBoundsFor("per_minute").min.toLocaleString("en-US")} –{" "}
+                                  {priceBoundsFor("per_minute").max?.toLocaleString("en-US")} ກີບ/ນາທີ
+                                </p>
                               </div>
                             )}
                           </div>

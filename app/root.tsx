@@ -19,6 +19,7 @@ import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import { DebugConsole } from "./components/debug/DebugConsole";
 import DevToolsRedirect from "./components/DevToolsRedirect";
 import { ScrollToTop } from "./components/scroll-to-top";
+import { log as debugLog } from "./utils/logger";
 
 // App version - increment this when deploying new versions to force cache refresh
 const APP_VERSION = "1.0.14";
@@ -127,11 +128,11 @@ function usePWA() {
   useEffect(() => {
     const registerSW = () => {
       if (!("serviceWorker" in navigator)) {
-        console.log("[PWA] Service Worker API not available");
+        debugLog("[PWA] Service Worker API not available");
         return;
       }
 
-      console.log("[PWA] Device check:", {
+      debugLog("[PWA] Device check:", {
         isMobile: isMobileDevice(),
         isIOSPWA: isIOSPWA(),
         userAgent: navigator.userAgent
@@ -146,7 +147,7 @@ function usePWA() {
       navigator.serviceWorker
         .register("/sw.js", { updateViaCache: 'none' })
         .then((registration) => {
-          console.log("[PWA] Service Worker registered:", registration.scope);
+          debugLog("[PWA] Service Worker registered:", registration.scope);
 
           // If there's a waiting worker, activate it
           if (registration.waiting) {
@@ -187,7 +188,7 @@ function usePWA() {
       // Listen for messages from service worker
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'SW_UPDATED') {
-          console.log('[PWA] Service worker updated to version:', event.data.version);
+          debugLog('[PWA] Service worker updated to version:', event.data.version);
           // Clear localStorage cache version to trigger refresh on next load
           try { localStorage.removeItem('app_version'); } catch {}
         }
@@ -199,20 +200,20 @@ function usePWA() {
     if ("serviceWorker" in navigator) {
       registerSW();
     } else if (isIOSPWA()) {
-      console.log("[PWA] iOS PWA detected but service worker not available, will retry...");
+      debugLog("[PWA] iOS PWA detected but service worker not available, will retry...");
       // Retry up to 5 times with increasing delays (1s, 2s, 3s, 4s, 5s)
       let attempt = 0;
       const maxAttempts = 5;
       const tryRegister = () => {
         attempt++;
         if ("serviceWorker" in navigator) {
-          console.log(`[PWA] Service Worker now available on iOS PWA (attempt ${attempt}), registering...`);
+          debugLog(`[PWA] Service Worker now available on iOS PWA (attempt ${attempt}), registering...`);
           registerSW();
         } else if (attempt < maxAttempts) {
-          console.log(`[PWA] iOS PWA: SW not available yet (attempt ${attempt}/${maxAttempts}), retrying in ${attempt + 1}s...`);
+          debugLog(`[PWA] iOS PWA: SW not available yet (attempt ${attempt}/${maxAttempts}), retrying in ${attempt + 1}s...`);
           retryTimeout = setTimeout(tryRegister, (attempt + 1) * 1000);
         } else {
-          console.log("[PWA] iOS PWA: Service Worker not available after all retries");
+          debugLog("[PWA] iOS PWA: Service Worker not available after all retries");
         }
       };
       let retryTimeout = setTimeout(tryRegister, 1000);
@@ -245,8 +246,12 @@ export const links: Route.LinksFunction = () => [
     crossOrigin: "anonymous",
   },
   {
+    // The whole UI asks for Noto Sans Lao Looped and nothing was ever
+    // fetching it, so every Lao word fell back to whatever the phone had
+    // and the app looked different on each device. One request, both
+    // scripts: Lao Looped covers Latin too, Inter stays as the fallback.
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Noto+Sans+Lao+Looped:wght@100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
   // PWA manifest
   { rel: "manifest", href: "/manifest.json" },
@@ -315,7 +320,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   // Log version on startup for debugging
   useEffect(() => {
-    console.log(`[App] XaoSao Version: ${APP_VERSION}`);
+    debugLog(`[App] XaoSao Version: ${APP_VERSION}`);
     // Also expose to window for easy checking
     if (typeof window !== "undefined") {
       (window as any).__XAOSAO_VERSION__ = APP_VERSION;

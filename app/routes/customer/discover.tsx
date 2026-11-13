@@ -112,7 +112,7 @@ export default function CustomerDiscover() {
       <button
         type="button"
         onClick={() => setAssistantOpen(true)}
-        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-rose-600 sm:bottom-8"
+        className="fixed above-tabbar right-4 z-40 flex items-center gap-2 rounded-full bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-transform duration-150 active:scale-95 hover:bg-rose-600 sm:bottom-8"
       >
         <MessageCircle className="h-4 w-4" />
         {t("assistant.title")}

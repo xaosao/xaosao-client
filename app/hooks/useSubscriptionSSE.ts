@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
+import { log as debugLog } from "~/utils/logger";
 
 interface SubscriptionSSEOptions {
   hasPendingSubscription: boolean;
@@ -28,28 +29,28 @@ export function useSubscriptionSSE({
     // Connect to SSE endpoint
     const connectSSE = () => {
       try {
-        console.log("[SSE Hook] Connecting to subscription events...");
+        debugLog("[SSE Hook] Connecting to subscription events...");
         const eventSource = new EventSource("/api/subscription-events");
         eventSourceRef.current = eventSource;
 
         // Handle connection opened
         eventSource.addEventListener("open", () => {
-          console.log("[SSE Hook] Connected to subscription events");
+          debugLog("[SSE Hook] Connected to subscription events");
         });
 
         // Handle generic messages
         eventSource.addEventListener("message", (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("[SSE Hook] Received message:", data);
+            debugLog("[SSE Hook] Received message:", data);
 
             if (data.type === "connected") {
-              console.log("[SSE Hook] Connection confirmed");
+              debugLog("[SSE Hook] Connection confirmed");
             } else if (data.type === "heartbeat") {
               // Heartbeat received, connection is alive
-              console.log("[SSE Hook] Heartbeat received");
+              debugLog("[SSE Hook] Heartbeat received");
             } else if (data.type === "timeout") {
-              console.log("[SSE Hook] Connection timeout, will reconnect");
+              debugLog("[SSE Hook] Connection timeout, will reconnect");
               eventSource.close();
               // Reconnect after 5 seconds
               reconnectTimeoutRef.current = setTimeout(connectSSE, 5000);
@@ -63,7 +64,7 @@ export function useSubscriptionSSE({
         eventSource.addEventListener("subscription-activated", (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("[SSE Hook] Subscription activated:", data);
+            debugLog("[SSE Hook] Subscription activated:", data);
 
             // Show success toast
             const toastMessage = "subscription.activationSuccess";
@@ -95,7 +96,7 @@ export function useSubscriptionSSE({
 
           // Reconnect after 10 seconds if still pending
           if (hasPendingSubscription) {
-            console.log("[SSE Hook] Will attempt to reconnect in 10 seconds...");
+            debugLog("[SSE Hook] Will attempt to reconnect in 10 seconds...");
             reconnectTimeoutRef.current = setTimeout(connectSSE, 10000);
           }
         });
@@ -109,7 +110,7 @@ export function useSubscriptionSSE({
 
     // Cleanup on unmount or when pending status changes
     return () => {
-      console.log("[SSE Hook] Cleaning up SSE connection");
+      debugLog("[SSE Hook] Cleaning up SSE connection");
 
       if (eventSourceRef.current) {
         eventSourceRef.current.close();

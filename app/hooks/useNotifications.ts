@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useId } from "react";
 import { useNotificationStore, type Notification } from "~/stores/notification.store";
+import { log as debugLog } from "~/utils/logger";
 
 // Re-export the Notification type for convenience
 export type { Notification } from "~/stores/notification.store";
@@ -140,7 +141,7 @@ export function useNotifications({
 
       eventSource.onopen = () => {
         setConnectedRef.current(true);
-        console.log("SSE connected for", userType);
+        debugLog("SSE connected for", userType);
       };
 
       eventSource.onmessage = (event) => {
@@ -152,7 +153,7 @@ export function useNotifications({
             return;
           }
 
-          console.log(`[useNotifications] Received notification:`, data.type, data.title);
+          debugLog(`[useNotifications] Received notification:`, data.type, data.title);
 
           // This is a real notification
           const notification: Notification = {
@@ -170,18 +171,18 @@ export function useNotifications({
 
           // Call all registered callbacks for this userType
           const registry = callbackRegistry.get(connectionKey);
-          console.log(`[useNotifications] Callback registry size for ${connectionKey}:`, registry?.size || 0);
+          debugLog(`[useNotifications] Callback registry size for ${connectionKey}:`, registry?.size || 0);
 
           if (registry) {
             let soundPlayed = false;
             registry.forEach((entry, componentId) => {
-              console.log(`[useNotifications] Calling callback for component ${componentId}, hasCallback:`, !!entry.onNewNotification);
+              debugLog(`[useNotifications] Calling callback for component ${componentId}, hasCallback:`, !!entry.onNewNotification);
 
               // Play sound only once (from the first component with playSound=true)
               if (entry.playSound && !soundPlayed && entry.audioRef.current) {
                 entry.audioRef.current.currentTime = 0;
                 entry.audioRef.current.play().catch((err) => {
-                  console.log("Could not play notification sound:", err);
+                  debugLog("Could not play notification sound:", err);
                 });
                 soundPlayed = true;
               }

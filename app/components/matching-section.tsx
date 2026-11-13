@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Button } from "~/components/ui/button";
+import { log as debugLog } from "~/utils/logger";
 
 interface Profile {
   id: number;
@@ -167,7 +168,7 @@ export function MatchingSection() {
   };
 
   const handleProfileClick = (profile: Profile) => {
-    console.log(`Clicked on ${profile.name}`);
+    debugLog(`Clicked on ${profile.name}`);
   };
 
   return (

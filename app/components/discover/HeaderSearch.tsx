@@ -117,7 +117,7 @@ export function HeaderSearch({
         onClick={() => setOpen((v) => !v)}
         aria-label={t("discover.search", { defaultValue: "Search" })}
         aria-expanded={open}
-        className={`h-9 w-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
+        className={`h-11 w-11 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
           open
             ? "bg-rose-100 text-rose-500"
             : "text-gray-600 hover:bg-rose-50 hover:text-rose-500"

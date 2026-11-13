@@ -1,5 +1,6 @@
 import { prisma } from "./database.server";
 import { FieldValidationError } from "./base.server";
+import { isRateValid, priceBoundsFor } from "~/utils/service-pricing";
 
 // Get all active services for public display (home page)
 export async function getPublicServices() {
@@ -117,6 +118,42 @@ export interface MassageVariant {
   pricePerHour: number;
 }
 
+/**
+ * Reject a rate that is outside what the service's billing type allows.
+ *
+ * The forms check this too, but a form check is a suggestion: these rates
+ * decide what a customer is charged and what is held from their wallet,
+ * so the limit has to hold against a request that never went through the
+ * form at all.
+ *
+ * Returns null when everything is in range, or the failure the caller
+ * should return as-is.
+ */
+function checkRates(
+  billingType: string | null | undefined,
+  rates: ServiceRates
+): { success: false; error: true; message: string } | null {
+  // Only per-minute carries a ceiling worth enforcing here; the session
+  // prices keep the behaviour they have always had.
+  if (billingType !== "per_minute") return null;
+
+  const rate = rates.customMinuteRate;
+  if (rate === undefined || rate === null) return null;
+
+  if (!isRateValid("per_minute", rate)) {
+    const { min, max } = priceBoundsFor("per_minute");
+    return {
+      success: false,
+      error: true,
+      message: `Call rate must be between ${min.toLocaleString("en-US")} and ${max!.toLocaleString(
+        "en-US"
+      )} Kip per minute!`,
+    };
+  }
+
+  return null;
+}
+
 export async function applyForService(
   modelId: string,
   serviceId: string,
@@ -154,6 +191,9 @@ export async function applyForService(
         message: "Service not found!",
       };
     }
+
+    const rateProblem = checkRates(service.billingType, rates);
+    if (rateProblem) return rateProblem;
 
     // Check if massage service requires variants and location
     if (service.name.toLowerCase() === "massage") {
@@ -291,6 +331,9 @@ export async function updateServiceApplication(
         message: "Service application not found!",
       };
     }
+
+    const rateProblem = checkRates(modelService.service?.billingType, rates);
+    if (rateProblem) return rateProblem;
 
     // Check if massage service requires variants and location
     if (modelService.service?.name.toLowerCase() === "massage") {

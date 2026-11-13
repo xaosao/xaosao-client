@@ -107,11 +107,17 @@ export function NotificationBell({
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9 rounded-full hover:bg-rose-50"
+          // 44px: the smallest target a thumb hits reliably. The bell
+          // itself stays 24px — only the tappable area grows.
+          className="relative h-11 w-11 rounded-full hover:bg-rose-50 active:scale-90 transition-transform duration-150"
         >
           <Bell className="h-6 w-6 text-gray-600 hover:text-rose-500" />
           {displayCount > 0 && (
-            <span className={`absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[14px] font-medium text-white ${displayCount > 0 ? "animate-bounce" : ""}`}>
+            /* Sits INSIDE the bell's box, not above it: the header is at
+               the very top of the screen, so a badge hung off the top
+               edge — and bouncing further up — was being cut in half. A
+               white ring separates it from the icon instead. */
+            <span className="absolute -top-0.5 -right-0.5 flex min-w-[18px] h-[18px] px-1 items-center justify-center rounded-full bg-rose-500 text-[11px] font-semibold leading-none text-white ring-2 ring-white">
               {displayCount > 99 ? "99+" : displayCount}
             </span>
           )}
