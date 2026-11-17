@@ -128,6 +128,14 @@ export function notificationHref(
   const type = (notification.type ?? "").trim();
   const data = notification.data ?? {};
 
+  // The model a customer asked for has just come online. They already
+  // decided they want to call, and she may not stay long, so this goes
+  // to the call screen rather than her profile.
+  if (type === "model_online") {
+    const id = pick(data, "model_id", "modelId");
+    return id ? `/customer/call-model/${id}` : routes.home;
+  }
+
   // A call that is ringing right now. Only the model receives these,
   // and only her incoming-call screen can answer one.
   if (type === "incoming_call") {
