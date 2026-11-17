@@ -16,15 +16,30 @@ import {
   useLoaderData,
   useNavigate,
   useParams,
+  useRevalidator,
   type LoaderFunctionArgs,
 } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Loader, MoonStar, Phone, Users, Video, Wallet, X } from "lucide-react";
+import {
+  BellRing,
+  Check,
+  Loader,
+  MoonStar,
+  Phone,
+  Users,
+  Video,
+  Wallet,
+  X,
+} from "lucide-react";
 
 import Modal from "~/components/ui/model";
 import { Button } from "~/components/ui/button";
 import { requireUserSession } from "~/services/auths.server";
-import { getCallRate, type StartedCall } from "~/services/call.server";
+import {
+  getCallRate,
+  type CallNoticeResult,
+  type StartedCall,
+} from "~/services/call.server";
 import { prisma } from "~/services/database.server";
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -59,8 +74,14 @@ export default function CallModel() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams();
+  const revalidator = useRevalidator();
   const start = useFetcher<
     { ok: true; call: StartedCall } | { ok: false; error: string }
+  >();
+  // Its own fetcher: asking her to come online is not placing a call,
+  // and sharing `start`'s state would make the Voice button spin.
+  const notify = useFetcher<
+    { ok: true; notice: CallNoticeResult } | { ok: false; error: string }
   >();
 
   const name =
@@ -86,6 +107,33 @@ export default function CallModel() {
     form.set("callType", callType);
     start.submit(form, { method: "post", action: "/api/call/session" });
   }
+
+  function letHerKnow() {
+    const form = new FormData();
+    form.set("intent", "notify");
+    form.set("modelId", params.modelId as string);
+    notify.submit(form, { method: "post", action: "/api/call/session" });
+  }
+
+  const notifying = notify.state !== "idle";
+  const noticeData = notify.data as any;
+  /** Sent just now, or sent minutes ago — either way she has been told. */
+  const noticeDone =
+    noticeData?.ok === true &&
+    (noticeData.notice?.sent === true || noticeData.notice?.throttled === true);
+  /**
+   * She opened the app between this screen loading and the tap. Reload
+   * so the call buttons appear instead of leaving a dead end.
+   */
+  const noticeFoundHerOnline =
+    noticeData?.ok === true && noticeData.notice?.already_online === true;
+  const noticeError =
+    noticeData?.ok === false ? String(noticeData.error) : null;
+
+  useEffect(() => {
+    if (noticeFoundHerOnline) revalidator.revalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noticeFoundHerOnline]);
 
   const busy = start.state !== "idle";
   const rawError = (start.data as any)?.ok === false ? (start.data as any).error : null;
@@ -175,15 +223,55 @@ export default function CallModel() {
                 })}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                {t("call.offlineBody", {
-                  defaultValue:
-                    "We've let her know you want to call. She can only be reached while the app is open, and nothing has been charged.",
-                })}
+                {noticeDone
+                  ? t("call.offlineNotified", {
+                      defaultValue:
+                        "{{name}} has been told you want to call. She will see it when she next opens the app — nothing has been charged.",
+                      name,
+                    })
+                  : t("call.offlineBody", {
+                      defaultValue:
+                        "She can only be reached while the app is open. You can let her know you want to call — nothing is charged either way.",
+                    })}
               </p>
             </div>
+
+            {noticeError && (
+              <p className="text-center text-xs text-red-600">{noticeError}</p>
+            )}
+
+            {/*
+             * The point of this screen. Without a button, the customer
+             * has no way to reach a model who is not in the app, and
+             * telling them she "has been notified" when nothing was sent
+             * is worse than saying nothing.
+             */}
+            {noticeDone ? (
+              <div className="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700">
+                <Check className="h-4 w-4" />
+                {t("call.noticeSent", { defaultValue: "She has been notified" })}
+              </div>
+            ) : (
+              <Button
+                onClick={letHerKnow}
+                disabled={notifying}
+                className="w-full bg-rose-500 text-white hover:bg-rose-600"
+              >
+                {notifying ? (
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <BellRing className="mr-2 h-4 w-4" />
+                )}
+                {t("call.notifyHer", {
+                  defaultValue: "Let her know you want to call",
+                })}
+              </Button>
+            )}
+
             <Button
               onClick={() => navigate("/customer")}
-              className="w-full bg-rose-500 text-white hover:bg-rose-600"
+              variant="outline"
+              className="w-full"
             >
               <Users className="mr-2 h-4 w-4" />
               {t("call.findOnline", { defaultValue: "Find someone online" })}

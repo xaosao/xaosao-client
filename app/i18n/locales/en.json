@@ -3368,10 +3368,13 @@
     "earningSoFar": "Earning so far",
     "lowBalance": "Less than a minute of balance left",
     "offlineTitle": "{{name}} is offline",
-    "offlineBody": "We've let her know you want to call. She can only be reached while the app is open, and nothing has been charged.",
+    "offlineBody": "She can only be reached while the app is open. You can let her know you want to call — nothing is charged either way.",
     "findOnline": "Find someone online",
     "wentOffline": "She just went offline. We've let her know you want to call — try again shortly, or find someone who is online now.",
     "onlineNow": "Online now",
-    "offlineNow": "Offline"
+    "offlineNow": "Offline",
+    "offlineNotified": "{{name}} has been told you want to call. She will see it when she next opens the app — nothing has been charged.",
+    "notifyHer": "Let her know you want to call",
+    "noticeSent": "She has been notified"
   }
 }

@@ -124,6 +124,40 @@ export async function getCallRate(
   }
 }
 
+/** What came of asking an offline model to come online. */
+export interface CallNoticeResult {
+  sent: boolean;
+  throttled: boolean;
+  retry_in_seconds: number | null;
+  already_online: boolean;
+}
+
+/**
+ * "Let her know I want to call."
+ *
+ * Sends the model a push and nothing else — no room, no hold, no money.
+ * Separate from `startCall` because there is no call: she is not in the
+ * app, so there is nothing to ring.
+ */
+export async function requestCallNotice(
+  who: Who,
+  modelId: string
+): Promise<
+  { ok: true; notice: CallNoticeResult } | { ok: false; error: string }
+> {
+  try {
+    const response = await xsRequest(`calls/notify/${modelId}`, {
+      ...who,
+      method: "POST",
+    });
+    const notice = unwrapEnvelope<CallNoticeResult>(response);
+    if (!notice) return { ok: false, error: "Could not send the notification." };
+    return { ok: true, notice };
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+}
+
 /**
  * Place a call.
  *

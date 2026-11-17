@@ -3,6 +3,7 @@
  *
  * Intents:
  *   start   — customer places a call (holds the money, rings the model)
+ *   notify  — customer asks an offline model to come online (no call)
  *   answer  — model picks up, gets a token
  *   decline — model rejects
  *   hangup  — either side ends it; the reply is the final bill
@@ -22,6 +23,7 @@ import {
   declineCall,
   getCallState,
   hangUpCall,
+  requestCallNotice,
   startCall,
 } from "~/services/call.server";
 
@@ -64,6 +66,14 @@ export async function action({ request }: ActionFunctionArgs) {
     const callType =
       (formData.get("callType") as string) === "video" ? "video" : "audio";
     return startCall(who, modelId, callType);
+  }
+
+  // No session involved: nothing has been placed, so there is no id.
+  if (intent === "notify") {
+    if (who.userType !== "customer") {
+      return { ok: false, error: "Only customers can send this." };
+    }
+    return requestCallNotice(who, (formData.get("modelId") as string) || "");
   }
 
   if (!sessionId) return { ok: false, error: "Missing call id" };

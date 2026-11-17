@@ -103,6 +103,13 @@ const PEOPLE_TYPES: Record<string, string[]> = {
   friend_accepted: ["friendId", "customerId", "modelId"],
   gift_received: ["senderId", "customerId", "modelId"],
   gift_reaction: ["senderId", "customerId", "modelId"],
+  // Someone wanted to call, or called and missed. The useful thing is
+  // who — her own home is where she already is when she taps a row in
+  // the list, so send her to the caller the way a gift sends her to the
+  // giver. (The push banner is different: it is tapped from outside the
+  // app, and `data.url` takes that straight to /model.)
+  call_request: ["caller_id", "callerId", "customerId"],
+  missed_call: ["caller_id", "callerId", "customerId"],
   new_model_registered: ["modelId"],
   new_model_service: ["modelId"],
 };
@@ -120,6 +127,13 @@ export function notificationHref(
   const routes = ROUTES[side];
   const type = (notification.type ?? "").trim();
   const data = notification.data ?? {};
+
+  // A call that is ringing right now. Only the model receives these,
+  // and only her incoming-call screen can answer one.
+  if (type === "incoming_call") {
+    const id = pick(data, "session_id", "sessionId");
+    return id ? `/model/call/incoming/${id}` : routes.home;
+  }
 
   if (BOOKING_TYPES.has(type)) {
     const id = pick(data, "bookingId", "booking_id", "id");
