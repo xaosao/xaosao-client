@@ -10,7 +10,14 @@
 import { unwrapEnvelope, xsRequest, XsApiError } from "./xs-api.server";
 
 export interface CallRate {
+  /** Does she sell calls at all — an active per-minute service, rate > 0. */
   callable: boolean;
+  /**
+   * Can a ring land on her right now? True only while she holds an open
+   * socket. Perishable by nature: accurate when the response was built
+   * and nothing longer, so re-read it rather than caching it.
+   */
+  reachable: boolean;
   rate_per_minute: number | null;
   model_service_id: string | null;
 }
@@ -101,13 +108,19 @@ export async function getCallRate(
     return (
       unwrapEnvelope<CallRate>(response) ?? {
         callable: false,
+        reachable: false,
         rate_per_minute: null,
         model_service_id: null,
       }
     );
   } catch (error) {
     console.error("[call] rate lookup failed:", message(error));
-    return { callable: false, rate_per_minute: null, model_service_id: null };
+    return {
+      callable: false,
+      reachable: false,
+      rate_per_minute: null,
+      model_service_id: null,
+    };
   }
 }
 

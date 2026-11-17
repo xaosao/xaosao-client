@@ -19,7 +19,7 @@ import {
   type LoaderFunctionArgs,
 } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Loader, Phone, Video, Wallet, X } from "lucide-react";
+import { Loader, MoonStar, Phone, Users, Video, Wallet, X } from "lucide-react";
 
 import Modal from "~/components/ui/model";
 import { Button } from "~/components/ui/button";
@@ -114,6 +114,15 @@ export default function CallModel() {
     if (m.includes("does not take calls")) {
       return t("call.notAvailable", { defaultValue: "This person does not take calls right now." });
     }
+    // `reachable` was true when this screen loaded and false by the time
+    // the button was pressed — she closed the app in between. Common
+    // enough to deserve its own wording rather than a generic failure.
+    if (m.includes("not online right now")) {
+      return t("call.wentOffline", {
+        defaultValue:
+          "She just went offline. We've let her know you want to call — try again shortly, or find someone who is online now.",
+      });
+    }
     if (m.includes("not available")) {
       return t("call.errorPeerUnavailable", { defaultValue: "This person is not available." });
     }
@@ -147,6 +156,39 @@ export default function CallModel() {
               defaultValue: "This person does not take calls right now.",
             })}
           </p>
+        ) : !rate.reachable ? (
+          /*
+           * She sells calls but is not in the app, so nothing can ring
+           * her. Say so before any money is held rather than taking the
+           * hold, ringing an empty room for 45 seconds and refunding.
+           *
+           * No "call anyway" button on purpose: it is the exact failure
+           * this screen exists to prevent.
+           */
+          <div className="space-y-3">
+            <div className="rounded-xl bg-gray-50 px-4 py-5 text-center">
+              <MoonStar className="mx-auto mb-2 h-7 w-7 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-900">
+                {t("call.offlineTitle", {
+                  defaultValue: "{{name}} is offline",
+                  name,
+                })}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                {t("call.offlineBody", {
+                  defaultValue:
+                    "We've let her know you want to call. She can only be reached while the app is open, and nothing has been charged.",
+                })}
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/customer")}
+              className="w-full bg-rose-500 text-white hover:bg-rose-600"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              {t("call.findOnline", { defaultValue: "Find someone online" })}
+            </Button>
+          </div>
         ) : (
           <>
             <div className="rounded-xl bg-rose-50 px-4 py-3 text-center">

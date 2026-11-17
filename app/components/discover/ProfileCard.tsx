@@ -7,6 +7,7 @@
  */
 
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { Heart, MapPin, Star, BadgeCheck } from "lucide-react";
 
 export interface DiscoverProfile {
@@ -25,6 +26,12 @@ export interface DiscoverProfile {
   hidden?: boolean;
   /** Whether the viewer has already liked them. */
   liked?: boolean;
+  /**
+   * Active within the last five minutes, so a call has a chance of
+   * ringing. Coarse by design — see ~/utils/presence. The exact check
+   * happens when the customer actually places the call.
+   */
+  isOnline?: boolean;
 }
 
 interface ProfileCardProps {
@@ -54,6 +61,7 @@ export function ProfileCard({
   onToggleLike,
   likePending = false,
 }: ProfileCardProps) {
+  const { t } = useTranslation();
   const name = profile.firstName?.trim() || "XaoSao";
   const distance = formatDistance(profile.distance);
 
@@ -73,6 +81,21 @@ export function ProfileCard({
           <div className="w-full h-full flex items-center justify-center bg-rose-100 text-rose-400 text-3xl font-semibold">
             {name.charAt(0).toUpperCase()}
           </div>
+        )}
+
+        {/* Active in the last five minutes, so a call could reach her.
+            Shown only when true — an "offline" marker on most of the
+            grid would read as the app being broken. */}
+        {profile.isOnline && (
+          <span
+            className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/45 px-1.5 py-0.5 backdrop-blur-sm"
+            title="Online now"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+            <span className="text-[10px] font-medium text-white">
+              {t("call.onlineNow", { defaultValue: "Online now" })}
+            </span>
+          </span>
         )}
 
         {/* Bottom scrim so white text stays legible over any photo. */}

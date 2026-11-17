@@ -222,8 +222,22 @@ export async function createUserSession(
   redirectPath: string
 ) {
   const isProduction = process.env.NODE_ENV === "production";
-  // Session expiration: 24 hours default, 14 days with "Remember Me"
-  const maxAge = rememberMe ? 14 * 24 * 60 * 60 : 1 * 24 * 60 * 60;
+  /*
+   * How long before they have to sign in again.
+   *
+   * Was 24 hours by default, which is why people were logging in most
+   * days — and on an installed PWA that is particularly annoying,
+   * because it feels like a native app that keeps forgetting you.
+   *
+   * 30 days is the floor now, whether or not "Remember me" was ticked;
+   * the checkbox extends rather than enables. The cookie is httpOnly
+   * and the backend re-loads the account on every request, so a longer
+   * cookie does not widen what a stolen one could do — it still dies
+   * the moment the account is suspended.
+   */
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+  const NINETY_DAYS = 90 * 24 * 60 * 60;
+  const maxAge = rememberMe ? NINETY_DAYS : THIRTY_DAYS;
 
   // Create session
   const session = await sessionStorage.getSession();

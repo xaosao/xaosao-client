@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // interface, services and utils
 import { getModelProfile } from '~/services/model.server';
+import { isOnlineNow } from '~/utils/presence';
 import { capitalize, getFirstWord } from '~/utils/functions/textFormat';
 import type { ISinglemodelProfileResponse, IReviewData } from '~/interfaces';
 import { getUserTokenFromSession, requireUserSession } from '~/services/auths.server';
@@ -226,6 +227,22 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const { t } = useTranslation();
     const { model, hasPendingDeposit, modelPosts } = loaderData as any
+
+    /*
+     * Whether she can be called at this moment.
+     *
+     * Coarse on purpose: a five-minute window over `lastOnlineAt`, which
+     * is cheap enough to read with the profile. It informs the badge
+     * below and nothing else — the Call button stays enabled either way,
+     * because this window lags by up to a minute and disabling on it
+     * would turn away a model who came back thirty seconds ago.
+     *
+     * The authoritative check is the live socket, which only xs_backend
+     * can see. `profile.call.tsx` asks for it and explains the refusal,
+     * and `POST /calls` enforces it. So a stale badge here costs one
+     * extra tap, never a held balance or a call that rings nobody.
+     */
+    const modelIsOnline = isOnlineNow(model?.lastOnlineAt)
     const layoutData = useRouteLoaderData("customer-layout") as CustomerLayoutData | undefined;
     const hasActiveSubscription = layoutData?.hasActiveSubscription ?? false;
     const hasPendingSubscription = layoutData?.hasPendingSubscription ?? false;
@@ -731,12 +748,27 @@ export default function ModelProfilePage({ loaderData }: ProfilePageProps) {
 
                                                         {/* Per Minute - the call service */}
                                                         {billingType === "per_minute" && (
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-gray-500">{t("modelServices.minuteRate")}</span>
-                                                                <span className="font-semibold text-rose-600">
-                                                                    {formatCurrency(Number(service.customMinuteRate || service.service.minuteRate || 0))}/{t("modelServices.minute")}
-                                                                </span>
-                                                            </div>
+                                                            <>
+                                                                <div className="flex items-center justify-between text-sm">
+                                                                    <span className="text-gray-500">{t("modelServices.minuteRate")}</span>
+                                                                    <span className="font-semibold text-rose-600">
+                                                                        {formatCurrency(Number(service.customMinuteRate || service.service.minuteRate || 0))}/{t("modelServices.minute")}
+                                                                    </span>
+                                                                </div>
+                                                                {/* A call only rings someone who has the app open, so say
+                                                                    which it is before the customer commits to tapping. */}
+                                                                <div className="flex items-center gap-1.5 text-xs">
+                                                                    <span
+                                                                        className={`h-2 w-2 rounded-full ${modelIsOnline ? "bg-green-500" : "bg-gray-300"}`}
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                    <span className={modelIsOnline ? "text-green-600" : "text-gray-400"}>
+                                                                        {modelIsOnline
+                                                                            ? t("call.onlineNow", { defaultValue: "Online now" })
+                                                                            : t("call.offlineNow", { defaultValue: "Offline" })}
+                                                                    </span>
+                                                                </div>
+                                                            </>
                                                         )}
 
                                                         {/* Per Hour - Show hourly rate OR lowest massage price */}

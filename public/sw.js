@@ -4,7 +4,7 @@
 // changes, so an edit here reaches nobody without it — and a shell
 // cached against a previous build can serve chunks the new build no
 // longer has, which renders as a blank white page.
-const CACHE_NAME = 'xaosao-v15';
+const CACHE_NAME = 'xaosao-v16';
 const STATIC_CACHE = 'xaosao-static-v14';
 const DYNAMIC_CACHE = 'xaosao-dynamic-v14';
 
@@ -245,6 +245,20 @@ self.addEventListener('push', (event) => {
         // stacking a second ring on top.
         tag: sessionId ? `call-${sessionId}` : `call-${Date.now()}`,
         renotify: true,
+        // ── Android only, all four of these ────────────────────────────
+        //
+        // iOS ignores `requireInteraction`, `vibrate`, `renotify` and
+        // `actions` outright, and forbids silent pushes. On an iPhone
+        // this notification is one banner that auto-dismisses: no
+        // sound, no Answer button, no second chance. There is no web
+        // API that changes that — a real ring on iOS needs PushKit and
+        // CallKit from a native app.
+        //
+        // Which is why `POST /calls` now refuses unless the model holds
+        // a live socket (see calls.service.ts `isReachable`). This push
+        // is a second channel for a flaky socket on Android, not the
+        // thing calls depend on. Do not reintroduce a call path that
+        // relies on it reaching a closed iPhone.
         requireInteraction: true,
         // A ring, not a blip.
         vibrate: [400, 200, 400, 200, 400, 200, 400],

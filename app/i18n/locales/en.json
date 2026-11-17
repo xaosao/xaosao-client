@@ -3366,6 +3366,12 @@
     "ringing": "Ringing…",
     "costSoFar": "Cost so far",
     "earningSoFar": "Earning so far",
-    "lowBalance": "Less than a minute of balance left"
+    "lowBalance": "Less than a minute of balance left",
+    "offlineTitle": "{{name}} is offline",
+    "offlineBody": "We've let her know you want to call. She can only be reached while the app is open, and nothing has been charged.",
+    "findOnline": "Find someone online",
+    "wentOffline": "She just went offline. We've let her know you want to call — try again shortly, or find someone who is online now.",
+    "onlineNow": "Online now",
+    "offlineNow": "Offline"
   }
 }

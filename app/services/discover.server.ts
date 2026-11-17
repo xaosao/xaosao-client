@@ -10,6 +10,7 @@
 import type { DiscoverProfile } from "~/components/discover/ProfileCard";
 import type { DiscoverTab } from "~/components/discover/DiscoverTabs";
 import { calculateAgeFromDOB } from "~/utils";
+import { isOnlineNow } from "~/utils/presence";
 
 /**
  * Rows per page in the Discover grid.
@@ -67,6 +68,9 @@ function toProfile(row: any, likedField: "customerAction" | "modelAction"): Disc
     vip: !!row.vip,
     hidden: !!row.profileHiddenByAdmin,
     liked: row[likedField] === "LIKE",
+    // Derived here rather than passed through, so every tab agrees on
+    // what "online" means even though each runs a different query.
+    isOnline: isOnlineNow(row.lastOnlineAt),
   };
 }
 

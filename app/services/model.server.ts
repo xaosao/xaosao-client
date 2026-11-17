@@ -166,6 +166,8 @@ async function _getModelsForCustomer(
         firstName: true,
         lastName: true,
         dob: true,
+        // Presence for the Discover badge — derive with isOnlineNow().
+        lastOnlineAt: true,
         gender: true,
         bio: true,
         whatsapp: true,
@@ -457,6 +459,8 @@ async function _getNearbyModels(
       firstName: true,
       lastName: true,
       dob: true,
+      // Presence for the Discover badge — derive with isOnlineNow().
+      lastOnlineAt: true,
       gender: true,
       bio: true,
       whatsapp: true,
@@ -1054,6 +1058,10 @@ export async function getModelProfile(modelId: string, customerId: string) {
         interests: true,
         bio: true,
         whatsapp: true,
+        // Presence, for the "online now" badge on the call card. Derive
+        // with isOnlineNow() from ~/utils/presence — never read the
+        // stored `isOnline` boolean, which is never set back to false.
+        lastOnlineAt: true,
         Images: {
           where: { status: "active" },
           select: { id: true, name: true },
@@ -1412,6 +1420,8 @@ export async function getLikeMeModels(
           firstName: true,
           lastName: true,
           dob: true,
+          // Presence for the Discover badge — derive with isOnlineNow().
+          lastOnlineAt: true,
           profile: true,
           profileHiddenByAdmin: true,
           whatsapp: true,
@@ -1521,6 +1531,8 @@ export async function getModelsByInteraction(
           firstName: true,
           lastName: true,
           dob: true,
+          // Presence for the Discover badge — derive with isOnlineNow().
+          lastOnlineAt: true,
           profile: true,
           profileHiddenByAdmin: true,
           whatsapp: true,
