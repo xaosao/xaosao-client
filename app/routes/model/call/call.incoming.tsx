@@ -19,6 +19,7 @@ import { Phone, PhoneOff, User, Video } from "lucide-react";
 
 import { requireModelSession } from "~/services/model-auth.server";
 import { getCallState } from "~/services/call.server";
+import { useLoopingSound } from "~/hooks/useCallSound";
 import { prisma } from "~/services/database.server";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -62,6 +63,29 @@ export default function IncomingCall() {
   const poll = useFetcher<{ state: { status: string } | null }>();
   const handled = useRef(false);
 
+  // Ring until she acts on it or the call goes away. Vibrate too where the
+  // browser can (Android); iOS ignores it.
+  const stopRing = useLoopingSound("/sound/ringtone.wav", true);
+  useEffect(() => {
+    const buzz = () => {
+      try {
+        navigator.vibrate?.([400, 200, 400]);
+      } catch {
+        /* not supported */
+      }
+    };
+    buzz();
+    const id = setInterval(buzz, 2600);
+    return () => {
+      clearInterval(id);
+      try {
+        navigator.vibrate?.(0);
+      } catch {
+        /* not supported */
+      }
+    };
+  }, []);
+
   const name =
     `${session.customer?.firstName ?? ""} ${session.customer?.lastName ?? ""}`.trim() ||
     t("call.someone", { defaultValue: "Someone" });
@@ -103,6 +127,7 @@ export default function IncomingCall() {
   }, [decline.data]);
 
   function act(fetcher: typeof answer, intent: "answer" | "decline") {
+    stopRing();
     const form = new FormData();
     form.set("intent", intent);
     form.set("sessionId", session.id);

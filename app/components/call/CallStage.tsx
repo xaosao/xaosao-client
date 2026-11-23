@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useLiveKitCall } from "~/hooks/useLiveKitCall";
+import { useLoopingSound, playToggleFeedback } from "~/hooks/useCallSound";
 import type { CallState, CallToken } from "~/services/call.server";
 
 /**
@@ -174,6 +175,13 @@ export function CallStage({
   }, [action.data]);
 
   const ringing = !media.remoteJoined && state?.status !== "active";
+
+  // The customer hears ringback while her phone rings; it stops the moment
+  // she answers or the call ends.
+  useLoopingSound(
+    "/sound/ringback.wav",
+    viewer === "customer" && ringing && state?.status !== "ended",
+  );
 
   /**
    * A clock that ticks every second between server polls.
@@ -429,7 +437,10 @@ export function CallStage({
         }
       >
         <button
-          onClick={media.toggleMic}
+          onClick={() => {
+            playToggleFeedback();
+            media.toggleMic();
+          }}
           aria-label="Microphone"
           className={`flex h-12 w-12 items-center justify-center rounded-full ${
             media.micEnabled ? "bg-white/10" : "bg-white/80 text-gray-900"
