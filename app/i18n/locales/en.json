@@ -459,8 +459,8 @@
     "filterByServices": "Filter by Services",
     "services": {
       "massage": "Massage",
-      "drinkingFriend": "Drinking Friend",
-      "travelingPartner": "Traveling Partner",
+      "drinkingFriend": "Drinking Buddy",
+      "travelingPartner": "Travel Buddy",
       "talkingPartner": "Talking Partner"
     },
     "maxDistance": "Max Distance (km)",
@@ -1742,16 +1742,20 @@
       "failedToCancel": "Failed to cancel service"
     },
     "serviceItems": {
+      "call": {
+        "name": "Call Buddy",
+        "description": "Chat with a companion over a voice or video call, paid by the minute."
+      },
       "hmongNewYear": {
-        "name": "Partner for Hmong New Year 2025",
-        "description": "Be your perfect Hmong New Year companion to celebrate the festive season together with joy and cultural traditions."
+        "name": "Hmong New Year Buddy",
+        "description": "Celebrate Hmong New Year together."
       },
       "drinkingFriend": {
-        "name": "Drinking Friend",
+        "name": "Drinking Buddy",
         "description": "Enjoy social gatherings with a friendly drinking companion who makes every moment fun and memorable."
       },
       "travelingFriend": {
-        "name": "Traveling Friend",
+        "name": "Travel Buddy",
         "description": "Explore new places with an adventurous travel buddy who shares your passion for discovering new destinations."
       },
       "sleepPartner": {
@@ -1759,8 +1763,80 @@
         "description": "Find comfort with a calming sleep companion for peaceful rest and relaxation (non-romantic companionship)."
       },
       "massage": {
-        "name": "Massage Service",
+        "name": "Massage",
         "description": "Professional massage services with various massage types available. Choose from different massage styles tailored to your needs."
+      },
+      "pimaiPartner": {
+        "name": "Pi Mai Buddy",
+        "description": "Celebrate Lao New Year (Pi Mai) together."
+      },
+      "thatLuangPartner": {
+        "name": "That Luang Buddy",
+        "description": "Enjoy the That Luang Festival together."
+      },
+      "hmongNewYearPartner": {
+        "name": "Hmong New Year Buddy",
+        "description": "Celebrate Hmong New Year together."
+      },
+      "ເພື່ອນປີໃຫ່ມລາວ": {
+        "name": "Pi Mai Buddy",
+        "description": "Celebrate Lao New Year (Pi Mai) together."
+      },
+      "ເພື່ອນປີໃໝ່ລາວ": {
+        "name": "Pi Mai Buddy",
+        "description": "Celebrate Lao New Year (Pi Mai) together."
+      },
+      "ເປັນຄູ່ບຸນທາດຫຼວງ": {
+        "name": "That Luang Buddy",
+        "description": "Enjoy the That Luang Festival together."
+      },
+      "ເປັນຄູ່ບຸນກີນຈຽງ": {
+        "name": "Hmong New Year Buddy",
+        "description": "Celebrate Hmong New Year together."
+      },
+      "ເປັນຄູ່ບຸນກິນຈຽງ": {
+        "name": "Hmong New Year Buddy",
+        "description": "Celebrate Hmong New Year together."
+      },
+      "travellingFriend": {
+        "name": "Travel Buddy",
+        "description": "Explore new places with an adventurous travel buddy who shares your passion for discovering new destinations."
+      },
+      "travelingPartner": {
+        "name": "Travel Buddy",
+        "description": "Explore new places with an adventurous travel buddy who shares your passion for discovering new destinations."
+      },
+      "travellingPartner": {
+        "name": "Travel Buddy",
+        "description": "Explore new places with an adventurous travel buddy who shares your passion for discovering new destinations."
+      },
+      "pimaiPatner": {
+        "name": "Pi Mai Buddy",
+        "description": "Celebrate Lao New Year (Pi Mai) together."
+      },
+      "thatlungParter": {
+        "name": "That Luang Buddy",
+        "description": "Enjoy the That Luang Festival together."
+      },
+      "thatLuangParter": {
+        "name": "That Luang Buddy",
+        "description": "Enjoy the That Luang Festival together."
+      },
+      "countdownFriend": {
+        "name": "Countdown Buddy",
+        "description": "Count down to the New Year together."
+      },
+      "ຄູ່ເຄົ້າດາວປີໃໝ່": {
+        "name": "Countdown Buddy",
+        "description": "Count down to the New Year together."
+      },
+      "ຄູ່ເຄົ້າດາວ": {
+        "name": "Countdown Buddy",
+        "description": "Count down to the New Year together."
+      },
+      "countdownPartner": {
+        "name": "Countdown Buddy",
+        "description": "Count down to the New Year together."
       }
     }
   },

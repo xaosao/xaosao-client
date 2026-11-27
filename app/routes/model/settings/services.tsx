@@ -203,7 +203,7 @@ export default function ServicesSettings() {
 
   // Helper functions for massage variants
   const addMassageVariant = () => {
-    setMassageVariants([...massageVariants, { name: "", pricePerHour: 0 }]);
+    setMassageVariants([...massageVariants, { name: "", pricePerHour: applyModal?.hourlyRate || applyModal?.baseRate || 0 }]);
   };
 
   const removeMassageVariant = (index: number) => {
@@ -240,10 +240,20 @@ export default function ServicesSettings() {
     setter(formatNumberWithCommas(numericValue));
   };
 
+  // The price box opens filled with the base price; put the cursor after
+  // it so the model can type straight on or adjust it.
+  const focusAtEnd = (e: React.FocusEvent<HTMLInputElement>) => {
+    const el = e.currentTarget;
+    requestAnimationFrame(() => {
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+    });
+  };
+
   // Helper to initialize rates when opening modal
   const initializeRatesForService = (service: Service) => {
     setCustomRate(formatNumberWithCommas(service.customRate?.toString() || service.baseRate.toString()));
-    setCustomHourlyRate(formatNumberWithCommas(service.customHourlyRate?.toString() || service.hourlyRate?.toString() || ""));
+    setCustomHourlyRate(formatNumberWithCommas(service.customHourlyRate?.toString() || service.hourlyRate?.toString() || service.baseRate?.toString() || ""));
     setCustomOneTimePrice(formatNumberWithCommas(service.customOneTimePrice?.toString() || service.oneTimePrice?.toString() || ""));
     setCustomOneNightPrice(formatNumberWithCommas(service.customOneNightPrice?.toString() || service.oneNightPrice?.toString() || ""));
     setCustomMinuteRate(formatNumberWithCommas(service.customMinuteRate?.toString() || service.minuteRate?.toString() || ""));
@@ -253,7 +263,7 @@ export default function ServicesSettings() {
       if (service.massageVariants && service.massageVariants.length > 0) {
         setMassageVariants(service.massageVariants);
       } else {
-        setMassageVariants([{ name: "", pricePerHour: 0 }]);
+        setMassageVariants([{ name: "", pricePerHour: service.hourlyRate || service.baseRate || 0 }]);
       }
       // Initialize service location for massage
       setServiceLocation(service.serviceLocation || "");
@@ -650,6 +660,8 @@ export default function ServicesSettings() {
                         <input type="hidden" name="customRate" value={parseFormattedNumber(customRate)} />
                         <Input
                           id="customRate"
+                          autoFocus
+                          onFocus={focusAtEnd}
                           type="text"
                           inputMode="numeric"
                           value={customRate}
@@ -802,6 +814,8 @@ export default function ServicesSettings() {
                             <input type="hidden" name="customHourlyRate" value={parseFormattedNumber(customHourlyRate)} />
                             <Input
                               id="customHourlyRate"
+                          autoFocus
+                          onFocus={focusAtEnd}
                               type="text"
                               inputMode="numeric"
                               value={customHourlyRate}
@@ -865,6 +879,8 @@ export default function ServicesSettings() {
                         <input type="hidden" name="customOneTimePrice" value={parseFormattedNumber(customOneTimePrice)} />
                         <Input
                           id="customOneTimePrice"
+                          autoFocus
+                          onFocus={focusAtEnd}
                           type="text"
                           inputMode="numeric"
                           value={customOneTimePrice}
@@ -978,6 +994,8 @@ export default function ServicesSettings() {
                         <input type="hidden" name="customMinuteRate" value={parseFormattedNumber(customMinuteRate)} />
                         <Input
                           id="customMinuteRate"
+                          autoFocus
+                          onFocus={focusAtEnd}
                           type="text"
                           inputMode="numeric"
                           value={customMinuteRate}
